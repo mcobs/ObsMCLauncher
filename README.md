@@ -26,7 +26,8 @@
 - ⚙️ **灵活配置** - 自定义 Java 路径、内存分配、JVM 参数等
 - 👤 **多账户** - 支持微软账户和离线模式
 - 🌍 **多语言** - 支持简体中文、繁体中文、英语、日语等
-- 💾 **智能下载** - 多线程下载，支持多个下载源
+- 💾 **智能下载** - 多线程下载，支持 BMCLAPI 和 Mojang 官方双下载源
+- 🌐 **国内加速** - 默认使用 BMCLAPI 镜像，中国大陆用户下载速度极快
 
 ---
 
@@ -53,7 +54,7 @@
 - 游戏配置（路径、内存、Java）
 - 启动器个性化设置
 - 账户管理
-- 下载源配置
+- **下载源配置**（BMCLAPI / Mojang 官方源）
 
 ---
 
@@ -78,13 +79,20 @@ ObsMCLauncher/
 │   ├── SettingsPage.xaml             # 设置界面
 │   └── SettingsPage.xaml.cs          # 设置逻辑
 │
-├── Models/                           # 数据模型（待实现）
-├── ViewModels/                       # 视图模型（待实现）
-├── Services/                         # 服务层（待实现）
-│   ├── GameService.cs                # 游戏启动服务
-│   ├── DownloadService.cs            # 下载管理服务
-│   └── AccountService.cs             # 账户管理服务
+├── Models/                           # 数据模型
+│   ├── DownloadSource.cs             # 下载源枚举 ✅
+│   └── LauncherConfig.cs             # 配置管理类 ✅
 │
+├── Services/                         # 服务层
+│   ├── IDownloadSourceService.cs     # 下载源服务接口 ✅
+│   ├── BMCLAPIService.cs             # BMCLAPI 实现 ✅
+│   ├── MojangAPIService.cs           # Mojang 官方 API 实现 ✅
+│   ├── DownloadSourceManager.cs      # 下载源管理器 ✅
+│   ├── MinecraftVersionService.cs    # Minecraft 版本服务 ✅
+│   ├── GameService.cs                # 游戏启动服务（待实现）
+│   └── AccountService.cs             # 账户管理服务（待实现）
+│
+├── ViewModels/                       # 视图模型（待实现）
 ├── Utils/                            # 工具类（待实现）
 └── Resources/                        # 资源文件（待实现）
 ```
@@ -171,10 +179,35 @@ dotnet publish -c Release -r win-x64 --self-contained false
 - **MaterialDesignThemes** (4.9.0) - Material Design UI 组件库
 - **MaterialDesignColors** (2.1.4) - Material Design 颜色主题
 
+框架依赖：
+- **.NET 8.0 Windows** - 核心框架
+- **WPF** - UI 框架
+- **Windows Forms** - 文件对话框支持
+
 自动安装依赖：
 ```bash
 dotnet restore
 ```
+
+## 🌐 下载源说明
+
+### BMCLAPI（默认推荐）
+- **官方文档**: https://bmclapidoc.bangbang93.com/
+- **适用地区**: 中国大陆
+- **特点**: 高速镜像，下载速度快
+- **支持内容**: Minecraft 版本、Forge、资源文件、库文件
+
+### Mojang 官方源
+- **来源**: Mojang 官方 API
+- **适用地区**: 海外地区
+- **特点**: 官方直连，数据最权威
+- **支持内容**: 完整的 Minecraft 生态
+
+> 💡 **提示**: 你可以在"设置"页面随时切换下载源！
+
+详细文档请查看：
+- [下载源功能说明](下载源功能说明.md)
+- [下载源开发指南](DOWNLOAD_SOURCE_GUIDE.md)
 
 ---
 
@@ -195,23 +228,32 @@ dotnet restore
 
 ## 🛠️ 开发计划
 
-### 当前状态：UI 框架完成 ✅
+### 当前状态
+
+#### ✅ 已完成功能
 
 - [x] 主窗口和导航框架
 - [x] 主页界面
 - [x] 版本下载页面
 - [x] 资源下载页面（MOD/材质/光影/数据包/整合包）
 - [x] 设置页面
+- [x] **下载源系统**
+  - [x] BMCLAPI 镜像接入（默认）
+  - [x] Mojang 官方源接入
+  - [x] 下载源管理器和服务架构
+  - [x] 配置持久化（JSON）
+  - [x] 设置界面集成
+- [x] Minecraft 版本 API 集成
+- [x] Forge 版本 API 集成
 
 ### 下一步计划
 
 - [ ] 实现 MVVM 架构和数据绑定
-- [ ] 游戏版本下载功能
+- [ ] 游戏版本下载功能（UI 已就绪，需实现下载逻辑）
 - [ ] 游戏启动核心
 - [ ] 账户系统（微软登录、离线模式）
 - [ ] MOD 和资源包管理
 - [ ] 下载进度显示
-- [ ] 配置文件持久化
 - [ ] 日志系统
 - [ ] 自动更新功能
 - [ ] 崩溃报告和错误处理

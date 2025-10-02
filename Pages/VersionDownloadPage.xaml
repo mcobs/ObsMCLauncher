@@ -69,7 +69,8 @@
                 </ComboBox>
 
                 <!-- 刷新按钮 -->
-                <Button Grid.Column="2"
+                <Button x:Name="RefreshButton"
+                      Grid.Column="2"
                       Style="{StaticResource MaterialDesignIconButton}"
                       ToolTip="刷新版本列表"
                       Click="RefreshButton_Click">
@@ -82,374 +83,46 @@
         <Border Grid.Row="2"
                 Background="{StaticResource SurfaceBrush}"
                 CornerRadius="10">
-            <ScrollViewer VerticalScrollBarVisibility="Auto">
-                <StackPanel x:Name="VersionListPanel" Margin="0,10">
-                    
-                    <!-- 版本项模板 - 1.20.4 -->
-                    <Button Click="VersionItem_Click"
-                          Tag="1.20.4"
-                          Style="{StaticResource MaterialDesignFlatButton}"
-                          HorizontalContentAlignment="Stretch"
-                          Padding="0"
-                          Margin="10">
-                        <Border Background="{StaticResource SurfaceElevatedBrush}"
-                                CornerRadius="8"
-                                Padding="20">
-                            <Border.Style>
-                                <Style TargetType="Border">
-                                    <Style.Triggers>
-                                        <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter Property="Background" Value="{StaticResource HoverBrush}"/>
-                                        </Trigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Border.Style>
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-
-                                <materialDesign:PackIcon Grid.Column="0"
-                                                       Kind="Cube"
-                                                       Width="40"
-                                                       Height="40"
-                                                       Foreground="{StaticResource PrimaryBrush}"
-                                                       VerticalAlignment="Center"
-                                                       Margin="0,0,20,0"/>
-
-                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                    <TextBlock FontSize="18" FontWeight="SemiBold">
-                                        <Run Text="Minecraft 1.20.4"/>
-                                        <Run Text="[正式版]" 
-                                             Foreground="{StaticResource PrimaryBrush}" 
-                                             FontSize="13"/>
-                                    </TextBlock>
-                                    <TextBlock FontSize="13" 
-                                             Foreground="{StaticResource TextSecondaryBrush}"
-                                             Margin="0,5,0,0">
-                                        <Run Text="发布日期: 2023-12-07"/>
-                                        <Run Text=" | "/>
-                                        <Run Text="大小: 约 250 MB"/>
-                                    </TextBlock>
-                                </StackPanel>
-
-                                <materialDesign:PackIcon Grid.Column="2"
-                                                       Kind="ChevronRight"
-                                                       Width="24"
-                                                       Height="24"
-                                                       Foreground="{StaticResource TextSecondaryBrush}"
-                                                       VerticalAlignment="Center"/>
-                            </Grid>
-                        </Border>
-                    </Button>
-
-                    <!-- 版本项模板 - 1.20.1 (已安装) -->
-                    <Button Click="VersionItem_Click"
-                          Tag="1.20.1"
-                          Style="{StaticResource MaterialDesignFlatButton}"
-                          HorizontalContentAlignment="Stretch"
-                          Padding="0"
-                          Margin="10">
-                        <Border Background="{StaticResource SurfaceElevatedBrush}"
-                                CornerRadius="8"
-                                Padding="20">
-                            <Border.Style>
-                                <Style TargetType="Border">
-                                    <Style.Triggers>
-                                        <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter Property="Background" Value="{StaticResource HoverBrush}"/>
-                                        </Trigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Border.Style>
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-
-                                <materialDesign:PackIcon Grid.Column="0"
-                                                       Kind="CheckCircle"
-                                                       Width="40"
-                                                       Height="40"
-                                                       Foreground="{StaticResource PrimaryBrush}"
-                                                       VerticalAlignment="Center"
-                                                       Margin="0,0,20,0"/>
-
-                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                    <TextBlock FontSize="18" FontWeight="SemiBold">
-                                        <Run Text="Minecraft 1.20.1"/>
-                                        <Run Text="[正式版]" 
-                                             Foreground="{StaticResource PrimaryBrush}" 
-                                             FontSize="13"/>
-                                        <Run Text="[已安装]" 
-                                             Foreground="{StaticResource SecondaryBrush}" 
-                                             FontSize="13"/>
-                                    </TextBlock>
-                                    <TextBlock FontSize="13" 
-                                             Foreground="{StaticResource TextSecondaryBrush}"
-                                             Margin="0,5,0,0">
-                                        <Run Text="发布日期: 2023-06-12"/>
-                                        <Run Text=" | "/>
-                                        <Run Text="已安装 Forge 47.2.0"/>
-                                    </TextBlock>
-                                </StackPanel>
-
-                                <materialDesign:PackIcon Grid.Column="2"
-                                                       Kind="ChevronRight"
-                                                       Width="24"
-                                                       Height="24"
-                                                       Foreground="{StaticResource TextSecondaryBrush}"
-                                                       VerticalAlignment="Center"/>
-                            </Grid>
-                        </Border>
-                    </Button>
-
-                    <!-- 版本项模板 - 1.19.4 -->
-                    <Button Click="VersionItem_Click"
-                          Tag="1.19.4"
-                          Style="{StaticResource MaterialDesignFlatButton}"
-                          HorizontalContentAlignment="Stretch"
-                          Padding="0"
-                          Margin="10">
-                        <Border Background="{StaticResource SurfaceElevatedBrush}"
-                                CornerRadius="8"
-                                Padding="20">
-                            <Border.Style>
-                                <Style TargetType="Border">
-                                    <Style.Triggers>
-                                        <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter Property="Background" Value="{StaticResource HoverBrush}"/>
-                                        </Trigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Border.Style>
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-
-                                <materialDesign:PackIcon Grid.Column="0"
-                                                       Kind="Cube"
-                                                       Width="40"
-                                                       Height="40"
-                                                       Foreground="{StaticResource PrimaryBrush}"
-                                                       VerticalAlignment="Center"
-                                                       Margin="0,0,20,0"/>
-
-                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                    <TextBlock FontSize="18" FontWeight="SemiBold">
-                                        <Run Text="Minecraft 1.19.4"/>
-                                        <Run Text="[正式版]" 
-                                             Foreground="{StaticResource PrimaryBrush}" 
-                                             FontSize="13"/>
-                                    </TextBlock>
-                                    <TextBlock FontSize="13" 
-                                             Foreground="{StaticResource TextSecondaryBrush}"
-                                             Margin="0,5,0,0">
-                                        <Run Text="发布日期: 2023-03-14"/>
-                                        <Run Text=" | "/>
-                                        <Run Text="大小: 约 230 MB"/>
-                                    </TextBlock>
-                                </StackPanel>
-
-                                <materialDesign:PackIcon Grid.Column="2"
-                                                       Kind="ChevronRight"
-                                                       Width="24"
-                                                       Height="24"
-                                                       Foreground="{StaticResource TextSecondaryBrush}"
-                                                       VerticalAlignment="Center"/>
-                            </Grid>
-                        </Border>
-                    </Button>
-
-                    <!-- 版本项模板 - 1.18.2 -->
-                    <Button Click="VersionItem_Click"
-                          Tag="1.18.2"
-                          Style="{StaticResource MaterialDesignFlatButton}"
-                          HorizontalContentAlignment="Stretch"
-                          Padding="0"
-                          Margin="10">
-                        <Border Background="{StaticResource SurfaceElevatedBrush}"
-                                CornerRadius="8"
-                                Padding="20">
-                            <Border.Style>
-                                <Style TargetType="Border">
-                                    <Style.Triggers>
-                                        <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter Property="Background" Value="{StaticResource HoverBrush}"/>
-                                        </Trigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Border.Style>
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-
-                                <materialDesign:PackIcon Grid.Column="0"
-                                                       Kind="Cube"
-                                                       Width="40"
-                                                       Height="40"
-                                                       Foreground="{StaticResource PrimaryBrush}"
-                                                       VerticalAlignment="Center"
-                                                       Margin="0,0,20,0"/>
-
-                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                    <TextBlock FontSize="18" FontWeight="SemiBold">
-                                        <Run Text="Minecraft 1.18.2"/>
-                                        <Run Text="[正式版]" 
-                                             Foreground="{StaticResource PrimaryBrush}" 
-                                             FontSize="13"/>
-                                    </TextBlock>
-                                    <TextBlock FontSize="13" 
-                                             Foreground="{StaticResource TextSecondaryBrush}"
-                                             Margin="0,5,0,0">
-                                        <Run Text="发布日期: 2022-02-28"/>
-                                        <Run Text=" | "/>
-                                        <Run Text="大小: 约 220 MB"/>
-                                    </TextBlock>
-                                </StackPanel>
-
-                                <materialDesign:PackIcon Grid.Column="2"
-                                                       Kind="ChevronRight"
-                                                       Width="24"
-                                                       Height="24"
-                                                       Foreground="{StaticResource TextSecondaryBrush}"
-                                                       VerticalAlignment="Center"/>
-                            </Grid>
-                        </Border>
-                    </Button>
-
-                    <!-- 版本项模板 - 1.16.5 -->
-                    <Button Click="VersionItem_Click"
-                          Tag="1.16.5"
-                          Style="{StaticResource MaterialDesignFlatButton}"
-                          HorizontalContentAlignment="Stretch"
-                          Padding="0"
-                          Margin="10">
-                        <Border Background="{StaticResource SurfaceElevatedBrush}"
-                                CornerRadius="8"
-                                Padding="20">
-                            <Border.Style>
-                                <Style TargetType="Border">
-                                    <Style.Triggers>
-                                        <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter Property="Background" Value="{StaticResource HoverBrush}"/>
-                                        </Trigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Border.Style>
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-
-                                <materialDesign:PackIcon Grid.Column="0"
-                                                       Kind="Cube"
-                                                       Width="40"
-                                                       Height="40"
-                                                       Foreground="{StaticResource PrimaryBrush}"
-                                                       VerticalAlignment="Center"
-                                                       Margin="0,0,20,0"/>
-
-                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                    <TextBlock FontSize="18" FontWeight="SemiBold">
-                                        <Run Text="Minecraft 1.16.5"/>
-                                        <Run Text="[正式版]" 
-                                             Foreground="{StaticResource PrimaryBrush}" 
-                                             FontSize="13"/>
-                                    </TextBlock>
-                                    <TextBlock FontSize="13" 
-                                             Foreground="{StaticResource TextSecondaryBrush}"
-                                             Margin="0,5,0,0">
-                                        <Run Text="发布日期: 2021-01-15"/>
-                                        <Run Text=" | "/>
-                                        <Run Text="大小: 约 180 MB"/>
-                                    </TextBlock>
-                                </StackPanel>
-
-                                <materialDesign:PackIcon Grid.Column="2"
-                                                       Kind="ChevronRight"
-                                                       Width="24"
-                                                       Height="24"
-                                                       Foreground="{StaticResource TextSecondaryBrush}"
-                                                       VerticalAlignment="Center"/>
-                            </Grid>
-                        </Border>
-                    </Button>
-
-                    <!-- 版本项模板 - 1.12.2 -->
-                    <Button Click="VersionItem_Click"
-                          Tag="1.12.2"
-                          Style="{StaticResource MaterialDesignFlatButton}"
-                          HorizontalContentAlignment="Stretch"
-                          Padding="0"
-                          Margin="10">
-                        <Border Background="{StaticResource SurfaceElevatedBrush}"
-                                CornerRadius="8"
-                                Padding="20">
-                            <Border.Style>
-                                <Style TargetType="Border">
-                                    <Style.Triggers>
-                                        <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter Property="Background" Value="{StaticResource HoverBrush}"/>
-                                        </Trigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Border.Style>
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-
-                                <materialDesign:PackIcon Grid.Column="0"
-                                                       Kind="Cube"
-                                                       Width="40"
-                                                       Height="40"
-                                                       Foreground="{StaticResource PrimaryBrush}"
-                                                       VerticalAlignment="Center"
-                                                       Margin="0,0,20,0"/>
-
-                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                    <TextBlock FontSize="18" FontWeight="SemiBold">
-                                        <Run Text="Minecraft 1.12.2"/>
-                                        <Run Text="[正式版]" 
-                                             Foreground="{StaticResource PrimaryBrush}" 
-                                             FontSize="13"/>
-                                    </TextBlock>
-                                    <TextBlock FontSize="13" 
-                                             Foreground="{StaticResource TextSecondaryBrush}"
-                                             Margin="0,5,0,0">
-                                        <Run Text="发布日期: 2017-09-18"/>
-                                        <Run Text=" | "/>
-                                        <Run Text="大小: 约 150 MB"/>
-                                    </TextBlock>
-                                </StackPanel>
-
-                                <materialDesign:PackIcon Grid.Column="2"
-                                                       Kind="ChevronRight"
-                                                       Width="24"
-                                                       Height="24"
-                                                       Foreground="{StaticResource TextSecondaryBrush}"
-                                                       VerticalAlignment="Center"/>
-                            </Grid>
-                        </Border>
-                    </Button>
-
+            <Grid>
+                <!-- 加载指示器 -->
+                <StackPanel x:Name="LoadingPanel"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           Visibility="Collapsed">
+                    <materialDesign:PackIcon Kind="Loading"
+                                           Width="48"
+                                           Height="48"
+                                           Foreground="{StaticResource PrimaryBrush}"
+                                           HorizontalAlignment="Center">
+                        <materialDesign:PackIcon.RenderTransform>
+                            <RotateTransform/>
+                        </materialDesign:PackIcon.RenderTransform>
+                        <materialDesign:PackIcon.Triggers>
+                            <EventTrigger RoutedEvent="Loaded">
+                                <BeginStoryboard>
+                                    <Storyboard RepeatBehavior="Forever">
+                                        <DoubleAnimation Storyboard.TargetProperty="RenderTransform.Angle"
+                                                       From="0" To="360" Duration="0:0:2"/>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </EventTrigger>
+                        </materialDesign:PackIcon.Triggers>
+                    </materialDesign:PackIcon>
+                    <TextBlock Text="加载版本列表中..."
+                             FontSize="16"
+                             Margin="0,20,0,0"
+                             HorizontalAlignment="Center"
+                             Foreground="{StaticResource TextSecondaryBrush}"/>
                 </StackPanel>
-            </ScrollViewer>
+
+                <!-- 版本列表滚动区域 -->
+                <ScrollViewer x:Name="VersionScrollViewer"
+                            VerticalScrollBarVisibility="Auto">
+                    <StackPanel x:Name="VersionListPanel" Margin="0,10">
+                        <!-- 动态生成版本项 -->
+                    </StackPanel>
+                </ScrollViewer>
+            </Grid>
         </Border>
     </Grid>
 </Page>
