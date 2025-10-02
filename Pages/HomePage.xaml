@@ -61,26 +61,7 @@
                                     HorizontalAlignment="Stretch"
                                     materialDesign:HintAssist.Hint="选择游戏账号"
                                     Style="{StaticResource MaterialDesignOutlinedComboBox}">
-                                <ComboBoxItem IsSelected="True">
-                                    <StackPanel Orientation="Horizontal">
-                                        <materialDesign:PackIcon Kind="Account" 
-                                                               Width="20" 
-                                                               Height="20"
-                                                               VerticalAlignment="Center"
-                                                               Margin="0,0,10,0"/>
-                                        <TextBlock Text="Steve (离线)" VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                </ComboBoxItem>
-                                <ComboBoxItem>
-                                    <StackPanel Orientation="Horizontal">
-                                        <materialDesign:PackIcon Kind="Microsoft" 
-                                                               Width="20" 
-                                                               Height="20"
-                                                               VerticalAlignment="Center"
-                                                               Margin="0,0,10,0"/>
-                                        <TextBlock Text="Player123 (微软)" VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                </ComboBoxItem>
+                                <!-- 动态加载账号列表 -->
                             </ComboBox>
                         </StackPanel>
 

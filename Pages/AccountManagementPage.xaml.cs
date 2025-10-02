@@ -1,5 +1,11 @@
+using System;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
+using MaterialDesignThemes.Wpf;
+using ObsMCLauncher.Models;
+using ObsMCLauncher.Services;
 
 namespace ObsMCLauncher.Pages
 {
@@ -8,6 +14,167 @@ namespace ObsMCLauncher.Pages
         public AccountManagementPage()
         {
             InitializeComponent();
+            LoadAccounts();
+        }
+
+        /// <summary>
+        /// 加载账号列表
+        /// </summary>
+        private void LoadAccounts()
+        {
+            AccountListPanel.Children.Clear();
+
+            var accounts = AccountService.Instance.GetAllAccounts();
+
+            if (accounts.Count == 0)
+            {
+                // 显示空状态
+                var emptyText = new TextBlock
+                {
+                    Text = "还没有添加账号，点击上方按钮添加账号",
+                    FontSize = 14,
+                    Foreground = (Brush)Application.Current.FindResource("TextSecondaryBrush"),
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    Margin = new Thickness(0, 40, 0, 0)
+                };
+                AccountListPanel.Children.Add(emptyText);
+                return;
+            }
+
+            foreach (var account in accounts)
+            {
+                var accountCard = CreateAccountCard(account);
+                AccountListPanel.Children.Add(accountCard);
+            }
+        }
+
+        /// <summary>
+        /// 创建账号卡片
+        /// </summary>
+        private Border CreateAccountCard(GameAccount account)
+        {
+            var border = new Border
+            {
+                Background = (Brush)Application.Current.FindResource("SurfaceElevatedBrush"),
+                CornerRadius = new CornerRadius(10),
+                Padding = new Thickness(20),
+                Margin = new Thickness(0, 0, 0, 15)
+            };
+
+            var grid = new Grid();
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            // 头像
+            var avatarBorder = new Border
+            {
+                Width = 60,
+                Height = 60,
+                CornerRadius = new CornerRadius(30),
+                Background = account.Type == AccountType.Offline
+                    ? (Brush)Application.Current.FindResource("PrimaryBrush")
+                    : (Brush)Application.Current.FindResource("SecondaryBrush"),
+                Margin = new Thickness(0, 0, 20, 0)
+            };
+
+            var avatarIcon = new PackIcon
+            {
+                Kind = account.Type == AccountType.Offline ? PackIconKind.Account : PackIconKind.Microsoft,
+                Width = 40,
+                Height = 40,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                Foreground = Brushes.White
+            };
+
+            avatarBorder.Child = avatarIcon;
+            Grid.SetColumn(avatarBorder, 0);
+
+            // 账号信息
+            var infoPanel = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+
+            var nameText = new TextBlock
+            {
+                FontSize = 18,
+                FontWeight = FontWeights.SemiBold
+            };
+
+            nameText.Inlines.Add(new System.Windows.Documents.Run(account.Username));
+            if (account.IsDefault)
+            {
+                nameText.Inlines.Add(new System.Windows.Documents.Run(" [默认]")
+                {
+                    FontSize = 13,
+                    Foreground = (Brush)Application.Current.FindResource("PrimaryBrush")
+                });
+            }
+
+            var typeText = new TextBlock
+            {
+                Text = account.Type == AccountType.Offline ? "离线账户" : $"微软账户 • {account.Email}",
+                FontSize = 13,
+                Foreground = (Brush)Application.Current.FindResource("TextSecondaryBrush"),
+                Margin = new Thickness(0, 5, 0, 0)
+            };
+
+            infoPanel.Children.Add(nameText);
+            infoPanel.Children.Add(typeText);
+            Grid.SetColumn(infoPanel, 1);
+
+            // 操作按钮
+            var buttonPanel = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+
+            // 设为默认按钮
+            var defaultButton = new Button
+            {
+                Style = (Style)Application.Current.FindResource("MaterialDesignIconButton"),
+                ToolTip = account.IsDefault ? "已是默认账号" : "设为默认",
+                Tag = account.Id,
+                Margin = new Thickness(0, 0, 5, 0),
+                IsEnabled = !account.IsDefault
+            };
+            defaultButton.Content = new PackIcon
+            {
+                Kind = account.IsDefault ? PackIconKind.CheckCircle : PackIconKind.CheckCircleOutline,
+                Width = 20,
+                Height = 20,
+                Foreground = account.IsDefault 
+                    ? (Brush)Application.Current.FindResource("PrimaryBrush")
+                    : (Brush)Application.Current.FindResource("TextSecondaryBrush")
+            };
+            defaultButton.Click += SetDefaultAccount_Click;
+
+            // 删除按钮
+            var deleteButton = new Button
+            {
+                Style = (Style)Application.Current.FindResource("MaterialDesignIconButton"),
+                ToolTip = "删除",
+                Tag = account.Id,
+                Foreground = new SolidColorBrush(Color.FromRgb(239, 68, 68))
+            };
+            deleteButton.Content = new PackIcon
+            {
+                Kind = PackIconKind.Delete,
+                Width = 20,
+                Height = 20
+            };
+            deleteButton.Click += DeleteAccount_Click;
+
+            buttonPanel.Children.Add(defaultButton);
+            buttonPanel.Children.Add(deleteButton);
+            Grid.SetColumn(buttonPanel, 2);
+
+            grid.Children.Add(avatarBorder);
+            grid.Children.Add(infoPanel);
+            grid.Children.Add(buttonPanel);
+
+            border.Child = grid;
+            return border;
         }
 
         private void AddMicrosoftAccount_Click(object sender, RoutedEventArgs e)
@@ -17,23 +184,86 @@ namespace ObsMCLauncher.Pages
                 "届时将支持：\n" +
                 "• OAuth 2.0 安全登录\n" +
                 "• 自动获取正版皮肤\n" +
-                "• 多账户管理", 
-                "微软账户登录", 
-                MessageBoxButton.OK, 
+                "• 多账户管理",
+                "微软账户登录",
+                MessageBoxButton.OK,
                 MessageBoxImage.Information);
         }
 
         private void AddOfflineAccount_Click(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show(
-                "离线账户创建功能将在后续版本实现。\n\n" +
-                "届时将支持：\n" +
-                "• 自定义用户名\n" +
-                "• 离线皮肤设置\n" +
-                "• UUID 生成", 
-                "离线账户创建", 
-                MessageBoxButton.OK, 
-                MessageBoxImage.Information);
+            // 显示输入界面
+            AddAccountPanel.Visibility = Visibility.Visible;
+            UsernameTextBox.Clear();
+            UsernameTextBox.Focus();
+        }
+
+        private void ConfirmAddAccount_Click(object sender, RoutedEventArgs e)
+        {
+            var username = UsernameTextBox.Text.Trim();
+
+            if (string.IsNullOrEmpty(username))
+            {
+                MessageBox.Show("请输入用户名", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            if (username.Length < 3 || username.Length > 16)
+            {
+                MessageBox.Show("用户名长度必须在 3-16 个字符之间", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            try
+            {
+                AccountService.Instance.AddOfflineAccount(username);
+                AddAccountPanel.Visibility = Visibility.Collapsed;
+                LoadAccounts();
+                MessageBox.Show($"成功添加离线账户：{username}", "成功", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void CancelAddAccount_Click(object sender, RoutedEventArgs e)
+        {
+            AddAccountPanel.Visibility = Visibility.Collapsed;
+            UsernameTextBox.Clear();
+        }
+
+        private void SetDefaultAccount_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button button && button.Tag is string accountId)
+            {
+                AccountService.Instance.SetDefaultAccount(accountId);
+                LoadAccounts();
+            }
+        }
+
+        private void DeleteAccount_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button button && button.Tag is string accountId)
+            {
+                var account = AccountService.Instance.GetAllAccounts()
+                    .FirstOrDefault(a => a.Id == accountId);
+
+                if (account != null)
+                {
+                    var result = MessageBox.Show(
+                        $"确定要删除账号 '{account.Username}' 吗？",
+                        "确认删除",
+                        MessageBoxButton.YesNo,
+                        MessageBoxImage.Question);
+
+                    if (result == MessageBoxResult.Yes)
+                    {
+                        AccountService.Instance.DeleteAccount(accountId);
+                        LoadAccounts();
+                    }
+                }
+            }
         }
     }
 }

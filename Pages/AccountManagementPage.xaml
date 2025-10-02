@@ -82,6 +82,46 @@
                     </Grid>
                 </Border>
 
+                <!-- 添加账号输入界面 -->
+                <Border x:Name="AddAccountPanel"
+                        Background="{StaticResource SurfaceElevatedBrush}"
+                        CornerRadius="10"
+                        Padding="25"
+                        Margin="0,0,0,20"
+                        Visibility="Collapsed">
+                    <StackPanel>
+                        <TextBlock Text="添加离线账户" 
+                                 FontSize="18" 
+                                 FontWeight="SemiBold"
+                                 Margin="0,0,0,20"/>
+                        
+                        <TextBlock Text="用户名" 
+                                 FontSize="14" 
+                                 Foreground="{StaticResource TextSecondaryBrush}"
+                                 Margin="0,0,0,8"/>
+                        
+                        <TextBox x:Name="UsernameTextBox"
+                               materialDesign:HintAssist.Hint="请输入用户名（3-16个字符）"
+                               Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                               FontSize="14"
+                               MaxLength="16"
+                               Margin="0,0,0,20"/>
+                        
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                            <Button Content="取消"
+                                  Style="{StaticResource MaterialDesignOutlinedButton}"
+                                  Margin="0,0,15,0"
+                                  Width="100"
+                                  Click="CancelAddAccount_Click"/>
+                            <Button Content="确认添加"
+                                  Style="{StaticResource MaterialDesignRaisedButton}"
+                                  Background="{StaticResource PrimaryBrush}"
+                                  Width="100"
+                                  Click="ConfirmAddAccount_Click"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
                 <!-- 账号列表 -->
                 <TextBlock Text="我的账号" 
                          FontSize="20" 
@@ -89,133 +129,7 @@
                          Margin="0,0,0,15"/>
 
                 <StackPanel x:Name="AccountListPanel">
-                    <!-- 示例账号 1 - 离线账户 -->
-                    <Border Background="{StaticResource SurfaceElevatedBrush}"
-                            CornerRadius="10"
-                            Padding="20"
-                            Margin="0,0,0,15">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-
-                            <!-- 头像 -->
-                            <Border Grid.Column="0"
-                                    Width="60"
-                                    Height="60"
-                                    CornerRadius="30"
-                                    Background="{StaticResource PrimaryBrush}"
-                                    Margin="0,0,20,0">
-                                <materialDesign:PackIcon Kind="Account"
-                                                       Width="40"
-                                                       Height="40"
-                                                       HorizontalAlignment="Center"
-                                                       VerticalAlignment="Center"
-                                                       Foreground="White"/>
-                            </Border>
-
-                            <!-- 账号信息 -->
-                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                <TextBlock FontSize="18" FontWeight="SemiBold">
-                                    <Run Text="Steve"/>
-                                    <Run Text=" [默认]" 
-                                         FontSize="13"
-                                         Foreground="{StaticResource PrimaryBrush}"/>
-                                </TextBlock>
-                                <TextBlock Text="离线账户" 
-                                         FontSize="13" 
-                                         Foreground="{StaticResource TextSecondaryBrush}"
-                                         Margin="0,5,0,0"/>
-                            </StackPanel>
-
-                            <!-- 操作按钮 -->
-                            <StackPanel Grid.Column="2" 
-                                      Orientation="Horizontal"
-                                      VerticalAlignment="Center">
-                                <Button Style="{StaticResource MaterialDesignIconButton}"
-                                      ToolTip="设为默认"
-                                      Margin="0,0,5,0">
-                                    <materialDesign:PackIcon Kind="Star" Width="20" Height="20"/>
-                                </Button>
-                                <Button Style="{StaticResource MaterialDesignIconButton}"
-                                      ToolTip="编辑"
-                                      Margin="0,0,5,0">
-                                    <materialDesign:PackIcon Kind="Pencil" Width="20" Height="20"/>
-                                </Button>
-                                <Button Style="{StaticResource MaterialDesignIconButton}"
-                                      ToolTip="删除"
-                                      Foreground="#EF4444">
-                                    <materialDesign:PackIcon Kind="Delete" Width="20" Height="20"/>
-                                </Button>
-                            </StackPanel>
-                        </Grid>
-                    </Border>
-
-                    <!-- 示例账号 2 - 微软账户 -->
-                    <Border Background="{StaticResource SurfaceElevatedBrush}"
-                            CornerRadius="10"
-                            Padding="20"
-                            Margin="0,0,0,15">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-
-                            <!-- 头像 -->
-                            <Border Grid.Column="0"
-                                    Width="60"
-                                    Height="60"
-                                    CornerRadius="30"
-                                    Background="{StaticResource SecondaryBrush}"
-                                    Margin="0,0,20,0">
-                                <materialDesign:PackIcon Kind="Microsoft"
-                                                       Width="40"
-                                                       Height="40"
-                                                       HorizontalAlignment="Center"
-                                                       VerticalAlignment="Center"
-                                                       Foreground="White"/>
-                            </Border>
-
-                            <!-- 账号信息 -->
-                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                <TextBlock Text="Player123" 
-                                         FontSize="18" 
-                                         FontWeight="SemiBold"/>
-                                <TextBlock FontSize="13" 
-                                         Foreground="{StaticResource TextSecondaryBrush}"
-                                         Margin="0,5,0,0">
-                                    <Run Text="微软账户"/>
-                                    <Run Text="•"/>
-                                    <Run Text="player123@example.com"/>
-                                </TextBlock>
-                            </StackPanel>
-
-                            <!-- 操作按钮 -->
-                            <StackPanel Grid.Column="2" 
-                                      Orientation="Horizontal"
-                                      VerticalAlignment="Center">
-                                <Button Style="{StaticResource MaterialDesignIconButton}"
-                                      ToolTip="设为默认"
-                                      Margin="0,0,5,0">
-                                    <materialDesign:PackIcon Kind="StarOutline" Width="20" Height="20"/>
-                                </Button>
-                                <Button Style="{StaticResource MaterialDesignIconButton}"
-                                      ToolTip="刷新"
-                                      Margin="0,0,5,0">
-                                    <materialDesign:PackIcon Kind="Refresh" Width="20" Height="20"/>
-                                </Button>
-                                <Button Style="{StaticResource MaterialDesignIconButton}"
-                                      ToolTip="删除"
-                                      Foreground="#EF4444">
-                                    <materialDesign:PackIcon Kind="Delete" Width="20" Height="20"/>
-                                </Button>
-                            </StackPanel>
-                        </Grid>
-                    </Border>
+                    <!-- 动态生成账号列表 -->
                 </StackPanel>
 
                 <!-- 账号类型说明 -->
