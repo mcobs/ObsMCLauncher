@@ -1,0 +1,57 @@
+<Application x:Class="ObsMCLauncher.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             StartupUri="MainWindow.xaml">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <!-- Material Design -->
+                <materialDesign:BundledTheme BaseTheme="Dark" PrimaryColor="Green" SecondaryColor="Lime" />
+                <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesignTheme.Defaults.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+
+            <!-- 黑曜石绿色主题配色 -->
+            <SolidColorBrush x:Key="PrimaryBrush" Color="#00C853"/>
+            <SolidColorBrush x:Key="PrimaryDarkBrush" Color="#00A844"/>
+            <SolidColorBrush x:Key="PrimaryLightBrush" Color="#5EFC82"/>
+            <SolidColorBrush x:Key="SecondaryBrush" Color="#69F0AE"/>
+            <SolidColorBrush x:Key="AccentBrush" Color="#76FF03"/>
+            <SolidColorBrush x:Key="BackgroundBrush" Color="#0D1117"/>
+            <SolidColorBrush x:Key="SurfaceBrush" Color="#161B22"/>
+            <SolidColorBrush x:Key="SurfaceElevatedBrush" Color="#1C2128"/>
+            <SolidColorBrush x:Key="TextBrush" Color="#F0F6FC"/>
+            <SolidColorBrush x:Key="TextSecondaryBrush" Color="#8B949E"/>
+            <SolidColorBrush x:Key="BorderBrush" Color="#30363D"/>
+            <SolidColorBrush x:Key="HoverBrush" Color="#21262D"/>
+            
+            <!-- 全局文字样式 -->
+            <Style TargetType="TextBlock">
+                <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+            </Style>
+            
+            <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+            </Style>
+            
+            <Style TargetType="RadioButton" BasedOn="{StaticResource {x:Type RadioButton}}">
+                <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+            </Style>
+            
+            <Style TargetType="CheckBox" BasedOn="{StaticResource {x:Type CheckBox}}">
+                <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+            </Style>
+            
+            <Style TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
+                <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+            </Style>
+            
+            <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+                <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+                <Setter Property="CaretBrush" Value="{StaticResource PrimaryBrush}"/>
+            </Style>
+            
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>
+
