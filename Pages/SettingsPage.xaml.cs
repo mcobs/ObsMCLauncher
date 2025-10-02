@@ -26,12 +26,24 @@ namespace ObsMCLauncher.Pages
         {
             _config = LauncherConfig.Load();
 
-            // 加载游戏设置
-            GameDirectoryTextBox.Text = _config.GameDirectory;
+            // 加载游戏目录设置
+            GameDirectoryLocationComboBox.SelectedIndex = (int)_config.GameDirectoryLocation;
+            GameDirectoryTextBox.Text = _config.CustomGameDirectory;
+            UpdateGameDirectoryDisplay();
+
+            // 加载其他游戏设置
             MaxMemorySlider.Value = _config.MaxMemory;
             MinMemorySlider.Value = _config.MinMemory;
             JavaPathTextBox.Text = _config.JavaPath;
             JvmArgumentsTextBox.Text = _config.JvmArguments;
+
+            // 加载文件存储设置
+            ConfigFileLocationComboBox.SelectedIndex = (int)_config.ConfigFileLocation;
+            ConfigFileTextBox.Text = _config.CustomConfigPath;
+            UpdateConfigFileDisplay();
+
+            AccountFileLocationComboBox.SelectedIndex = (int)_config.AccountFileLocation;
+            UpdateAccountFileDisplay();
 
             // 加载下载设置
             DownloadSourceComboBox.SelectedIndex = (int)_config.DownloadSource;
@@ -56,12 +68,20 @@ namespace ObsMCLauncher.Pages
         {
             try
             {
-                // 保存游戏设置
-                _config.GameDirectory = GameDirectoryTextBox.Text;
+                // 保存游戏目录设置
+                _config.GameDirectoryLocation = (DirectoryLocation)GameDirectoryLocationComboBox.SelectedIndex;
+                _config.CustomGameDirectory = GameDirectoryTextBox.Text;
+
+                // 保存其他游戏设置
                 _config.MaxMemory = (int)MaxMemorySlider.Value;
                 _config.MinMemory = (int)MinMemorySlider.Value;
                 _config.JavaPath = JavaPathTextBox.Text;
                 _config.JvmArguments = JvmArgumentsTextBox.Text;
+
+                // 保存文件存储设置
+                _config.ConfigFileLocation = (DirectoryLocation)ConfigFileLocationComboBox.SelectedIndex;
+                _config.CustomConfigPath = ConfigFileTextBox.Text;
+                _config.AccountFileLocation = (DirectoryLocation)AccountFileLocationComboBox.SelectedIndex;
 
                 // 保存下载设置
                 _config.DownloadSource = (DownloadSource)DownloadSourceComboBox.SelectedIndex;
@@ -77,7 +97,10 @@ namespace ObsMCLauncher.Pages
                 // 更新下载源
                 DownloadSourceManager.Instance.SetDownloadSource(_config.DownloadSource);
 
-                MessageBox.Show("设置已保存！", "成功", MessageBoxButton.OK, MessageBoxImage.Information);
+                // 重新加载账号（如果账号文件位置变了）
+                AccountService.Instance.ReloadAccountsPath();
+
+                MessageBox.Show("设置已保存！部分设置可能需要重启启动器后生效。", "成功", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
@@ -269,6 +292,105 @@ namespace ObsMCLauncher.Pages
                 3 => 32,
                 _ => 8
             };
+        }
+
+        /// <summary>
+        /// 游戏目录位置选择改变
+        /// </summary>
+        private void GameDirectoryLocation_Changed(object sender, SelectionChangedEventArgs e)
+        {
+            if (GameDirectoryLocationComboBox == null) return;
+
+            var location = (DirectoryLocation)GameDirectoryLocationComboBox.SelectedIndex;
+            CustomGameDirectoryPanel.Visibility = location == DirectoryLocation.Custom ? Visibility.Visible : Visibility.Collapsed;
+            UpdateGameDirectoryDisplay();
+        }
+
+        /// <summary>
+        /// 配置文件位置选择改变
+        /// </summary>
+        private void ConfigFileLocation_Changed(object sender, SelectionChangedEventArgs e)
+        {
+            if (ConfigFileLocationComboBox == null) return;
+
+            var location = (DirectoryLocation)ConfigFileLocationComboBox.SelectedIndex;
+            CustomConfigFilePanel.Visibility = location == DirectoryLocation.Custom ? Visibility.Visible : Visibility.Collapsed;
+            UpdateConfigFileDisplay();
+        }
+
+        /// <summary>
+        /// 账号文件位置选择改变
+        /// </summary>
+        private void AccountFileLocation_Changed(object sender, SelectionChangedEventArgs e)
+        {
+            UpdateAccountFileDisplay();
+        }
+
+        /// <summary>
+        /// 更新游戏目录显示
+        /// </summary>
+        private void UpdateGameDirectoryDisplay()
+        {
+            if (GameDirectoryDisplayText == null || _config == null) return;
+
+            var location = (DirectoryLocation)GameDirectoryLocationComboBox.SelectedIndex;
+            var tempConfig = new LauncherConfig
+            {
+                GameDirectoryLocation = location,
+                CustomGameDirectory = GameDirectoryTextBox.Text
+            };
+
+            GameDirectoryDisplayText.Text = $"实际路径：{tempConfig.GameDirectory}";
+        }
+
+        /// <summary>
+        /// 更新配置文件路径显示
+        /// </summary>
+        private void UpdateConfigFileDisplay()
+        {
+            if (ConfigFileDisplayText == null) return;
+
+            var location = (DirectoryLocation)ConfigFileLocationComboBox.SelectedIndex;
+            var path = LauncherConfig.GetConfigFilePath(location, ConfigFileTextBox.Text);
+
+            ConfigFileDisplayText.Text = $"实际路径：{path}";
+        }
+
+        /// <summary>
+        /// 更新账号文件路径显示
+        /// </summary>
+        private void UpdateAccountFileDisplay()
+        {
+            if (AccountFileDisplayText == null) return;
+
+            var location = (DirectoryLocation)AccountFileLocationComboBox.SelectedIndex;
+            var tempConfig = new LauncherConfig
+            {
+                AccountFileLocation = location,
+                CustomConfigPath = ConfigFileTextBox.Text
+            };
+
+            AccountFileDisplayText.Text = $"实际路径：{tempConfig.GetAccountFilePath()}";
+        }
+
+        /// <summary>
+        /// 浏览配置文件
+        /// </summary>
+        private void BrowseConfigFile_Click(object sender, RoutedEventArgs e)
+        {
+            var dialog = new System.Windows.Forms.SaveFileDialog
+            {
+                Title = "选择配置文件保存位置",
+                Filter = "JSON文件|*.json",
+                FileName = "config.json",
+                InitialDirectory = System.IO.Path.GetDirectoryName(ConfigFileTextBox.Text)
+            };
+
+            if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+            {
+                ConfigFileTextBox.Text = dialog.FileName;
+                UpdateConfigFileDisplay();
+            }
         }
     }
 }

@@ -15,18 +15,61 @@ namespace ObsMCLauncher.Services
         private static readonly Lazy<AccountService> _instance = new(() => new AccountService());
         public static AccountService Instance => _instance.Value;
 
-        private readonly string _accountsFilePath;
-        private List<GameAccount> _accounts;
+        private string _accountsFilePath = string.Empty;
+        private List<GameAccount> _accounts = new List<GameAccount>();
 
         private AccountService()
         {
-            var appDataPath = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                "ObsMCLauncher"
-            );
-            Directory.CreateDirectory(appDataPath);
-            _accountsFilePath = Path.Combine(appDataPath, "accounts.json");
+            ReloadAccountsPath();
+        }
+
+        /// <summary>
+        /// 重新加载账号文件路径和数据
+        /// </summary>
+        public void ReloadAccountsPath()
+        {
+            var config = LauncherConfig.Load();
+            var newPath = config.GetAccountFilePath();
+            
+            // 如果路径变了，需要迁移账号数据
+            if (_accountsFilePath != newPath && !string.IsNullOrEmpty(_accountsFilePath))
+            {
+                MigrateAccounts(_accountsFilePath, newPath);
+            }
+            
+            _accountsFilePath = newPath;
+            
+            var directory = Path.GetDirectoryName(_accountsFilePath);
+            if (!string.IsNullOrEmpty(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+            
             _accounts = LoadAccounts();
+        }
+
+        /// <summary>
+        /// 迁移账号数据到新位置
+        /// </summary>
+        private void MigrateAccounts(string oldPath, string newPath)
+        {
+            try
+            {
+                if (File.Exists(oldPath) && !File.Exists(newPath))
+                {
+                    var directory = Path.GetDirectoryName(newPath);
+                    if (!string.IsNullOrEmpty(directory))
+                    {
+                        Directory.CreateDirectory(directory);
+                    }
+                    File.Copy(oldPath, newPath, true);
+                    System.Diagnostics.Debug.WriteLine($"账号数据已从 {oldPath} 迁移到 {newPath}");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"迁移账号数据失败: {ex.Message}");
+            }
         }
 
         /// <summary>
