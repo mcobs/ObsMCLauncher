@@ -127,11 +127,11 @@
             </Grid>
         </Border>
 
-        <!-- 左侧导航栏 -->
+        <!-- 左侧导航栏 - WinUI 3 风格 -->
         <Border Grid.Row="1"
                 Grid.Column="0" 
                 Background="{StaticResource SurfaceBrush}"
-                BorderBrush="#3F3F46"
+                BorderBrush="{StaticResource BorderBrush}"
                 BorderThickness="0,0,1,0">
             <Grid>
                 <Grid.RowDefinitions>
@@ -140,23 +140,39 @@
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-                <!-- Logo 区域 -->
+                <!-- Logo 区域 - 带呼吸动画 -->
                 <StackPanel Grid.Row="0" Margin="20,30,20,30">
-                    <materialDesign:PackIcon Kind="Minecraft" 
+                    <materialDesign:PackIcon x:Name="LogoIcon"
+                                           Kind="Minecraft" 
                                            Width="50" 
                                            Height="50" 
                                            Foreground="{StaticResource PrimaryBrush}"
-                                           HorizontalAlignment="Center"/>
+                                           HorizontalAlignment="Center">
+                        <materialDesign:PackIcon.Triggers>
+                            <EventTrigger RoutedEvent="Loaded">
+                                <BeginStoryboard>
+                                    <Storyboard RepeatBehavior="Forever" AutoReverse="True">
+                                        <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                       From="0.8" To="1.0" Duration="0:0:2">
+                                            <DoubleAnimation.EasingFunction>
+                                                <SineEase EasingMode="EaseInOut"/>
+                                            </DoubleAnimation.EasingFunction>
+                                        </DoubleAnimation>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </EventTrigger>
+                        </materialDesign:PackIcon.Triggers>
+                    </materialDesign:PackIcon>
                     <TextBlock Text="Obs MC启动器" 
                              FontSize="16" 
-                             FontWeight="Bold"
+                             FontWeight="SemiBold"
                              HorizontalAlignment="Center"
                              Margin="0,10,0,0"
                              Foreground="{StaticResource TextBrush}"/>
                     <TextBlock Text="v1.0.0" 
                              FontSize="11" 
                              HorizontalAlignment="Center"
-                             Foreground="#999999"
+                             Foreground="{StaticResource TextSecondaryBrush}"
                              Margin="0,5,0,0"/>
                 </StackPanel>
 

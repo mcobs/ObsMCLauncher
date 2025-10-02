@@ -114,8 +114,8 @@
                               Background="{StaticResource PrimaryBrush}">
                             <Button.Effect>
                                 <DropShadowEffect Color="{Binding Source={StaticResource PrimaryBrush}, Path=Color}" 
-                                                BlurRadius="20" 
-                                                Opacity="0.5" 
+                                                BlurRadius="16" 
+                                                Opacity="0.2" 
                                                 ShadowDepth="0"/>
                             </Button.Effect>
                         </Button>
