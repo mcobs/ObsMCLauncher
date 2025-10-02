@@ -89,30 +89,33 @@
                            HorizontalAlignment="Center"
                            VerticalAlignment="Center"
                            Visibility="Collapsed">
-                    <materialDesign:PackIcon Kind="Loading"
-                                           Width="48"
-                                           Height="48"
-                                           Foreground="{StaticResource PrimaryBrush}"
-                                           HorizontalAlignment="Center">
-                        <materialDesign:PackIcon.RenderTransform>
-                            <RotateTransform/>
-                        </materialDesign:PackIcon.RenderTransform>
-                        <materialDesign:PackIcon.Triggers>
-                            <EventTrigger RoutedEvent="Loaded">
-                                <BeginStoryboard>
-                                    <Storyboard RepeatBehavior="Forever">
-                                        <DoubleAnimation Storyboard.TargetProperty="RenderTransform.Angle"
-                                                       From="0" To="360" Duration="0:0:2"/>
-                                    </Storyboard>
-                                </BeginStoryboard>
-                            </EventTrigger>
-                        </materialDesign:PackIcon.Triggers>
-                    </materialDesign:PackIcon>
-                    <TextBlock Text="加载版本列表中..."
-                             FontSize="16"
-                             Margin="0,20,0,0"
-                             HorizontalAlignment="Center"
-                             Foreground="{StaticResource TextSecondaryBrush}"/>
+                    
+                    <!-- 使用 Material Design 的 ProgressBar 作为加载动画 -->
+                    <materialDesign:Card Width="300" 
+                                        Padding="32"
+                                        UniformCornerRadius="10">
+                        <StackPanel>
+                            <ProgressBar Style="{StaticResource MaterialDesignCircularProgressBar}"
+                                       Value="0"
+                                       IsIndeterminate="True"
+                                       Width="64"
+                                       Height="64"
+                                       HorizontalAlignment="Center"/>
+                            
+                            <TextBlock Text="加载版本列表中..."
+                                     FontSize="16"
+                                     Margin="0,20,0,0"
+                                     HorizontalAlignment="Center"
+                                     Foreground="{StaticResource TextBrush}"/>
+                            
+                            <TextBlock x:Name="LoadingDetailText"
+                                     Text="正在从服务器获取数据..."
+                                     FontSize="12"
+                                     Margin="0,8,0,0"
+                                     HorizontalAlignment="Center"
+                                     Foreground="{StaticResource TextSecondaryBrush}"/>
+                        </StackPanel>
+                    </materialDesign:Card>
                 </StackPanel>
 
                 <!-- 版本列表滚动区域 -->

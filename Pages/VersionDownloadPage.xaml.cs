@@ -62,11 +62,13 @@ namespace ObsMCLauncher.Pages
             {
                 // 显示加载指示器
                 ShowLoading(true);
+                UpdateLoadingText("正在连接服务器...");
                 RefreshButton_Click_SetEnabled(false);
 
                 System.Diagnostics.Debug.WriteLine("开始加载版本列表...");
 
                 // 从当前下载源获取版本列表
+                UpdateLoadingText("正在获取版本列表...");
                 var manifest = await MinecraftVersionService.GetVersionListAsync();
 
                 _allVersions = manifest?.Versions ?? new List<MinecraftVersion>();
@@ -76,6 +78,8 @@ namespace ObsMCLauncher.Pages
                 System.Diagnostics.Debug.WriteLine($"   最新快照版: {manifest?.Latest?.Snapshot ?? "未知"}");
                 
                 // 应用筛选并显示版本列表
+                UpdateLoadingText("正在生成版本列表...");
+                await System.Threading.Tasks.Task.Delay(100); // 让UI有时间更新
                 ApplyFilters();
             }
             catch (Exception ex)
@@ -314,6 +318,17 @@ namespace ObsMCLauncher.Pages
         {
             LoadingPanel.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
             VersionScrollViewer.Visibility = show ? Visibility.Collapsed : Visibility.Visible;
+        }
+
+        /// <summary>
+        /// 更新加载文本
+        /// </summary>
+        private void UpdateLoadingText(string text)
+        {
+            if (LoadingDetailText != null)
+            {
+                LoadingDetailText.Text = text;
+            }
         }
 
         private void RefreshButton_Click_SetEnabled(bool enabled)
