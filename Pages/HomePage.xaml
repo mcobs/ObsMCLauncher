@@ -43,18 +43,16 @@
                              Margin="0,0,0,20"/>
                     
                     <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="20"/>
-                            <RowDefinition Height="Auto"/>
-                        </Grid.RowDefinitions>
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="1*"/>
+                            <ColumnDefinition Width="15"/>
+                            <ColumnDefinition Width="1*"/>
+                            <ColumnDefinition Width="15"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
 
-                        <!-- 用户选择 -->
-                        <StackPanel Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2">
+                        <!-- 账号选择 -->
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
                             <TextBlock Text="当前账号" 
                                      FontSize="14" 
                                      Foreground="#AAAAAA"
@@ -87,14 +85,13 @@
                         </StackPanel>
 
                         <!-- 版本选择 -->
-                        <StackPanel Grid.Row="2" Grid.Column="0" VerticalAlignment="Center">
+                        <StackPanel Grid.Column="2" VerticalAlignment="Center">
                             <TextBlock Text="当前版本" 
                                      FontSize="14" 
                                      Foreground="#AAAAAA"
                                      Margin="0,0,0,5"/>
                             <ComboBox x:Name="VersionComboBox"
-                                    Width="300"
-                                    HorizontalAlignment="Left"
+                                    HorizontalAlignment="Stretch"
                                     materialDesign:HintAssist.Hint="选择游戏版本"
                                     Style="{StaticResource MaterialDesignOutlinedComboBox}">
                                 <ComboBoxItem Content="Minecraft 1.20.1" IsSelected="True"/>
@@ -105,12 +102,13 @@
                         </StackPanel>
 
                         <!-- 启动按钮 -->
-                        <Button Grid.Row="2" Grid.Column="1"
+                        <Button Grid.Column="4"
                               x:Name="LaunchButton"
                               Content="启动游戏"
-                              Height="50"
+                              Height="56"
                               Width="150"
                               FontSize="16"
+                              VerticalAlignment="Bottom"
                               Style="{StaticResource MaterialDesignRaisedButton}"
                               materialDesign:ButtonAssist.CornerRadius="8"
                               Background="{StaticResource PrimaryBrush}">
