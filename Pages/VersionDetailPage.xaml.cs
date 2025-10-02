@@ -1,11 +1,17 @@
+using System;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using ObsMCLauncher.Models;
+using ObsMCLauncher.Services;
 
 namespace ObsMCLauncher.Pages
 {
     public partial class VersionDetailPage : Page
     {
         private string currentVersion;
+        private CancellationTokenSource? _downloadCancellationToken;
 
         public VersionDetailPage(string version)
         {
@@ -86,9 +92,9 @@ namespace ObsMCLauncher.Pages
             }
         }
 
-        private void InstallButton_Click(object sender, RoutedEventArgs e)
+        private async void InstallButton_Click(object sender, RoutedEventArgs e)
         {
-            // 这里实现下载和安装逻辑
+            // 确定加载器类型
             string loaderType = "原版";
             string loaderVersion = "";
 
@@ -113,14 +119,108 @@ namespace ObsMCLauncher.Pages
                 loaderVersion = (QuiltVersionComboBox?.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "";
             }
 
-            MessageBox.Show(
-                $"准备安装：\n\nMinecraft 版本：{currentVersion}\n加载器：{loaderType}\n加载器版本：{loaderVersion}",
+            // 确认安装
+            var result = MessageBox.Show(
+                $"准备安装：\n\nMinecraft 版本：{currentVersion}\n加载器：{loaderType}\n加载器版本：{loaderVersion}\n\n是否开始下载？",
                 "安装确认",
-                MessageBoxButton.OK,
-                MessageBoxImage.Information
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question
             );
 
-            // 实际的下载和安装逻辑将在后续实现
+            if (result != MessageBoxResult.Yes)
+                return;
+
+            // 获取游戏目录
+            var config = LauncherConfig.Load();
+            var gameDirectory = config.GameDirectory;
+
+            System.Diagnostics.Debug.WriteLine($"开始下载版本 {currentVersion} 到目录 {gameDirectory}");
+
+            // 显示进度面板，隐藏安装按钮
+            InstallButton.Visibility = Visibility.Collapsed;
+            SelectedLoaderText.Visibility = Visibility.Collapsed;
+            InstallHintText.Visibility = Visibility.Collapsed;
+            DownloadProgressPanel.Visibility = Visibility.Visible;
+
+            try
+            {
+                _downloadCancellationToken = new CancellationTokenSource();
+
+                // 创建进度报告器
+                var progress = new Progress<DownloadProgress>(p =>
+                {
+                    Dispatcher.Invoke(() =>
+                    {
+                        DownloadProgressBar.Value = p.ProgressPercentage;
+                        DownloadPercentageText.Text = $"{p.ProgressPercentage:F1}%";
+                        DownloadStatusText.Text = p.Status;
+                        CurrentFileText.Text = p.CurrentFile;
+                    });
+                });
+
+                // 开始下载（目前仅支持原版）
+                if (loaderType == "原版")
+                {
+                    var success = await DownloadService.DownloadMinecraftVersion(
+                        currentVersion,
+                        gameDirectory,
+                        progress,
+                        _downloadCancellationToken.Token
+                    );
+
+                    if (success)
+                    {
+                        MessageBox.Show(
+                            $"Minecraft {currentVersion} 安装完成！",
+                            "安装成功",
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Information
+                        );
+
+                        // 返回版本列表
+                        NavigationService?.GoBack();
+                    }
+                    else
+                    {
+                        MessageBox.Show(
+                            "版本下载失败，请查看日志了解详细信息。",
+                            "安装失败",
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Error
+                        );
+                    }
+                }
+                else
+                {
+                    MessageBox.Show(
+                        $"{loaderType} 加载器的安装功能即将推出！",
+                        "功能开发中",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information
+                    );
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"下载出错: {ex.Message}");
+                MessageBox.Show(
+                    $"下载过程中发生错误：\n{ex.Message}",
+                    "错误",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error
+                );
+            }
+            finally
+            {
+                // 恢复界面
+                InstallButton.Visibility = Visibility.Visible;
+                SelectedLoaderText.Visibility = Visibility.Visible;
+                InstallHintText.Visibility = Visibility.Visible;
+                DownloadProgressPanel.Visibility = Visibility.Collapsed;
+                
+                _downloadCancellationToken?.Dispose();
+                _downloadCancellationToken = null;
+            }
         }
     }
 }

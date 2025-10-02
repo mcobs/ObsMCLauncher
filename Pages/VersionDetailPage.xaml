@@ -388,7 +388,8 @@
                              Text="已选择：原版" 
                              FontSize="14" 
                              FontWeight="SemiBold"/>
-                    <TextBlock Text="点击「开始安装」将下载并安装该版本" 
+                    <TextBlock x:Name="InstallHintText"
+                             Text="点击「开始安装」将下载并安装该版本" 
                              FontSize="12" 
                              Foreground="{StaticResource TextSecondaryBrush}"
                              Margin="0,5,0,0"/>
@@ -405,13 +406,76 @@
                       Background="{StaticResource PrimaryBrush}"
                       Click="InstallButton_Click">
                     <Button.Effect>
-                        <DropShadowEffect Color="#00C853" 
+                        <DropShadowEffect Color="{Binding Source={StaticResource PrimaryBrush}, Path=Color}" 
                                         BlurRadius="20" 
-                                        Opacity="0.5" 
+                                        Opacity="0.3" 
                                         ShadowDepth="0"/>
                     </Button.Effect>
                 </Button>
             </Grid>
+
+            <!-- 下载进度面板 -->
+            <Border x:Name="DownloadProgressPanel"
+                    Grid.Row="3"
+                    Background="{StaticResource SurfaceBrush}"
+                    CornerRadius="10"
+                    Padding="25"
+                    Margin="0,0,0,20"
+                    Visibility="Collapsed">
+                <StackPanel>
+                    <Grid Margin="0,0,0,15">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        
+                        <TextBlock Text="正在下载版本..." 
+                                 FontSize="16" 
+                                 FontWeight="SemiBold"
+                                 VerticalAlignment="Center"/>
+                        
+                        <TextBlock x:Name="DownloadPercentageText"
+                                 Grid.Column="1"
+                                 Text="0%" 
+                                 FontSize="18" 
+                                 FontWeight="Bold"
+                                 Foreground="{StaticResource PrimaryBrush}"/>
+                    </Grid>
+
+                    <ProgressBar x:Name="DownloadProgressBar"
+                               Height="8"
+                               Value="0"
+                               Maximum="100"
+                               Margin="0,0,0,15"
+                               Style="{StaticResource MaterialDesignLinearProgressBar}"/>
+
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                        <materialDesign:PackIcon Kind="Download" 
+                                               Width="16" 
+                                               Height="16"
+                                               VerticalAlignment="Center"
+                                               Margin="0,0,8,0"
+                                               Foreground="{StaticResource TextSecondaryBrush}"/>
+                        <TextBlock x:Name="DownloadStatusText"
+                                 Text="准备下载..." 
+                                 FontSize="13"
+                                 Foreground="{StaticResource TextSecondaryBrush}"/>
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Kind="File" 
+                                               Width="16" 
+                                               Height="16"
+                                               VerticalAlignment="Center"
+                                               Margin="0,0,8,0"
+                                               Foreground="{StaticResource TextSecondaryBrush}"/>
+                        <TextBlock x:Name="CurrentFileText"
+                                 Text="" 
+                                 FontSize="12"
+                                 Foreground="{StaticResource TextTertiaryBrush}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
 
         </Grid>
     </ScrollViewer>
