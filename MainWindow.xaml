@@ -187,6 +187,30 @@
                         </RadioButton.ContentTemplate>
                     </RadioButton>
 
+                    <RadioButton x:Name="AccountButton"
+                               Style="{StaticResource MaterialDesignTabRadioButton}"
+                               Content="账号管理"
+                               Click="NavigationButton_Click"
+                               Tag="Account"
+                               Height="50"
+                               Margin="0,5">
+                        <RadioButton.ContentTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="AccountMultiple" 
+                                                           Width="24" 
+                                                           Height="24" 
+                                                           VerticalAlignment="Center"
+                                                           Margin="10,0"/>
+                                    <TextBlock Text="{Binding}" 
+                                             VerticalAlignment="Center" 
+                                             FontSize="14"
+                                             Margin="15,0"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </RadioButton.ContentTemplate>
+                    </RadioButton>
+
                     <RadioButton x:Name="VersionButton"
                                Style="{StaticResource MaterialDesignTabRadioButton}"
                                Content="版本下载"

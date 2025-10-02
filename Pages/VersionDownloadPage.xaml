@@ -114,7 +114,7 @@
                                      Margin="0,8,0,0"
                                      HorizontalAlignment="Center"
                                      Foreground="{StaticResource TextSecondaryBrush}"/>
-                        </StackPanel>
+                                </StackPanel>
                     </materialDesign:Card>
                 </StackPanel>
 
@@ -123,8 +123,8 @@
                             VerticalScrollBarVisibility="Auto">
                     <StackPanel x:Name="VersionListPanel" Margin="0,10">
                         <!-- 动态生成版本项 -->
-                    </StackPanel>
-                </ScrollViewer>
+                </StackPanel>
+            </ScrollViewer>
             </Grid>
         </Border>
     </Grid>

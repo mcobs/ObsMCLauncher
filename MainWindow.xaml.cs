@@ -23,6 +23,9 @@ namespace ObsMCLauncher
                     case "Home":
                         MainFrame.Navigate(new HomePage());
                         break;
+                    case "Account":
+                        MainFrame.Navigate(new AccountManagementPage());
+                        break;
                     case "Version":
                         MainFrame.Navigate(new VersionDownloadPage());
                         break;

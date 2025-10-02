@@ -43,12 +43,51 @@
                              Margin="0,0,0,20"/>
                     
                     <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="20"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
 
-                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                        <!-- 用户选择 -->
+                        <StackPanel Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2">
+                            <TextBlock Text="当前账号" 
+                                     FontSize="14" 
+                                     Foreground="#AAAAAA"
+                                     Margin="0,0,0,5"/>
+                            <ComboBox x:Name="AccountComboBox"
+                                    HorizontalAlignment="Stretch"
+                                    materialDesign:HintAssist.Hint="选择游戏账号"
+                                    Style="{StaticResource MaterialDesignOutlinedComboBox}">
+                                <ComboBoxItem IsSelected="True">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="Account" 
+                                                               Width="20" 
+                                                               Height="20"
+                                                               VerticalAlignment="Center"
+                                                               Margin="0,0,10,0"/>
+                                        <TextBlock Text="Steve (离线)" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </ComboBoxItem>
+                                <ComboBoxItem>
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="Microsoft" 
+                                                               Width="20" 
+                                                               Height="20"
+                                                               VerticalAlignment="Center"
+                                                               Margin="0,0,10,0"/>
+                                        <TextBlock Text="Player123 (微软)" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </ComboBoxItem>
+                            </ComboBox>
+                        </StackPanel>
+
+                        <!-- 版本选择 -->
+                        <StackPanel Grid.Row="2" Grid.Column="0" VerticalAlignment="Center">
                             <TextBlock Text="当前版本" 
                                      FontSize="14" 
                                      Foreground="#AAAAAA"
@@ -65,7 +104,8 @@
                             </ComboBox>
                         </StackPanel>
 
-                        <Button Grid.Column="1"
+                        <!-- 启动按钮 -->
+                        <Button Grid.Row="2" Grid.Column="1"
                               x:Name="LaunchButton"
                               Content="启动游戏"
                               Height="50"
