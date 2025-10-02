@@ -10,13 +10,21 @@ namespace ObsMCLauncher.Utils
     /// </summary>
     public static class ApiTester
     {
-        private static readonly HttpClient _httpClient = new HttpClient
-        {
-            Timeout = TimeSpan.FromSeconds(10)
-        };
+        private static readonly HttpClient _httpClient;
 
         static ApiTester()
         {
+            // 创建支持自动解压缩的 HttpClient
+            var handler = new HttpClientHandler
+            {
+                AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate
+            };
+
+            _httpClient = new HttpClient(handler)
+            {
+                Timeout = TimeSpan.FromSeconds(10)
+            };
+
             _httpClient.DefaultRequestHeaders.Add("User-Agent", "ObsMCLauncher/1.0");
         }
 

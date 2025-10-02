@@ -14,14 +14,23 @@ namespace ObsMCLauncher.Services
         private const string LibrariesUrl = "https://libraries.minecraft.net";
         private const string ForgeMavenUrl = "https://maven.minecraftforge.net";
         
-        private static readonly HttpClient httpClient = new HttpClient
-        {
-            Timeout = TimeSpan.FromSeconds(30)
-        };
+        private static readonly HttpClient httpClient;
 
         static MojangAPIService()
         {
+            // 创建支持自动解压缩的 HttpClient
+            var handler = new HttpClientHandler
+            {
+                AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate
+            };
+
+            httpClient = new HttpClient(handler)
+            {
+                Timeout = TimeSpan.FromSeconds(30)
+            };
+
             httpClient.DefaultRequestHeaders.Add("User-Agent", "ObsMCLauncher/1.0");
+            httpClient.DefaultRequestHeaders.Add("Accept-Encoding", "gzip, deflate");
         }
 
         /// <summary>
