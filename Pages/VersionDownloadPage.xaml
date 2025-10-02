@@ -116,7 +116,7 @@
                                      Foreground="{StaticResource TextSecondaryBrush}"/>
                                 </StackPanel>
                     </materialDesign:Card>
-                </StackPanel>
+                                </StackPanel>
 
                 <!-- 版本列表滚动区域 -->
                 <ScrollViewer x:Name="VersionScrollViewer"
