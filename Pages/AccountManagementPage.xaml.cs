@@ -12,7 +12,6 @@ namespace ObsMCLauncher.Pages
 {
     public partial class AccountManagementPage : Page
     {
-        private string _currentAuthUrl = "";
         private bool _isLoggingIn = false;
 
         public AccountManagementPage()
@@ -198,15 +197,19 @@ namespace ObsMCLauncher.Pages
             
             _isLoggingIn = true;
             
+            // 获取主窗口引用
+            var mainWindow = Application.Current.MainWindow as MainWindow;
+            if (mainWindow == null) return;
+            
             try
             {
-                // 1. 显示登录进度
-                ShowLoginProgress("准备登录...");
+                // 1. 显示登录进度（使用MainWindow的全局UI）
+                mainWindow.ShowLoginProgress("准备登录...");
 
                 // 2. 创建认证服务并设置进度回调
                 var authService = new MicrosoftAuthService();
-                authService.OnProgressUpdate = UpdateLoginProgress;
-                authService.OnAuthUrlGenerated = ShowAuthUrlDialog;
+                authService.OnProgressUpdate = mainWindow.UpdateLoginProgress;
+                authService.OnAuthUrlGenerated = mainWindow.ShowAuthUrlDialog;
 
                 // 3. 开始登录
                 var account = await authService.LoginAsync();
@@ -217,7 +220,7 @@ namespace ObsMCLauncher.Pages
                     LoadAccounts();
                     
                     // 隐藏所有对话框
-                    HideAllDialogs();
+                    mainWindow.HideAllLoginDialogs();
                     
                     MessageBox.Show(
                         $"✅ 成功添加微软账户\n\n" +
@@ -229,7 +232,7 @@ namespace ObsMCLauncher.Pages
                 }
                 else
                 {
-                    HideAllDialogs();
+                    mainWindow.HideAllLoginDialogs();
                     MessageBox.Show(
                         "❌ 登录失败！\n\n" +
                         "可能的原因：\n" +
@@ -243,7 +246,7 @@ namespace ObsMCLauncher.Pages
             }
             catch (Exception ex)
             {
-                HideAllDialogs();
+                mainWindow.HideAllLoginDialogs();
                 
                 MessageBox.Show(
                     $"❌ 微软账户登录失败\n\n" +
@@ -259,109 +262,6 @@ namespace ObsMCLauncher.Pages
             {
                 _isLoggingIn = false;
             }
-        }
-
-        /// <summary>
-        /// 显示登录进度
-        /// </summary>
-        private void ShowLoginProgress(string status)
-        {
-            Dispatcher.Invoke(() =>
-            {
-                LoginProgressStatus.Text = status;
-                LoginProgressPanel.Visibility = Visibility.Visible;
-            });
-        }
-
-        /// <summary>
-        /// 更新登录进度
-        /// </summary>
-        private void UpdateLoginProgress(string status)
-        {
-            Dispatcher.Invoke(() =>
-            {
-                LoginProgressStatus.Text = status;
-            });
-        }
-
-        /// <summary>
-        /// 显示授权URL对话框
-        /// </summary>
-        private void ShowAuthUrlDialog(string url)
-        {
-            _currentAuthUrl = url;
-            
-            Dispatcher.Invoke(() =>
-            {
-                AuthUrlText.Text = url;
-                ModalOverlay.Visibility = Visibility.Visible;
-                AuthUrlDialog.Visibility = Visibility.Visible;
-                
-                // 淡入动画
-                var fadeIn = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(200));
-                AuthUrlDialog.BeginAnimation(OpacityProperty, fadeIn);
-            });
-        }
-
-        /// <summary>
-        /// 隐藏所有对话框
-        /// </summary>
-        private void HideAllDialogs()
-        {
-            Dispatcher.Invoke(() =>
-            {
-                LoginProgressPanel.Visibility = Visibility.Collapsed;
-                ModalOverlay.Visibility = Visibility.Collapsed;
-                AuthUrlDialog.Visibility = Visibility.Collapsed;
-            });
-        }
-
-        /// <summary>
-        /// 复制授权URL
-        /// </summary>
-        private void CopyAuthUrl_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                Clipboard.SetText(_currentAuthUrl);
-                
-                var button = sender as Button;
-                if (button != null)
-                {
-                    var originalContent = button.Content;
-                    button.Content = "✅ 已复制";
-                    
-                    var timer = new System.Windows.Threading.DispatcherTimer();
-                    timer.Interval = TimeSpan.FromSeconds(2);
-                    timer.Tick += (s, args) =>
-                    {
-                        button.Content = originalContent;
-                        timer.Stop();
-                    };
-                    timer.Start();
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"复制失败: {ex.Message}");
-            }
-        }
-
-        /// <summary>
-        /// 关闭授权URL对话框
-        /// </summary>
-        private void CloseAuthUrlDialog_Click(object sender, RoutedEventArgs e)
-        {
-            ModalOverlay.Visibility = Visibility.Collapsed;
-            AuthUrlDialog.Visibility = Visibility.Collapsed;
-        }
-
-        /// <summary>
-        /// 点击遮罩层时不执行任何操作（阻止关闭）
-        /// </summary>
-        private void ModalOverlay_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
-        {
-            // 不关闭对话框，保持模态状态
         }
 
         private void AddOfflineAccount_Click(object sender, RoutedEventArgs e)

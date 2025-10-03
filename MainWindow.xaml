@@ -316,6 +316,185 @@
                Grid.Column="1" 
                NavigationUIVisibility="Hidden"
                Background="{StaticResource BackgroundBrush}"/>
+
+        <!-- 全局：登录进度悬浮窗 -->
+        <Border x:Name="GlobalLoginProgressPanel"
+                Grid.Row="0"
+                Grid.Column="1"
+                Grid.RowSpan="2"
+                VerticalAlignment="Top"
+                HorizontalAlignment="Center"
+                Margin="0,15,0,0"
+                Width="420"
+                Background="{StaticResource SurfaceBrush}"
+                CornerRadius="8"
+                Padding="15,12"
+                Visibility="Collapsed"
+                Panel.ZIndex="999">
+            <Border.Effect>
+                <DropShadowEffect Color="Black" BlurRadius="20" ShadowDepth="2" Opacity="0.3"/>
+            </Border.Effect>
+            <StackPanel>
+                <Grid Margin="0,0,0,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Border Grid.Column="0"
+                            Background="{StaticResource PrimaryBrush}"
+                            CornerRadius="16"
+                            Width="32"
+                            Height="32"
+                            Margin="0,0,10,0">
+                        <materialDesign:PackIcon Kind="Microsoft"
+                                                 Width="18"
+                                                 Height="18"
+                                                 HorizontalAlignment="Center"
+                                                 VerticalAlignment="Center"/>
+                    </Border>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Text="微软账户登录"
+                                   FontSize="13"
+                                   FontWeight="SemiBold"
+                                   Margin="0,0,0,2"/>
+                        <TextBlock x:Name="GlobalLoginProgressStatus"
+                                   Text="准备登录..."
+                                   FontSize="11"
+                                   Foreground="{StaticResource TextSecondaryBrush}"/>
+                    </StackPanel>
+                </Grid>
+                <ProgressBar x:Name="GlobalLoginProgressBar"
+                             Height="3"
+                             IsIndeterminate="True"
+                             Foreground="{StaticResource PrimaryBrush}"
+                             Background="#3F3F46"
+                             BorderThickness="0"/>
+            </StackPanel>
+        </Border>
+
+        <!-- 全局：模态背景遮罩 -->
+        <Border x:Name="GlobalModalOverlay"
+                Grid.Row="0"
+                Grid.Column="0"
+                Grid.RowSpan="2"
+                Grid.ColumnSpan="2"
+                Background="#80000000"
+                Visibility="Collapsed"
+                Panel.ZIndex="1000"
+                MouseDown="GlobalModalOverlay_MouseDown"/>
+
+        <!-- 全局：授权URL模态对话框 -->
+        <Border x:Name="GlobalAuthUrlDialog"
+                Grid.Row="0"
+                Grid.Column="0"
+                Grid.RowSpan="2"
+                Grid.ColumnSpan="2"
+                Width="480"
+                Background="{StaticResource SurfaceBrush}"
+                CornerRadius="12"
+                Padding="24"
+                Visibility="Collapsed"
+                Panel.ZIndex="1001"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center">
+            <Border.Effect>
+                <DropShadowEffect Color="Black" BlurRadius="30" ShadowDepth="5" Opacity="0.5"/>
+            </Border.Effect>
+            <StackPanel>
+                <!-- 标题 -->
+                <Grid Margin="0,0,0,16">
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Kind="Microsoft"
+                                                 Width="28"
+                                                 Height="28"
+                                                 Foreground="{StaticResource PrimaryBrush}"
+                                                 VerticalAlignment="Center"
+                                                 Margin="0,0,10,0"/>
+                        <TextBlock Text="微软账户登录"
+                                   FontSize="18"
+                                   FontWeight="Bold"
+                                   VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Grid>
+
+                <!-- 说明 -->
+                <TextBlock Text="如果浏览器没有自动打开，请手动访问以下网址："
+                           FontSize="13"
+                           Foreground="{StaticResource TextSecondaryBrush}"
+                           Margin="0,0,0,12"
+                           TextWrapping="Wrap"/>
+
+                <!-- URL 显示框 -->
+                <Border Background="#2D2D30"
+                        CornerRadius="6"
+                        Padding="12"
+                        Margin="0,0,0,16">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        
+                        <TextBlock Grid.Row="0"
+                                   Text="授权链接"
+                                   FontSize="10"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   Margin="0,0,0,6"/>
+                        
+                        <ScrollViewer Grid.Row="1"
+                                      HorizontalScrollBarVisibility="Auto"
+                                      VerticalScrollBarVisibility="Disabled"
+                                      MaxHeight="70">
+                            <TextBlock x:Name="GlobalAuthUrlText"
+                                       Text="https://login.microsoftonline.com/..."
+                                       FontSize="11"
+                                       Foreground="#FFFFFF"
+                                       TextWrapping="Wrap"
+                                       FontFamily="Consolas"/>
+                        </ScrollViewer>
+                    </Grid>
+                </Border>
+
+                <!-- 按钮区域 -->
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Button Grid.Column="0"
+                            x:Name="GlobalCopyAuthUrlButton"
+                            Style="{StaticResource MaterialDesignOutlinedButton}"
+                            Height="36"
+                            Margin="0,0,8,0"
+                            Click="GlobalCopyAuthUrl_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="ContentCopy"
+                                                     Width="16"
+                                                     Height="16"
+                                                     Margin="0,0,6,0"/>
+                            <TextBlock Text="复制链接" VerticalAlignment="Center" FontSize="13"/>
+                        </StackPanel>
+                    </Button>
+
+                    <Button Grid.Column="1"
+                            Content="好的"
+                            Style="{StaticResource MaterialDesignRaisedButton}"
+                            Background="{StaticResource PrimaryBrush}"
+                            Width="100"
+                            Height="36"
+                            FontSize="13"
+                            Click="GlobalCloseAuthUrlDialog_Click"/>
+                </Grid>
+
+                <!-- 提示信息 -->
+                <TextBlock Text="💡 授权完成后，此对话框将自动关闭"
+                           FontSize="11"
+                           Foreground="{StaticResource TextSecondaryBrush}"
+                           Margin="0,12,0,0"
+                           HorizontalAlignment="Center"/>
+            </StackPanel>
+        </Border>
     </Grid>
 </Window>
 
