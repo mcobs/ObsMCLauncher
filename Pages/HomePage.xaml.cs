@@ -109,8 +109,9 @@ namespace ObsMCLauncher.Pages
             {
                 var item = new ComboBoxItem
                 {
-                    Content = $"Minecraft {version.Id}",
-                    Tag = version.Id
+                    Content = version.Id, // 显示自定义名称
+                    Tag = version.Id,
+                    ToolTip = version.Id != version.ActualVersionId ? $"版本: {version.ActualVersionId}" : null
                 };
 
                 VersionComboBox.Items.Add(item);

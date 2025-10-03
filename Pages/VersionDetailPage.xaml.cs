@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -17,6 +19,7 @@ namespace ObsMCLauncher.Pages
         private string currentVersion;
         private MinecraftVersion? versionInfo;
         private CancellationTokenSource? _downloadCancellationToken;
+        private bool _isUpdatingVersionName = false; // 防止循环更新
 
         public VersionDetailPage(MinecraftVersion version)
         {
@@ -31,6 +34,9 @@ namespace ObsMCLauncher.Pages
             
             // 填充版本信息
             FillVersionInfo();
+            
+            // 初始化版本名称
+            UpdateVersionName();
             
             // 更新选中的加载器显示
             UpdateSelectedLoaderText();
@@ -248,6 +254,9 @@ namespace ObsMCLauncher.Pages
                 QuiltVersionComboBox.IsEnabled = true;
             }
 
+            // 更新版本名称
+            UpdateVersionName();
+            
             // 更新选中的加载器显示
             UpdateSelectedLoaderText();
         }
@@ -282,6 +291,100 @@ namespace ObsMCLauncher.Pages
             }
         }
 
+        /// <summary>
+        /// 更新版本名称
+        /// </summary>
+        private void UpdateVersionName()
+        {
+            if (VersionNameTextBox == null || _isUpdatingVersionName) return;
+
+            _isUpdatingVersionName = true;
+
+            string versionName = $"Minecraft-{currentVersion}";
+
+            // 根据选中的加载器添加后缀
+            if (ForgeRadio?.IsChecked == true)
+            {
+                var forgeVersion = (ForgeVersionComboBox?.SelectedItem as ComboBoxItem)?.Content?.ToString();
+                if (!string.IsNullOrEmpty(forgeVersion))
+                {
+                    // 移除 "(推荐)" 等标记
+                    forgeVersion = forgeVersion.Replace(" (推荐)", "").Trim();
+                    versionName += $"-forge-{forgeVersion}";
+                }
+                else
+                {
+                    versionName += "-forge";
+                }
+            }
+            else if (FabricRadio?.IsChecked == true)
+            {
+                var fabricVersion = (FabricVersionComboBox?.SelectedItem as ComboBoxItem)?.Content?.ToString();
+                if (!string.IsNullOrEmpty(fabricVersion))
+                {
+                    fabricVersion = fabricVersion.Replace(" (推荐)", "").Trim();
+                    versionName += $"-fabric-{fabricVersion}";
+                }
+                else
+                {
+                    versionName += "-fabric";
+                }
+            }
+            else if (OptiFineRadio?.IsChecked == true)
+            {
+                var optifineVersion = (OptiFineVersionComboBox?.SelectedItem as ComboBoxItem)?.Content?.ToString();
+                if (!string.IsNullOrEmpty(optifineVersion))
+                {
+                    optifineVersion = optifineVersion.Replace(" (推荐)", "").Trim();
+                    versionName += $"-optifine-{optifineVersion}";
+                }
+                else
+                {
+                    versionName += "-optifine";
+                }
+            }
+            else if (QuiltRadio?.IsChecked == true)
+            {
+                var quiltVersion = (QuiltVersionComboBox?.SelectedItem as ComboBoxItem)?.Content?.ToString();
+                if (!string.IsNullOrEmpty(quiltVersion))
+                {
+                    quiltVersion = quiltVersion.Replace(" (推荐)", "").Trim();
+                    versionName += $"-quilt-{quiltVersion}";
+                }
+                else
+                {
+                    versionName += "-quilt";
+                }
+            }
+
+            VersionNameTextBox.Text = versionName;
+            UpdateVersionNamePreview(versionName);
+
+            _isUpdatingVersionName = false;
+        }
+
+        /// <summary>
+        /// 更新版本名称预览
+        /// </summary>
+        private void UpdateVersionNamePreview(string name)
+        {
+            if (VersionNamePreview != null)
+            {
+                VersionNamePreview.Text = name;
+            }
+        }
+
+        /// <summary>
+        /// 版本名称文本框变化事件
+        /// </summary>
+        private void VersionNameTextBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (!_isUpdatingVersionName && VersionNameTextBox != null)
+            {
+                UpdateVersionNamePreview(VersionNameTextBox.Text);
+            }
+        }
+
         private async void InstallButton_Click(object sender, RoutedEventArgs e)
         {
             // 确定加载器类型
@@ -309,9 +412,25 @@ namespace ObsMCLauncher.Pages
                 loaderVersion = (QuiltVersionComboBox?.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "";
             }
 
+            // 获取自定义版本名称
+            var customVersionName = VersionNameTextBox?.Text?.Trim();
+            if (string.IsNullOrEmpty(customVersionName))
+            {
+                MessageBox.Show("请输入版本名称！", "错误", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            // 验证版本名称合法性（不包含非法字符）
+            var invalidChars = Path.GetInvalidFileNameChars();
+            if (customVersionName.Any(c => invalidChars.Contains(c)))
+            {
+                MessageBox.Show("版本名称包含非法字符，请修改！", "错误", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
             // 确认安装
             var result = MessageBox.Show(
-                $"准备安装：\n\nMinecraft 版本：{currentVersion}\n加载器：{loaderType}\n加载器版本：{loaderVersion}\n\n是否开始下载？",
+                $"准备安装：\n\nMinecraft 版本：{currentVersion}\n加载器：{loaderType}\n加载器版本：{loaderVersion}\n安装名称：{customVersionName}\n\n是否开始下载？",
                 "安装确认",
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Question
@@ -324,10 +443,16 @@ namespace ObsMCLauncher.Pages
             var config = LauncherConfig.Load();
             var gameDirectory = config.GameDirectory;
 
-            System.Diagnostics.Debug.WriteLine($"开始下载版本 {currentVersion} 到目录 {gameDirectory}");
+            System.Diagnostics.Debug.WriteLine($"开始下载版本 {currentVersion} (安装名称: {customVersionName}) 到目录 {gameDirectory}");
 
             // 显示进度面板，隐藏安装按钮和加载器选择（带动画）
             ShowDownloadPanel();
+            
+            // 禁用版本名称编辑框
+            if (VersionNameTextBox != null)
+            {
+                VersionNameTextBox.IsEnabled = false;
+            }
 
             try
             {
@@ -361,6 +486,7 @@ namespace ObsMCLauncher.Pages
                     var success = await DownloadService.DownloadMinecraftVersion(
                         currentVersion,
                         gameDirectory,
+                        customVersionName,
                         progress,
                         _downloadCancellationToken.Token
                     );
@@ -368,7 +494,7 @@ namespace ObsMCLauncher.Pages
                     if (success)
                     {
                         MessageBox.Show(
-                            $"Minecraft {currentVersion} 安装完成！",
+                            $"Minecraft {currentVersion} 安装完成！\n\n版本已安装为: {customVersionName}",
                             "安装成功",
                             MessageBoxButton.OK,
                             MessageBoxImage.Information
@@ -411,6 +537,12 @@ namespace ObsMCLauncher.Pages
             {
                 // 恢复界面
                 HideDownloadPanel();
+                
+                // 启用版本名称编辑框
+                if (VersionNameTextBox != null)
+                {
+                    VersionNameTextBox.IsEnabled = true;
+                }
                 
                 _downloadCancellationToken?.Dispose();
                 _downloadCancellationToken = null;

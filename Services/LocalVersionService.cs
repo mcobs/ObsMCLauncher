@@ -12,7 +12,8 @@ namespace ObsMCLauncher.Services
     /// </summary>
     public class InstalledVersion
     {
-        public string Id { get; set; } = "";
+        public string Id { get; set; } = ""; // 文件夹名称（自定义名称）
+        public string ActualVersionId { get; set; } = ""; // JSON中的实际版本ID
         public string Type { get; set; } = "";
         public DateTime ReleaseTime { get; set; }
         public DateTime LastPlayed { get; set; }
@@ -71,13 +72,16 @@ namespace ObsMCLauncher.Services
                             
                             installedVersions.Add(new InstalledVersion
                             {
-                                Id = versionId,
+                                Id = versionId, // 文件夹名称（显示名称）
+                                ActualVersionId = versionData.Id ?? versionId, // JSON中的实际版本ID
                                 Type = versionData.Type ?? "release",
                                 ReleaseTime = versionData.ReleaseTime,
                                 LastPlayed = lastPlayed,
                                 Path = versionDir,
                                 IsSelected = false
                             });
+                            
+                            System.Diagnostics.Debug.WriteLine($"  找到版本: {versionId} (实际版本: {versionData.Id})");
                         }
                     }
                     catch (Exception ex)
@@ -86,8 +90,12 @@ namespace ObsMCLauncher.Services
                     }
                 }
 
-                // 按最后游玩时间排序
-                installedVersions = installedVersions.OrderByDescending(v => v.LastPlayed).ToList();
+                // 按选中状态和最后游玩时间排序（选中的在最前面）
+                var selectedVersionId = GetSelectedVersion();
+                installedVersions = installedVersions
+                    .OrderByDescending(v => v.Id == selectedVersionId)
+                    .ThenByDescending(v => v.LastPlayed)
+                    .ToList();
                 System.Diagnostics.Debug.WriteLine($"✅ 成功加载 {installedVersions.Count} 个已安装版本");
             }
             catch (Exception ex)
@@ -160,6 +168,7 @@ namespace ObsMCLauncher.Services
         // JSON 数据模型
         private class VersionJsonData
         {
+            public string? Id { get; set; }
             public string? Type { get; set; }
             public DateTime ReleaseTime { get; set; }
         }

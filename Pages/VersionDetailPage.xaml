@@ -123,6 +123,32 @@
                                      FontSize="16" 
                                      FontWeight="SemiBold"/>
                         </StackPanel>
+                        
+                        <!-- 版本名称编辑 -->
+                        <StackPanel Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,5,0,0">
+                            <TextBlock Text="安装名称" 
+                                     FontSize="13" 
+                                     Foreground="{StaticResource TextSecondaryBrush}"
+                                     Margin="0,0,0,5"/>
+                            <TextBox x:Name="VersionNameTextBox"
+                                   materialDesign:HintAssist.Hint="自定义版本名称"
+                                   Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                   FontSize="14"
+                                   TextChanged="VersionNameTextBox_TextChanged">
+                                <TextBox.Resources>
+                                    <Style TargetType="Border">
+                                        <Setter Property="CornerRadius" Value="8"/>
+                                    </Style>
+                                </TextBox.Resources>
+                            </TextBox>
+                            <TextBlock FontSize="11" 
+                                     Foreground="{StaticResource TextSecondaryBrush}"
+                                     Margin="0,5,0,0">
+                                <Run Text="提示：版本将安装到 "/>
+                                <Run Text=".minecraft/versions/" FontWeight="SemiBold"/>
+                                <Run x:Name="VersionNamePreview" Text="Minecraft-1.20.4" FontWeight="SemiBold" Foreground="{StaticResource PrimaryBrush}"/>
+                            </TextBlock>
+                        </StackPanel>
                     </Grid>
                 </StackPanel>
             </Border>

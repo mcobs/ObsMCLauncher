@@ -225,8 +225,8 @@ namespace ObsMCLauncher.Pages
             {
                 Background = (Brush)Application.Current.TryFindResource("SurfaceElevatedBrush") 
                     ?? new SolidColorBrush(Color.FromRgb(39, 39, 42)),
-                CornerRadius = new CornerRadius(8),
-                Padding = new Thickness(20)
+                CornerRadius = new CornerRadius(6),
+                Padding = new Thickness(12, 10, 12, 10)
             };
 
             var grid = new Grid();
@@ -238,12 +238,12 @@ namespace ObsMCLauncher.Pages
             var icon = new PackIcon
             {
                 Kind = PackIconKind.Cube,
-                Width = 40,
-                Height = 40,
+                Width = 28,
+                Height = 28,
                 Foreground = (Brush)Application.Current.TryFindResource("PrimaryBrush")
                     ?? new SolidColorBrush(Color.FromRgb(34, 197, 94)),
                 VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(0, 0, 20, 0)
+                Margin = new Thickness(0, 0, 12, 0)
             };
             Grid.SetColumn(icon, 0);
             grid.Children.Add(icon);
@@ -257,7 +257,7 @@ namespace ObsMCLauncher.Pages
             // 标题
             var titleText = new TextBlock
             {
-                FontSize = 18,
+                FontSize = 15,
                 FontWeight = FontWeights.SemiBold,
                 Foreground = (Brush)Application.Current.TryFindResource("TextBrush")
                     ?? Brushes.White
@@ -275,7 +275,7 @@ namespace ObsMCLauncher.Pages
             titleText.Inlines.Add(new Run($"Minecraft {version.Id}"));
             titleText.Inlines.Add(new Run($" [{typeText}]")
             {
-                FontSize = 13,
+                FontSize = 11,
                 Foreground = new SolidColorBrush(typeColor)
             });
 
@@ -284,10 +284,10 @@ namespace ObsMCLauncher.Pages
             // 详情
             var detailText = new TextBlock
             {
-                FontSize = 13,
+                FontSize = 11,
                 Foreground = (Brush)Application.Current.TryFindResource("TextSecondaryBrush")
                     ?? new SolidColorBrush(Color.FromRgb(153, 153, 153)),
-                Margin = new Thickness(0, 5, 0, 0),
+                Margin = new Thickness(0, 3, 0, 0),
                 Text = $"发布时间: {version.ReleaseTime:yyyy-MM-dd HH:mm}"
             };
             infoPanel.Children.Add(detailText);
@@ -299,8 +299,8 @@ namespace ObsMCLauncher.Pages
             var arrow = new PackIcon
             {
                 Kind = PackIconKind.ChevronRight,
-                Width = 24,
-                Height = 24,
+                Width = 18,
+                Height = 18,
                 Foreground = (Brush)Application.Current.TryFindResource("TextSecondaryBrush")
                     ?? new SolidColorBrush(Color.FromRgb(153, 153, 153)),
                 VerticalAlignment = VerticalAlignment.Center
@@ -389,9 +389,9 @@ namespace ObsMCLauncher.Pages
             {
                 Background = (Brush)Application.Current.TryFindResource("SurfaceElevatedBrush")
                     ?? new SolidColorBrush(Color.FromRgb(39, 39, 42)),
-                CornerRadius = new CornerRadius(8),
-                Padding = new Thickness(20),
-                Margin = new Thickness(10)
+                CornerRadius = new CornerRadius(6),
+                Padding = new Thickness(15, 12, 15, 12),
+                Margin = new Thickness(10, 5, 10, 5)
             };
 
             var grid = new Grid();
@@ -405,12 +405,33 @@ namespace ObsMCLauncher.Pages
             var titlePanel = new StackPanel { Orientation = Orientation.Horizontal };
             var titleText = new TextBlock
             {
-                Text = $"Minecraft {version.Id}",
-                FontSize = 16,
+                Text = version.Id,
+                FontSize = 14,
                 FontWeight = FontWeights.SemiBold,
                 VerticalAlignment = VerticalAlignment.Center
             };
             titlePanel.Children.Add(titleText);
+            
+            // 如果自定义名称与实际版本ID不同，显示实际版本
+            if (version.Id != version.ActualVersionId)
+            {
+                var actualVersionBadge = new Border
+                {
+                    Background = new SolidColorBrush(Color.FromRgb(59, 130, 246)),
+                    CornerRadius = new CornerRadius(3),
+                    Padding = new Thickness(5, 1, 5, 1),
+                    Margin = new Thickness(6, 0, 0, 0),
+                    VerticalAlignment = VerticalAlignment.Center
+                };
+                var actualVersionText = new TextBlock
+                {
+                    Text = version.ActualVersionId,
+                    FontSize = 10,
+                    FontWeight = FontWeights.SemiBold
+                };
+                actualVersionBadge.Child = actualVersionText;
+                titlePanel.Children.Add(actualVersionBadge);
+            }
 
             // 选中标记
             if (isSelected)
@@ -419,15 +440,15 @@ namespace ObsMCLauncher.Pages
                 {
                     Background = (Brush)Application.Current.TryFindResource("PrimaryBrush")
                         ?? new SolidColorBrush(Color.FromRgb(34, 197, 94)),
-                    CornerRadius = new CornerRadius(4),
-                    Padding = new Thickness(8, 2, 8, 2),
-                    Margin = new Thickness(10, 0, 0, 0),
+                    CornerRadius = new CornerRadius(3),
+                    Padding = new Thickness(6, 1, 6, 1),
+                    Margin = new Thickness(6, 0, 0, 0),
                     VerticalAlignment = VerticalAlignment.Center
                 };
                 var badgeText = new TextBlock
                 {
                     Text = "当前版本",
-                    FontSize = 11,
+                    FontSize = 10,
                     FontWeight = FontWeights.SemiBold
                 };
                 selectedBadge.Child = badgeText;
@@ -439,10 +460,10 @@ namespace ObsMCLauncher.Pages
             // 详情
             var detailText = new TextBlock
             {
-                FontSize = 12,
+                FontSize = 11,
                 Foreground = (Brush)Application.Current.TryFindResource("TextSecondaryBrush")
                     ?? new SolidColorBrush(Color.FromRgb(153, 153, 153)),
-                Margin = new Thickness(0, 5, 0, 0)
+                Margin = new Thickness(0, 3, 0, 0)
             };
 
             var typeText = version.Type == "release" ? "正式版" :
@@ -462,11 +483,12 @@ namespace ObsMCLauncher.Pages
                 var selectButton = new Button
                 {
                     Content = "选择",
-                    Tag = version.Id,
+                    Tag = version,
                     Style = (Style)Application.Current.TryFindResource("MaterialDesignOutlinedButton"),
-                    Height = 32,
-                    Padding = new Thickness(15, 0, 15, 0),
-                    Margin = new Thickness(0, 0, 10, 0)
+                    Height = 28,
+                    FontSize = 12,
+                    Padding = new Thickness(12, 0, 12, 0),
+                    Margin = new Thickness(0, 0, 8, 0)
                 };
                 selectButton.Click += SelectVersionButton_Click;
                 buttonPanel.Children.Add(selectButton);
@@ -477,14 +499,17 @@ namespace ObsMCLauncher.Pages
             {
                 Tag = version.Path,
                 Style = (Style)Application.Current.TryFindResource("MaterialDesignIconButton"),
-                ToolTip = "打开文件夹"
+                ToolTip = "打开文件夹",
+                Width = 28,
+                Height = 28,
+                Padding = new Thickness(0)
             };
             openFolderButton.Click += OpenFolderButton_Click;
             var folderIcon = new PackIcon
             {
                 Kind = PackIconKind.Folder,
-                Width = 20,
-                Height = 20
+                Width = 16,
+                Height = 16
             };
             openFolderButton.Content = folderIcon;
             buttonPanel.Children.Add(openFolderButton);
@@ -495,14 +520,17 @@ namespace ObsMCLauncher.Pages
                 Tag = new Tuple<string, string>(version.Id, version.Path),
                 Style = (Style)Application.Current.TryFindResource("MaterialDesignIconButton"),
                 ToolTip = "删除版本",
-                Foreground = new SolidColorBrush(Color.FromRgb(220, 53, 69))
+                Foreground = new SolidColorBrush(Color.FromRgb(220, 53, 69)),
+                Width = 28,
+                Height = 28,
+                Padding = new Thickness(0)
             };
             deleteButton.Click += DeleteVersionButton_Click;
             var deleteIcon = new PackIcon
             {
                 Kind = PackIconKind.Delete,
-                Width = 20,
-                Height = 20
+                Width = 16,
+                Height = 16
             };
             deleteButton.Content = deleteIcon;
             buttonPanel.Children.Add(deleteButton);
@@ -519,13 +547,112 @@ namespace ObsMCLauncher.Pages
         /// </summary>
         private void SelectVersionButton_Click(object sender, RoutedEventArgs e)
         {
-            if (sender is Button button && button.Tag is string versionId)
+            if (sender is Button button && button.Tag is InstalledVersion version)
             {
-                LocalVersionService.SetSelectedVersion(versionId);
-                LoadInstalledVersions(); // 刷新列表
+                LocalVersionService.SetSelectedVersion(version.Id);
                 
-                MessageBox.Show($"已选择版本: {versionId}", "选择成功",
-                    MessageBoxButton.OK, MessageBoxImage.Information);
+                // 使用动画将选中的版本移动到顶部
+                AnimateMoveToTop(version);
+            }
+        }
+
+        /// <summary>
+        /// 动画移动版本到顶部
+        /// </summary>
+        private void AnimateMoveToTop(InstalledVersion selectedVersion)
+        {
+            var config = LauncherConfig.Load();
+            var installedVersions = LocalVersionService.GetInstalledVersions(config.GameDirectory);
+            
+            // 找到被选中的版本在列表中的位置
+            int selectedIndex = -1;
+            for (int i = 0; i < installedVersions.Count; i++)
+            {
+                if (installedVersions[i].Id == selectedVersion.Id)
+                {
+                    selectedIndex = i;
+                    break;
+                }
+            }
+            
+            if (selectedIndex < 0 || selectedIndex >= InstalledVersionsPanel.Children.Count) return;
+            
+            var selectedCard = InstalledVersionsPanel.Children[selectedIndex] as Border;
+            if (selectedCard == null) return;
+            
+            // 如果已经在顶部，只需重新加载
+            if (selectedIndex == 0)
+            {
+                LoadInstalledVersions();
+                
+                // 通知HomePage刷新
+                NotifyHomePageToRefresh();
+                return;
+            }
+            
+            // 创建淡出动画
+            var fadeOut = new System.Windows.Media.Animation.DoubleAnimation
+            {
+                From = 1.0,
+                To = 0.0,
+                Duration = TimeSpan.FromMilliseconds(200),
+                EasingFunction = new System.Windows.Media.Animation.CubicEase { EasingMode = System.Windows.Media.Animation.EasingMode.EaseInOut }
+            };
+            
+            fadeOut.Completed += (s, e) =>
+            {
+                // 重新加载列表（这次选中的会在顶部）
+                LoadInstalledVersions();
+                
+                // 通知HomePage刷新
+                NotifyHomePageToRefresh();
+                
+                // 对第一个元素添加淡入动画
+                if (InstalledVersionsPanel.Children.Count > 0)
+                {
+                    var topCard = InstalledVersionsPanel.Children[0] as Border;
+                    if (topCard != null)
+                    {
+                        topCard.Opacity = 0;
+                        var fadeIn = new System.Windows.Media.Animation.DoubleAnimation
+                        {
+                            From = 0.0,
+                            To = 1.0,
+                            Duration = TimeSpan.FromMilliseconds(300),
+                            EasingFunction = new System.Windows.Media.Animation.CubicEase { EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut }
+                        };
+                        topCard.BeginAnimation(Border.OpacityProperty, fadeIn);
+                    }
+                }
+            };
+            
+            selectedCard.BeginAnimation(Border.OpacityProperty, fadeOut);
+        }
+        
+        /// <summary>
+        /// 通知主页刷新版本列表
+        /// </summary>
+        private void NotifyHomePageToRefresh()
+        {
+            try
+            {
+                // 查找MainWindow中的ContentFrame
+                var mainWindow = Application.Current.MainWindow as MainWindow;
+                if (mainWindow != null)
+                {
+                    var contentFrame = mainWindow.FindName("ContentFrame") as Frame;
+                    if (contentFrame?.Content is HomePage homePage)
+                    {
+                        // 调用HomePage的刷新方法
+                        var loadVersionsMethod = homePage.GetType().GetMethod("LoadVersions", 
+                            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                        loadVersionsMethod?.Invoke(homePage, null);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"刷新主页失败: {ex.Message}");
             }
         }
 

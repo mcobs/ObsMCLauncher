@@ -71,15 +71,24 @@ namespace ObsMCLauncher.Services
         /// <summary>
         /// 下载Minecraft版本
         /// </summary>
+        /// <param name="versionId">版本ID（如 1.20.4）</param>
+        /// <param name="gameDirectory">游戏目录</param>
+        /// <param name="customVersionName">自定义版本名称（文件夹名），如果为空则使用versionId</param>
+        /// <param name="progress">进度报告</param>
+        /// <param name="cancellationToken">取消令牌</param>
         public static async Task<bool> DownloadMinecraftVersion(
             string versionId,
             string gameDirectory,
+            string? customVersionName = null,
             IProgress<DownloadProgress>? progress = null,
             CancellationToken cancellationToken = default)
         {
             try
             {
                 var downloadSource = DownloadSourceManager.Instance.CurrentService;
+                
+                // 使用自定义名称或默认版本ID
+                var installName = string.IsNullOrEmpty(customVersionName) ? versionId : customVersionName;
                 
                 progress?.Report(new DownloadProgress 
                 { 
@@ -89,7 +98,7 @@ namespace ObsMCLauncher.Services
 
                 // 1. 下载版本JSON
                 var versionJsonUrl = downloadSource.GetVersionJsonUrl(versionId);
-                var versionJsonPath = Path.Combine(gameDirectory, "versions", versionId, $"{versionId}.json");
+                var versionJsonPath = Path.Combine(gameDirectory, "versions", installName, $"{installName}.json");
                 
                 Directory.CreateDirectory(Path.GetDirectoryName(versionJsonPath)!);
                 
@@ -141,7 +150,7 @@ namespace ObsMCLauncher.Services
                 };
 
                 // 3. 下载客户端JAR
-                var clientJarPath = Path.Combine(gameDirectory, "versions", versionId, $"{versionId}.jar");
+                var clientJarPath = Path.Combine(gameDirectory, "versions", installName, $"{installName}.jar");
                 if (versionInfo.Downloads?.Client?.Url != null)
                 {
                     System.Diagnostics.Debug.WriteLine($"开始下载客户端JAR: {versionInfo.Downloads.Client.Url}");
@@ -157,7 +166,7 @@ namespace ObsMCLauncher.Services
                             progress?.Report(new DownloadProgress
                             {
                                 Status = "正在下载客户端JAR...",
-                                CurrentFile = $"{versionId}.jar",
+                                CurrentFile = $"{installName}.jar",
                                 CurrentFileTotalBytes = clientSize,
                                 CurrentFileBytes = currentBytes,
                                 TotalBytes = totalBytes,

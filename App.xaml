@@ -119,14 +119,14 @@
             
             <!-- 📋 下拉框样式 - 修复文字颜色 -->
             <Style TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
-                <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+                <Setter Property="Foreground" Value="#FFFFFF"/>
                 <Setter Property="FontWeight" Value="Normal"/>
                 <Setter Property="Cursor" Value="Hand"/>
             </Style>
             
             <!-- 📋 下拉框项样式 - 确保下拉选项文字可见 -->
             <Style TargetType="ComboBoxItem" BasedOn="{StaticResource {x:Type ComboBoxItem}}">
-                <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+                <Setter Property="Foreground" Value="#FFFFFF"/>
                 <Setter Property="FontWeight" Value="Normal"/>
                 <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
                 <Setter Property="Cursor" Value="Hand"/>
@@ -139,9 +139,9 @@
             
             <!-- ✍️ 文本框样式 -->
             <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
-                <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+                <Setter Property="Foreground" Value="#FFFFFF"/>
                 <Setter Property="FontWeight" Value="Normal"/>
-                <Setter Property="CaretBrush" Value="{StaticResource PrimaryBrush}"/>
+                <Setter Property="CaretBrush" Value="#FFFFFF"/>
                 <Setter Property="SelectionBrush" Value="{StaticResource PrimaryBrush}"/>
                 <Setter Property="SelectionTextBrush" Value="White"/>
             </Style>
