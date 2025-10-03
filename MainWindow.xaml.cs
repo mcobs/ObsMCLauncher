@@ -4,44 +4,80 @@ using System.Windows.Controls;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using ObsMCLauncher.Pages;
+using ObsMCLauncher.Utils;
 
 namespace ObsMCLauncher
 {
     public partial class MainWindow : Window
     {
         private string _currentAuthUrl = "";
+        private string? _currentLoginNotificationId;
 
         public MainWindow()
         {
             InitializeComponent();
             
+            // 初始化通知管理器
+            NotificationManager.Instance.Initialize(GlobalNotificationContainer);
+            
             // 默认导航到主页
             MainFrame.Navigate(new HomePage());
         }
 
-        #region 全局登录UI控制方法
+        #region 新版通知系统方法
 
         /// <summary>
-        /// 显示登录进度
+        /// 显示通知
         /// </summary>
-        public void ShowLoginProgress(string status)
+        public string ShowNotification(string title, string message, NotificationType type = NotificationType.Info, int? durationSeconds = null)
         {
-            Dispatcher.Invoke(() =>
-            {
-                GlobalLoginProgressStatus.Text = status;
-                GlobalLoginProgressPanel.Visibility = Visibility.Visible;
-            });
+            return NotificationManager.Instance.ShowNotification(title, message, type, durationSeconds);
         }
 
         /// <summary>
-        /// 更新登录进度
+        /// 更新通知
+        /// </summary>
+        public void UpdateNotification(string id, string message)
+        {
+            NotificationManager.Instance.UpdateNotification(id, message);
+        }
+
+        /// <summary>
+        /// 移除通知
+        /// </summary>
+        public void RemoveNotification(string id)
+        {
+            NotificationManager.Instance.RemoveNotification(id);
+        }
+
+        #endregion
+
+        #region 全局登录UI控制方法
+
+        /// <summary>
+        /// 显示登录进度（使用新通知系统）
+        /// </summary>
+        public void ShowLoginProgress(string status)
+        {
+            if (_currentLoginNotificationId != null)
+            {
+                UpdateNotification(_currentLoginNotificationId, status);
+            }
+            else
+            {
+                _currentLoginNotificationId = ShowNotification("微软账户登录", status, NotificationType.Progress);
+            }
+        }
+
+        /// <summary>
+        /// 更新登录进度（使用新通知系统）
         /// </summary>
         public void UpdateLoginProgress(string status)
         {
-            Dispatcher.Invoke(() =>
+            if (_currentLoginNotificationId != null)
             {
-                GlobalLoginProgressStatus.Text = status;
-            });
+                UpdateNotification(_currentLoginNotificationId, status);
+            }
         }
 
         /// <summary>
@@ -64,12 +100,20 @@ namespace ObsMCLauncher
         }
 
         /// <summary>
-        /// 隐藏所有登录对话框
+        /// 隐藏所有登录对话框（同时移除登录通知）
         /// </summary>
         public void HideAllLoginDialogs()
         {
             Dispatcher.Invoke(() =>
             {
+                // 移除登录通知
+                if (_currentLoginNotificationId != null)
+                {
+                    RemoveNotification(_currentLoginNotificationId);
+                    _currentLoginNotificationId = null;
+                }
+                
+                // 隐藏旧版UI（保留兼容）
                 GlobalLoginProgressPanel.Visibility = Visibility.Collapsed;
                 GlobalModalOverlay.Visibility = Visibility.Collapsed;
                 GlobalAuthUrlDialog.Visibility = Visibility.Collapsed;
@@ -127,10 +171,11 @@ namespace ObsMCLauncher
         }
 
         /// <summary>
-        /// 关闭授权URL对话框（仅关闭对话框，不关闭遮罩）
+        /// 关闭授权URL对话框（同时关闭遮罩）
         /// </summary>
         private void GlobalCloseAuthUrlDialog_Click(object sender, RoutedEventArgs e)
         {
+            GlobalModalOverlay.Visibility = Visibility.Collapsed;
             GlobalAuthUrlDialog.Visibility = Visibility.Collapsed;
         }
 

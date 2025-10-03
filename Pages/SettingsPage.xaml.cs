@@ -74,7 +74,7 @@ namespace ObsMCLauncher.Pages
         /// <summary>
         /// 自动保存设置
         /// </summary>
-        private async void AutoSaveSettings(string settingName = "设置")
+        private void AutoSaveSettings(string settingName = "设置")
         {
             if (!_isInitialized || _isSaving) return; // 未初始化完成或正在保存时跳过
             _isSaving = true;
@@ -115,8 +115,9 @@ namespace ObsMCLauncher.Pages
 
                 System.Diagnostics.Debug.WriteLine($"✓ {settingName}已自动保存");
 
-                // 显示保存通知和进度条
-                await ShowSaveNotification(settingName);
+                // 使用新的通知系统
+                var mainWindow = Application.Current.MainWindow as MainWindow;
+                mainWindow?.ShowNotification("设置已保存", $"{settingName}已自动保存", Utils.NotificationType.Success, 2);
             }
             catch (Exception ex)
             {

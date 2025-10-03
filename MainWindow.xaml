@@ -317,7 +317,17 @@
                NavigationUIVisibility="Hidden"
                Background="{StaticResource BackgroundBrush}"/>
 
-        <!-- 全局：登录进度悬浮窗 -->
+        <!-- 全局：通知容器 -->
+        <Canvas x:Name="GlobalNotificationContainer"
+                Grid.Row="0"
+                Grid.Column="1"
+                Grid.RowSpan="2"
+                IsHitTestVisible="False"
+                Panel.ZIndex="999">
+            <!-- 通知将动态添加到这里 -->
+        </Canvas>
+
+        <!-- 全局：登录进度悬浮窗（已废弃，保留用于兼容） -->
         <Border x:Name="GlobalLoginProgressPanel"
                 Grid.Row="0"
                 Grid.Column="1"
