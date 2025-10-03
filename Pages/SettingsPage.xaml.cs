@@ -1,8 +1,11 @@
 using System;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media.Animation;
+using System.Windows.Threading;
 using ObsMCLauncher.Models;
 using ObsMCLauncher.Services;
 using ObsMCLauncher.Utils;
@@ -12,6 +15,7 @@ namespace ObsMCLauncher.Pages
     public partial class SettingsPage : Page
     {
         private LauncherConfig _config = null!;
+        private bool _isSaving = false;
 
         public SettingsPage()
         {
@@ -62,10 +66,13 @@ namespace ObsMCLauncher.Pages
         }
 
         /// <summary>
-        /// 保存设置
+        /// 自动保存设置
         /// </summary>
-        private void SaveButton_Click(object sender, RoutedEventArgs e)
+        private async void AutoSaveSettings(string settingName = "设置")
         {
+            if (_isSaving) return;
+            _isSaving = true;
+
             try
             {
                 // 保存游戏目录设置
@@ -100,12 +107,65 @@ namespace ObsMCLauncher.Pages
                 // 重新加载账号（如果账号文件位置变了）
                 AccountService.Instance.ReloadAccountsPath();
 
-                MessageBox.Show("设置已保存！部分设置可能需要重启启动器后生效。", "成功", MessageBoxButton.OK, MessageBoxImage.Information);
+                System.Diagnostics.Debug.WriteLine($"✓ {settingName}已自动保存");
+
+                // 显示保存通知和进度条
+                await ShowSaveNotification(settingName);
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"保存设置失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                System.Diagnostics.Debug.WriteLine($"自动保存失败: {ex.Message}");
             }
+            finally
+            {
+                _isSaving = false;
+            }
+        }
+
+        /// <summary>
+        /// 显示保存成功通知和进度条动画
+        /// </summary>
+        private async Task ShowSaveNotification(string settingName)
+        {
+            // 更新通知文本
+            SaveNotificationText.Text = $"{settingName}已自动保存";
+
+            // 通知栏淡入动画
+            var fadeIn = new DoubleAnimation
+            {
+                From = 0,
+                To = 1,
+                Duration = TimeSpan.FromMilliseconds(200),
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+            };
+            SaveNotification.BeginAnimation(OpacityProperty, fadeIn);
+
+            // 进度条动画（2秒从0到100）
+            SaveProgressBar.Value = 0;
+            var progressAnimation = new DoubleAnimation
+            {
+                From = 0,
+                To = 100,
+                Duration = TimeSpan.FromMilliseconds(2000)
+            };
+            SaveProgressBar.BeginAnimation(System.Windows.Controls.Primitives.RangeBase.ValueProperty, progressAnimation);
+
+            // 等待2秒
+            await Task.Delay(2000);
+
+            // 通知栏淡出动画
+            var fadeOut = new DoubleAnimation
+            {
+                From = 1,
+                To = 0,
+                Duration = TimeSpan.FromMilliseconds(200),
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
+            };
+            SaveNotification.BeginAnimation(OpacityProperty, fadeOut);
+
+            // 重置进度条
+            await Task.Delay(200);
+            SaveProgressBar.Value = 0;
         }
 
         /// <summary>
@@ -135,6 +195,7 @@ namespace ObsMCLauncher.Pages
             if (MaxMemoryText != null)
             {
                 MaxMemoryText.Text = $"{(int)e.NewValue} MB";
+                AutoSaveSettings("最大内存");
             }
         }
 
@@ -146,6 +207,7 @@ namespace ObsMCLauncher.Pages
             if (MinMemoryText != null)
             {
                 MinMemoryText.Text = $"{(int)e.NewValue} MB";
+                AutoSaveSettings("最小内存");
             }
         }
 
@@ -200,7 +262,80 @@ namespace ObsMCLauncher.Pages
         /// </summary>
         private void AutoDetectJava_Click(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show("Java自动检测功能将在后续版本中实现", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("开始自动检测Java...");
+                
+                var javaList = JavaDetector.DetectAllJava();
+
+                if (javaList.Count == 0)
+                {
+                    MessageBox.Show(
+                        "未检测到任何Java安装！\n\n" +
+                        "请手动安装Java后重试，或手动指定Java路径。\n\n" +
+                        "推荐Java版本：\n" +
+                        "• Minecraft 1.17+: Java 17或更高\n" +
+                        "• Minecraft 1.13-1.16: Java 8或更高\n" +
+                        "• Minecraft 1.12及以下: Java 8",
+                        "未检测到Java",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+                    return;
+                }
+
+                // 构建选择对话框内容
+                var sb = new StringBuilder();
+                sb.AppendLine($"检测到 {javaList.Count} 个Java安装：");
+                sb.AppendLine();
+
+                for (int i = 0; i < javaList.Count; i++)
+                {
+                    var java = javaList[i];
+                    sb.AppendLine($"[{i + 1}] Java {java.MajorVersion} ({java.Architecture})");
+                    sb.AppendLine($"    版本: {java.Version}");
+                    sb.AppendLine($"    来源: {java.Source}");
+                    sb.AppendLine($"    路径: {java.Path}");
+                    sb.AppendLine();
+                }
+
+                sb.AppendLine("推荐使用第 [1] 个Java（版本最高）");
+                sb.AppendLine();
+                sb.AppendLine("是否使用推荐的Java？");
+
+                var result = MessageBox.Show(
+                    sb.ToString(),
+                    "Java自动检测",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Information);
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    // 使用推荐的Java（第一个，版本最高）
+                    var bestJava = javaList[0];
+                    JavaPathTextBox.Text = bestJava.Path;
+                    
+                    MessageBox.Show(
+                        $"已选择 Java {bestJava.MajorVersion}！\n\n" +
+                        $"版本: {bestJava.Version}\n" +
+                        $"架构: {bestJava.Architecture}\n" +
+                        $"路径: {bestJava.Path}\n\n" +
+                        "请点击【保存设置】按钮保存配置。",
+                        "设置成功",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+
+                    System.Diagnostics.Debug.WriteLine($"已选择Java: {bestJava.Path}");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ 自动检测Java失败: {ex.Message}");
+                MessageBox.Show(
+                    $"自动检测Java时出现错误：\n\n{ex.Message}",
+                    "错误",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
         }
 
         /// <summary>
@@ -295,15 +430,40 @@ namespace ObsMCLauncher.Pages
         }
 
         /// <summary>
-        /// 游戏目录位置选择改变
+        /// Java路径失去焦点时自动保存
         /// </summary>
-        private void GameDirectoryLocation_Changed(object sender, SelectionChangedEventArgs e)
+        private void JavaPathTextBox_LostFocus(object sender, RoutedEventArgs e)
+        {
+            AutoSaveSettings("Java路径");
+        }
+
+        /// <summary>
+        /// JVM参数失去焦点时自动保存
+        /// </summary>
+        private void JvmArgumentsTextBox_LostFocus(object sender, RoutedEventArgs e)
+        {
+            AutoSaveSettings("JVM参数");
+        }
+
+        /// <summary>
+        /// 开关按钮改变时自动保存
+        /// </summary>
+        private void ToggleButton_Changed(object sender, RoutedEventArgs e)
+        {
+            AutoSaveSettings("启动器设置");
+        }
+
+        /// <summary>
+        /// 游戏目录位置选择改变（自动保存）
+        /// </summary>
+        private void GameDirectoryLocation_Changed_AutoSave(object sender, SelectionChangedEventArgs e)
         {
             if (GameDirectoryLocationComboBox == null) return;
 
             var location = (DirectoryLocation)GameDirectoryLocationComboBox.SelectedIndex;
             CustomGameDirectoryPanel.Visibility = location == DirectoryLocation.Custom ? Visibility.Visible : Visibility.Collapsed;
             UpdateGameDirectoryDisplay();
+            AutoSaveSettings("游戏目录");
         }
 
         /// <summary>

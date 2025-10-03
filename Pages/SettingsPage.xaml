@@ -8,24 +8,61 @@
       d:DesignHeight="700" d:DesignWidth="900"
       Background="{StaticResource BackgroundBrush}">
 
-    <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <Grid Margin="30">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-            </Grid.RowDefinitions>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
 
-            <!-- 标题区域 -->
-            <StackPanel Grid.Row="0">
-                <TextBlock Text="设置" 
-                         FontSize="28" 
-                         FontWeight="Bold"
-                         Margin="0,0,0,10"/>
-                <TextBlock Text="配置启动器和游戏参数" 
-                         FontSize="14" 
-                         Foreground="#AAAAAA"
-                         Margin="0,0,0,25"/>
-            </StackPanel>
+        <!-- 保存成功通知栏 -->
+        <Border x:Name="SaveNotification"
+                Grid.Row="0"
+                Background="{StaticResource PrimaryBrush}"
+                Padding="15,12"
+                Opacity="0"
+                Panel.ZIndex="1000">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                
+                <materialDesign:PackIcon Kind="CheckCircle"
+                                       Grid.Column="0"
+                                       Width="20"
+                                       Height="20"
+                                       VerticalAlignment="Center"
+                                       Margin="0,0,10,0"/>
+                
+                <TextBlock Grid.Column="1"
+                         x:Name="SaveNotificationText"
+                         Text="设置已自动保存"
+                         FontSize="14"
+                         FontWeight="SemiBold"
+                         VerticalAlignment="Center"/>
+            </Grid>
+        </Border>
+
+        <!-- 主要内容区域 -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <Grid Margin="30">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- 标题区域 -->
+                <StackPanel Grid.Row="0">
+                    <TextBlock Text="设置" 
+                             FontSize="28" 
+                             FontWeight="Bold"
+                             Margin="0,0,0,10"/>
+                    <TextBlock Text="配置启动器和游戏参数（修改后自动保存）" 
+                             FontSize="14" 
+                             Foreground="#AAAAAA"
+                             Margin="0,0,0,25"/>
+                </StackPanel>
 
             <!-- 设置内容 -->
             <StackPanel Grid.Row="1">
@@ -47,7 +84,7 @@
                                  Margin="0,0,0,8"/>
                         <ComboBox x:Name="GameDirectoryLocationComboBox"
                                 Style="{StaticResource MaterialDesignOutlinedComboBox}"
-                                SelectionChanged="GameDirectoryLocation_Changed"
+                                SelectionChanged="GameDirectoryLocation_Changed_AutoSave"
                                 Margin="0,0,0,10">
                             <ComboBoxItem Content="%APPDATA%\.minecraft（默认）" Tag="AppData"/>
                             <ComboBoxItem Content="运行目录\.minecraft" Tag="RunningDirectory"/>
@@ -149,7 +186,8 @@
                                    Style="{StaticResource MaterialDesignOutlinedTextBox}"
                                    Foreground="#FFFFFF"
                                    CaretBrush="#FFFFFF"
-                                   Margin="0,0,10,0"/>
+                                   Margin="0,0,10,0"
+                                   LostFocus="JavaPathTextBox_LostFocus"/>
                             <Button Grid.Column="1"
                                   Content="浏览"
                                   Style="{StaticResource MaterialDesignOutlinedButton}"
@@ -175,7 +213,8 @@
                                AcceptsReturn="True"
                                TextWrapping="Wrap"
                                MinHeight="60"
-                               VerticalScrollBarVisibility="Auto"/>
+                               VerticalScrollBarVisibility="Auto"
+                               LostFocus="JvmArgumentsTextBox_LostFocus"/>
                     </StackPanel>
                 </Border>
 
@@ -538,18 +577,24 @@
                           Click="TestDownloadSource_Click"/>
                     <Button Content="恢复默认设置"
                           Style="{StaticResource MaterialDesignOutlinedButton}"
-                          Margin="0,0,15,0"
-                          Width="130"
+                          Width="150"
                           Click="ResetButton_Click"/>
-                    <Button Content="保存设置"
-                          Style="{StaticResource MaterialDesignRaisedButton}"
-                          Background="{StaticResource PrimaryBrush}"
-                          Width="130"
-                          Click="SaveButton_Click"/>
                 </StackPanel>
 
             </StackPanel>
-        </Grid>
-    </ScrollViewer>
+            </Grid>
+        </ScrollViewer>
+
+        <!-- 底部进度条 -->
+        <ProgressBar x:Name="SaveProgressBar"
+                     Grid.Row="2"
+                     Height="3"
+                     Minimum="0"
+                     Maximum="100"
+                     Value="0"
+                     Foreground="{StaticResource PrimaryBrush}"
+                     Background="Transparent"
+                     BorderThickness="0"/>
+    </Grid>
 </Page>
 
