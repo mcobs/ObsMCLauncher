@@ -15,11 +15,35 @@ namespace ObsMCLauncher.Services
     /// </summary>
     public class DownloadProgress
     {
+        // 当前文件进度
+        public long CurrentFileBytes { get; set; }
+        public long CurrentFileTotalBytes { get; set; }
+        public double CurrentFilePercentage => CurrentFileTotalBytes > 0 ? (CurrentFileBytes * 100.0 / CurrentFileTotalBytes) : 0;
+        
+        // 总体进度
+        public long TotalDownloadedBytes { get; set; }
         public long TotalBytes { get; set; }
-        public long DownloadedBytes { get; set; }
-        public double ProgressPercentage => TotalBytes > 0 ? (DownloadedBytes * 100.0 / TotalBytes) : 0;
+        public double OverallPercentage => TotalBytes > 0 ? (TotalDownloadedBytes * 100.0 / TotalBytes) : 0;
+        
+        // 文件计数
+        public int CompletedFiles { get; set; }
+        public int TotalFiles { get; set; }
+        
+        // 其他信息
         public string CurrentFile { get; set; } = string.Empty;
         public string Status { get; set; } = string.Empty;
+        public double DownloadSpeed { get; set; } // 字节/秒
+        
+        // 兼容性属性（保留旧代码兼容）
+        [Obsolete("Use CurrentFileBytes instead")]
+        public long DownloadedBytes 
+        { 
+            get => CurrentFileBytes; 
+            set => CurrentFileBytes = value; 
+        }
+        
+        [Obsolete("Use CurrentFilePercentage instead")]
+        public double ProgressPercentage => CurrentFilePercentage;
     }
 
     /// <summary>
@@ -93,27 +117,60 @@ namespace ObsMCLauncher.Services
                 System.Diagnostics.Debug.WriteLine($"   客户端URL: {versionInfo.Downloads?.Client?.Url}");
                 System.Diagnostics.Debug.WriteLine($"   库文件数量: {versionInfo.Libraries?.Count ?? 0}");
 
+                // 计算总文件数和总大小
+                var totalFiles = 1; // 客户端JAR
+                var totalBytes = versionInfo.Downloads?.Client?.Size ?? 0;
+                
+                if (versionInfo.Libraries != null)
+                {
+                    foreach (var lib in versionInfo.Libraries)
+                    {
+                        if (IsLibraryAllowed(lib) && lib.Downloads?.Artifact != null)
+                        {
+                            totalFiles++;
+                            totalBytes += lib.Downloads.Artifact.Size;
+                        }
+                    }
+                }
+                totalFiles++; // 资源索引
+
+                var downloadState = new DownloadState
+                {
+                    CompletedFiles = 0,
+                    TotalDownloadedBytes = 0
+                };
+
                 // 3. 下载客户端JAR
                 var clientJarPath = Path.Combine(gameDirectory, "versions", versionId, $"{versionId}.jar");
                 if (versionInfo.Downloads?.Client?.Url != null)
                 {
-                    progress?.Report(new DownloadProgress
-                    {
-                        Status = "正在下载客户端JAR...",
-                        CurrentFile = $"{versionId}.jar",
-                        TotalBytes = versionInfo.Downloads.Client.Size,
-                        DownloadedBytes = 0
-                    });
-
                     System.Diagnostics.Debug.WriteLine($"开始下载客户端JAR: {versionInfo.Downloads.Client.Url}");
                     System.Diagnostics.Debug.WriteLine($"保存路径: {clientJarPath}");
 
-                    await DownloadFileAsync(
+                    var clientSize = versionInfo.Downloads.Client.Size;
+                    
+                    await DownloadFileWithProgressAsync(
                         versionInfo.Downloads.Client.Url,
                         clientJarPath,
-                        progress,
+                        (currentBytes, speed) =>
+                        {
+                            progress?.Report(new DownloadProgress
+                            {
+                                Status = "正在下载客户端JAR...",
+                                CurrentFile = $"{versionId}.jar",
+                                CurrentFileTotalBytes = clientSize,
+                                CurrentFileBytes = currentBytes,
+                                TotalBytes = totalBytes,
+                                TotalDownloadedBytes = downloadState.TotalDownloadedBytes + currentBytes,
+                                CompletedFiles = downloadState.CompletedFiles,
+                                TotalFiles = totalFiles,
+                                DownloadSpeed = speed
+                            });
+                        },
                         cancellationToken);
                     
+                    downloadState.CompletedFiles++;
+                    downloadState.TotalDownloadedBytes += clientSize;
                     System.Diagnostics.Debug.WriteLine($"✅ 客户端JAR已下载: {clientJarPath}");
                 }
                 else
@@ -124,16 +181,13 @@ namespace ObsMCLauncher.Services
                 // 4. 下载库文件
                 if (versionInfo.Libraries != null && versionInfo.Libraries.Count > 0)
                 {
-                    progress?.Report(new DownloadProgress
-                    {
-                        Status = $"正在下载库文件 (共{versionInfo.Libraries.Count}个)...",
-                        CurrentFile = "libraries"
-                    });
-
-                    await DownloadLibrariesAsync(
+                    await DownloadLibrariesWithProgressAsync(
                         versionInfo.Libraries,
                         gameDirectory,
                         downloadSource,
+                        totalFiles,
+                        totalBytes,
+                        downloadState,
                         progress,
                         cancellationToken);
                 }
@@ -144,22 +198,32 @@ namespace ObsMCLauncher.Services
                     progress?.Report(new DownloadProgress
                     {
                         Status = "正在下载资源索引...",
-                        CurrentFile = "assets"
+                        CurrentFile = "assets",
+                        CompletedFiles = downloadState.CompletedFiles,
+                        TotalFiles = totalFiles,
+                        TotalBytes = totalBytes,
+                        TotalDownloadedBytes = downloadState.TotalDownloadedBytes
                     });
 
                     await DownloadAssetsAsync(
                         versionInfo.AssetIndex,
                         gameDirectory,
                         downloadSource,
-                        progress,
+                        null,
                         cancellationToken);
+                    
+                    downloadState.CompletedFiles++;
                 }
 
                 progress?.Report(new DownloadProgress
                 {
                     Status = "下载完成！",
-                    TotalBytes = 100,
-                    DownloadedBytes = 100
+                    TotalBytes = totalBytes,
+                    TotalDownloadedBytes = totalBytes,
+                    CompletedFiles = totalFiles,
+                    TotalFiles = totalFiles,
+                    CurrentFileTotalBytes = 100,
+                    CurrentFileBytes = 100
                 });
 
                 return true;
@@ -232,8 +296,8 @@ namespace ObsMCLauncher.Services
                     progress?.Report(new DownloadProgress
                     {
                         Status = $"正在下载库文件 ({completed}/{total})...",
-                        TotalBytes = 100,
-                        DownloadedBytes = (long)libraryProgress,
+                        CurrentFileTotalBytes = 100,
+                        CurrentFileBytes = (long)libraryProgress,
                         CurrentFile = Path.GetFileName(libraryPath)
                     });
                 }
@@ -281,8 +345,8 @@ namespace ObsMCLauncher.Services
                 progress?.Report(new DownloadProgress
                 {
                     Status = "资源索引已下载（资源文件将在首次启动时自动下载）",
-                    TotalBytes = 100,
-                    DownloadedBytes = 100
+                    CurrentFileTotalBytes = 100,
+                    CurrentFileBytes = 100
                 });
             }
             catch (Exception ex)
@@ -317,12 +381,12 @@ namespace ObsMCLauncher.Services
         }
 
         /// <summary>
-        /// 下载文件
+        /// 下载文件并报告详细进度（包括速度）
         /// </summary>
-        private static async Task DownloadFileAsync(
+        private static async Task DownloadFileWithProgressAsync(
             string url,
             string savePath,
-            IProgress<DownloadProgress>? progress,
+            Action<long, double>? progressCallback,
             CancellationToken cancellationToken)
         {
             try
@@ -342,23 +406,33 @@ namespace ObsMCLauncher.Services
 
                 var buffer = new byte[8192];
                 int bytesRead;
+                
+                var startTime = DateTime.Now;
+                var lastReportTime = startTime;
+                var lastReportedBytes = 0L;
 
                 while ((bytesRead = await contentStream.ReadAsync(buffer, 0, buffer.Length, cancellationToken)) > 0)
                 {
                     await fileStream.WriteAsync(buffer, 0, bytesRead, cancellationToken);
                     downloadedBytes += bytesRead;
 
-                    if (progress != null)
+                    // 每100ms报告一次进度
+                    var now = DateTime.Now;
+                    if ((now - lastReportTime).TotalMilliseconds >= 100)
                     {
-                        progress.Report(new DownloadProgress
-                        {
-                            TotalBytes = totalBytes,
-                            DownloadedBytes = downloadedBytes,
-                            CurrentFile = Path.GetFileName(savePath),
-                            Status = $"正在下载 {Path.GetFileName(savePath)}..."
-                        });
+                        var elapsedSeconds = (now - lastReportTime).TotalSeconds;
+                        var bytesInPeriod = downloadedBytes - lastReportedBytes;
+                        var speed = elapsedSeconds > 0 ? bytesInPeriod / elapsedSeconds : 0;
+                        
+                        progressCallback?.Invoke(downloadedBytes, speed);
+                        
+                        lastReportTime = now;
+                        lastReportedBytes = downloadedBytes;
                     }
                 }
+
+                // 最后再报告一次，确保100%
+                progressCallback?.Invoke(downloadedBytes, 0);
 
                 System.Diagnostics.Debug.WriteLine($"✅ 下载完成: {Path.GetFileName(savePath)} ({downloadedBytes / 1024.0 / 1024.0:F2} MB)");
             }
@@ -367,6 +441,121 @@ namespace ObsMCLauncher.Services
                 System.Diagnostics.Debug.WriteLine($"❌ 下载失败: {url}");
                 System.Diagnostics.Debug.WriteLine($"   错误: {ex.Message}");
                 throw;
+            }
+        }
+
+        /// <summary>
+        /// 下载文件（旧版本，保持兼容性）
+        /// </summary>
+        private static async Task DownloadFileAsync(
+            string url,
+            string savePath,
+            IProgress<DownloadProgress>? progress,
+            CancellationToken cancellationToken)
+        {
+            await DownloadFileWithProgressAsync(url, savePath, 
+                (bytes, speed) =>
+                {
+                    progress?.Report(new DownloadProgress
+                    {
+                        CurrentFileBytes = bytes,
+                        CurrentFile = Path.GetFileName(savePath),
+                        Status = $"正在下载 {Path.GetFileName(savePath)}...",
+                        DownloadSpeed = speed
+                    });
+                },
+                cancellationToken);
+        }
+
+        /// <summary>
+        /// 下载进度状态
+        /// </summary>
+        private class DownloadState
+        {
+            public int CompletedFiles { get; set; }
+            public long TotalDownloadedBytes { get; set; }
+        }
+
+        /// <summary>
+        /// 下载库文件（带详细进度）
+        /// </summary>
+        private static async Task DownloadLibrariesWithProgressAsync(
+            List<Library> libraries,
+            string gameDirectory,
+            IDownloadSourceService downloadSource,
+            int totalFiles,
+            long totalBytes,
+            DownloadState state,
+            IProgress<DownloadProgress>? progress,
+            CancellationToken cancellationToken)
+        {
+            var librariesPath = Path.Combine(gameDirectory, "libraries");
+            Directory.CreateDirectory(librariesPath);
+
+            foreach (var library in libraries)
+            {
+                if (cancellationToken.IsCancellationRequested) break;
+
+                // 检查是否允许下载该库
+                if (!IsLibraryAllowed(library)) continue;
+
+                var artifact = library.Downloads?.Artifact;
+                if (artifact == null || string.IsNullOrEmpty(artifact.Path)) continue;
+
+                var libraryPath = Path.Combine(librariesPath, artifact.Path.Replace('/', Path.DirectorySeparatorChar));
+                
+                // 如果文件已存在且大小正确，跳过
+                if (File.Exists(libraryPath))
+                {
+                    var fileInfo = new FileInfo(libraryPath);
+                    if (fileInfo.Length == artifact.Size)
+                    {
+                        state.CompletedFiles++;
+                        state.TotalDownloadedBytes += artifact.Size;
+                        continue;
+                    }
+                }
+
+                Directory.CreateDirectory(Path.GetDirectoryName(libraryPath)!);
+
+                try
+                {
+                    var url = artifact.Url;
+                    if (string.IsNullOrEmpty(url))
+                    {
+                        url = downloadSource.GetLibraryUrl(artifact.Path);
+                    }
+
+                    var libSize = artifact.Size;
+                    var baseDownloadedBytes = state.TotalDownloadedBytes;
+
+                    await DownloadFileWithProgressAsync(
+                        url, 
+                        libraryPath,
+                        (currentBytes, speed) =>
+                        {
+                            progress?.Report(new DownloadProgress
+                            {
+                                Status = $"正在下载库文件 ({state.CompletedFiles + 1}/{totalFiles})...",
+                                CurrentFile = Path.GetFileName(libraryPath),
+                                CurrentFileTotalBytes = libSize,
+                                CurrentFileBytes = currentBytes,
+                                TotalBytes = totalBytes,
+                                TotalDownloadedBytes = baseDownloadedBytes + currentBytes,
+                                CompletedFiles = state.CompletedFiles,
+                                TotalFiles = totalFiles,
+                                DownloadSpeed = speed
+                            });
+                        },
+                        cancellationToken);
+
+                    state.CompletedFiles++;
+                    state.TotalDownloadedBytes += libSize;
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"下载库文件失败 {artifact.Path}: {ex.Message}");
+                }
             }
         }
 

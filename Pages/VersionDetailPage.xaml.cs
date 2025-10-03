@@ -3,6 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media.Animation;
 using ObsMCLauncher.Models;
 using ObsMCLauncher.Services;
 
@@ -21,6 +22,7 @@ namespace ObsMCLauncher.Pages
             // 设置版本标题
             VersionTitle.Text = $"Minecraft {version}";
             VersionNumber.Text = version;
+            DownloadVersionText.Text = $"Minecraft {version}";
             
             // 更新选中的加载器显示
             UpdateSelectedLoaderText();
@@ -136,11 +138,8 @@ namespace ObsMCLauncher.Pages
 
             System.Diagnostics.Debug.WriteLine($"开始下载版本 {currentVersion} 到目录 {gameDirectory}");
 
-            // 显示进度面板，隐藏安装按钮
-            InstallButton.Visibility = Visibility.Collapsed;
-            SelectedLoaderText.Visibility = Visibility.Collapsed;
-            InstallHintText.Visibility = Visibility.Collapsed;
-            DownloadProgressPanel.Visibility = Visibility.Visible;
+            // 显示进度面板，隐藏安装按钮和加载器选择（带动画）
+            ShowDownloadPanel();
 
             try
             {
@@ -151,10 +150,20 @@ namespace ObsMCLauncher.Pages
                 {
                     Dispatcher.Invoke(() =>
                     {
-                        DownloadProgressBar.Value = p.ProgressPercentage;
-                        DownloadPercentageText.Text = $"{p.ProgressPercentage:F1}%";
+                        // 更新总体进度
+                        DownloadOverallProgressBar.Value = p.OverallPercentage;
+                        DownloadOverallPercentageText.Text = $"{p.OverallPercentage:F0}%";
+                        DownloadOverallStatsText.Text = $"{p.CompletedFiles} / {p.TotalFiles} 个文件";
+                        
+                        // 更新当前文件进度
+                        DownloadCurrentProgressBar.Value = p.CurrentFilePercentage;
+                        DownloadCurrentPercentageText.Text = $"{p.CurrentFilePercentage:F0}%";
+                        
+                        // 更新详细信息
                         DownloadStatusText.Text = p.Status;
                         CurrentFileText.Text = p.CurrentFile;
+                        DownloadSpeedText.Text = FormatSpeed(p.DownloadSpeed);
+                        DownloadSizeText.Text = $"{FormatFileSize(p.TotalDownloadedBytes)} / {FormatFileSize(p.TotalBytes)}";
                     });
                 });
 
@@ -213,14 +222,135 @@ namespace ObsMCLauncher.Pages
             finally
             {
                 // 恢复界面
-                InstallButton.Visibility = Visibility.Visible;
-                SelectedLoaderText.Visibility = Visibility.Visible;
-                InstallHintText.Visibility = Visibility.Visible;
-                DownloadProgressPanel.Visibility = Visibility.Collapsed;
+                HideDownloadPanel();
                 
                 _downloadCancellationToken?.Dispose();
                 _downloadCancellationToken = null;
             }
+        }
+
+        /// <summary>
+        /// 显示下载面板（带动画）
+        /// </summary>
+        private void ShowDownloadPanel()
+        {
+            // 隐藏安装按钮和提示文本
+            InstallButton.Visibility = Visibility.Collapsed;
+            SelectedLoaderText.Visibility = Visibility.Collapsed;
+            InstallHintText.Visibility = Visibility.Collapsed;
+
+            // 创建淡出动画隐藏加载器选择面板
+            var fadeOutAnimation = new DoubleAnimation
+            {
+                From = 1.0,
+                To = 0.0,
+                Duration = TimeSpan.FromMilliseconds(300),
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut }
+            };
+
+            fadeOutAnimation.Completed += (s, e) =>
+            {
+                LoaderSelectionPanel.Visibility = Visibility.Collapsed;
+                
+                // 显示下载进度面板
+                DownloadProgressPanel.Visibility = Visibility.Visible;
+                DownloadProgressPanel.Opacity = 0;
+                
+                // 创建淡入动画显示下载进度面板
+                var fadeInAnimation = new DoubleAnimation
+                {
+                    From = 0.0,
+                    To = 1.0,
+                    Duration = TimeSpan.FromMilliseconds(300),
+                    EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut }
+                };
+                
+                DownloadProgressPanel.BeginAnimation(OpacityProperty, fadeInAnimation);
+            };
+
+            LoaderSelectionPanel.BeginAnimation(OpacityProperty, fadeOutAnimation);
+        }
+
+        /// <summary>
+        /// 隐藏下载面板（带动画）
+        /// </summary>
+        private void HideDownloadPanel()
+        {
+            // 创建淡出动画隐藏下载进度面板
+            var fadeOutAnimation = new DoubleAnimation
+            {
+                From = 1.0,
+                To = 0.0,
+                Duration = TimeSpan.FromMilliseconds(300),
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut }
+            };
+
+            fadeOutAnimation.Completed += (s, e) =>
+            {
+                DownloadProgressPanel.Visibility = Visibility.Collapsed;
+                
+                // 显示加载器选择面板
+                LoaderSelectionPanel.Visibility = Visibility.Visible;
+                LoaderSelectionPanel.Opacity = 0;
+                
+                // 创建淡入动画显示加载器选择面板
+                var fadeInAnimation = new DoubleAnimation
+                {
+                    From = 0.0,
+                    To = 1.0,
+                    Duration = TimeSpan.FromMilliseconds(300),
+                    EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut }
+                };
+                
+                LoaderSelectionPanel.BeginAnimation(OpacityProperty, fadeInAnimation);
+                
+                // 恢复按钮和提示文本
+                InstallButton.Visibility = Visibility.Visible;
+                SelectedLoaderText.Visibility = Visibility.Visible;
+                InstallHintText.Visibility = Visibility.Visible;
+            };
+
+            DownloadProgressPanel.BeginAnimation(OpacityProperty, fadeOutAnimation);
+        }
+
+        /// <summary>
+        /// 格式化文件大小
+        /// </summary>
+        private string FormatFileSize(long bytes)
+        {
+            if (bytes == 0) return "0 B";
+            
+            string[] sizes = { "B", "KB", "MB", "GB", "TB" };
+            int order = 0;
+            double size = bytes;
+            
+            while (size >= 1024 && order < sizes.Length - 1)
+            {
+                order++;
+                size /= 1024;
+            }
+            
+            return $"{size:F2} {sizes[order]}";
+        }
+
+        /// <summary>
+        /// 格式化下载速度
+        /// </summary>
+        private string FormatSpeed(double bytesPerSecond)
+        {
+            if (bytesPerSecond == 0) return "0 B/s";
+            
+            string[] sizes = { "B/s", "KB/s", "MB/s", "GB/s" };
+            int order = 0;
+            double speed = bytesPerSecond;
+            
+            while (speed >= 1024 && order < sizes.Length - 1)
+            {
+                order++;
+                speed /= 1024;
+            }
+            
+            return $"{speed:F2} {sizes[order]}";
         }
     }
 }
