@@ -17,6 +17,7 @@ namespace ObsMCLauncher.Pages
         private LauncherConfig _config = null!;
         private bool _isSaving = false;
         private bool _isInitialized = false;
+        private System.Threading.CancellationTokenSource? _notificationCancellation;
 
         public SettingsPage()
         {
@@ -129,45 +130,60 @@ namespace ObsMCLauncher.Pages
         /// </summary>
         private async Task ShowSaveNotification(string settingName)
         {
-            // 更新通知文本
-            SaveNotificationText.Text = $"{settingName}已自动保存";
+            // 取消之前的通知动画
+            _notificationCancellation?.Cancel();
+            _notificationCancellation = new System.Threading.CancellationTokenSource();
+            var cancellationToken = _notificationCancellation.Token;
 
-            // 通知栏淡入动画
-            var fadeIn = new DoubleAnimation
+            try
             {
-                From = 0,
-                To = 1,
-                Duration = TimeSpan.FromMilliseconds(200),
-                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
-            };
-            SaveNotification.BeginAnimation(OpacityProperty, fadeIn);
+                // 更新通知文本
+                SaveNotificationText.Text = $"{settingName}已自动保存";
 
-            // 进度条动画（2秒从0到100）
-            SaveProgressBar.Value = 0;
-            var progressAnimation = new DoubleAnimation
+                // 通知栏淡入动画
+                var fadeIn = new DoubleAnimation
+                {
+                    From = SaveNotification.Opacity,
+                    To = 1,
+                    Duration = TimeSpan.FromMilliseconds(200),
+                    EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+                };
+                SaveNotification.BeginAnimation(OpacityProperty, fadeIn);
+
+                // 进度条动画（2秒从0到100）
+                SaveProgressBar.Value = 0;
+                var progressAnimation = new DoubleAnimation
+                {
+                    From = 0,
+                    To = 100,
+                    Duration = TimeSpan.FromMilliseconds(2000)
+                };
+                SaveProgressBar.BeginAnimation(System.Windows.Controls.Primitives.RangeBase.ValueProperty, progressAnimation);
+
+                // 等待2秒（可被取消）
+                await Task.Delay(2000, cancellationToken);
+
+                // 如果没被取消，淡出
+                if (!cancellationToken.IsCancellationRequested)
+                {
+                    var fadeOut = new DoubleAnimation
+                    {
+                        From = 1,
+                        To = 0,
+                        Duration = TimeSpan.FromMilliseconds(200),
+                        EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
+                    };
+                    SaveNotification.BeginAnimation(OpacityProperty, fadeOut);
+
+                    // 重置进度条
+                    await Task.Delay(200, cancellationToken);
+                    SaveProgressBar.Value = 0;
+                }
+            }
+            catch (TaskCanceledException)
             {
-                From = 0,
-                To = 100,
-                Duration = TimeSpan.FromMilliseconds(2000)
-            };
-            SaveProgressBar.BeginAnimation(System.Windows.Controls.Primitives.RangeBase.ValueProperty, progressAnimation);
-
-            // 等待2秒
-            await Task.Delay(2000);
-
-            // 通知栏淡出动画
-            var fadeOut = new DoubleAnimation
-            {
-                From = 1,
-                To = 0,
-                Duration = TimeSpan.FromMilliseconds(200),
-                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
-            };
-            SaveNotification.BeginAnimation(OpacityProperty, fadeOut);
-
-            // 重置进度条
-            await Task.Delay(200);
-            SaveProgressBar.Value = 0;
+                // 被取消，不做任何事（新的通知会立即开始）
+            }
         }
 
         /// <summary>
@@ -317,12 +333,15 @@ namespace ObsMCLauncher.Pages
                     var bestJava = javaList[0];
                     JavaPathTextBox.Text = bestJava.Path;
                     
+                    // ✅ 自动保存设置
+                    AutoSaveSettings("Java路径");
+                    
                     MessageBox.Show(
                         $"已选择 Java {bestJava.MajorVersion}！\n\n" +
                         $"版本: {bestJava.Version}\n" +
                         $"架构: {bestJava.Architecture}\n" +
                         $"路径: {bestJava.Path}\n\n" +
-                        "请点击【保存设置】按钮保存配置。",
+                        "设置已自动保存。",
                         "设置成功",
                         MessageBoxButton.OK,
                         MessageBoxImage.Information);

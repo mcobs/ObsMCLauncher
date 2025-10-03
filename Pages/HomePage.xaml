@@ -8,14 +8,74 @@
       d:DesignHeight="700" d:DesignWidth="900"
       Background="{StaticResource BackgroundBrush}">
 
-    <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <Grid Margin="30">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
+    <Grid>
+        <!-- 悬浮的依赖下载进度 -->
+        <Border x:Name="DependencyDownloadPanel"
+                VerticalAlignment="Top"
+                HorizontalAlignment="Center"
+                Margin="0,20,0,0"
+                Width="500"
+                Background="{StaticResource SurfaceBrush}"
+                CornerRadius="10"
+                Padding="20,15"
+                Visibility="Collapsed"
+                Panel.ZIndex="1000">
+            <Border.Effect>
+                <DropShadowEffect Color="Black" BlurRadius="20" ShadowDepth="2" Opacity="0.3"/>
+            </Border.Effect>
+            
+            <StackPanel>
+                <Grid Margin="0,0,0,12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    
+                    <Border Grid.Column="0"
+                            Background="{StaticResource PrimaryBrush}"
+                            CornerRadius="20"
+                            Width="36"
+                            Height="36"
+                            Margin="0,0,12,0">
+                        <materialDesign:PackIcon Kind="Download"
+                                               Width="20"
+                                               Height="20"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"/>
+                    </Border>
+                    
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Text="正在补全游戏依赖..."
+                                 FontSize="14"
+                                 FontWeight="SemiBold"
+                                 Margin="0,0,0,2"/>
+                        <TextBlock x:Name="DependencyDownloadStatus"
+                                 Text="准备下载..."
+                                 FontSize="11"
+                                 Foreground="{StaticResource TextSecondaryBrush}"/>
+                    </StackPanel>
+                </Grid>
+                
+                <!-- 进度条 -->
+                <ProgressBar x:Name="DependencyDownloadProgress"
+                             Height="3"
+                             Minimum="0"
+                             Maximum="100"
+                             Value="0"
+                             Foreground="{StaticResource PrimaryBrush}"
+                             Background="#3F3F46"
+                             BorderThickness="0"/>
+            </StackPanel>
+        </Border>
+
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <Grid Margin="30">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
 
             <!-- 欢迎区域 -->
             <StackPanel Grid.Row="0">
@@ -230,7 +290,8 @@
                              Foreground="#AAAAAA"/>
                 </Grid>
             </Border>
-        </Grid>
-    </ScrollViewer>
+            </Grid>
+        </ScrollViewer>
+    </Grid>
 </Page>
 
