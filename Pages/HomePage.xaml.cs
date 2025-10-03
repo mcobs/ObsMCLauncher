@@ -1,5 +1,8 @@
+using System;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Diagnostics;
 using MaterialDesignThemes.Wpf;
 using ObsMCLauncher.Services;
 using ObsMCLauncher.Models;
@@ -144,6 +147,98 @@ namespace ObsMCLauncher.Pages
             {
                 LocalVersionService.SetSelectedVersion(versionId);
                 System.Diagnostics.Debug.WriteLine($"版本已切换到: {versionId}");
+            }
+        }
+
+        /// <summary>
+        /// 启动游戏按钮点击事件
+        /// </summary>
+        private void LaunchButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                // 1. 检查是否选择了版本
+                if (VersionComboBox.SelectedItem is not ComboBoxItem versionItem || versionItem.Tag is not string versionId)
+                {
+                    MessageBox.Show("请先选择一个游戏版本！", "提示", 
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                // 2. 获取账号
+                GameAccount? account = null;
+                if (AccountComboBox.SelectedItem is ComboBoxItem accountItem && accountItem.Tag is string accountId)
+                {
+                    var accounts = AccountService.Instance.GetAllAccounts();
+                    account = accounts.FirstOrDefault(a => a.Id == accountId);
+                }
+
+                if (account == null)
+                {
+                    var result = MessageBox.Show(
+                        "未找到游戏账号，是否前往账号管理添加账号？", 
+                        "提示", 
+                        MessageBoxButton.YesNo, 
+                        MessageBoxImage.Question);
+                    
+                    if (result == MessageBoxResult.Yes)
+                    {
+                        NavigationService?.Navigate(new Uri("/Pages/AccountManagementPage.xaml", UriKind.Relative));
+                    }
+                    return;
+                }
+
+                // 3. 加载配置
+                var config = LauncherConfig.Load();
+
+                // 4. 禁用启动按钮，防止重复点击
+                LaunchButton.IsEnabled = false;
+                LaunchButton.Content = "启动中...";
+
+                // 5. 启动游戏
+                Debug.WriteLine($"========== 准备启动游戏 ==========");
+                Debug.WriteLine($"版本: {versionId}");
+                Debug.WriteLine($"账号: {account.Username} ({account.Type})");
+                
+                bool success = GameLauncher.LaunchGame(versionId, account, config);
+
+                if (success)
+                {
+                    // 更新账号最后使用时间
+                    AccountService.Instance.UpdateLastUsed(account.Id);
+
+                    MessageBox.Show(
+                        $"游戏已启动！\n\n版本: {versionId}\n账号: {account.Username}",
+                        "启动成功",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+                }
+                else
+                {
+                    MessageBox.Show(
+                        "游戏启动失败，请检查：\n\n" +
+                        "1. Java路径是否正确\n" +
+                        "2. 版本文件是否完整\n" +
+                        "3. 查看启动器日志了解详细错误",
+                        "启动失败",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"❌ 启动游戏异常: {ex.Message}");
+                MessageBox.Show(
+                    $"启动游戏时发生错误：\n\n{ex.Message}",
+                    "错误",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+            finally
+            {
+                // 恢复启动按钮
+                LaunchButton.IsEnabled = true;
+                LaunchButton.Content = "启动游戏";
             }
         }
     }

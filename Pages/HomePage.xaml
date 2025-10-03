@@ -89,7 +89,8 @@
                               VerticalAlignment="Bottom"
                               Style="{StaticResource MaterialDesignRaisedButton}"
                               materialDesign:ButtonAssist.CornerRadius="8"
-                              Background="{StaticResource PrimaryBrush}">
+                              Background="{StaticResource PrimaryBrush}"
+                              Click="LaunchButton_Click">
                             <Button.Effect>
                                 <DropShadowEffect Color="{Binding Source={StaticResource PrimaryBrush}, Path=Color}" 
                                                 BlurRadius="16" 
