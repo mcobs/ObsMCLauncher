@@ -104,6 +104,11 @@ namespace ObsMCLauncher.Models
         public bool AutoCheckUpdate { get; set; } = true;
 
         /// <summary>
+        /// 当前选中的版本
+        /// </summary>
+        public string? SelectedVersion { get; set; }
+
+        /// <summary>
         /// 获取配置文件路径（静态方法，根据临时配置决定）
         /// </summary>
         public static string GetConfigFilePath(DirectoryLocation location = DirectoryLocation.AppData, string customPath = "")

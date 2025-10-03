@@ -229,7 +229,7 @@
 
                     <RadioButton x:Name="VersionButton"
                                Style="{StaticResource MaterialDesignTabRadioButton}"
-                               Content="版本下载"
+                               Content="版本管理"
                                Click="NavigationButton_Click"
                                Tag="Version"
                                Height="50"

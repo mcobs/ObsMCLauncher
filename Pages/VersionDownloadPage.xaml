@@ -11,24 +11,126 @@
     <Grid Margin="30">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
         <!-- 标题区域 -->
         <StackPanel Grid.Row="0">
-            <TextBlock Text="版本下载" 
+            <TextBlock Text="版本管理" 
                      FontSize="28" 
                      FontWeight="Bold"
                      Margin="0,0,0,10"/>
-            <TextBlock Text="选择想要下载的 Minecraft 版本，点击进入配置加载器选项" 
+            <TextBlock Text="管理已安装的版本或下载新版本" 
                      FontSize="14" 
                      Foreground="{StaticResource TextSecondaryBrush}"
                      Margin="0,0,0,25"/>
         </StackPanel>
 
-        <!-- 筛选和搜索区域 -->
-        <Border Grid.Row="1"
+        <!-- Tab 控件 -->
+        <TabControl Grid.Row="1" 
+                    Style="{StaticResource MaterialDesignTabControl}"
+                    materialDesign:ColorZoneAssist.Mode="PrimaryMid">
+            
+            <!-- 已安装版本 Tab -->
+            <TabItem Header="已安装版本">
+                <TabItem.HeaderTemplate>
+                    <DataTemplate>
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="CheckCircle" 
+                                                   Width="18" 
+                                                   Height="18"
+                                                   VerticalAlignment="Center"
+                                                   Margin="0,0,8,0"/>
+                            <TextBlock Text="已安装版本" 
+                                     VerticalAlignment="Center"
+                                     FontSize="14"/>
+                        </StackPanel>
+                    </DataTemplate>
+                </TabItem.HeaderTemplate>
+                
+                <Grid Margin="0,20,0,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- 工具栏 -->
+                    <Border Grid.Row="0"
+                            Background="{StaticResource SurfaceBrush}"
+                            CornerRadius="10"
+                            Padding="20"
+                            Margin="0,0,0,20">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            
+                            <TextBlock Grid.Column="0"
+                                     VerticalAlignment="Center"
+                                     FontSize="14"
+                                     Foreground="{StaticResource TextSecondaryBrush}">
+                                <Run Text="共 "/>
+                                <Run x:Name="InstalledVersionCountText" Text="0" FontWeight="SemiBold"/>
+                                <Run Text=" 个已安装版本"/>
+                            </TextBlock>
+                            
+                            <Button Grid.Column="1"
+                                  x:Name="RefreshInstalledButton"
+                                  Click="RefreshInstalledButton_Click"
+                                  Style="{StaticResource MaterialDesignOutlinedButton}"
+                                  Height="36"
+                                  Padding="15,0">
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="Refresh" 
+                                                           Width="18" 
+                                                           Height="18"
+                                                           VerticalAlignment="Center"
+                                                           Margin="0,0,8,0"/>
+                                    <TextBlock Text="刷新" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                        </Grid>
+                    </Border>
+
+                    <!-- 已安装版本列表 -->
+                    <Border Grid.Row="1"
+                            Background="{StaticResource SurfaceBrush}"
+                            CornerRadius="10">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <StackPanel x:Name="InstalledVersionsPanel" Margin="10">
+                                <!-- 动态生成已安装版本项 -->
+                            </StackPanel>
+                        </ScrollViewer>
+                    </Border>
+                </Grid>
+            </TabItem>
+
+            <!-- 下载新版本 Tab -->
+            <TabItem Header="下载新版本">
+                <TabItem.HeaderTemplate>
+                    <DataTemplate>
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="Download" 
+                                                   Width="18" 
+                                                   Height="18"
+                                                   VerticalAlignment="Center"
+                                                   Margin="0,0,8,0"/>
+                            <TextBlock Text="下载新版本" 
+                                     VerticalAlignment="Center"
+                                     FontSize="14"/>
+                        </StackPanel>
+                    </DataTemplate>
+                </TabItem.HeaderTemplate>
+                
+                <Grid Margin="0,20,0,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- 筛选和搜索区域 -->
+                    <Border Grid.Row="0"
                 Background="{StaticResource SurfaceBrush}"
                 CornerRadius="10"
                 Padding="20"
@@ -79,8 +181,8 @@
             </Grid>
         </Border>
 
-        <!-- 版本列表 -->
-        <Border Grid.Row="2"
+                    <!-- 版本列表 -->
+                    <Border Grid.Row="1"
                 Background="{StaticResource SurfaceBrush}"
                 CornerRadius="10">
             <Grid>
@@ -125,7 +227,10 @@
                         <!-- 动态生成版本项 -->
                 </StackPanel>
             </ScrollViewer>
-            </Grid>
-        </Border>
+                    </Grid>
+                    </Border>
+                </Grid>
+            </TabItem>
+        </TabControl>
     </Grid>
 </Page>

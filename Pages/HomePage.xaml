@@ -75,10 +75,7 @@
                                     HorizontalAlignment="Stretch"
                                     materialDesign:HintAssist.Hint="选择游戏版本"
                                     Style="{StaticResource MaterialDesignOutlinedComboBox}">
-                                <ComboBoxItem Content="Minecraft 1.20.1" IsSelected="True"/>
-                                <ComboBoxItem Content="Minecraft 1.19.4"/>
-                                <ComboBoxItem Content="Minecraft 1.18.2"/>
-                                <ComboBoxItem Content="Minecraft 1.16.5"/>
+                                <!-- 动态加载版本列表 -->
                             </ComboBox>
                         </StackPanel>
 

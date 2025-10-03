@@ -6,6 +6,7 @@ using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Media;
 using MaterialDesignThemes.Wpf;
+using ObsMCLauncher.Models;
 using ObsMCLauncher.Services;
 
 namespace ObsMCLauncher.Pages
@@ -24,7 +25,9 @@ namespace ObsMCLauncher.Pages
 
         private async void VersionDownloadPage_Loaded(object sender, RoutedEventArgs e)
         {
-            // 自动加载版本列表
+            // 加载已安装版本
+            LoadInstalledVersions();
+            // 自动加载在线版本列表
             await LoadVersionsAsync();
         }
 
@@ -338,5 +341,247 @@ namespace ObsMCLauncher.Pages
                 RefreshButton.IsEnabled = enabled;
             }
         }
+
+        #region 已安装版本管理
+
+        /// <summary>
+        /// 加载已安装版本
+        /// </summary>
+        private void LoadInstalledVersions()
+        {
+            InstalledVersionsPanel.Children.Clear();
+
+            var config = LauncherConfig.Load();
+            var installedVersions = LocalVersionService.GetInstalledVersions(config.GameDirectory);
+            var selectedVersion = config.SelectedVersion;
+
+            InstalledVersionCountText.Text = installedVersions.Count.ToString();
+
+            if (installedVersions.Count == 0)
+            {
+                // 显示空状态
+                var emptyText = new TextBlock
+                {
+                    Text = "暂无已安装版本",
+                    FontSize = 16,
+                    Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#AAAAAA")),
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    Margin = new Thickness(0, 50, 0, 0)
+                };
+                InstalledVersionsPanel.Children.Add(emptyText);
+                return;
+            }
+
+            // 动态生成已安装版本项
+            foreach (var version in installedVersions)
+            {
+                var card = CreateInstalledVersionCard(version, version.Id == selectedVersion);
+                InstalledVersionsPanel.Children.Add(card);
+            }
+        }
+
+        /// <summary>
+        /// 创建已安装版本卡片
+        /// </summary>
+        private Border CreateInstalledVersionCard(InstalledVersion version, bool isSelected)
+        {
+            var border = new Border
+            {
+                Background = (Brush)Application.Current.TryFindResource("SurfaceElevatedBrush")
+                    ?? new SolidColorBrush(Color.FromRgb(39, 39, 42)),
+                CornerRadius = new CornerRadius(8),
+                Padding = new Thickness(20),
+                Margin = new Thickness(10)
+            };
+
+            var grid = new Grid();
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            // 左侧信息
+            var infoPanel = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+
+            // 版本号
+            var titlePanel = new StackPanel { Orientation = Orientation.Horizontal };
+            var titleText = new TextBlock
+            {
+                Text = $"Minecraft {version.Id}",
+                FontSize = 16,
+                FontWeight = FontWeights.SemiBold,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            titlePanel.Children.Add(titleText);
+
+            // 选中标记
+            if (isSelected)
+            {
+                var selectedBadge = new Border
+                {
+                    Background = (Brush)Application.Current.TryFindResource("PrimaryBrush")
+                        ?? new SolidColorBrush(Color.FromRgb(34, 197, 94)),
+                    CornerRadius = new CornerRadius(4),
+                    Padding = new Thickness(8, 2, 8, 2),
+                    Margin = new Thickness(10, 0, 0, 0),
+                    VerticalAlignment = VerticalAlignment.Center
+                };
+                var badgeText = new TextBlock
+                {
+                    Text = "当前版本",
+                    FontSize = 11,
+                    FontWeight = FontWeights.SemiBold
+                };
+                selectedBadge.Child = badgeText;
+                titlePanel.Children.Add(selectedBadge);
+            }
+
+            infoPanel.Children.Add(titlePanel);
+
+            // 详情
+            var detailText = new TextBlock
+            {
+                FontSize = 12,
+                Foreground = (Brush)Application.Current.TryFindResource("TextSecondaryBrush")
+                    ?? new SolidColorBrush(Color.FromRgb(153, 153, 153)),
+                Margin = new Thickness(0, 5, 0, 0)
+            };
+
+            var typeText = version.Type == "release" ? "正式版" :
+                          version.Type == "snapshot" ? "快照版" : "其他";
+            detailText.Text = $"{typeText} · 上次游玩: {version.LastPlayed:yyyy-MM-dd HH:mm}";
+            infoPanel.Children.Add(detailText);
+
+            Grid.SetColumn(infoPanel, 0);
+            grid.Children.Add(infoPanel);
+
+            // 右侧操作按钮
+            var buttonPanel = new StackPanel { Orientation = Orientation.Horizontal };
+
+            // 选择按钮
+            if (!isSelected)
+            {
+                var selectButton = new Button
+                {
+                    Content = "选择",
+                    Tag = version.Id,
+                    Style = (Style)Application.Current.TryFindResource("MaterialDesignOutlinedButton"),
+                    Height = 32,
+                    Padding = new Thickness(15, 0, 15, 0),
+                    Margin = new Thickness(0, 0, 10, 0)
+                };
+                selectButton.Click += SelectVersionButton_Click;
+                buttonPanel.Children.Add(selectButton);
+            }
+
+            // 打开文件夹按钮
+            var openFolderButton = new Button
+            {
+                Tag = version.Path,
+                Style = (Style)Application.Current.TryFindResource("MaterialDesignIconButton"),
+                ToolTip = "打开文件夹"
+            };
+            openFolderButton.Click += OpenFolderButton_Click;
+            var folderIcon = new PackIcon
+            {
+                Kind = PackIconKind.Folder,
+                Width = 20,
+                Height = 20
+            };
+            openFolderButton.Content = folderIcon;
+            buttonPanel.Children.Add(openFolderButton);
+
+            // 删除按钮
+            var deleteButton = new Button
+            {
+                Tag = new Tuple<string, string>(version.Id, version.Path),
+                Style = (Style)Application.Current.TryFindResource("MaterialDesignIconButton"),
+                ToolTip = "删除版本",
+                Foreground = new SolidColorBrush(Color.FromRgb(220, 53, 69))
+            };
+            deleteButton.Click += DeleteVersionButton_Click;
+            var deleteIcon = new PackIcon
+            {
+                Kind = PackIconKind.Delete,
+                Width = 20,
+                Height = 20
+            };
+            deleteButton.Content = deleteIcon;
+            buttonPanel.Children.Add(deleteButton);
+
+            Grid.SetColumn(buttonPanel, 1);
+            grid.Children.Add(buttonPanel);
+
+            border.Child = grid;
+            return border;
+        }
+
+        /// <summary>
+        /// 选择版本按钮点击
+        /// </summary>
+        private void SelectVersionButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button button && button.Tag is string versionId)
+            {
+                LocalVersionService.SetSelectedVersion(versionId);
+                LoadInstalledVersions(); // 刷新列表
+                
+                MessageBox.Show($"已选择版本: {versionId}", "选择成功",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+        }
+
+        /// <summary>
+        /// 打开文件夹按钮点击
+        /// </summary>
+        private void OpenFolderButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button button && button.Tag is string path)
+            {
+                LocalVersionService.OpenVersionFolder(path);
+            }
+        }
+
+        /// <summary>
+        /// 删除版本按钮点击
+        /// </summary>
+        private void DeleteVersionButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button button && button.Tag is Tuple<string, string> data)
+            {
+                var versionId = data.Item1;
+                var versionPath = data.Item2;
+
+                var result = MessageBox.Show(
+                    $"确定要删除版本 {versionId} 吗？\n\n此操作不可恢复！",
+                    "确认删除",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning
+                );
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    if (LocalVersionService.DeleteVersion(versionPath))
+                    {
+                        LoadInstalledVersions(); // 刷新列表
+                        MessageBox.Show($"版本 {versionId} 已删除", "删除成功",
+                            MessageBoxButton.OK, MessageBoxImage.Information);
+                    }
+                    else
+                    {
+                        MessageBox.Show($"删除版本 {versionId} 失败", "删除失败",
+                            MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// 刷新已安装版本按钮点击
+        /// </summary>
+        private void RefreshInstalledButton_Click(object sender, RoutedEventArgs e)
+        {
+            LoadInstalledVersions();
+        }
+
+        #endregion
     }
 }
