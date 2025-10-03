@@ -16,11 +16,13 @@ namespace ObsMCLauncher.Pages
     {
         private LauncherConfig _config = null!;
         private bool _isSaving = false;
+        private bool _isInitialized = false;
 
         public SettingsPage()
         {
             InitializeComponent();
             LoadSettings();
+            _isInitialized = true; // 初始化完成后才允许自动保存
         }
 
         /// <summary>
@@ -70,7 +72,7 @@ namespace ObsMCLauncher.Pages
         /// </summary>
         private async void AutoSaveSettings(string settingName = "设置")
         {
-            if (_isSaving) return;
+            if (!_isInitialized || _isSaving) return; // 未初始化完成或正在保存时跳过
             _isSaving = true;
 
             try
@@ -212,15 +214,16 @@ namespace ObsMCLauncher.Pages
         }
 
         /// <summary>
-        /// 下载源选择改变
+        /// 下载源选择改变（自动保存）
         /// </summary>
-        private void DownloadSourceComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        private void DownloadSourceComboBox_SelectionChanged_AutoSave(object sender, SelectionChangedEventArgs e)
         {
             if (DownloadSourceDescription != null && DownloadSourceComboBox.SelectedIndex >= 0)
             {
                 var source = (DownloadSource)DownloadSourceComboBox.SelectedIndex;
                 DownloadSourceDescription.Text = DownloadSourceManager.GetSourceDescription(source);
             }
+            AutoSaveSettings("下载源");
         }
 
         /// <summary>
@@ -467,23 +470,33 @@ namespace ObsMCLauncher.Pages
         }
 
         /// <summary>
-        /// 配置文件位置选择改变
+        /// 配置文件位置选择改变（自动保存）
         /// </summary>
-        private void ConfigFileLocation_Changed(object sender, SelectionChangedEventArgs e)
+        private void ConfigFileLocation_Changed_AutoSave(object sender, SelectionChangedEventArgs e)
         {
             if (ConfigFileLocationComboBox == null) return;
 
             var location = (DirectoryLocation)ConfigFileLocationComboBox.SelectedIndex;
             CustomConfigFilePanel.Visibility = location == DirectoryLocation.Custom ? Visibility.Visible : Visibility.Collapsed;
             UpdateConfigFileDisplay();
+            AutoSaveSettings("配置文件位置");
         }
 
         /// <summary>
-        /// 账号文件位置选择改变
+        /// 账号文件位置选择改变（自动保存）
         /// </summary>
-        private void AccountFileLocation_Changed(object sender, SelectionChangedEventArgs e)
+        private void AccountFileLocation_Changed_AutoSave(object sender, SelectionChangedEventArgs e)
         {
             UpdateAccountFileDisplay();
+            AutoSaveSettings("账号文件位置");
+        }
+
+        /// <summary>
+        /// 通用ComboBox改变时自动保存
+        /// </summary>
+        private void ComboBox_Changed(object sender, SelectionChangedEventArgs e)
+        {
+            AutoSaveSettings("下载设置");
         }
 
         /// <summary>

@@ -15,33 +15,67 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- 保存成功通知栏 -->
+        <!-- 悬浮保存通知卡片 -->
         <Border x:Name="SaveNotification"
-                Grid.Row="0"
-                Background="{StaticResource PrimaryBrush}"
-                Padding="15,12"
+                Grid.Row="1"
+                Width="320"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Top"
+                Margin="0,20,0,0"
+                Background="{StaticResource SurfaceBrush}"
+                CornerRadius="10"
                 Opacity="0"
                 Panel.ZIndex="1000">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
+            <Border.Effect>
+                <DropShadowEffect Color="Black" 
+                                BlurRadius="20" 
+                                ShadowDepth="2" 
+                                Opacity="0.3"/>
+            </Border.Effect>
+            
+            <StackPanel Margin="20,15">
+                <!-- 图标和文字 -->
+                <Grid Margin="0,0,0,12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    
+                    <Border Grid.Column="0"
+                            Background="{StaticResource PrimaryBrush}"
+                            CornerRadius="20"
+                            Width="36"
+                            Height="36"
+                            Margin="0,0,12,0">
+                        <materialDesign:PackIcon Kind="CheckCircle"
+                                               Width="20"
+                                               Height="20"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"/>
+                    </Border>
+                    
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock x:Name="SaveNotificationText"
+                                 Text="设置已自动保存"
+                                 FontSize="14"
+                                 FontWeight="SemiBold"
+                                 Margin="0,0,0,2"/>
+                        <TextBlock Text="修改已生效"
+                                 FontSize="11"
+                                 Foreground="{StaticResource TextSecondaryBrush}"/>
+                    </StackPanel>
+                </Grid>
                 
-                <materialDesign:PackIcon Kind="CheckCircle"
-                                       Grid.Column="0"
-                                       Width="20"
-                                       Height="20"
-                                       VerticalAlignment="Center"
-                                       Margin="0,0,10,0"/>
-                
-                <TextBlock Grid.Column="1"
-                         x:Name="SaveNotificationText"
-                         Text="设置已自动保存"
-                         FontSize="14"
-                         FontWeight="SemiBold"
-                         VerticalAlignment="Center"/>
-            </Grid>
+                <!-- 进度条 -->
+                <ProgressBar x:Name="SaveProgressBar"
+                             Height="3"
+                             Minimum="0"
+                             Maximum="100"
+                             Value="0"
+                             Foreground="{StaticResource PrimaryBrush}"
+                             Background="#3F3F46"
+                             BorderThickness="0"/>
+            </StackPanel>
         </Border>
 
         <!-- 主要内容区域 -->
@@ -345,7 +379,7 @@
                                  Margin="0,0,0,8"/>
                         <ComboBox x:Name="ConfigFileLocationComboBox"
                                 Style="{StaticResource MaterialDesignOutlinedComboBox}"
-                                SelectionChanged="ConfigFileLocation_Changed"
+                                SelectionChanged="ConfigFileLocation_Changed_AutoSave"
                                 Margin="0,0,0,10">
                             <ComboBoxItem Content="%APPDATA%\ObsMCLauncher\config.json（默认）" Tag="AppData"/>
                             <ComboBoxItem Content="运行目录\config.json" Tag="RunningDirectory"/>
@@ -379,7 +413,7 @@
                                  Margin="0,0,0,8"/>
                         <ComboBox x:Name="AccountFileLocationComboBox"
                                 Style="{StaticResource MaterialDesignOutlinedComboBox}"
-                                SelectionChanged="AccountFileLocation_Changed"
+                                SelectionChanged="AccountFileLocation_Changed_AutoSave"
                                 Margin="0,0,0,10">
                             <ComboBoxItem Content="%APPDATA%\ObsMCLauncher\accounts.json（默认）" Tag="AppData"/>
                             <ComboBoxItem Content="运行目录\accounts.json" Tag="RunningDirectory"/>
@@ -530,7 +564,7 @@
                                     Width="250"
                                     Style="{StaticResource MaterialDesignOutlinedComboBox}"
                                     VerticalAlignment="Center"
-                                    SelectionChanged="DownloadSourceComboBox_SelectionChanged">
+                                    SelectionChanged="DownloadSourceComboBox_SelectionChanged_AutoSave">
                                 <ComboBoxItem Content="BMCLAPI (推荐-中国大陆)" IsSelected="True"/>
                                 <ComboBoxItem Content="Mojang 官方源"/>
                             </ComboBox>
@@ -556,7 +590,8 @@
                                     Grid.Column="1"
                                     Width="150"
                                     Style="{StaticResource MaterialDesignOutlinedComboBox}"
-                                    VerticalAlignment="Center">
+                                    VerticalAlignment="Center"
+                                    SelectionChanged="ComboBox_Changed">
                                 <ComboBoxItem Content="4 线程"/>
                                 <ComboBoxItem Content="8 线程" IsSelected="True"/>
                                 <ComboBoxItem Content="16 线程"/>
@@ -585,16 +620,6 @@
             </Grid>
         </ScrollViewer>
 
-        <!-- 底部进度条 -->
-        <ProgressBar x:Name="SaveProgressBar"
-                     Grid.Row="2"
-                     Height="3"
-                     Minimum="0"
-                     Maximum="100"
-                     Value="0"
-                     Foreground="{StaticResource PrimaryBrush}"
-                     Background="Transparent"
-                     BorderThickness="0"/>
     </Grid>
 </Page>
 

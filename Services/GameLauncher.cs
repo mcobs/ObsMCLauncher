@@ -53,25 +53,63 @@ namespace ObsMCLauncher.Services
                     throw new Exception("无法解析版本JSON");
                 }
 
-                // 3. 构建启动参数
-                var arguments = BuildLaunchArguments(versionId, account, config, versionInfo);
-                Debug.WriteLine($"启动参数: {arguments}");
-
-                // 4. 启动游戏进程
-                var process = new Process
+                if (string.IsNullOrEmpty(versionInfo.MainClass))
                 {
-                    StartInfo = new ProcessStartInfo
-                    {
-                        FileName = config.JavaPath,
-                        Arguments = arguments,
-                        WorkingDirectory = config.GameDirectory,
-                        UseShellExecute = false,
-                        CreateNoWindow = false
-                    }
+                    throw new Exception($"版本JSON中缺少MainClass字段");
+                }
+
+                // 3. 确保natives目录存在
+                var versionDir = Path.Combine(config.GameDirectory, "versions", versionId);
+                var nativesDir = Path.Combine(versionDir, "natives");
+                if (!Directory.Exists(nativesDir))
+                {
+                    Debug.WriteLine($"创建natives目录: {nativesDir}");
+                    Directory.CreateDirectory(nativesDir);
+                }
+
+                // 4. 验证客户端JAR存在
+                var clientJar = Path.Combine(versionDir, $"{versionId}.jar");
+                if (!File.Exists(clientJar))
+                {
+                    throw new FileNotFoundException($"客户端JAR不存在: {clientJar}");
+                }
+
+                // 5. 构建启动参数
+                var arguments = BuildLaunchArguments(versionId, account, config, versionInfo);
+                Debug.WriteLine($"完整启动命令: \"{config.JavaPath}\" {arguments}");
+
+                // 6. 启动游戏进程
+                var processInfo = new ProcessStartInfo
+                {
+                    FileName = config.JavaPath,
+                    Arguments = arguments,
+                    WorkingDirectory = config.GameDirectory,
+                    UseShellExecute = false,
+                    CreateNoWindow = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true
+                };
+
+                var process = new Process { StartInfo = processInfo };
+                
+                // 输出日志
+                process.OutputDataReceived += (sender, e) =>
+                {
+                    if (!string.IsNullOrEmpty(e.Data))
+                        Debug.WriteLine($"[Minecraft] {e.Data}");
+                };
+                
+                process.ErrorDataReceived += (sender, e) =>
+                {
+                    if (!string.IsNullOrEmpty(e.Data))
+                        Debug.WriteLine($"[Minecraft Error] {e.Data}");
                 };
 
                 process.Start();
-                Debug.WriteLine($"游戏进程已启动 (PID: {process.Id})");
+                process.BeginOutputReadLine();
+                process.BeginErrorReadLine();
+                
+                Debug.WriteLine($"✅ 游戏进程已启动 (PID: {process.Id})");
                 Debug.WriteLine($"========== 启动完成 ==========");
 
                 return true;
@@ -114,6 +152,8 @@ namespace ObsMCLauncher.Services
             // 5. 类路径
             args.Append("-cp \"");
             
+            var classpathItems = new System.Collections.Generic.List<string>();
+            
             // 添加所有库
             if (versionInfo.Libraries != null)
             {
@@ -124,7 +164,11 @@ namespace ObsMCLauncher.Services
                         var libPath = GetLibraryPath(librariesDir, lib);
                         if (File.Exists(libPath))
                         {
-                            args.Append($"{libPath};");
+                            classpathItems.Add(libPath);
+                        }
+                        else
+                        {
+                            Debug.WriteLine($"⚠️ 库文件不存在: {libPath}");
                         }
                     }
                 }
@@ -132,7 +176,11 @@ namespace ObsMCLauncher.Services
 
             // 添加客户端JAR
             var clientJar = Path.Combine(versionDir, $"{versionId}.jar");
-            args.Append($"{clientJar}\" ");
+            classpathItems.Add(clientJar);
+            
+            // 使用系统路径分隔符连接
+            args.Append(string.Join(Path.PathSeparator, classpathItems));
+            args.Append("\" ");
 
             // 6. 主类
             args.Append($"{versionInfo.MainClass} ");
