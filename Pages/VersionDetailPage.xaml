@@ -88,7 +88,8 @@
                                      FontSize="13" 
                                      Foreground="{StaticResource TextSecondaryBrush}"
                                      Margin="0,0,0,5"/>
-                            <TextBlock Text="2023-12-07" 
+                            <TextBlock x:Name="ReleaseDate"
+                                     Text="2023-12-07" 
                                      FontSize="16" 
                                      FontWeight="SemiBold"/>
                         </StackPanel>
@@ -99,11 +100,13 @@
                                      FontSize="13" 
                                      Foreground="{StaticResource TextSecondaryBrush}"
                                      Margin="0,0,0,5"/>
-                            <Border Background="{StaticResource PrimaryBrush}"
+                            <Border x:Name="VersionTypeBorder"
+                                  Background="{StaticResource PrimaryBrush}"
                                   CornerRadius="4"
                                   Padding="8,4"
                                   HorizontalAlignment="Left">
-                                <TextBlock Text="正式版" 
+                                <TextBlock x:Name="VersionTypeBadge"
+                                         Text="正式版" 
                                          FontSize="13" 
                                          FontWeight="SemiBold"/>
                             </Border>
@@ -115,7 +118,8 @@
                                      FontSize="13" 
                                      Foreground="{StaticResource TextSecondaryBrush}"
                                      Margin="0,0,0,5"/>
-                            <TextBlock Text="约 250 MB" 
+                            <TextBlock x:Name="DownloadSize"
+                                     Text="计算中..." 
                                      FontSize="16" 
                                      FontWeight="SemiBold"/>
                         </StackPanel>
@@ -145,12 +149,11 @@
                                IsChecked="True"
                                GroupName="LoaderGroup"
                                Style="{StaticResource MaterialDesignRadioButton}"
-                               Margin="0,0,0,20"
+                               Margin="0,0,0,10"
                                Checked="LoaderRadio_Checked">
                         <Border Background="{StaticResource SurfaceElevatedBrush}"
-                              CornerRadius="8"
-                              Padding="20"
-                              MinWidth="800">
+                              CornerRadius="6"
+                              Padding="12">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto"/>
@@ -159,19 +162,19 @@
 
                                 <materialDesign:PackIcon Grid.Column="0"
                                                        Kind="Cube"
-                                                       Width="40"
-                                                       Height="40"
+                                                       Width="24"
+                                                       Height="24"
                                                        Foreground="{StaticResource PrimaryBrush}"
                                                        VerticalAlignment="Center"
-                                                       Margin="0,0,20,0"/>
+                                                       Margin="0,0,12,0"/>
 
-                                <StackPanel Grid.Column="1">
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                     <TextBlock Text="原版（Vanilla）" 
-                                             FontSize="16" 
+                                             FontSize="14" 
                                              FontWeight="SemiBold"
-                                             Margin="0,0,0,5"/>
+                                             Margin="0,0,0,2"/>
                                     <TextBlock Text="Mojang 官方版本，不包含任何修改" 
-                                             FontSize="13" 
+                                             FontSize="12" 
                                              Foreground="{StaticResource TextSecondaryBrush}"/>
                                 </StackPanel>
                             </Grid>
@@ -182,12 +185,11 @@
                     <RadioButton x:Name="ForgeRadio"
                                GroupName="LoaderGroup"
                                Style="{StaticResource MaterialDesignRadioButton}"
-                               Margin="0,0,0,20"
+                               Margin="0,0,0,10"
                                Checked="LoaderRadio_Checked">
                         <Border Background="{StaticResource SurfaceElevatedBrush}"
-                              CornerRadius="8"
-                              Padding="20"
-                              MinWidth="800">
+                              CornerRadius="6"
+                              Padding="12">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto"/>
@@ -197,26 +199,28 @@
 
                                 <materialDesign:PackIcon Grid.Column="0"
                                                        Kind="Hammer"
-                                                       Width="40"
-                                                       Height="40"
+                                                       Width="24"
+                                                       Height="24"
                                                        Foreground="#E67E22"
                                                        VerticalAlignment="Center"
-                                                       Margin="0,0,20,0"/>
+                                                       Margin="0,0,12,0"/>
 
-                                <StackPanel Grid.Column="1">
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                     <TextBlock Text="Forge" 
-                                             FontSize="16" 
+                                             FontSize="14" 
                                              FontWeight="SemiBold"
-                                             Margin="0,0,0,5"/>
+                                             Margin="0,0,0,2"/>
                                     <TextBlock Text="最流行的 MOD 加载器，支持大量经典 MOD" 
-                                             FontSize="13" 
+                                             FontSize="12" 
                                              Foreground="{StaticResource TextSecondaryBrush}"/>
                                 </StackPanel>
 
                                 <ComboBox x:Name="ForgeVersionComboBox"
                                         Grid.Column="2"
-                                        Width="200"
+                                        Width="160"
                                         IsEnabled="False"
+                                        FontSize="12"
+                                        Margin="10,0,0,0"
                                         materialDesign:HintAssist.Hint="选择版本"
                                         Style="{StaticResource MaterialDesignOutlinedComboBox}">
                                     <ComboBoxItem Content="47.2.0 (推荐)" IsSelected="True"/>
@@ -231,12 +235,11 @@
                     <RadioButton x:Name="FabricRadio"
                                GroupName="LoaderGroup"
                                Style="{StaticResource MaterialDesignRadioButton}"
-                               Margin="0,0,0,20"
+                               Margin="0,0,0,10"
                                Checked="LoaderRadio_Checked">
                         <Border Background="{StaticResource SurfaceElevatedBrush}"
-                              CornerRadius="8"
-                              Padding="20"
-                              MinWidth="800">
+                              CornerRadius="6"
+                              Padding="12">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto"/>
@@ -246,26 +249,28 @@
 
                                 <materialDesign:PackIcon Grid.Column="0"
                                                        Kind="Creation"
-                                                       Width="40"
-                                                       Height="40"
+                                                       Width="24"
+                                                       Height="24"
                                                        Foreground="#9B59B6"
                                                        VerticalAlignment="Center"
-                                                       Margin="0,0,20,0"/>
+                                                       Margin="0,0,12,0"/>
 
-                                <StackPanel Grid.Column="1">
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                     <TextBlock Text="Fabric" 
-                                             FontSize="16" 
+                                             FontSize="14" 
                                              FontWeight="SemiBold"
-                                             Margin="0,0,0,5"/>
+                                             Margin="0,0,0,2"/>
                                     <TextBlock Text="轻量级 MOD 加载器，更新快，性能优秀" 
-                                             FontSize="13" 
+                                             FontSize="12" 
                                              Foreground="{StaticResource TextSecondaryBrush}"/>
                                 </StackPanel>
 
                                 <ComboBox x:Name="FabricVersionComboBox"
                                         Grid.Column="2"
-                                        Width="200"
+                                        Width="160"
                                         IsEnabled="False"
+                                        FontSize="12"
+                                        Margin="10,0,0,0"
                                         materialDesign:HintAssist.Hint="选择版本"
                                         Style="{StaticResource MaterialDesignOutlinedComboBox}">
                                     <ComboBoxItem Content="0.15.6 (推荐)" IsSelected="True"/>
@@ -280,12 +285,11 @@
                     <RadioButton x:Name="OptiFineRadio"
                                GroupName="LoaderGroup"
                                Style="{StaticResource MaterialDesignRadioButton}"
-                               Margin="0,0,0,20"
+                               Margin="0,0,0,10"
                                Checked="LoaderRadio_Checked">
                         <Border Background="{StaticResource SurfaceElevatedBrush}"
-                              CornerRadius="8"
-                              Padding="20"
-                              MinWidth="800">
+                              CornerRadius="6"
+                              Padding="12">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto"/>
@@ -295,26 +299,28 @@
 
                                 <materialDesign:PackIcon Grid.Column="0"
                                                        Kind="Speedometer"
-                                                       Width="40"
-                                                       Height="40"
+                                                       Width="24"
+                                                       Height="24"
                                                        Foreground="#3498DB"
                                                        VerticalAlignment="Center"
-                                                       Margin="0,0,20,0"/>
+                                                       Margin="0,0,12,0"/>
 
-                                <StackPanel Grid.Column="1">
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                     <TextBlock Text="OptiFine" 
-                                             FontSize="16" 
+                                             FontSize="14" 
                                              FontWeight="SemiBold"
-                                             Margin="0,0,0,5"/>
+                                             Margin="0,0,0,2"/>
                                     <TextBlock Text="性能优化 MOD，支持光影和高清材质" 
-                                             FontSize="13" 
+                                             FontSize="12" 
                                              Foreground="{StaticResource TextSecondaryBrush}"/>
                                 </StackPanel>
 
                                 <ComboBox x:Name="OptiFineVersionComboBox"
                                         Grid.Column="2"
-                                        Width="200"
+                                        Width="160"
                                         IsEnabled="False"
+                                        FontSize="12"
+                                        Margin="10,0,0,0"
                                         materialDesign:HintAssist.Hint="选择版本"
                                         Style="{StaticResource MaterialDesignOutlinedComboBox}">
                                     <ComboBoxItem Content="HD U I6 (推荐)" IsSelected="True"/>
@@ -332,9 +338,8 @@
                                Margin="0,0,0,0"
                                Checked="LoaderRadio_Checked">
                         <Border Background="{StaticResource SurfaceElevatedBrush}"
-                              CornerRadius="8"
-                              Padding="20"
-                              MinWidth="800">
+                              CornerRadius="6"
+                              Padding="12">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto"/>
@@ -344,26 +349,28 @@
 
                                 <materialDesign:PackIcon Grid.Column="0"
                                                        Kind="ViewQuilt"
-                                                       Width="40"
-                                                       Height="40"
+                                                       Width="24"
+                                                       Height="24"
                                                        Foreground="#E91E63"
                                                        VerticalAlignment="Center"
-                                                       Margin="0,0,20,0"/>
+                                                       Margin="0,0,12,0"/>
 
-                                <StackPanel Grid.Column="1">
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                     <TextBlock Text="Quilt" 
-                                             FontSize="16" 
+                                             FontSize="14" 
                                              FontWeight="SemiBold"
-                                             Margin="0,0,0,5"/>
+                                             Margin="0,0,0,2"/>
                                     <TextBlock Text="基于 Fabric 的下一代 MOD 加载器" 
-                                             FontSize="13" 
+                                             FontSize="12" 
                                              Foreground="{StaticResource TextSecondaryBrush}"/>
                                 </StackPanel>
 
                                 <ComboBox x:Name="QuiltVersionComboBox"
                                         Grid.Column="2"
-                                        Width="200"
+                                        Width="160"
                                         IsEnabled="False"
+                                        FontSize="12"
+                                        Margin="10,0,0,0"
                                         materialDesign:HintAssist.Hint="选择版本"
                                         Style="{StaticResource MaterialDesignOutlinedComboBox}">
                                     <ComboBoxItem Content="0.24.0 (推荐)" IsSelected="True"/>

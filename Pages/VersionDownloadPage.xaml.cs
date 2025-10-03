@@ -30,10 +30,10 @@ namespace ObsMCLauncher.Pages
 
         private void VersionItem_Click(object sender, RoutedEventArgs e)
         {
-            if (sender is Button button && button.Tag is string versionTag)
+            if (sender is Button button && button.Tag is MinecraftVersion version)
             {
                 // 导航到版本详情配置页面
-                NavigationService?.Navigate(new VersionDetailPage(versionTag));
+                NavigationService?.Navigate(new VersionDetailPage(version));
             }
         }
 
@@ -194,7 +194,7 @@ namespace ObsMCLauncher.Pages
         {
             var button = new Button
             {
-                Tag = version.Id,
+                Tag = version,
                 HorizontalContentAlignment = HorizontalAlignment.Stretch,
                 VerticalContentAlignment = VerticalAlignment.Stretch,
                 Padding = new Thickness(0),

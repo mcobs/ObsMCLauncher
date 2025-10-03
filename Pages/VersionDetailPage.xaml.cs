@@ -1,8 +1,11 @@
 using System;
+using System.Collections.Generic;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using System.Windows.Media.Animation;
 using ObsMCLauncher.Models;
 using ObsMCLauncher.Services;
@@ -12,20 +15,205 @@ namespace ObsMCLauncher.Pages
     public partial class VersionDetailPage : Page
     {
         private string currentVersion;
+        private MinecraftVersion? versionInfo;
         private CancellationTokenSource? _downloadCancellationToken;
 
-        public VersionDetailPage(string version)
+        public VersionDetailPage(MinecraftVersion version)
         {
             InitializeComponent();
-            currentVersion = version;
+            versionInfo = version;
+            currentVersion = version.Id;
             
             // 设置版本标题
-            VersionTitle.Text = $"Minecraft {version}";
-            VersionNumber.Text = version;
-            DownloadVersionText.Text = $"Minecraft {version}";
+            VersionTitle.Text = $"Minecraft {version.Id}";
+            VersionNumber.Text = version.Id;
+            DownloadVersionText.Text = $"Minecraft {version.Id}";
+            
+            // 填充版本信息
+            FillVersionInfo();
             
             // 更新选中的加载器显示
             UpdateSelectedLoaderText();
+        }
+        
+        /// <summary>
+        /// 填充版本信息
+        /// </summary>
+        private void FillVersionInfo()
+        {
+            if (versionInfo == null) return;
+            
+            // 发布日期
+            var releaseDate = this.FindName("ReleaseDate") as TextBlock;
+            if (releaseDate != null)
+            {
+                releaseDate.Text = versionInfo.ReleaseTime.ToString("yyyy-MM-dd");
+            }
+            
+            // 版本类型
+            var typeText = versionInfo.Type == "release" ? "正式版" :
+                          versionInfo.Type == "snapshot" ? "快照版" :
+                          versionInfo.Type == "old_alpha" ? "远古Alpha" :
+                          versionInfo.Type == "old_beta" ? "远古Beta" : "其他";
+            
+            var typeBadge = this.FindName("VersionTypeBadge") as TextBlock;
+            if (typeBadge != null)
+            {
+                typeBadge.Text = typeText;
+            }
+            
+            var typeBorder = this.FindName("VersionTypeBorder") as Border;
+            if (typeBorder != null)
+            {
+                var typeColor = versionInfo.Type == "release" ? "#22C55E" :
+                               versionInfo.Type == "snapshot" ? "#3B82F6" : 
+                               "#F59E0B";
+                typeBorder.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString(typeColor));
+            }
+            
+            // 下载大小 - 将在后台异步获取
+            GetDownloadSizeAsync();
+        }
+        
+        /// <summary>
+        /// 异步获取下载大小
+        /// </summary>
+        private async void GetDownloadSizeAsync()
+        {
+            try
+            {
+                var versionJson = await MinecraftVersionService.GetVersionJsonAsync(currentVersion);
+                if (!string.IsNullOrEmpty(versionJson))
+                {
+                    var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                    var versionDetail = JsonSerializer.Deserialize<VersionDetail>(versionJson, options);
+                    
+                    if (versionDetail != null)
+                    {
+                        long totalSize = 0;
+                        
+                        // 1. 客户端 JAR
+                        if (versionDetail.Downloads?.Client?.Size > 0)
+                        {
+                            totalSize += versionDetail.Downloads.Client.Size;
+                        }
+                        
+                        // 2. 库文件
+                        if (versionDetail.Libraries != null)
+                        {
+                            foreach (var library in versionDetail.Libraries)
+                            {
+                                // 检查是否允许下载该库
+                                if (IsLibraryAllowedForSize(library) && 
+                                    library.Downloads?.Artifact?.Size > 0)
+                                {
+                                    totalSize += library.Downloads.Artifact.Size;
+                                }
+                            }
+                        }
+                        
+                        // 3. 资源索引文件（很小，但也算上）
+                        if (versionDetail.AssetIndex?.Size > 0)
+                        {
+                            totalSize += versionDetail.AssetIndex.Size;
+                        }
+                        
+                        var sizeInMB = totalSize / 1024.0 / 1024.0;
+                        var downloadSize = this.FindName("DownloadSize") as TextBlock;
+                        if (downloadSize != null)
+                        {
+                            if (sizeInMB < 1)
+                            {
+                                downloadSize.Text = $"约 {totalSize / 1024.0:F0} KB";
+                            }
+                            else
+                            {
+                                downloadSize.Text = $"约 {sizeInMB:F1} MB";
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"获取下载大小失败: {ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// 检查库是否允许下载（用于计算大小）
+        /// </summary>
+        private bool IsLibraryAllowedForSize(Library library)
+        {
+            if (library.Rules == null || library.Rules.Count == 0)
+                return true;
+
+            foreach (var rule in library.Rules)
+            {
+                if (rule.Action == "allow")
+                {
+                    if (rule.Os?.Name == "windows" || rule.Os == null)
+                        return true;
+                }
+                else if (rule.Action == "disallow")
+                {
+                    if (rule.Os?.Name == "windows")
+                        return false;
+                }
+            }
+
+            return true;
+        }
+        
+        // 简化的版本详情类，用于获取下载大小
+        private class VersionDetail
+        {
+            public DownloadsInfo? Downloads { get; set; }
+            public List<Library>? Libraries { get; set; }
+            public AssetIndexInfo? AssetIndex { get; set; }
+        }
+        
+        private class DownloadsInfo
+        {
+            public DownloadItem? Client { get; set; }
+        }
+        
+        private class DownloadItem
+        {
+            public long Size { get; set; }
+        }
+        
+        private class Library
+        {
+            public LibraryDownloads? Downloads { get; set; }
+            public List<Rule>? Rules { get; set; }
+        }
+        
+        private class LibraryDownloads
+        {
+            public Artifact? Artifact { get; set; }
+        }
+        
+        private class Artifact
+        {
+            public string? Path { get; set; }
+            public long Size { get; set; }
+        }
+        
+        private class Rule
+        {
+            public string? Action { get; set; }
+            public OsInfo? Os { get; set; }
+        }
+        
+        private class OsInfo
+        {
+            public string? Name { get; set; }
+        }
+        
+        private class AssetIndexInfo
+        {
+            public long Size { get; set; }
         }
 
         private void BackButton_Click(object sender, RoutedEventArgs e)
