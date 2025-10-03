@@ -120,6 +120,53 @@ namespace ObsMCLauncher.Services
         }
 
         /// <summary>
+        /// 添加微软账号
+        /// </summary>
+        public GameAccount AddMicrosoftAccount(GameAccount account)
+        {
+            if (account == null)
+            {
+                throw new ArgumentNullException(nameof(account));
+            }
+
+            // 检查用户名是否已存在
+            if (_accounts.Any(a => a.Username.Equals(account.Username, StringComparison.OrdinalIgnoreCase)))
+            {
+                throw new InvalidOperationException($"账号 '{account.Username}' 已存在");
+            }
+
+            // 如果是第一个账号，设为默认
+            account.IsDefault = _accounts.Count == 0;
+
+            _accounts.Add(account);
+            SaveAccounts();
+
+            return account;
+        }
+
+        /// <summary>
+        /// 刷新微软账号令牌
+        /// </summary>
+        public async System.Threading.Tasks.Task<bool> RefreshMicrosoftAccountAsync(string accountId)
+        {
+            var account = _accounts.FirstOrDefault(a => a.Id == accountId && a.Type == AccountType.Microsoft);
+            if (account == null)
+            {
+                return false;
+            }
+
+            var authService = new MicrosoftAuthService();
+            var success = await authService.RefreshTokenAsync(account);
+            
+            if (success)
+            {
+                SaveAccounts();
+            }
+
+            return success;
+        }
+
+        /// <summary>
         /// 删除账号
         /// </summary>
         public void DeleteAccount(string accountId)

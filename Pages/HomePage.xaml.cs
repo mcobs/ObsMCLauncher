@@ -7,24 +7,68 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Threading;
 using MaterialDesignThemes.Wpf;
 using ObsMCLauncher.Services;
 using ObsMCLauncher.Models;
+using ObsMCLauncher.Utils;
 
 namespace ObsMCLauncher.Pages
 {
     public partial class HomePage : Page
     {
+        private DispatcherTimer? _systemInfoTimer;
+
         public HomePage()
         {
             InitializeComponent();
             Loaded += HomePage_Loaded;
+            Unloaded += HomePage_Unloaded;
         }
 
         private void HomePage_Loaded(object sender, RoutedEventArgs e)
         {
             LoadAccounts();
             LoadVersions();
+            StartSystemInfoTimer();
+        }
+
+        private void HomePage_Unloaded(object sender, RoutedEventArgs e)
+        {
+            _systemInfoTimer?.Stop();
+        }
+
+        /// <summary>
+        /// 启动系统信息定时器
+        /// </summary>
+        private void StartSystemInfoTimer()
+        {
+            // 立即更新一次
+            UpdateSystemInfo();
+
+            // 创建定时器，每5秒更新一次
+            _systemInfoTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromSeconds(5)
+            };
+            _systemInfoTimer.Tick += (s, e) => UpdateSystemInfo();
+            _systemInfoTimer.Start();
+        }
+
+        /// <summary>
+        /// 更新系统信息显示
+        /// </summary>
+        private void UpdateSystemInfo()
+        {
+            try
+            {
+                SystemInfoText.Text = SystemInfo.GetSystemInfoSummary();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"更新系统信息失败: {ex.Message}");
+                SystemInfoText.Text = "系统信息获取失败";
+            }
         }
 
         private void LoadAccounts()

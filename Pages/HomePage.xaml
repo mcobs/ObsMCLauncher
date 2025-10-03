@@ -283,7 +283,8 @@
                                  VerticalAlignment="Center"
                                  FontSize="13"/>
                     </StackPanel>
-                    <TextBlock Text="已安装 4 个版本 | 内存使用: 2GB / 16GB" 
+                    <TextBlock x:Name="SystemInfoText"
+                             Text="正在加载系统信息..." 
                              HorizontalAlignment="Right"
                              VerticalAlignment="Center"
                              FontSize="13"

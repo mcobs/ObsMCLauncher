@@ -3,6 +3,7 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using MaterialDesignThemes.Wpf;
 using ObsMCLauncher.Models;
 using ObsMCLauncher.Services;
@@ -11,10 +12,24 @@ namespace ObsMCLauncher.Pages
 {
     public partial class AccountManagementPage : Page
     {
+        private string _currentAuthUrl = "";
+        private bool _isLoggingIn = false;
+
         public AccountManagementPage()
         {
             InitializeComponent();
+            Loaded += AccountManagementPage_Loaded;
+            Unloaded += AccountManagementPage_Unloaded;
+        }
+
+        private void AccountManagementPage_Loaded(object sender, RoutedEventArgs e)
+        {
             LoadAccounts();
+        }
+
+        private void AccountManagementPage_Unloaded(object sender, RoutedEventArgs e)
+        {
+            // 页面卸载时，确保清理状态
         }
 
         /// <summary>
@@ -177,17 +192,176 @@ namespace ObsMCLauncher.Pages
             return border;
         }
 
-        private void AddMicrosoftAccount_Click(object sender, RoutedEventArgs e)
+        private async void AddMicrosoftAccount_Click(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show(
-                "微软账户登录功能将在后续版本实现。\n\n" +
-                "届时将支持：\n" +
-                "• OAuth 2.0 安全登录\n" +
-                "• 自动获取正版皮肤\n" +
-                "• 多账户管理",
-                "微软账户登录",
-                MessageBoxButton.OK,
-                MessageBoxImage.Information);
+            if (_isLoggingIn) return; // 防止重复点击
+            
+            _isLoggingIn = true;
+            
+            try
+            {
+                // 1. 显示登录进度
+                ShowLoginProgress("准备登录...");
+
+                // 2. 创建认证服务并设置进度回调
+                var authService = new MicrosoftAuthService();
+                authService.OnProgressUpdate = UpdateLoginProgress;
+                authService.OnAuthUrlGenerated = ShowAuthUrlDialog;
+
+                // 3. 开始登录
+                var account = await authService.LoginAsync();
+
+                if (account != null)
+                {
+                    AccountService.Instance.AddMicrosoftAccount(account);
+                    LoadAccounts();
+                    
+                    // 隐藏所有对话框
+                    HideAllDialogs();
+                    
+                    MessageBox.Show(
+                        $"✅ 成功添加微软账户\n\n" +
+                        $"游戏名: {account.Username}\n" +
+                        $"UUID: {account.MinecraftUUID}",
+                        "登录成功",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+                }
+                else
+                {
+                    HideAllDialogs();
+                    MessageBox.Show(
+                        "❌ 登录失败！\n\n" +
+                        "可能的原因：\n" +
+                        "• 未购买正版 Minecraft\n" +
+                        "• 网络连接问题\n" +
+                        "• 授权被取消",
+                        "登录失败",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+                }
+            }
+            catch (Exception ex)
+            {
+                HideAllDialogs();
+                
+                MessageBox.Show(
+                    $"❌ 微软账户登录失败\n\n" +
+                    $"错误: {ex.Message}\n\n" +
+                    "请检查网络连接后重试",
+                    "登录错误",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+                
+                System.Diagnostics.Debug.WriteLine($"微软登录错误详情: {ex}");
+            }
+            finally
+            {
+                _isLoggingIn = false;
+            }
+        }
+
+        /// <summary>
+        /// 显示登录进度
+        /// </summary>
+        private void ShowLoginProgress(string status)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                LoginProgressStatus.Text = status;
+                LoginProgressPanel.Visibility = Visibility.Visible;
+            });
+        }
+
+        /// <summary>
+        /// 更新登录进度
+        /// </summary>
+        private void UpdateLoginProgress(string status)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                LoginProgressStatus.Text = status;
+            });
+        }
+
+        /// <summary>
+        /// 显示授权URL对话框
+        /// </summary>
+        private void ShowAuthUrlDialog(string url)
+        {
+            _currentAuthUrl = url;
+            
+            Dispatcher.Invoke(() =>
+            {
+                AuthUrlText.Text = url;
+                ModalOverlay.Visibility = Visibility.Visible;
+                AuthUrlDialog.Visibility = Visibility.Visible;
+                
+                // 淡入动画
+                var fadeIn = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(200));
+                AuthUrlDialog.BeginAnimation(OpacityProperty, fadeIn);
+            });
+        }
+
+        /// <summary>
+        /// 隐藏所有对话框
+        /// </summary>
+        private void HideAllDialogs()
+        {
+            Dispatcher.Invoke(() =>
+            {
+                LoginProgressPanel.Visibility = Visibility.Collapsed;
+                ModalOverlay.Visibility = Visibility.Collapsed;
+                AuthUrlDialog.Visibility = Visibility.Collapsed;
+            });
+        }
+
+        /// <summary>
+        /// 复制授权URL
+        /// </summary>
+        private void CopyAuthUrl_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                Clipboard.SetText(_currentAuthUrl);
+                
+                var button = sender as Button;
+                if (button != null)
+                {
+                    var originalContent = button.Content;
+                    button.Content = "✅ 已复制";
+                    
+                    var timer = new System.Windows.Threading.DispatcherTimer();
+                    timer.Interval = TimeSpan.FromSeconds(2);
+                    timer.Tick += (s, args) =>
+                    {
+                        button.Content = originalContent;
+                        timer.Stop();
+                    };
+                    timer.Start();
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"复制失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 关闭授权URL对话框
+        /// </summary>
+        private void CloseAuthUrlDialog_Click(object sender, RoutedEventArgs e)
+        {
+            ModalOverlay.Visibility = Visibility.Collapsed;
+            AuthUrlDialog.Visibility = Visibility.Collapsed;
+        }
+
+        /// <summary>
+        /// 点击遮罩层时不执行任何操作（阻止关闭）
+        /// </summary>
+        private void ModalOverlay_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            // 不关闭对话框，保持模态状态
         }
 
         private void AddOfflineAccount_Click(object sender, RoutedEventArgs e)

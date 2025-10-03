@@ -22,6 +22,11 @@ namespace ObsMCLauncher.Pages
         public SettingsPage()
         {
             InitializeComponent();
+            
+            // 设置内存滑块的最大值为系统总内存
+            var totalMemoryMB = ObsMCLauncher.Utils.SystemInfo.GetTotalMemoryMB();
+            MaxMemorySlider.Maximum = totalMemoryMB;
+            
             LoadSettings();
             _isInitialized = true; // 初始化完成后才允许自动保存
         }
@@ -40,7 +45,7 @@ namespace ObsMCLauncher.Pages
 
             // 加载其他游戏设置
             MaxMemorySlider.Value = _config.MaxMemory;
-            MinMemorySlider.Value = _config.MinMemory;
+            MaxMemoryTextBox.Text = _config.MaxMemory.ToString();
             JavaPathTextBox.Text = _config.JavaPath;
             JvmArgumentsTextBox.Text = _config.JvmArguments;
 
@@ -60,9 +65,7 @@ namespace ObsMCLauncher.Pages
             CloseAfterLaunchToggle.IsChecked = _config.CloseAfterLaunch;
             AutoCheckUpdateToggle.IsChecked = _config.AutoCheckUpdate;
 
-            // 更新内存显示
-            MaxMemoryText.Text = $"{_config.MaxMemory} MB";
-            MinMemoryText.Text = $"{_config.MinMemory} MB";
+            // MaxMemoryTextBox已在上面设置
 
             // 设置当前下载源
             DownloadSourceManager.Instance.SetDownloadSource(_config.DownloadSource);
@@ -84,7 +87,7 @@ namespace ObsMCLauncher.Pages
 
                 // 保存其他游戏设置
                 _config.MaxMemory = (int)MaxMemorySlider.Value;
-                _config.MinMemory = (int)MinMemorySlider.Value;
+                _config.MinMemory = 512; // 固定为512MB
                 _config.JavaPath = JavaPathTextBox.Text;
                 _config.JvmArguments = JvmArgumentsTextBox.Text;
 
@@ -208,25 +211,62 @@ namespace ObsMCLauncher.Pages
         /// <summary>
         /// 最大内存滑块值改变
         /// </summary>
+        private bool _isUpdatingMemory = false;
+
         private void MaxMemorySlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
-            if (MaxMemoryText != null)
+            if (_isUpdatingMemory) return;
+            
+            if (MaxMemoryTextBox != null)
             {
-                MaxMemoryText.Text = $"{(int)e.NewValue} MB";
+                _isUpdatingMemory = true;
+                MaxMemoryTextBox.Text = ((int)e.NewValue).ToString();
+                _isUpdatingMemory = false;
                 AutoSaveSettings("最大内存");
             }
         }
 
         /// <summary>
-        /// 最小内存滑块值改变
+        /// 最大内存文本框内容改变
         /// </summary>
-        private void MinMemorySlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        private void MaxMemoryTextBox_TextChanged(object sender, TextChangedEventArgs e)
         {
-            if (MinMemoryText != null)
+            if (_isUpdatingMemory || !_isInitialized) return;
+            
+            if (int.TryParse(MaxMemoryTextBox.Text, out int value))
             {
-                MinMemoryText.Text = $"{(int)e.NewValue} MB";
-                AutoSaveSettings("最小内存");
+                var maxMemory = (int)MaxMemorySlider.Maximum;
+                if (value >= 512 && value <= maxMemory)
+                {
+                    _isUpdatingMemory = true;
+                    MaxMemorySlider.Value = value;
+                    _isUpdatingMemory = false;
+                }
+                else if (value > maxMemory)
+                {
+                    // 如果超过系统内存，自动调整为最大值
+                    _isUpdatingMemory = true;
+                    MaxMemoryTextBox.Text = maxMemory.ToString();
+                    MaxMemorySlider.Value = maxMemory;
+                    _isUpdatingMemory = false;
+                }
             }
+        }
+
+        /// <summary>
+        /// 最大内存文本框输入验证（只允许数字）
+        /// </summary>
+        private void MaxMemoryTextBox_PreviewTextInput(object sender, System.Windows.Input.TextCompositionEventArgs e)
+        {
+            e.Handled = !IsTextNumeric(e.Text);
+        }
+
+        /// <summary>
+        /// 检查文本是否为数字
+        /// </summary>
+        private bool IsTextNumeric(string text)
+        {
+            return System.Text.RegularExpressions.Regex.IsMatch(text, "^[0-9]+$");
         }
 
         /// <summary>

@@ -149,59 +149,36 @@
                                  Margin="0,0,0,20"/>
 
                         <!-- 内存分配 -->
-                        <TextBlock Text="最大内存分配" 
+                        <TextBlock Text="最大内存分配 (最小内存固定为512MB)" 
                                  FontSize="14" 
                                  Margin="0,0,0,8"/>
                         <Grid Margin="0,0,0,20">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="100"/>
                             </Grid.ColumnDefinitions>
                             <Slider x:Name="MaxMemorySlider"
                                   Grid.Column="0"
                                   Minimum="1024"
-                                  Maximum="16384"
+                                  Maximum="65536"
                                   Value="4096"
-                                  TickFrequency="1024"
-                                  IsSnapToTickEnabled="True"
+                                  TickFrequency="512"
+                                  IsSnapToTickEnabled="False"
                                   Style="{StaticResource MaterialDesignDiscreteSlider}"
                                   Margin="0,0,20,0"
                                   ValueChanged="MaxMemorySlider_ValueChanged"/>
-                            <TextBlock x:Name="MaxMemoryText"
-                                     Grid.Column="1"
-                                     Text="4096 MB"
-                                     FontSize="14"
-                                     VerticalAlignment="Center"
-                                     Width="80"
-                                     TextAlignment="Right"/>
-                        </Grid>
-
-                        <!-- 最小内存 -->
-                        <TextBlock Text="最小内存分配" 
-                                 FontSize="14" 
-                                 Margin="0,0,0,8"/>
-                        <Grid Margin="0,0,0,20">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <Slider x:Name="MinMemorySlider"
-                                  Grid.Column="0"
-                                  Minimum="512"
-                                  Maximum="8192"
-                                  Value="1024"
-                                  TickFrequency="512"
-                                  IsSnapToTickEnabled="True"
-                                  Style="{StaticResource MaterialDesignDiscreteSlider}"
-                                  Margin="0,0,20,0"
-                                  ValueChanged="MinMemorySlider_ValueChanged"/>
-                            <TextBlock x:Name="MinMemoryText"
-                                     Grid.Column="1"
-                                     Text="1024 MB"
-                                     FontSize="14"
-                                     VerticalAlignment="Center"
-                                     Width="80"
-                                     TextAlignment="Right"/>
+                            <TextBox x:Name="MaxMemoryTextBox"
+                                   Grid.Column="1"
+                                   Text="4096"
+                                   Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                   Foreground="#FFFFFF"
+                                   CaretBrush="#FFFFFF"
+                                   FontSize="14"
+                                   VerticalAlignment="Center"
+                                   TextAlignment="Right"
+                                   materialDesign:HintAssist.Hint="MB"
+                                   PreviewTextInput="MaxMemoryTextBox_PreviewTextInput"
+                                   TextChanged="MaxMemoryTextBox_TextChanged"/>
                         </Grid>
 
                         <!-- Java 路径 -->

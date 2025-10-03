@@ -51,26 +51,63 @@ namespace ObsMCLauncher.Models
         /// </summary>
         public DateTime CreatedAt { get; set; } = DateTime.Now;
 
-        /// <summary>
-        /// 最后使用时间
-        /// </summary>
-        public DateTime LastUsed { get; set; } = DateTime.Now;
+    /// <summary>
+    /// 最后使用时间
+    /// </summary>
+    public DateTime LastUsed { get; set; } = DateTime.Now;
 
-        /// <summary>
-        /// 获取显示名称
-        /// </summary>
-        public string DisplayName
+    // ========== 微软账户专用字段 ==========
+    
+    /// <summary>
+    /// 访问令牌（微软账户）
+    /// </summary>
+    public string? AccessToken { get; set; }
+
+    /// <summary>
+    /// 刷新令牌（微软账户）
+    /// </summary>
+    public string? RefreshToken { get; set; }
+
+    /// <summary>
+    /// 访问令牌过期时间（微软账户）
+    /// </summary>
+    public DateTime? ExpiresAt { get; set; }
+
+    /// <summary>
+    /// Minecraft 访问令牌
+    /// </summary>
+    public string? MinecraftAccessToken { get; set; }
+
+    /// <summary>
+    /// Minecraft UUID（正版账户的真实UUID）
+    /// </summary>
+    public string? MinecraftUUID { get; set; }
+
+    /// <summary>
+    /// 获取显示名称
+    /// </summary>
+    public string DisplayName
+    {
+        get
         {
-            get
+            return Type switch
             {
-                return Type switch
-                {
-                    AccountType.Offline => $"{Username} (离线)",
-                    AccountType.Microsoft => $"{Username} (微软)",
-                    _ => Username
-                };
-            }
+                AccountType.Offline => $"{Username} (离线)",
+                AccountType.Microsoft => $"{Username} (微软)",
+                _ => Username
+            };
         }
     }
+
+    /// <summary>
+    /// 检查访问令牌是否已过期
+    /// </summary>
+    public bool IsTokenExpired()
+    {
+        if (Type == AccountType.Offline) return false;
+        if (ExpiresAt == null) return true;
+        return DateTime.Now >= ExpiresAt.Value.AddMinutes(-5); // 提前5分钟刷新
+    }
+}
 }
 

@@ -40,6 +40,26 @@ namespace ObsMCLauncher.Services
                 Debug.WriteLine($"游戏目录: {config.GameDirectory}");
                 Debug.WriteLine($"Java路径: {config.JavaPath}");
 
+                // 0. 如果是微软账号且令牌过期，尝试刷新
+                if (account.Type == AccountType.Microsoft && account.IsTokenExpired())
+                {
+                    Debug.WriteLine("⚠️ 微软账号令牌已过期，尝试刷新...");
+                    Console.WriteLine("⚠️ 微软账号令牌已过期，尝试刷新...");
+                    
+                    var refreshTask = AccountService.Instance.RefreshMicrosoftAccountAsync(account.Id);
+                    var refreshSuccess = refreshTask.GetAwaiter().GetResult();
+                    
+                    if (!refreshSuccess)
+                    {
+                        LastError = "微软账号令牌已过期且刷新失败\n请重新登录微软账号";
+                        Console.WriteLine($"❌ {LastError}");
+                        throw new Exception(LastError);
+                    }
+                    
+                    Debug.WriteLine("✅ 令牌刷新成功");
+                    Console.WriteLine("✅ 令牌刷新成功");
+                }
+
                 // 1. 验证Java路径
                 if (!File.Exists(config.JavaPath))
                 {
@@ -265,9 +285,25 @@ namespace ObsMCLauncher.Services
             args.Append($"--gameDir \"{gameDir}\" ");
             args.Append($"--assetsDir \"{assetsDir}\" ");
             args.Append($"--assetIndex {assetIndex} ");
-            args.Append($"--uuid {account.UUID} ");
-            args.Append($"--accessToken 0 ");
-            args.Append($"--userType {(account.Type == AccountType.Offline ? "legacy" : "msa")} ");
+            
+            // 根据账号类型使用不同的 UUID 和 AccessToken
+            if (account.Type == AccountType.Microsoft)
+            {
+                // 微软账号使用真实的 Minecraft UUID 和 AccessToken
+                var uuid = account.MinecraftUUID ?? account.UUID;
+                var accessToken = account.MinecraftAccessToken ?? "0";
+                args.Append($"--uuid {uuid} ");
+                args.Append($"--accessToken {accessToken} ");
+                args.Append($"--userType msa ");
+            }
+            else
+            {
+                // 离线账号使用随机 UUID 和虚拟 AccessToken
+                args.Append($"--uuid {account.UUID} ");
+                args.Append($"--accessToken 0 ");
+                args.Append($"--userType legacy ");
+            }
+            
             args.Append($"--versionType \"ObsMCLauncher\" ");
 
             return args.ToString();
