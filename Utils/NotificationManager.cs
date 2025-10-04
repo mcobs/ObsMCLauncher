@@ -276,66 +276,22 @@ namespace ObsMCLauncher.Utils
             topGrid.Children.Add(iconBorder);
             topGrid.Children.Add(textPanel);
 
-            // 关闭按钮（非进度通知）- 使用真正的Button，填充整个Grid单元格高度
+            // TODO: 技术债 - 关闭按钮点击区域问题待解决
+            // 临时隐藏关闭按钮，通知会在3秒后自动消失
+            // 问题：WPF Grid + Button 的点击区域和视觉区域不一致
+            // 后续需要：
+            // 1. 重新设计通知布局（使用StackPanel而不是Grid）
+            // 2. 或者使用XAML定义Button样式而不是代码创建
+            // 3. 或者使用自定义UserControl
+            
+            /* 关闭按钮代码已临时注释
             if (!notification.IsProgress)
             {
-                var closeButton = new Button
-                {
-                    Width = 28,
-                    // 不设置Height，让它填充整个Grid单元格高度
-                    Background = new SolidColorBrush(Color.FromArgb(40, 255, 255, 255)),
-                    BorderThickness = new Thickness(0),
-                    Margin = new Thickness(4, 0, 4, 0), // 左右边距4px，上下0px填充整个高度
-                    Cursor = System.Windows.Input.Cursors.Hand,
-                    Padding = new Thickness(0),
-                    VerticalAlignment = VerticalAlignment.Stretch, // 拉伸填充整个Grid单元格高度
-                    HorizontalAlignment = HorizontalAlignment.Center,
-                    Style = null
-                };
-                
-                // 设置Button的模板，包含圆角
-                var template = new ControlTemplate(typeof(Button));
-                var borderFactory = new FrameworkElementFactory(typeof(Border));
-                borderFactory.SetValue(Border.BackgroundProperty, new TemplateBindingExtension(Button.BackgroundProperty));
-                borderFactory.SetValue(Border.CornerRadiusProperty, new CornerRadius(14));
-                
-                var contentFactory = new FrameworkElementFactory(typeof(ContentPresenter));
-                contentFactory.SetValue(ContentPresenter.HorizontalAlignmentProperty, HorizontalAlignment.Center);
-                contentFactory.SetValue(ContentPresenter.VerticalAlignmentProperty, VerticalAlignment.Center);
-                borderFactory.AppendChild(contentFactory);
-                
-                template.VisualTree = borderFactory;
-                closeButton.Template = template;
-                
-                // 设置按钮内容为关闭图标
-                closeButton.Content = new PackIcon
-                {
-                    Kind = PackIconKind.Close,
-                    Width = 16,
-                    Height = 16,
-                    Foreground = Brushes.White
-                };
-                
-                // 鼠标悬停效果
-                closeButton.MouseEnter += (s, e) =>
-                {
-                    closeButton.Background = new SolidColorBrush(Color.FromArgb(60, 255, 255, 255));
-                };
-                closeButton.MouseLeave += (s, e) =>
-                {
-                    closeButton.Background = new SolidColorBrush(Color.FromArgb(40, 255, 255, 255));
-                };
-                
-                // 点击事件
-                var notificationId = notification.Id;
-                closeButton.Click += (s, e) =>
-                {
-                    RemoveNotification(notificationId);
-                };
-                
+                var closeButton = new Button { ... };
                 Grid.SetColumn(closeButton, 2);
                 topGrid.Children.Add(closeButton);
             }
+            */
 
             stackPanel.Children.Add(topGrid);
 
