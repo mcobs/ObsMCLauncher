@@ -238,24 +238,24 @@ namespace ObsMCLauncher.Pages
                 // 5. 显示启动流程通知
                 var launchNotificationId = NotificationManager.Instance.ShowNotification(
                     "正在启动游戏",
-                    "正在准备启动...",
+                    "正在检查游戏完整性...",
                     NotificationType.Progress
                 );
 
-                // 5. 启动游戏（包含依赖检查）
+                // 5. 先检查游戏完整性（不启动游戏）
                 Debug.WriteLine($"========== 准备启动游戏 ==========");
                 Debug.WriteLine($"版本: {versionId}");
                 Debug.WriteLine($"账号: {account.Username} ({account.Type})");
                 
-                // 使用进度回调更新通知
-                bool success = await GameLauncher.LaunchGameAsync(versionId, account, config, (progress) =>
+                LaunchButton.Content = "检查依赖中...";
+                bool hasIntegrityIssue = await GameLauncher.CheckGameIntegrityAsync(versionId, config, (progress) =>
                 {
                     NotificationManager.Instance.UpdateNotification(launchNotificationId, progress);
                     LaunchButton.Content = progress;
                 });
 
-                // 6. 如果失败且是因为缺少库文件，自动下载
-                if (!success && GameLauncher.MissingLibraries.Count > 0)
+                // 6. 如果检测到缺失的库文件，自动下载
+                if (hasIntegrityIssue && GameLauncher.MissingLibraries.Count > 0)
                 {
                     Debug.WriteLine($"检测到 {GameLauncher.MissingLibraries.Count} 个缺失的依赖库，开始自动补全...");
                     Console.WriteLine($"检测到 {GameLauncher.MissingLibraries.Count} 个缺失的依赖库，开始自动补全...");
@@ -294,19 +294,14 @@ namespace ObsMCLauncher.Pages
                             3
                         );
                         
-                        // 更新启动通知，准备重试
+                        // 更新启动通知，准备继续
                         NotificationManager.Instance.UpdateNotification(
                             launchNotificationId,
-                            "依赖补全完成，正在重新启动游戏..."
+                            "依赖补全完成，继续检查资源..."
                         );
                         
-                        // 下载成功后重试启动
-                        LaunchButton.Content = "启动中...";
-                        success = await GameLauncher.LaunchGameAsync(versionId, account, config, (progress) =>
-                        {
-                            NotificationManager.Instance.UpdateNotification(launchNotificationId, progress);
-                            LaunchButton.Content = progress;
-                        });
+                        // 设置标志，继续检查Assets（依赖已补全，认为没有完整性问题）
+                        hasIntegrityIssue = false;
                     }
                     else
                     {
@@ -327,55 +322,112 @@ namespace ObsMCLauncher.Pages
                     }
                 }
 
-                // 移除启动进度通知
-                NotificationManager.Instance.RemoveNotification(launchNotificationId);
-
-                if (success)
+                // 7. 检查并补全Assets资源（必须的，在启动游戏前完成）
+                if (!hasIntegrityIssue)
                 {
-                    // 更新账号最后使用时间
-                    AccountService.Instance.UpdateLastUsed(account.Id);
-
-                    Debug.WriteLine($"✅ 游戏已启动！版本: {versionId}, 账号: {account.Username}");
-                    Console.WriteLine($"✅ 游戏已启动！版本: {versionId}, 账号: {account.Username}");
-                    
-                    // 显示启动成功通知
-                    NotificationManager.Instance.ShowNotification(
-                        "游戏启动成功",
-                        $"Minecraft {versionId} 已启动",
-                        NotificationType.Success,
-                        3
+                    // 更新启动通知
+                    NotificationManager.Instance.UpdateNotification(
+                        launchNotificationId,
+                        "正在检查游戏资源文件..."
                     );
-                }
-                else
-                {
-                    var errorMessage = "游戏启动失败！";
-                    var notificationMessage = "游戏启动失败";
+                    LaunchButton.Content = "检查资源中...";
+
+                    Debug.WriteLine("========== 开始检查Assets资源 ==========");
                     
-                    if (!string.IsNullOrEmpty(GameLauncher.LastError))
+                    var assetsSuccess = await AssetsDownloadService.DownloadAndCheckAssetsAsync(
+                        config.GameDirectory,
+                        versionId,
+                        (current, total, message) =>
+                        {
+                            Dispatcher.Invoke(() =>
+                            {
+                                NotificationManager.Instance.UpdateNotification(
+                                    launchNotificationId,
+                                    $"检查资源: {message}"
+                                );
+                                LaunchButton.Content = message;
+                            });
+                        }
+                    );
+
+                    if (!assetsSuccess)
                     {
-                        errorMessage += $"\n错误详情：{GameLauncher.LastError}";
-                        notificationMessage = GameLauncher.LastError;
+                        Debug.WriteLine("⚠️ Assets资源检查/下载失败，但游戏可能仍可运行");
+                        NotificationManager.Instance.ShowNotification(
+                            "资源文件不完整",
+                            "部分游戏资源文件缺失，游戏可能缺少声音等资源",
+                            NotificationType.Warning,
+                            5
+                        );
                     }
                     else
                     {
-                        notificationMessage = "请检查Java路径和游戏文件完整性";
+                        Debug.WriteLine("✅ Assets资源检查完成");
                     }
                     
-                    errorMessage += "\n\n请检查：" +
-                        "\n1. Java路径是否正确（设置→Java路径）" +
-                        "\n2. 游戏文件是否完整（重新下载版本）" +
-                        "\n3. 查看调试输出窗口（Debug）获取详细日志";
-                    
-                    Debug.WriteLine($"❌ {errorMessage}");
-                    Console.WriteLine($"❌ {errorMessage}");
-                    
-                    // 显示启动失败通知
-                    NotificationManager.Instance.ShowNotification(
-                        "游戏启动失败",
-                        notificationMessage,
-                        NotificationType.Error,
-                        5
+                    // 8. Assets检查完成后，正式启动游戏
+                    NotificationManager.Instance.UpdateNotification(
+                        launchNotificationId,
+                        "正在启动游戏..."
                     );
+                    LaunchButton.Content = "启动中...";
+                    
+                    bool finalLaunchSuccess = await GameLauncher.LaunchGameAsync(versionId, account, config, (progress) =>
+                    {
+                        NotificationManager.Instance.UpdateNotification(launchNotificationId, progress);
+                        LaunchButton.Content = progress;
+                    });
+                    
+                    // 移除启动进度通知
+                    NotificationManager.Instance.RemoveNotification(launchNotificationId);
+
+                    if (finalLaunchSuccess)
+                    {
+                        // 更新账号最后使用时间
+                        AccountService.Instance.UpdateLastUsed(account.Id);
+
+                        Debug.WriteLine($"✅ 游戏已启动！版本: {versionId}, 账号: {account.Username}");
+                        Console.WriteLine($"✅ 游戏已启动！版本: {versionId}, 账号: {account.Username}");
+                        
+                        // 显示启动成功通知
+                        NotificationManager.Instance.ShowNotification(
+                            "游戏启动成功",
+                            $"Minecraft {versionId} 已启动",
+                            NotificationType.Success,
+                            3
+                        );
+                    }
+                    else
+                    {
+                        var errorMessage = "游戏启动失败！";
+                        var notificationMessage = "游戏启动失败";
+                        
+                        if (!string.IsNullOrEmpty(GameLauncher.LastError))
+                        {
+                            errorMessage += $"\n错误详情：{GameLauncher.LastError}";
+                            notificationMessage = GameLauncher.LastError;
+                        }
+                        else
+                        {
+                            notificationMessage = "请检查Java路径和游戏文件完整性";
+                        }
+                        
+                        errorMessage += "\n\n请检查：" +
+                            "\n1. Java路径是否正确（设置→Java路径）" +
+                            "\n2. 游戏文件是否完整（重新下载版本）" +
+                            "\n3. 查看调试输出窗口（Debug）获取详细日志";
+                        
+                        Debug.WriteLine($"❌ {errorMessage}");
+                        Console.WriteLine($"❌ {errorMessage}");
+                        
+                        // 显示启动失败通知
+                        NotificationManager.Instance.ShowNotification(
+                            "游戏启动失败",
+                            notificationMessage,
+                            NotificationType.Error,
+                            5
+                        );
+                    }
                 }
             }
             catch (Exception ex)
@@ -494,8 +546,29 @@ namespace ObsMCLauncher.Pages
                             {
                                 Directory.CreateDirectory(libDir);
                                 
-                                var url = lib.Downloads.Artifact.Url;
-                                Debug.WriteLine($"📥 下载: {lib.Name}");
+                                // 使用下载源服务获取URL，而不是直接使用Mojang URL
+                                var downloadSource = DownloadSourceManager.Instance.CurrentService;
+                                string url;
+                                
+                                if (!string.IsNullOrEmpty(lib.Downloads?.Artifact?.Path))
+                                {
+                                    // 优先使用下载源镜像（如BMCLAPI的maven端点）
+                                    url = downloadSource.GetLibraryUrl(lib.Downloads.Artifact.Path);
+                                    Debug.WriteLine($"📥 下载: {lib.Name} (使用下载源: {config.DownloadSource})");
+                                }
+                                else if (!string.IsNullOrEmpty(lib.Downloads?.Artifact?.Url))
+                                {
+                                    // 备用方案：使用version.json中的URL
+                                    url = lib.Downloads.Artifact.Url;
+                                    Debug.WriteLine($"📥 下载: {lib.Name} (使用原始URL)");
+                                }
+                                else
+                                {
+                                    Debug.WriteLine($"⚠️ 无法获取下载URL: {lib.Name}");
+                                    Console.WriteLine($"⚠️ 无法获取下载URL: {lib.Name}");
+                                    continue;
+                                }
+                                
                                 Debug.WriteLine($"   URL: {url}");
                                 Debug.WriteLine($"   保存到: {libPath}");
                                 Console.WriteLine($"📥 [{downloadedLibs}/{totalLibs}] {lib.Name}");

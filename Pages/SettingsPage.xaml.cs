@@ -63,6 +63,7 @@ namespace ObsMCLauncher.Pages
             // 加载下载设置
             DownloadSourceComboBox.SelectedIndex = (int)_config.DownloadSource;
             MaxDownloadThreadsComboBox.SelectedIndex = GetThreadIndexFromValue(_config.MaxDownloadThreads);
+            DownloadAssetsToggle.IsChecked = _config.DownloadAssetsWithGame;
 
             // 加载启动器设置
             CloseAfterLaunchToggle.IsChecked = _config.CloseAfterLaunch;
@@ -137,6 +138,7 @@ namespace ObsMCLauncher.Pages
                 // 保存下载设置
                 _config.DownloadSource = (DownloadSource)DownloadSourceComboBox.SelectedIndex;
                 _config.MaxDownloadThreads = GetThreadValueFromIndex(MaxDownloadThreadsComboBox.SelectedIndex);
+                _config.DownloadAssetsWithGame = DownloadAssetsToggle.IsChecked ?? false;
 
                 // 保存启动器设置
                 _config.CloseAfterLaunch = CloseAfterLaunchToggle.IsChecked ?? false;
@@ -663,6 +665,14 @@ namespace ObsMCLauncher.Pages
                 ConfigFileTextBox.Text = dialog.FileName;
                 UpdateConfigFileDisplay();
             }
+        }
+
+        /// <summary>
+        /// 完整下载游戏资源设置改变
+        /// </summary>
+        private void DownloadAssetsToggle_Changed(object sender, RoutedEventArgs e)
+        {
+            AutoSaveSettingsImmediately("下载资源文件设置");
         }
     }
 }

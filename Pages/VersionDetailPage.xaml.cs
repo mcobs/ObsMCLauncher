@@ -493,6 +493,43 @@ namespace ObsMCLauncher.Pages
 
                     if (success)
                     {
+                        // 检查是否需要下载Assets资源文件
+                        if (config.DownloadAssetsWithGame)
+                        {
+                            System.Diagnostics.Debug.WriteLine("配置已启用，开始下载Assets资源文件...");
+                            
+                            // 更新进度显示
+                            Dispatcher.Invoke(() =>
+                            {
+                                DownloadStatusText.Text = "正在下载游戏资源文件...";
+                                CurrentFileText.Text = "Assets资源包";
+                                DownloadOverallProgressBar.Value = 0;
+                            });
+
+                            var assetsSuccess = await AssetsDownloadService.DownloadAndCheckAssetsAsync(
+                                gameDirectory,
+                                customVersionName,
+                                (current, total, message) =>
+                                {
+                                    Dispatcher.Invoke(() =>
+                                    {
+                                        DownloadStatusText.Text = "下载游戏资源";
+                                        CurrentFileText.Text = message;
+                                        DownloadOverallProgressBar.Value = current;
+                                    });
+                                }
+                            );
+
+                            if (!assetsSuccess)
+                            {
+                                System.Diagnostics.Debug.WriteLine("⚠️ Assets资源下载失败，但游戏主体已安装完成");
+                            }
+                            else
+                            {
+                                System.Diagnostics.Debug.WriteLine("✅ Assets资源下载完成");
+                            }
+                        }
+
                         MessageBox.Show(
                             $"Minecraft {currentVersion} 安装完成！\n\n版本已安装为: {customVersionName}",
                             "安装成功",

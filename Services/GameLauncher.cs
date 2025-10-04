@@ -22,6 +22,100 @@ namespace ObsMCLauncher.Services
         public static List<string> MissingLibraries { get; private set; } = new List<string>();
 
         /// <summary>
+        /// 检查游戏完整性（不启动游戏）
+        /// </summary>
+        /// <param name="versionId">版本ID</param>
+        /// <param name="config">启动器配置</param>
+        /// <param name="onProgressUpdate">进度更新回调</param>
+        /// <returns>是否存在完整性问题（true表示有缺失文件）</returns>
+        public static async System.Threading.Tasks.Task<bool> CheckGameIntegrityAsync(string versionId, LauncherConfig config, Action<string>? onProgressUpdate = null)
+        {
+            LastError = string.Empty;
+            MissingLibraries.Clear();
+            
+            try
+            {
+                Debug.WriteLine($"========== 检查游戏完整性 ==========");
+                Debug.WriteLine($"版本: {versionId}");
+                Debug.WriteLine($"游戏目录: {config.GameDirectory}");
+
+                // 1. 验证Java路径
+                onProgressUpdate?.Invoke("正在验证Java环境...");
+                if (!File.Exists(config.JavaPath))
+                {
+                    LastError = $"Java路径不存在: {config.JavaPath}";
+                    Debug.WriteLine($"❌ {LastError}");
+                    return false;
+                }
+
+                // 2. 读取版本JSON
+                onProgressUpdate?.Invoke("正在读取版本信息...");
+                var versionJsonPath = Path.Combine(config.GameDirectory, "versions", versionId, $"{versionId}.json");
+                if (!File.Exists(versionJsonPath))
+                {
+                    LastError = $"版本配置文件不存在: {versionJsonPath}";
+                    Debug.WriteLine($"❌ {LastError}");
+                    throw new FileNotFoundException(LastError);
+                }
+
+                var versionJson = await File.ReadAllTextAsync(versionJsonPath);
+                var versionInfo = JsonSerializer.Deserialize<VersionInfo>(versionJson, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+
+                if (versionInfo == null)
+                {
+                    LastError = "无法解析版本配置文件";
+                    Debug.WriteLine($"❌ {LastError}");
+                    throw new Exception(LastError);
+                }
+
+                Debug.WriteLine($"版本JSON路径: {versionJsonPath}");
+                Debug.WriteLine($"MainClass: {versionInfo.MainClass}");
+                Debug.WriteLine($"Libraries: {versionInfo.Libraries?.Length ?? 0} 个");
+
+                // 3. 检查客户端JAR文件
+                onProgressUpdate?.Invoke("正在检查游戏主文件...");
+                var clientJarPath = Path.Combine(config.GameDirectory, "versions", versionId, $"{versionId}.jar");
+                if (!File.Exists(clientJarPath))
+                {
+                    LastError = $"游戏主文件不存在: {clientJarPath}\n请先下载游戏版本";
+                    Debug.WriteLine($"❌ {LastError}");
+                    throw new FileNotFoundException(LastError);
+                }
+                Debug.WriteLine($"客户端JAR: {clientJarPath}");
+
+                // 4. 检查库文件完整性（包括文件大小验证）
+                onProgressUpdate?.Invoke("正在检查游戏依赖库...");
+                Debug.WriteLine($"检查库文件完整性...");
+                var missingLibs = GetMissingLibraries(config.GameDirectory, versionId, versionInfo);
+                
+                if (missingLibs.Count > 0)
+                {
+                    MissingLibraries = missingLibs;
+                    LastError = $"检测到 {missingLibs.Count} 个缺失或不完整的库文件";
+                    Debug.WriteLine($"❌ 缺失 {missingLibs.Count} 个库文件");
+                    return true; // 有完整性问题
+                }
+                
+                Debug.WriteLine($"✅ 所有库文件完整");
+                onProgressUpdate?.Invoke("游戏完整性检查完成");
+                return false; // 没有完整性问题
+            }
+            catch (Exception ex)
+            {
+                if (string.IsNullOrEmpty(LastError))
+                {
+                    LastError = ex.Message;
+                }
+                
+                Debug.WriteLine($"❌ 检查游戏完整性失败: {ex.Message}");
+                return true; // 有问题
+            }
+        }
+
+        /// <summary>
         /// 启动游戏（异步版本）
         /// </summary>
         /// <param name="versionId">版本ID（文件夹名称）</param>
@@ -377,12 +471,36 @@ namespace ObsMCLauncher.Services
                 if (IsLibraryAllowed(lib))
                 {
                     var libPath = GetLibraryPath(librariesDir, lib);
-                    if (!string.IsNullOrEmpty(libPath) && !File.Exists(libPath))
+                    if (!string.IsNullOrEmpty(libPath))
                     {
-                        missing.Add(lib.Name ?? "Unknown");
-                        Debug.WriteLine($"   ❌ 缺失: {lib.Name}");
-                        Debug.WriteLine($"      期望路径: {libPath}");
-                        Console.WriteLine($"   ❌ 缺失: {lib.Name}");
+                        bool isMissing = false;
+                        
+                        // 检查文件是否存在
+                        if (!File.Exists(libPath))
+                        {
+                            isMissing = true;
+                            Debug.WriteLine($"   ❌ 文件不存在: {lib.Name}");
+                            Console.WriteLine($"   ❌ 文件不存在: {lib.Name}");
+                        }
+                        // 如果文件存在，验证文件大小
+                        else if (lib.Downloads?.Artifact?.Size > 0)
+                        {
+                            var fileInfo = new FileInfo(libPath);
+                            if (fileInfo.Length != lib.Downloads.Artifact.Size)
+                            {
+                                isMissing = true;
+                                Debug.WriteLine($"   ❌ 文件大小不匹配: {lib.Name}");
+                                Debug.WriteLine($"      期望大小: {lib.Downloads.Artifact.Size} 字节");
+                                Debug.WriteLine($"      实际大小: {fileInfo.Length} 字节");
+                                Console.WriteLine($"   ❌ 文件大小不匹配: {lib.Name} (期望 {lib.Downloads.Artifact.Size}, 实际 {fileInfo.Length})");
+                            }
+                        }
+                        
+                        if (isMissing)
+                        {
+                            missing.Add(lib.Name ?? "Unknown");
+                            Debug.WriteLine($"      期望路径: {libPath}");
+                        }
                     }
                 }
             }
@@ -459,6 +577,8 @@ namespace ObsMCLauncher.Services
         private class Artifact
         {
             public string? Path { get; set; }
+            public string? Url { get; set; }
+            public long Size { get; set; }
         }
 
         private class Rule
