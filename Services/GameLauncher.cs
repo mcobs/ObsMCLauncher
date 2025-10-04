@@ -266,7 +266,8 @@ namespace ObsMCLauncher.Services
                 
                 if (missingOptional.Count > 0)
                 {
-                    Debug.WriteLine($"⚠️ 检测到 {missingOptional.Count} 个缺失的可选库（将在主页尝试下载）");
+                    Debug.WriteLine($"⚠️ 检测到 {missingOptional.Count} 个缺失的可选库（不影响启动）");
+                    // 可选库缺失不阻止游戏启动，只记录日志
                 }
                 
                 Debug.WriteLine($"✅ 所有必需库文件完整");

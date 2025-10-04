@@ -578,7 +578,54 @@ namespace ObsMCLauncher.Pages
                     {
                         bool downloaded = false;
                         
-                        // 1. 先尝试下载普通库文件（artifact）
+                        // 1. 优先检查并下载natives文件（classifiers）
+                        if (lib.Natives != null && lib.Downloads?.Classifiers != null)
+                        {
+                            var osName = GetOSName();
+                            if (lib.Natives.TryGetValue(osName, out var nativesKey) && !string.IsNullOrEmpty(nativesKey))
+                            {
+                                if (lib.Downloads.Classifiers.TryGetValue(nativesKey, out var nativeArtifact) && 
+                                    !string.IsNullOrEmpty(nativeArtifact.Path))
+                                {
+                                    var nativesPath = Path.Combine(librariesDir, nativeArtifact.Path.Replace("/", "\\"));
+                                    var nativesDir = Path.GetDirectoryName(nativesPath);
+                                    
+                                    if (!string.IsNullOrEmpty(nativesDir))
+                                    {
+                                        Directory.CreateDirectory(nativesDir);
+                                        
+                                        var downloadSource = DownloadSourceManager.Instance.CurrentService;
+                                        string url = downloadSource.GetLibraryUrl(nativeArtifact.Path);
+                                        
+                                        Debug.WriteLine($"📥 下载natives: {lib.Name} -> {nativesKey}");
+                                        Debug.WriteLine($"   URL: {url}");
+                                        Debug.WriteLine($"   保存到: {nativesPath}");
+                                        Console.WriteLine($"📥 [{processedLibs}/{totalLibs}] {lib.Name} (natives)");
+                                        
+                                        var response = await httpClient.GetAsync(url);
+                                        response.EnsureSuccessStatusCode();
+                                        var fileBytes = await response.Content.ReadAsByteArrayAsync();
+                                        await File.WriteAllBytesAsync(nativesPath, fileBytes);
+                                        
+                                        if (File.Exists(nativesPath))
+                                        {
+                                            var fileInfo = new FileInfo(nativesPath);
+                                            successfullyDownloaded++;
+                                            downloaded = true;
+                                            Debug.WriteLine($"✅ 已下载natives: {lib.Name} ({fileInfo.Length} 字节)");
+                                            Console.WriteLine($"✅ 已下载natives: {lib.Name} ({fileInfo.Length / 1024.0:F2} KB)");
+                                        }
+                                        else
+                                        {
+                                            Debug.WriteLine($"❌ natives下载后文件不存在: {nativesPath}");
+                                            Console.WriteLine($"❌ natives下载后文件不存在: {lib.Name}");
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // 2. 无论是否有natives，如果有artifact，都要下载（natives和artifact可能同时存在）
                         if (lib.Downloads?.Artifact?.Url != null)
                         {
                             var libPath = GetLibraryPath(librariesDir, lib);
@@ -645,54 +692,7 @@ namespace ObsMCLauncher.Pages
                                 }
                             }
                         }
-                        // 2. 如果没有artifact，尝试下载natives文件（classifiers）
-                        else if (lib.Natives != null && lib.Downloads?.Classifiers != null)
-                        {
-                            var osName = GetOSName();
-                            if (lib.Natives.TryGetValue(osName, out var nativesKey) && !string.IsNullOrEmpty(nativesKey))
-                            {
-                                if (lib.Downloads.Classifiers.TryGetValue(nativesKey, out var nativeArtifact) && 
-                                    !string.IsNullOrEmpty(nativeArtifact.Path))
-                                {
-                                    var nativesPath = Path.Combine(librariesDir, nativeArtifact.Path.Replace("/", "\\"));
-                                    var nativesDir = Path.GetDirectoryName(nativesPath);
-                                    
-                                    if (!string.IsNullOrEmpty(nativesDir))
-                                    {
-                                        Directory.CreateDirectory(nativesDir);
-                                        
-                                        var downloadSource = DownloadSourceManager.Instance.CurrentService;
-                                        string url = downloadSource.GetLibraryUrl(nativeArtifact.Path);
-                                        
-                                        Debug.WriteLine($"📥 下载natives: {lib.Name} -> {nativesKey}");
-                                        Debug.WriteLine($"   URL: {url}");
-                                        Debug.WriteLine($"   保存到: {nativesPath}");
-                                        Console.WriteLine($"📥 [{processedLibs}/{totalLibs}] {lib.Name} (natives)");
-                                        
-                                        var response = await httpClient.GetAsync(url);
-                                        response.EnsureSuccessStatusCode();
-                                        var fileBytes = await response.Content.ReadAsByteArrayAsync();
-                                        await File.WriteAllBytesAsync(nativesPath, fileBytes);
-                                        
-                                        if (File.Exists(nativesPath))
-                                        {
-                                            var fileInfo = new FileInfo(nativesPath);
-                                            successfullyDownloaded++;
-                                            downloaded = true;
-                                            Debug.WriteLine($"✅ 已下载natives: {lib.Name} ({fileInfo.Length} 字节)");
-                                            Console.WriteLine($"✅ 已下载natives: {lib.Name} ({fileInfo.Length / 1024.0:F2} KB)");
-                                        }
-                                        else
-                                        {
-                                            Debug.WriteLine($"❌ natives下载后文件不存在: {nativesPath}");
-                                            Console.WriteLine($"❌ natives下载后文件不存在: {lib.Name}");
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        
-                        // 3. 如果既没有artifact也没有classifiers，跳过
+                        // 3. 如果既没有下载成功，跳过
                         if (!downloaded)
                         {
                             Debug.WriteLine($"⚠️ 库没有下载URL或不适用于当前平台: {lib.Name}");
