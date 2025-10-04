@@ -648,16 +648,19 @@ namespace ObsMCLauncher.Services
             try
             {
                 Debug.WriteLine($"开始检查natives库文件: {nativesDir}");
-                var librariesDir = Path.Combine(gameDir, "libraries");
-                var osName = GetOSName();
-                int extractedCount = 0;
-                int skippedCount = 0;
                 
                 if (versionInfo.Libraries == null)
                 {
                     Debug.WriteLine("没有库文件");
                     return;
                 }
+                
+                var librariesDir = Path.Combine(gameDir, "libraries");
+                var osName = GetOSName();
+                int extractedCount = 0;
+#pragma warning disable CS0219
+                int skippedCount = 0;
+#pragma warning restore CS0219
                 
                 foreach (var lib in versionInfo.Libraries)
                 {
@@ -722,6 +725,7 @@ namespace ObsMCLauncher.Services
                     }
                 }
                 
+                // 输出解压结果
                 if (extractedCount > 0)
                 {
                     Debug.WriteLine($"✅ Natives解压完成，共解压 {extractedCount} 个文件");
