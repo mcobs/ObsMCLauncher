@@ -494,14 +494,16 @@ namespace ObsMCLauncher.Services
             
             if (versionInfo.Libraries == null) return (missingRequired, missingOptional);
             
+            var osName = GetOSName();
+            
             foreach (var lib in versionInfo.Libraries)
             {
                 if (IsLibraryAllowed(lib))
                 {
-                    // 区分必需库和可选库
+                    // 1. 检查普通库文件（artifact）
                     bool isOptional = lib.Downloads?.Artifact == null;
-                    
                     var libPath = GetLibraryPath(librariesDir, lib);
+                    
                     if (!string.IsNullOrEmpty(libPath))
                     {
                         bool isMissing = false;
@@ -546,6 +548,32 @@ namespace ObsMCLauncher.Services
                                 missingRequired.Add(lib.Name ?? "Unknown");
                             }
                             Debug.WriteLine($"      期望路径: {libPath}");
+                        }
+                    }
+                    
+                    // 2. 检查natives文件（classifiers）
+                    if (lib.Natives != null && lib.Downloads?.Classifiers != null)
+                    {
+                        if (lib.Natives.TryGetValue(osName, out var nativesKey) && !string.IsNullOrEmpty(nativesKey))
+                        {
+                            if (lib.Downloads.Classifiers.TryGetValue(nativesKey, out var nativeArtifact) && 
+                                !string.IsNullOrEmpty(nativeArtifact.Path))
+                            {
+                                var nativesPath = Path.Combine(librariesDir, nativeArtifact.Path.Replace("/", "\\"));
+                                
+                                if (!File.Exists(nativesPath))
+                                {
+                                    Debug.WriteLine($"   ⚠️ Natives库不存在: {lib.Name} (natives) - 将尝试下载");
+                                    Console.WriteLine($"   ⚠️ Natives库不存在: {lib.Name} (natives)");
+                                    
+                                    // Natives始终作为可选库处理（因为它们没有artifact）
+                                    if (!missingOptional.Contains(lib.Name ?? "Unknown"))
+                                    {
+                                        missingOptional.Add(lib.Name ?? "Unknown");
+                                    }
+                                    Debug.WriteLine($"      期望路径: {nativesPath}");
+                                }
+                            }
                         }
                     }
                 }
