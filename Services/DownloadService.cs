@@ -97,7 +97,33 @@ namespace ObsMCLauncher.Services
                 });
 
                 // 1. 下载版本JSON
-                var versionJsonUrl = downloadSource.GetVersionJsonUrl(versionId);
+                string versionJsonUrl;
+                
+                // 如果是Mojang源，需要先从version_manifest获取真实URL
+                if (downloadSource is MojangAPIService)
+                {
+                    System.Diagnostics.Debug.WriteLine("使用Mojang官方源，先获取version_manifest...");
+                    var manifest = await MinecraftVersionService.GetVersionListAsync();
+                    if (manifest == null)
+                    {
+                        throw new Exception("获取版本清单失败");
+                    }
+                    
+                    var manifestVersion = manifest.Versions.FirstOrDefault(v => v.Id == versionId);
+                    if (manifestVersion == null || string.IsNullOrEmpty(manifestVersion.Url))
+                    {
+                        throw new Exception($"在版本清单中未找到版本 {versionId} 或URL为空");
+                    }
+                    
+                    versionJsonUrl = manifestVersion.Url;
+                    System.Diagnostics.Debug.WriteLine($"从version_manifest获取到真实URL: {versionJsonUrl}");
+                }
+                else
+                {
+                    // BMCLAPI等其他源直接使用固定模式
+                    versionJsonUrl = downloadSource.GetVersionJsonUrl(versionId);
+                }
+                
                 var versionJsonPath = Path.Combine(gameDirectory, "versions", installName, $"{installName}.json");
                 
                 Directory.CreateDirectory(Path.GetDirectoryName(versionJsonPath)!);
