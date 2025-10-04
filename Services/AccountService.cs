@@ -49,7 +49,7 @@ namespace ObsMCLauncher.Services
         }
 
         /// <summary>
-        /// 迁移账号数据到新位置
+        /// 迁移账号数据到新位置（移动而不是复制）
         /// </summary>
         private void MigrateAccounts(string oldPath, string newPath)
         {
@@ -62,13 +62,35 @@ namespace ObsMCLauncher.Services
                     {
                         Directory.CreateDirectory(directory);
                     }
+                    
+                    // 先复制到新位置
                     File.Copy(oldPath, newPath, true);
-                    System.Diagnostics.Debug.WriteLine($"账号数据已从 {oldPath} 迁移到 {newPath}");
+                    System.Diagnostics.Debug.WriteLine($"✅ 账号数据已复制到: {newPath}");
+                    
+                    // 验证新文件是否存在且有效
+                    if (File.Exists(newPath))
+                    {
+                        try
+                        {
+                            // 尝试删除旧文件
+                            File.Delete(oldPath);
+                            System.Diagnostics.Debug.WriteLine($"✅ 已删除旧账号文件: {oldPath}");
+                            System.Diagnostics.Debug.WriteLine($"✅ 账号数据迁移完成: {oldPath} -> {newPath}");
+                        }
+                        catch (Exception deleteEx)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"⚠️ 删除旧账号文件失败: {deleteEx.Message}");
+                            System.Diagnostics.Debug.WriteLine($"   旧文件位置: {oldPath}");
+                            System.Diagnostics.Debug.WriteLine($"   可以手动删除");
+                        }
+                    }
                 }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"迁移账号数据失败: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"❌ 迁移账号数据失败: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"   从: {oldPath}");
+                System.Diagnostics.Debug.WriteLine($"   到: {newPath}");
             }
         }
 
