@@ -334,7 +334,7 @@ namespace ObsMCLauncher.Pages
 
                     Debug.WriteLine("========== 开始检查Assets资源 ==========");
                     
-                    var assetsSuccess = await AssetsDownloadService.DownloadAndCheckAssetsAsync(
+                    var assetsResult = await AssetsDownloadService.DownloadAndCheckAssetsAsync(
                         config.GameDirectory,
                         versionId,
                         (current, total, message) =>
@@ -350,15 +350,38 @@ namespace ObsMCLauncher.Pages
                         }
                     );
 
-                    if (!assetsSuccess)
+                    if (!assetsResult.Success)
                     {
-                        Debug.WriteLine("⚠️ Assets资源检查/下载失败，但游戏可能仍可运行");
+                        Debug.WriteLine($"⚠️ Assets资源下载完成，但有 {assetsResult.FailedAssets} 个文件失败");
+                        
+                        // 显示详细的失败通知
+                        string notificationMessage;
+                        if (assetsResult.FailedAssets > 0)
+                        {
+                            notificationMessage = $"{assetsResult.FailedAssets} 个资源文件下载失败，游戏可能缺少部分资源（如声音）";
+                        }
+                        else
+                        {
+                            notificationMessage = "资源检查失败，游戏可能缺少资源文件";
+                        }
+                        
                         NotificationManager.Instance.ShowNotification(
-                            "资源文件不完整",
-                            "部分游戏资源文件缺失，游戏可能缺少声音等资源",
+                            "资源文件下载失败",
+                            notificationMessage,
                             NotificationType.Warning,
-                            5
+                            6
                         );
+                        
+                        // 如果失败资源很多，显示错误通知
+                        if (assetsResult.FailedAssets > 100)
+                        {
+                            NotificationManager.Instance.ShowNotification(
+                                "大量资源下载失败",
+                                $"共 {assetsResult.FailedAssets} 个资源文件下载失败\n可能是网络问题或服务器繁忙\n建议稍后重试或更换下载源",
+                                NotificationType.Error,
+                                8
+                            );
+                        }
                     }
                     else
                     {

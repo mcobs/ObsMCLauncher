@@ -11,6 +11,18 @@ using ObsMCLauncher.Models;
 namespace ObsMCLauncher.Services
 {
     /// <summary>
+    /// Assets下载结果
+    /// </summary>
+    public class AssetsDownloadResult
+    {
+        public bool Success { get; set; }
+        public int TotalAssets { get; set; }
+        public int DownloadedAssets { get; set; }
+        public int FailedAssets { get; set; }
+        public List<string> FailedAssetNames { get; set; } = new List<string>();
+    }
+
+    /// <summary>
     /// Assets资源下载服务
     /// </summary>
     public class AssetsDownloadService
@@ -23,8 +35,8 @@ namespace ObsMCLauncher.Services
         /// <param name="gameDir">游戏目录</param>
         /// <param name="versionId">版本ID</param>
         /// <param name="onProgress">进度回调 (当前, 总数, 消息)</param>
-        /// <returns>是否成功</returns>
-        public static async Task<bool> DownloadAndCheckAssetsAsync(
+        /// <returns>下载结果</returns>
+        public static async Task<AssetsDownloadResult> DownloadAndCheckAssetsAsync(
             string gameDir,
             string versionId,
             Action<int, int, string>? onProgress = null)
@@ -39,7 +51,7 @@ namespace ObsMCLauncher.Services
                 if (!File.Exists(versionJsonPath))
                 {
                     Debug.WriteLine($"❌ 版本JSON不存在: {versionJsonPath}");
-                    return false;
+                    return new AssetsDownloadResult { Success = false };
                 }
 
                 var versionJson = await File.ReadAllTextAsync(versionJsonPath);
@@ -51,7 +63,7 @@ namespace ObsMCLauncher.Services
                 if (versionInfo?.AssetIndex == null)
                 {
                     Debug.WriteLine($"❌ 版本JSON中没有AssetIndex信息");
-                    return false;
+                    return new AssetsDownloadResult { Success = false };
                 }
 
                 var assetIndexId = versionInfo.AssetIndex.Id;
@@ -95,7 +107,7 @@ namespace ObsMCLauncher.Services
                 if (assetIndex?.Objects == null)
                 {
                     Debug.WriteLine($"❌ AssetIndex解析失败");
-                    return false;
+                    return new AssetsDownloadResult { Success = false };
                 }
 
                 // 4. 检查缺失的Assets
@@ -124,25 +136,31 @@ namespace ObsMCLauncher.Services
                 {
                     Debug.WriteLine($"✅ 所有Assets资源完整");
                     onProgress?.Invoke(100, 100, "资源检查完成");
-                    return true;
+                    return new AssetsDownloadResult 
+                    { 
+                        Success = true, 
+                        TotalAssets = assetIndex.Objects.Count,
+                        DownloadedAssets = 0,
+                        FailedAssets = 0
+                    };
                 }
 
                 // 5. 下载缺失的Assets
                 Debug.WriteLine($"开始下载 {missingAssets.Count} 个缺失的Assets...");
                 var downloaded = 0;
+                var failed = 0;
                 var total = missingAssets.Count;
+                var failedAssets = new List<string>();
 
-                // 使用BMCLAPI镜像源（更快）
-                var config = LauncherConfig.Load();
-                var baseUrl = config.DownloadSource == DownloadSource.BMCLAPI
-                    ? "https://bmclapi2.bangbang93.com/assets"
-                    : "https://resources.download.minecraft.net";
+                // 使用下载源管理器（支持BMCLAPI镜像）
+                var downloadSource = DownloadSourceManager.Instance.CurrentService;
+                Debug.WriteLine($"使用下载源: {DownloadSourceManager.Instance.CurrentSource}");
 
                 foreach (var asset in missingAssets)
                 {
-                    downloaded++;
-                    var progress = 10 + (int)((downloaded / (float)total) * 90);
-                    onProgress?.Invoke(progress, 100, $"下载资源文件 ({downloaded}/{total})");
+                    var currentIndex = downloaded + failed + 1;
+                    var progress = 10 + (int)((currentIndex / (float)total) * 90);
+                    onProgress?.Invoke(progress, 100, $"下载资源文件 ({currentIndex}/{total})");
 
                     try
                     {
@@ -156,36 +174,99 @@ namespace ObsMCLauncher.Services
                             Directory.CreateDirectory(assetDir);
                         }
 
-                        // 构建下载URL
-                        var url = $"{baseUrl}/{hashPrefix}/{hash}";
+                        // 使用下载源服务获取URL（支持镜像加速）
+                        var url = downloadSource.GetAssetUrl(hash);
                         
-                        // 下载文件
-                        var response = await _httpClient.GetAsync(url);
-                        response.EnsureSuccessStatusCode();
-                        var fileBytes = await response.Content.ReadAsByteArrayAsync();
-                        await File.WriteAllBytesAsync(assetPath, fileBytes);
-
-                        if (downloaded % 50 == 0)
+                        // 下载文件（带重试机制，最多3次）
+                        bool downloadSuccess = false;
+                        Exception? lastException = null;
+                        
+                        for (int retry = 0; retry < 3; retry++)
                         {
-                            Debug.WriteLine($"📥 已下载: {downloaded}/{total}");
+                            try
+                            {
+                                if (retry > 0)
+                                {
+                                    Debug.WriteLine($"⚠️ 重试下载 ({retry}/3): {asset.Name}");
+                                    await Task.Delay(1000 * retry); // 递增延迟
+                                }
+                                
+                                var response = await _httpClient.GetAsync(url);
+                                response.EnsureSuccessStatusCode();
+                                var fileBytes = await response.Content.ReadAsByteArrayAsync();
+                                await File.WriteAllBytesAsync(assetPath, fileBytes);
+                                
+                                downloadSuccess = true;
+                                downloaded++;
+                                break;
+                            }
+                            catch (Exception ex)
+                            {
+                                lastException = ex;
+                                if (retry == 2) // 最后一次重试
+                                {
+                                    Debug.WriteLine($"❌ 下载失败（3次重试后）: {asset.Name}");
+                                    Debug.WriteLine($"   错误: {ex.Message}");
+                                }
+                            }
+                        }
+                        
+                        if (!downloadSuccess)
+                        {
+                            failed++;
+                            failedAssets.Add($"{asset.Name} ({lastException?.Message})");
+                        }
+
+                        if ((downloaded + failed) % 50 == 0)
+                        {
+                            Debug.WriteLine($"📥 进度: {downloaded}成功 / {failed}失败 / {total}总计");
                         }
                     }
                     catch (Exception ex)
                     {
-                        Debug.WriteLine($"❌ 下载失败: {asset.Name} - {ex.Message}");
-                        // 继续下载其他文件
+                        failed++;
+                        failedAssets.Add($"{asset.Name} ({ex.Message})");
+                        Debug.WriteLine($"❌ 下载异常: {asset.Name} - {ex.Message}");
                     }
                 }
 
-                Debug.WriteLine($"✅ Assets下载完成！共 {downloaded}/{total}");
-                onProgress?.Invoke(100, 100, $"资源下载完成 ({downloaded}/{total})");
+                Debug.WriteLine($"========== Assets下载完成 ==========");
+                Debug.WriteLine($"成功: {downloaded}/{total}");
+                Debug.WriteLine($"失败: {failed}/{total}");
                 
-                return true;
+                if (failed > 0)
+                {
+                    Debug.WriteLine($"失败的资源列表（前10个）:");
+                    foreach (var failedAsset in failedAssets.Take(10))
+                    {
+                        Debug.WriteLine($"  - {failedAsset}");
+                    }
+                    if (failedAssets.Count > 10)
+                    {
+                        Debug.WriteLine($"  ... 还有 {failedAssets.Count - 10} 个失败项");
+                    }
+                }
+                
+                onProgress?.Invoke(100, 100, $"资源下载完成 ({downloaded}成功, {failed}失败)");
+                
+                // 返回下载结果
+                return new AssetsDownloadResult
+                {
+                    Success = failed == 0,
+                    TotalAssets = total,
+                    DownloadedAssets = downloaded,
+                    FailedAssets = failed,
+                    FailedAssetNames = failedAssets
+                };
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"❌ Assets下载服务异常: {ex.Message}");
-                return false;
+                return new AssetsDownloadResult 
+                { 
+                    Success = false,
+                    FailedAssetNames = new List<string> { $"服务异常: {ex.Message}" }
+                };
             }
         }
 

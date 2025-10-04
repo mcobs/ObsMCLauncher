@@ -506,7 +506,7 @@ namespace ObsMCLauncher.Pages
                                 DownloadOverallProgressBar.Value = 0;
                             });
 
-                            var assetsSuccess = await AssetsDownloadService.DownloadAndCheckAssetsAsync(
+                            var assetsResult = await AssetsDownloadService.DownloadAndCheckAssetsAsync(
                                 gameDirectory,
                                 customVersionName,
                                 (current, total, message) =>
@@ -520,9 +520,19 @@ namespace ObsMCLauncher.Pages
                                 }
                             );
 
-                            if (!assetsSuccess)
+                            if (!assetsResult.Success)
                             {
-                                System.Diagnostics.Debug.WriteLine("⚠️ Assets资源下载失败，但游戏主体已安装完成");
+                                System.Diagnostics.Debug.WriteLine($"⚠️ Assets资源下载完成，但有 {assetsResult.FailedAssets} 个文件失败");
+                                
+                                if (assetsResult.FailedAssets > 0)
+                                {
+                                    MessageBox.Show(
+                                        $"游戏主体已安装完成，但有 {assetsResult.FailedAssets} 个资源文件下载失败。\n\n游戏可能缺少部分资源（如声音、语言文件等）。\n\n建议稍后在启动游戏时重新下载，或更换下载源。",
+                                        "资源下载部分失败",
+                                        MessageBoxButton.OK,
+                                        MessageBoxImage.Warning
+                                    );
+                                }
                             }
                             else
                             {
