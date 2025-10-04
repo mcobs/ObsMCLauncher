@@ -665,9 +665,12 @@ namespace ObsMCLauncher.Services
                     if (!IsLibraryAllowed(lib))
                         continue;
                     
-                    // 检查是否有natives字段
+                    // 检查是否有natives字段（1.19+版本没有natives字段，直接跳过）
                     if (lib.Natives == null || lib.Downloads?.Classifiers == null)
+                    {
+                        skippedCount++;
                         continue;
+                    }
                     
                     // 获取当前操作系统对应的natives键
                     if (!lib.Natives.TryGetValue(osName, out var nativesKey) || string.IsNullOrEmpty(nativesKey))
@@ -719,7 +722,18 @@ namespace ObsMCLauncher.Services
                     }
                 }
                 
-                Debug.WriteLine($"✅ Natives解压完成，共解压 {extractedCount} 个文件");
+                if (extractedCount > 0)
+                {
+                    Debug.WriteLine($"✅ Natives解压完成，共解压 {extractedCount} 个文件");
+                }
+                else if (skippedCount > 0)
+                {
+                    Debug.WriteLine($"ℹ️ 当前版本无需解压natives（可能是1.19+版本），已跳过 {skippedCount} 个库");
+                }
+                else
+                {
+                    Debug.WriteLine("ℹ️ 没有需要处理的natives库");
+                }
             }
             catch (Exception ex)
             {
