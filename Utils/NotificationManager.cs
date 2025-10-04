@@ -356,7 +356,7 @@ namespace ObsMCLauncher.Utils
         }
 
         /// <summary>
-        /// 启动倒计时进度条动画
+        /// 启动倒计时进度条动画（延迟启动，避免与淡入动画冲突）
         /// </summary>
         private void StartCountdownAnimation(Border element, int durationSeconds)
         {
@@ -367,14 +367,15 @@ namespace ObsMCLauncher.Utils
                 {
                     From = 100,
                     To = 0,
-                    Duration = TimeSpan.FromSeconds(durationSeconds)
+                    Duration = TimeSpan.FromSeconds(durationSeconds),
+                    BeginTime = TimeSpan.FromMilliseconds(250) // 等待淡入动画完成（250ms）
                 };
                 progressBar.BeginAnimation(System.Windows.Controls.Primitives.RangeBase.ValueProperty, animation);
             }
         }
 
         /// <summary>
-        /// 更新所有通知位置（垂直居中，通知窗口的一半在中间）
+        /// 更新所有通知位置（水平居中，从顶部开始向下排列）
         /// </summary>
         private void UpdateNotificationPositions()
         {
@@ -384,12 +385,13 @@ namespace ObsMCLauncher.Utils
             {
                 if (_notifications.Count == 0) return;
 
-                // 获取容器高度
-                var containerHeight = _container.ActualHeight;
-                if (containerHeight <= 0) containerHeight = 700; // 默认高度
+                // 获取容器宽度用于水平居中
+                var containerWidth = _container.ActualWidth;
+                if (containerWidth <= 0) containerWidth = 1200; // 默认宽度
 
-                // 计算所有通知的总高度
-                double totalHeight = 0;
+                // 从顶部开始，15px边距
+                double currentY = 15;
+                
                 foreach (var notification in _notifications)
                 {
                     if (notification.UIElement != null)
@@ -399,41 +401,22 @@ namespace ObsMCLauncher.Utils
                             // 确保元素已经测量过
                             notification.UIElement.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
                             var height = notification.UIElement.DesiredSize.Height;
+                            var width = notification.UIElement.DesiredSize.Width;
                             if (height <= 0 || double.IsNaN(height)) height = 70; // 默认高度
-                            totalHeight += height + NotificationSpacing;
-                        }
-                        catch
-                        {
-                            totalHeight += 70 + NotificationSpacing; // 使用默认值
-                        }
-                    }
-                }
-                
-                if (totalHeight > NotificationSpacing)
-                {
-                    totalHeight -= NotificationSpacing; // 移除最后一个间距
-                }
-
-                // 计算起始位置（让所有通知整体垂直居中）
-                double startY = (containerHeight - totalHeight) / 2;
-                if (startY < 15) startY = 15; // 最小15px边距
-
-                // 从中心位置开始向下排列
-                double currentY = startY;
-                foreach (var notification in _notifications)
-                {
-                    if (notification.UIElement != null)
-                    {
-                        try
-                        {
+                            if (width <= 0 || double.IsNaN(width)) width = 380; // 默认宽度
+                            
+                            // 水平居中：(容器宽度 - 通知宽度) / 2
+                            double centerX = (containerWidth - width) / 2;
+                            notification.UIElement.SetValue(Canvas.LeftProperty, centerX);
+                            
                             AnimatePosition(notification.UIElement, currentY);
-                            var height = notification.UIElement.DesiredSize.Height;
-                            if (height <= 0 || double.IsNaN(height)) height = 70;
                             currentY += height + NotificationSpacing;
                         }
                         catch (Exception ex)
                         {
                             System.Diagnostics.Debug.WriteLine($"[NotificationManager] 位置更新错误: {ex.Message}");
+                            notification.UIElement.SetValue(Canvas.LeftProperty, (containerWidth - 380) / 2);
+                            AnimatePosition(notification.UIElement, currentY);
                             currentY += 70 + NotificationSpacing;
                         }
                     }
