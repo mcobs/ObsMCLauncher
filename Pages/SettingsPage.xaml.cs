@@ -18,6 +18,9 @@ namespace ObsMCLauncher.Pages
         private bool _isSaving = false;
         private bool _isInitialized = false;
         private System.Threading.CancellationTokenSource? _notificationCancellation;
+        private System.Windows.Threading.DispatcherTimer? _saveDebounceTimer; // 防抖定时器
+        private string _pendingSaveSettingName = ""; // 待保存的设置名称
+        private bool _isUpdatingMemory = false; // 防止TextBox和Slider相互触发
 
         public SettingsPage()
         {
@@ -72,11 +75,37 @@ namespace ObsMCLauncher.Pages
         }
 
         /// <summary>
-        /// 自动保存设置
+        /// 自动保存设置（带防抖）
         /// </summary>
         private void AutoSaveSettings(string settingName = "设置")
         {
-            if (!_isInitialized || _isSaving) return; // 未初始化完成或正在保存时跳过
+            if (!_isInitialized) return; // 未初始化完成时跳过
+            
+            // 保存待处理的设置名称
+            _pendingSaveSettingName = settingName;
+            
+            // 取消之前的定时器
+            _saveDebounceTimer?.Stop();
+            
+            // 创建新的防抖定时器（500ms）
+            _saveDebounceTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(500)
+            };
+            _saveDebounceTimer.Tick += (s, e) =>
+            {
+                _saveDebounceTimer.Stop();
+                DoSaveSettings(_pendingSaveSettingName);
+            };
+            _saveDebounceTimer.Start();
+        }
+
+        /// <summary>
+        /// 执行实际的保存操作
+        /// </summary>
+        private void DoSaveSettings(string settingName)
+        {
+            if (_isSaving) return;
             _isSaving = true;
 
             try
@@ -212,8 +241,6 @@ namespace ObsMCLauncher.Pages
         /// <summary>
         /// 最大内存滑块值改变
         /// </summary>
-        private bool _isUpdatingMemory = false;
-
         private void MaxMemorySlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
             if (_isUpdatingMemory) return;

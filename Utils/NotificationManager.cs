@@ -272,6 +272,10 @@ namespace ObsMCLauncher.Utils
             });
             Grid.SetColumn(textPanel, 1);
 
+            // 先添加基本元素到Grid
+            topGrid.Children.Add(iconBorder);
+            topGrid.Children.Add(textPanel);
+
             // 关闭按钮（非进度通知）
             if (!notification.IsProgress)
             {
@@ -284,7 +288,8 @@ namespace ObsMCLauncher.Utils
                     Margin = new Thickness(8, 0, 0, 0),
                     Tag = notification.Id,
                     Opacity = 0.7,
-                    Cursor = System.Windows.Input.Cursors.Hand
+                    Cursor = System.Windows.Input.Cursors.Hand,
+                    VerticalAlignment = VerticalAlignment.Center
                 };
                 closeButton.Content = new PackIcon
                 {
@@ -310,8 +315,6 @@ namespace ObsMCLauncher.Utils
                 topGrid.Children.Add(closeButton);
             }
 
-            topGrid.Children.Add(iconBorder);
-            topGrid.Children.Add(textPanel);
             stackPanel.Children.Add(topGrid);
 
             // 进度条（仅进度通知）
@@ -319,11 +322,12 @@ namespace ObsMCLauncher.Utils
             {
                 var progressBar = new ProgressBar
                 {
-                    Height = 3,
+                    Height = 4,
                     IsIndeterminate = true,
                     Foreground = (Brush)Application.Current.FindResource("PrimaryBrush"),
                     Background = new SolidColorBrush(Color.FromRgb(63, 63, 70)),
-                    BorderThickness = new Thickness(0)
+                    BorderThickness = new Thickness(0),
+                    Margin = new Thickness(0, 8, 0, 0)
                 };
                 stackPanel.Children.Add(progressBar);
             }
@@ -340,12 +344,13 @@ namespace ObsMCLauncher.Utils
                     Height = 2,
                     Minimum = 0,
                     Maximum = 100,
-                    Value = 100,
+                    Value = 100, // 初始值满，等待border淡入后再倒计时
                     Foreground = GetTypeColor(notification.Type),
                     Background = Brushes.Transparent,
                     BorderThickness = new Thickness(0),
-                    Opacity = 0.4,
-                    VerticalAlignment = VerticalAlignment.Bottom
+                    Opacity = 0.5, // 稍微提高可见度
+                    VerticalAlignment = VerticalAlignment.Bottom,
+                    IsIndeterminate = false // 确保不是不确定进度模式
                 };
                 Grid.SetRow(countdownProgressBar, 1);
                 mainGrid.Children.Add(countdownProgressBar);
@@ -405,8 +410,10 @@ namespace ObsMCLauncher.Utils
                             if (height <= 0 || double.IsNaN(height)) height = 70; // 默认高度
                             if (width <= 0 || double.IsNaN(width)) width = 380; // 默认宽度
                             
-                            // 水平居中：(容器宽度 - 通知宽度) / 2
-                            double centerX = (containerWidth - width) / 2;
+                            // 水平居中：(容器宽度 - 通知宽度) / 2 - 微调偏移
+                            // 减去50px使通知稍微偏左，相对于整个窗口更居中
+                            double centerX = (containerWidth - width) / 2 - 50;
+                            if (centerX < 0) centerX = 0;
                             notification.UIElement.SetValue(Canvas.LeftProperty, centerX);
                             
                             AnimatePosition(notification.UIElement, currentY);
@@ -415,7 +422,9 @@ namespace ObsMCLauncher.Utils
                         catch (Exception ex)
                         {
                             System.Diagnostics.Debug.WriteLine($"[NotificationManager] 位置更新错误: {ex.Message}");
-                            notification.UIElement.SetValue(Canvas.LeftProperty, (containerWidth - 380) / 2);
+                            double centerX = (containerWidth - 380) / 2 - 50;
+                            if (centerX < 0) centerX = 0;
+                            notification.UIElement.SetValue(Canvas.LeftProperty, centerX);
                             AnimatePosition(notification.UIElement, currentY);
                             currentY += 70 + NotificationSpacing;
                         }

@@ -162,8 +162,8 @@
                                   Minimum="1024"
                                   Maximum="65536"
                                   Value="4096"
-                                  TickFrequency="512"
-                                  IsSnapToTickEnabled="False"
+                                  TickFrequency="1"
+                                  IsSnapToTickEnabled="True"
                                   Style="{StaticResource MaterialDesignDiscreteSlider}"
                                   Margin="0,0,20,0"
                                   ValueChanged="MaxMemorySlider_ValueChanged"/>
