@@ -115,9 +115,9 @@ namespace ObsMCLauncher.Pages
 
                 System.Diagnostics.Debug.WriteLine($"✓ {settingName}已自动保存");
 
-                // 使用新的通知系统
+                // 使用新的通知系统（默认3秒）
                 var mainWindow = Application.Current.MainWindow as MainWindow;
-                mainWindow?.ShowNotification("设置已保存", $"{settingName}已自动保存", Utils.NotificationType.Success, 2);
+                mainWindow?.ShowNotification("设置已保存", $"{settingName}已自动保存", Utils.NotificationType.Success);
             }
             catch (Exception ex)
             {

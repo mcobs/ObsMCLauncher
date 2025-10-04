@@ -80,23 +80,23 @@
 
         <!-- 主要内容区域 -->
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-            <Grid Margin="30">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
-                </Grid.RowDefinitions>
+        <Grid Margin="30">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
 
-                <!-- 标题区域 -->
-                <StackPanel Grid.Row="0">
-                    <TextBlock Text="设置" 
-                             FontSize="28" 
-                             FontWeight="Bold"
-                             Margin="0,0,0,10"/>
+            <!-- 标题区域 -->
+            <StackPanel Grid.Row="0">
+                <TextBlock Text="设置" 
+                         FontSize="28" 
+                         FontWeight="Bold"
+                         Margin="0,0,0,10"/>
                     <TextBlock Text="配置启动器和游戏参数（修改后自动保存）" 
-                             FontSize="14" 
-                             Foreground="#AAAAAA"
-                             Margin="0,0,0,25"/>
-                </StackPanel>
+                         FontSize="14" 
+                         Foreground="#AAAAAA"
+                         Margin="0,0,0,25"/>
+            </StackPanel>
 
             <!-- 设置内容 -->
             <StackPanel Grid.Row="1">
@@ -168,13 +168,13 @@
                                   Margin="0,0,20,0"
                                   ValueChanged="MaxMemorySlider_ValueChanged"/>
                             <TextBox x:Name="MaxMemoryTextBox"
-                                   Grid.Column="1"
+                                     Grid.Column="1"
                                    Text="4096"
                                    Style="{StaticResource MaterialDesignOutlinedTextBox}"
                                    Foreground="#FFFFFF"
                                    CaretBrush="#FFFFFF"
-                                   FontSize="14"
-                                   VerticalAlignment="Center"
+                                     FontSize="14"
+                                     VerticalAlignment="Center"
                                    TextAlignment="Right"
                                    materialDesign:HintAssist.Hint="MB"
                                    PreviewTextInput="MaxMemoryTextBox_PreviewTextInput"
@@ -594,8 +594,8 @@
                 </StackPanel>
 
             </StackPanel>
-            </Grid>
-        </ScrollViewer>
+        </Grid>
+    </ScrollViewer>
 
     </Grid>
 </Page>

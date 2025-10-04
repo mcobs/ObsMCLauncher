@@ -528,10 +528,10 @@
                         </Grid>
                         
                         <ProgressBar x:Name="DownloadCurrentProgressBar"
-                                   Height="8"
-                                   Value="0"
-                                   Maximum="100"
-                                   Style="{StaticResource MaterialDesignLinearProgressBar}"/>
+                               Height="8"
+                               Value="0"
+                               Maximum="100"
+                               Style="{StaticResource MaterialDesignLinearProgressBar}"/>
                     </StackPanel>
 
                     <!-- 详细信息 -->
@@ -557,30 +557,30 @@
                                 <TextBlock Text="状态：" 
                                          FontSize="13" 
                                          Foreground="{StaticResource TextSecondaryBrush}"
-                                         VerticalAlignment="Center"
+                                               VerticalAlignment="Center"
                                          Margin="0,0,5,0"/>
-                                <TextBlock x:Name="DownloadStatusText"
-                                         Text="准备下载..." 
-                                         FontSize="13"
+                        <TextBlock x:Name="DownloadStatusText"
+                                 Text="准备下载..." 
+                                 FontSize="13"
                                          FontWeight="SemiBold"
                                          VerticalAlignment="Center"/>
-                            </StackPanel>
+                    </StackPanel>
 
                             <!-- 当前文件 -->
                             <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,12">
-                                <materialDesign:PackIcon Kind="File" 
+                        <materialDesign:PackIcon Kind="File" 
                                                        Width="18" 
                                                        Height="18"
-                                                       VerticalAlignment="Center"
+                                               VerticalAlignment="Center"
                                                        Margin="0,0,10,0"
-                                                       Foreground="{StaticResource TextSecondaryBrush}"/>
+                                               Foreground="{StaticResource TextSecondaryBrush}"/>
                                 <TextBlock Text="文件：" 
                                          FontSize="13" 
                                          Foreground="{StaticResource TextSecondaryBrush}"
                                          VerticalAlignment="Center"
                                          Margin="0,0,5,0"/>
-                                <TextBlock x:Name="CurrentFileText"
-                                         Text="" 
+                        <TextBlock x:Name="CurrentFileText"
+                                 Text="" 
                                          FontSize="13"
                                          VerticalAlignment="Center"
                                          TextTrimming="CharacterEllipsis"/>
@@ -622,7 +622,7 @@
                                          Text="0 MB / 0 MB" 
                                          FontSize="13"
                                          VerticalAlignment="Center"/>
-                            </StackPanel>
+                    </StackPanel>
                         </Grid>
                     </Border>
                 </StackPanel>
