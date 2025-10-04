@@ -22,13 +22,14 @@ namespace ObsMCLauncher.Services
         public static List<string> MissingLibraries { get; private set; } = new List<string>();
 
         /// <summary>
-        /// 启动游戏
+        /// 启动游戏（异步版本）
         /// </summary>
         /// <param name="versionId">版本ID（文件夹名称）</param>
         /// <param name="account">游戏账号</param>
         /// <param name="config">启动器配置</param>
+        /// <param name="onProgressUpdate">进度更新回调</param>
         /// <returns>是否启动成功</returns>
-        public static bool LaunchGame(string versionId, GameAccount account, LauncherConfig config)
+        public static async System.Threading.Tasks.Task<bool> LaunchGameAsync(string versionId, GameAccount account, LauncherConfig config, Action<string>? onProgressUpdate = null)
         {
             LastError = string.Empty;
             
@@ -45,9 +46,23 @@ namespace ObsMCLauncher.Services
                 {
                     Debug.WriteLine("⚠️ 微软账号令牌已过期，尝试刷新...");
                     Console.WriteLine("⚠️ 微软账号令牌已过期，尝试刷新...");
+                    onProgressUpdate?.Invoke("正在刷新微软账号令牌...");
                     
-                    var refreshTask = AccountService.Instance.RefreshMicrosoftAccountAsync(account.Id);
-                    var refreshSuccess = refreshTask.GetAwaiter().GetResult();
+                    // 使用Task.Run在后台线程执行，并设置30秒超时
+                    var refreshTask = System.Threading.Tasks.Task.Run(async () => 
+                        await AccountService.Instance.RefreshMicrosoftAccountAsync(account.Id));
+                    
+                    var timeoutTask = System.Threading.Tasks.Task.Delay(TimeSpan.FromSeconds(30));
+                    var completedTask = await System.Threading.Tasks.Task.WhenAny(refreshTask, timeoutTask);
+                    
+                    if (completedTask == timeoutTask)
+                    {
+                        LastError = "微软账号令牌刷新超时（30秒）\n请检查网络连接或重新登录";
+                        Console.WriteLine($"❌ {LastError}");
+                        throw new Exception(LastError);
+                    }
+                    
+                    var refreshSuccess = await refreshTask;
                     
                     if (!refreshSuccess)
                     {
@@ -58,9 +73,11 @@ namespace ObsMCLauncher.Services
                     
                     Debug.WriteLine("✅ 令牌刷新成功");
                     Console.WriteLine("✅ 令牌刷新成功");
+                    onProgressUpdate?.Invoke("令牌刷新成功");
                 }
 
                 // 1. 验证Java路径
+                onProgressUpdate?.Invoke("正在验证Java环境...");
                 if (!File.Exists(config.JavaPath))
                 {
                     LastError = $"Java可执行文件不存在\n路径: {config.JavaPath}";
@@ -68,6 +85,7 @@ namespace ObsMCLauncher.Services
                 }
 
                 // 2. 读取版本JSON
+                onProgressUpdate?.Invoke("正在读取游戏版本信息...");
                 var versionJsonPath = Path.Combine(config.GameDirectory, "versions", versionId, $"{versionId}.json");
                 Debug.WriteLine($"版本JSON路径: {versionJsonPath}");
                 
@@ -108,6 +126,7 @@ namespace ObsMCLauncher.Services
                 }
 
                 // 4. 验证客户端JAR存在
+                onProgressUpdate?.Invoke("正在验证游戏客户端文件...");
                 var clientJar = Path.Combine(versionDir, $"{versionId}.jar");
                 Debug.WriteLine($"客户端JAR: {clientJar}");
                 
@@ -118,6 +137,7 @@ namespace ObsMCLauncher.Services
                 }
 
                 // 5. 检查并下载缺失的库文件
+                onProgressUpdate?.Invoke("正在检查游戏依赖库...");
                 Debug.WriteLine($"检查库文件完整性...");
                 var missingLibs = GetMissingLibraries(config.GameDirectory, versionId, versionInfo);
                 
@@ -130,12 +150,15 @@ namespace ObsMCLauncher.Services
                 }
                 
                 Debug.WriteLine($"✅ 所有库文件完整");
+                onProgressUpdate?.Invoke("游戏依赖检查完成");
 
                 // 6. 构建启动参数
+                onProgressUpdate?.Invoke("正在准备启动参数...");
                 var arguments = BuildLaunchArguments(versionId, account, config, versionInfo);
                 Debug.WriteLine($"完整启动命令: \"{config.JavaPath}\" {arguments}");
 
-                // 6. 启动游戏进程
+                // 7. 启动游戏进程
+                onProgressUpdate?.Invoke("正在启动游戏进程...");
                 var processInfo = new ProcessStartInfo
                 {
                     FileName = config.JavaPath,
@@ -172,9 +195,10 @@ namespace ObsMCLauncher.Services
                 process.BeginErrorReadLine();
                 
                 Debug.WriteLine($"✅ 游戏进程已启动 (PID: {process.Id})");
+                onProgressUpdate?.Invoke("游戏进程已启动，检查运行状态...");
                 
                 // 等待一小段时间检查进程是否立即退出
-                System.Threading.Thread.Sleep(500);
+                await System.Threading.Tasks.Task.Delay(500);
                 
                 if (process.HasExited)
                 {
@@ -184,6 +208,7 @@ namespace ObsMCLauncher.Services
                 }
                 
                 Debug.WriteLine($"========== 启动完成 ==========");
+                onProgressUpdate?.Invoke("启动完成");
                 return true;
             }
             catch (Exception ex)
