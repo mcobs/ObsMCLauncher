@@ -512,7 +512,9 @@ namespace ObsMCLauncher.Pages
                 httpClient.Timeout = TimeSpan.FromMinutes(5);
                 
                 int totalLibs = GameLauncher.MissingLibraries.Count;
-                int downloadedLibs = 0;
+                int processedLibs = 0;        // 已处理的库数量
+                int successfullyDownloaded = 0;  // 成功下载的库数量
+                int skippedLibs = 0;          // 跳过的库（没有URL等）
 
                 Debug.WriteLine($"开始下载 {totalLibs} 个缺失的库文件...");
 
@@ -527,16 +529,17 @@ namespace ObsMCLauncher.Pages
                     if (!IsLibraryAllowedForOS(lib))
                     {
                         Debug.WriteLine($"⏭️ 跳过不适用的库: {lib.Name}");
+                        skippedLibs++;
                         continue;
                     }
 
-                    downloadedLibs++;
-                    var progress = (downloadedLibs * 100.0 / totalLibs);
+                    processedLibs++;
+                    var progress = (processedLibs * 100.0 / totalLibs);
                     
                     // 更新UI和通知
                     Dispatcher.Invoke(() =>
                     {
-                        DependencyDownloadStatus.Text = $"下载中: {lib.Name} ({downloadedLibs}/{totalLibs})";
+                        DependencyDownloadStatus.Text = $"下载中: {lib.Name} ({processedLibs}/{totalLibs})";
                         DependencyDownloadProgress.Value = progress;
                         
                         // 更新进度通知
@@ -544,7 +547,7 @@ namespace ObsMCLauncher.Pages
                         {
                             NotificationManager.Instance.UpdateNotification(
                                 notificationId,
-                                $"正在下载 {lib.Name} ({downloadedLibs}/{totalLibs})"
+                                $"正在下载 {lib.Name} ({processedLibs}/{totalLibs})"
                             );
                         }
                     });
@@ -594,7 +597,7 @@ namespace ObsMCLauncher.Pages
                                 
                                 Debug.WriteLine($"   URL: {url}");
                                 Debug.WriteLine($"   保存到: {libPath}");
-                                Console.WriteLine($"📥 [{downloadedLibs}/{totalLibs}] {lib.Name}");
+                                Console.WriteLine($"📥 [{processedLibs}/{totalLibs}] {lib.Name}");
                                 
                                 // 使用HttpClient下载
                                 var response = await httpClient.GetAsync(url);
@@ -606,6 +609,7 @@ namespace ObsMCLauncher.Pages
                                 if (File.Exists(libPath))
                                 {
                                     var fileInfo = new FileInfo(libPath);
+                                    successfullyDownloaded++;  // 成功计数
                                     Debug.WriteLine($"✅ 已下载: {lib.Name} ({fileInfo.Length} 字节)");
                                     Console.WriteLine($"✅ 已下载: {lib.Name} ({fileInfo.Length / 1024.0:F2} KB)");
                                 }
@@ -620,6 +624,7 @@ namespace ObsMCLauncher.Pages
                         {
                             Debug.WriteLine($"⚠️ 库没有下载URL: {lib.Name}");
                             Console.WriteLine($"⚠️ 库没有下载URL: {lib.Name}");
+                            skippedLibs++;  // 跳过计数
                         }
                     }
                     catch (Exception ex)
@@ -633,8 +638,29 @@ namespace ObsMCLauncher.Pages
                 }
 
                 httpClient.Dispose();
-                Debug.WriteLine($"✅ 库文件下载完成！共 {downloadedLibs}/{totalLibs}");
-                return true;
+                
+                // 显示下载结果统计
+                Debug.WriteLine($"========== 库文件下载结果 ==========");
+                Debug.WriteLine($"总计: {totalLibs} 个");
+                Debug.WriteLine($"成功: {successfullyDownloaded} 个");
+                Debug.WriteLine($"跳过: {skippedLibs} 个（无下载URL或不适用）");
+                Debug.WriteLine($"失败: {totalLibs - successfullyDownloaded - skippedLibs} 个");
+                
+                // 只有当所有需要下载的库都成功时才返回true
+                // 跳过的库（无URL）不影响成功判定，因为这些库可能不是必需的
+                bool allSuccessful = (successfullyDownloaded + skippedLibs) >= totalLibs;
+                
+                if (successfullyDownloaded > 0)
+                {
+                    Debug.WriteLine($"✅ 成功下载 {successfullyDownloaded} 个库文件");
+                }
+                
+                if (skippedLibs > 0)
+                {
+                    Debug.WriteLine($"⚠️ 跳过 {skippedLibs} 个库（这些库可能不是必需的或无下载源）");
+                }
+                
+                return allSuccessful;
             }
             catch (Exception ex)
             {
