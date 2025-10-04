@@ -40,6 +40,9 @@ namespace ObsMCLauncher.Pages
             
             // 更新选中的加载器显示
             UpdateSelectedLoaderText();
+            
+            // 显示下载提示（如果启用了完整下载）
+            UpdateDownloadAssetsHint();
         }
         
         /// <summary>
@@ -288,6 +291,27 @@ namespace ObsMCLauncher.Pages
             {
                 var version = (QuiltVersionComboBox?.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "默认";
                 SelectedLoaderText.Text = $"已选择：Quilt {version}";
+            }
+        }
+
+        /// <summary>
+        /// 更新下载资源提示的显示
+        /// </summary>
+        private void UpdateDownloadAssetsHint()
+        {
+            if (DownloadAssetsHintText == null) return;
+
+            // 读取配置
+            var config = LauncherConfig.Load();
+            
+            // 如果启用了完整下载，显示提示
+            if (config.DownloadAssetsWithGame)
+            {
+                DownloadAssetsHintText.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                DownloadAssetsHintText.Visibility = Visibility.Collapsed;
             }
         }
 

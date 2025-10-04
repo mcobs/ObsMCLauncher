@@ -427,6 +427,14 @@
                              FontSize="12" 
                              Foreground="{StaticResource TextSecondaryBrush}"
                              Margin="0,5,0,0"/>
+                    <TextBlock x:Name="DownloadAssetsHintText"
+                             FontSize="11" 
+                             Foreground="#FFA500"
+                             Margin="0,3,0,0"
+                             Visibility="Collapsed">
+                        <Run Text="✓ "/>
+                        <Run Text="已启用完整下载：将下载所有游戏资源（库文件+Assets）"/>
+                    </TextBlock>
                 </StackPanel>
 
                 <Button Grid.Column="1"
