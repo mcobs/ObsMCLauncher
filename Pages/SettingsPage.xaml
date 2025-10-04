@@ -486,13 +486,13 @@
                                          Foreground="#AAAAAA"
                                          TextWrapping="Wrap"/>
                             </StackPanel>
-                            <ToggleButton x:Name="DownloadAssetsToggle"
-                                        Grid.Column="1"
-                                        IsChecked="False"
-                                        Checked="DownloadAssetsToggle_Changed"
-                                        Unchecked="DownloadAssetsToggle_Changed"
-                                        Style="{StaticResource MaterialDesignSwitchToggleButton}"
-                                        VerticalAlignment="Center"/>
+                                    <ToggleButton x:Name="DownloadAssetsToggle"
+                                                Grid.Column="1"
+                                                IsChecked="True"
+                                                Checked="DownloadAssetsToggle_Changed"
+                                                Unchecked="DownloadAssetsToggle_Changed"
+                                                Style="{StaticResource MaterialDesignSwitchToggleButton}"
+                                                VerticalAlignment="Center"/>
                         </Grid>
                     </StackPanel>
                 </Border>

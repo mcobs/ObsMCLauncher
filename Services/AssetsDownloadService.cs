@@ -156,79 +156,113 @@ namespace ObsMCLauncher.Services
                 var downloadSource = DownloadSourceManager.Instance.CurrentService;
                 Debug.WriteLine($"使用下载源: {DownloadSourceManager.Instance.CurrentSource}");
 
+                // 获取多线程设置
+                var config = LauncherConfig.Load();
+                var maxThreads = Math.Max(1, Math.Min(config.MaxDownloadThreads, 16)); // 限制在1-16之间
+                Debug.WriteLine($"使用 {maxThreads} 个并发线程下载Assets");
+
+                // 使用信号量控制并发数
+                using var semaphore = new System.Threading.SemaphoreSlim(maxThreads, maxThreads);
+                var downloadTasks = new List<Task>();
+                var lockObject = new object();
+
                 foreach (var asset in missingAssets)
                 {
-                    var currentIndex = downloaded + failed + 1;
-                    var progress = 10 + (int)((currentIndex / (float)total) * 90);
-                    onProgress?.Invoke(progress, 100, $"下载资源文件 ({currentIndex}/{total})");
-
-                    try
+                    var task = Task.Run(async () =>
                     {
-                        var hash = asset.Hash;
-                        var hashPrefix = hash.Substring(0, 2);
-                        var assetPath = Path.Combine(objectsDir, hashPrefix, hash);
-                        var assetDir = Path.GetDirectoryName(assetPath);
-
-                        if (!string.IsNullOrEmpty(assetDir))
+                        await semaphore.WaitAsync();
+                        try
                         {
-                            Directory.CreateDirectory(assetDir);
-                        }
+                            var hash = asset.Hash;
+                            var hashPrefix = hash.Substring(0, 2);
+                            var assetPath = Path.Combine(objectsDir, hashPrefix, hash);
+                            var assetDir = Path.GetDirectoryName(assetPath);
 
-                        // 使用下载源服务获取URL（支持镜像加速）
-                        var url = downloadSource.GetAssetUrl(hash);
-                        
-                        // 下载文件（带重试机制，最多3次）
-                        bool downloadSuccess = false;
-                        Exception? lastException = null;
-                        
-                        for (int retry = 0; retry < 3; retry++)
-                        {
-                            try
+                            if (!string.IsNullOrEmpty(assetDir))
                             {
-                                if (retry > 0)
-                                {
-                                    Debug.WriteLine($"⚠️ 重试下载 ({retry}/3): {asset.Name}");
-                                    await Task.Delay(1000 * retry); // 递增延迟
-                                }
-                                
-                                var response = await _httpClient.GetAsync(url);
-                                response.EnsureSuccessStatusCode();
-                                var fileBytes = await response.Content.ReadAsByteArrayAsync();
-                                await File.WriteAllBytesAsync(assetPath, fileBytes);
-                                
-                                downloadSuccess = true;
-                                downloaded++;
-                                break;
+                                Directory.CreateDirectory(assetDir);
                             }
-                            catch (Exception ex)
-                            {
-                                lastException = ex;
-                                if (retry == 2) // 最后一次重试
-                                {
-                                    Debug.WriteLine($"❌ 下载失败（3次重试后）: {asset.Name}");
-                                    Debug.WriteLine($"   错误: {ex.Message}");
-                                }
-                            }
-                        }
-                        
-                        if (!downloadSuccess)
-                        {
-                            failed++;
-                            failedAssets.Add($"{asset.Name} ({lastException?.Message})");
-                        }
 
-                        if ((downloaded + failed) % 50 == 0)
-                        {
-                            Debug.WriteLine($"📥 进度: {downloaded}成功 / {failed}失败 / {total}总计");
+                            // 使用下载源服务获取URL（支持镜像加速）
+                            var url = downloadSource.GetAssetUrl(hash);
+                            
+                            // 下载文件（带重试机制，最多3次）
+                            bool downloadSuccess = false;
+                            Exception? lastException = null;
+                            
+                            for (int retry = 0; retry < 3; retry++)
+                            {
+                                try
+                                {
+                                    if (retry > 0)
+                                    {
+                                        Debug.WriteLine($"⚠️ 重试下载 ({retry}/3): {asset.Name}");
+                                        await Task.Delay(1000 * retry); // 递增延迟
+                                    }
+                                    
+                                    var response = await _httpClient.GetAsync(url);
+                                    response.EnsureSuccessStatusCode();
+                                    var fileBytes = await response.Content.ReadAsByteArrayAsync();
+                                    await File.WriteAllBytesAsync(assetPath, fileBytes);
+                                    
+                                    downloadSuccess = true;
+                                    break;
+                                }
+                                catch (Exception ex)
+                                {
+                                    lastException = ex;
+                                    if (retry == 2) // 最后一次重试
+                                    {
+                                        Debug.WriteLine($"❌ 下载失败（3次重试后）: {asset.Name}");
+                                        Debug.WriteLine($"   错误: {ex.Message}");
+                                    }
+                                }
+                            }
+                            
+                            // 线程安全的计数器更新
+                            lock (lockObject)
+                            {
+                                if (downloadSuccess)
+                                {
+                                    downloaded++;
+                                }
+                                else
+                                {
+                                    failed++;
+                                    failedAssets.Add($"{asset.Name} ({lastException?.Message})");
+                                }
+
+                                // 更新进度
+                                var currentIndex = downloaded + failed;
+                                var progress = 10 + (int)((currentIndex / (float)total) * 90);
+                                onProgress?.Invoke(progress, 100, $"下载资源文件 ({currentIndex}/{total})");
+
+                                if (currentIndex % 50 == 0)
+                                {
+                                    Debug.WriteLine($"📥 进度: {downloaded}成功 / {failed}失败 / {total}总计");
+                                }
+                            }
                         }
-                    }
-                    catch (Exception ex)
-                    {
-                        failed++;
-                        failedAssets.Add($"{asset.Name} ({ex.Message})");
-                        Debug.WriteLine($"❌ 下载异常: {asset.Name} - {ex.Message}");
-                    }
+                        catch (Exception ex)
+                        {
+                            lock (lockObject)
+                            {
+                                failed++;
+                                failedAssets.Add($"{asset.Name} ({ex.Message})");
+                                Debug.WriteLine($"❌ 下载异常: {asset.Name} - {ex.Message}");
+                            }
+                        }
+                        finally
+                        {
+                            semaphore.Release();
+                        }
+                    });
+
+                    downloadTasks.Add(task);
                 }
+
+                // 等待所有下载任务完成
+                await Task.WhenAll(downloadTasks);
 
                 Debug.WriteLine($"========== Assets下载完成 ==========");
                 Debug.WriteLine($"成功: {downloaded}/{total}");

@@ -96,7 +96,7 @@ namespace ObsMCLauncher.Models
         /// <summary>
         /// 下载游戏时是否完整下载资源文件（Assets）
         /// </summary>
-        public bool DownloadAssetsWithGame { get; set; } = false;
+        public bool DownloadAssetsWithGame { get; set; } = true;
 
         /// <summary>
         /// 游戏启动后关闭启动器
