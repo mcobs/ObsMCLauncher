@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
@@ -224,7 +225,7 @@ namespace ObsMCLauncher.Services
                     throw new Exception(LastError);
                 }
 
-                // 3. 确保natives目录存在
+                // 3. 确保natives目录存在并解压natives库
                 var versionDir = Path.Combine(config.GameDirectory, "versions", versionId);
                 var nativesDir = Path.Combine(versionDir, "natives");
                 if (!Directory.Exists(nativesDir))
@@ -232,6 +233,10 @@ namespace ObsMCLauncher.Services
                     Debug.WriteLine($"创建natives目录: {nativesDir}");
                     Directory.CreateDirectory(nativesDir);
                 }
+                
+                // 解压natives库文件（LWJGL等本地库）
+                onProgressUpdate?.Invoke("正在解压本地库文件...");
+                ExtractNatives(config.GameDirectory, versionId, versionInfo, nativesDir);
 
                 // 4. 验证客户端JAR存在
                 onProgressUpdate?.Invoke("正在验证游戏客户端文件...");
@@ -608,11 +613,13 @@ namespace ObsMCLauncher.Services
             public string? Name { get; set; }
             public LibraryDownloads? Downloads { get; set; }
             public Rule[]? Rules { get; set; }
+            public Dictionary<string, string>? Natives { get; set; }
         }
 
         private class LibraryDownloads
         {
             public Artifact? Artifact { get; set; }
+            public Dictionary<string, Artifact>? Classifiers { get; set; }
         }
 
         private class Artifact
@@ -631,6 +638,93 @@ namespace ObsMCLauncher.Services
         private class OsInfo
         {
             public string? Name { get; set; }
+        }
+        
+        /// <summary>
+        /// 解压natives库文件
+        /// </summary>
+        private static void ExtractNatives(string gameDir, string versionId, VersionInfo versionInfo, string nativesDir)
+        {
+            try
+            {
+                Debug.WriteLine($"开始检查natives库文件: {nativesDir}");
+                var librariesDir = Path.Combine(gameDir, "libraries");
+                var osName = GetOSName();
+                int extractedCount = 0;
+                int skippedCount = 0;
+                
+                if (versionInfo.Libraries == null)
+                {
+                    Debug.WriteLine("没有库文件");
+                    return;
+                }
+                
+                foreach (var lib in versionInfo.Libraries)
+                {
+                    // 检查库是否适用于当前操作系统
+                    if (!IsLibraryAllowed(lib))
+                        continue;
+                    
+                    // 检查是否有natives字段
+                    if (lib.Natives == null || lib.Downloads?.Classifiers == null)
+                        continue;
+                    
+                    // 获取当前操作系统对应的natives键
+                    if (!lib.Natives.TryGetValue(osName, out var nativesKey) || string.IsNullOrEmpty(nativesKey))
+                        continue;
+                    
+                    // 获取natives文件路径
+                    if (!lib.Downloads.Classifiers.TryGetValue(nativesKey, out var nativeArtifact) || 
+                        string.IsNullOrEmpty(nativeArtifact.Path))
+                        continue;
+                    
+                    var nativesJarPath = Path.Combine(librariesDir, nativeArtifact.Path.Replace("/", "\\"));
+                    
+                    if (!File.Exists(nativesJarPath))
+                    {
+                        Debug.WriteLine($"   ⚠️ Natives文件不存在: {lib.Name} -> {nativesJarPath}");
+                        continue;
+                    }
+                    
+                    try
+                    {
+                        // 解压jar文件
+                        using var archive = System.IO.Compression.ZipFile.OpenRead(nativesJarPath);
+                        foreach (var entry in archive.Entries)
+                        {
+                            // 只解压.dll、.so、.dylib等本地库文件
+                            var ext = System.IO.Path.GetExtension(entry.Name).ToLower();
+                            if (ext == ".dll" || ext == ".so" || ext == ".dylib")
+                            {
+                                var destPath = Path.Combine(nativesDir, entry.Name);
+                                
+                                // 如果文件已存在且大小相同，跳过
+                                if (File.Exists(destPath))
+                                {
+                                    var existingFile = new FileInfo(destPath);
+                                    if (existingFile.Length == entry.Length)
+                                        continue;
+                                }
+                                
+                                entry.ExtractToFile(destPath, overwrite: true);
+                                extractedCount++;
+                            }
+                        }
+                        
+                        Debug.WriteLine($"   ✅ 已解压natives: {lib.Name}");
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"   ❌ 解压natives失败: {lib.Name} - {ex.Message}");
+                    }
+                }
+                
+                Debug.WriteLine($"✅ Natives解压完成，共解压 {extractedCount} 个文件");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"❌ 解压natives过程出错: {ex.Message}");
+            }
         }
     }
 }
