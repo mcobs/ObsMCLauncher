@@ -75,7 +75,7 @@ namespace ObsMCLauncher.Pages
         }
 
         /// <summary>
-        /// 自动保存设置（带防抖）
+        /// 自动保存设置（带防抖，仅用于内存滑块）
         /// </summary>
         private void AutoSaveSettings(string settingName = "设置")
         {
@@ -98,6 +98,15 @@ namespace ObsMCLauncher.Pages
                 DoSaveSettings(_pendingSaveSettingName);
             };
             _saveDebounceTimer.Start();
+        }
+
+        /// <summary>
+        /// 立即保存设置（不使用防抖）
+        /// </summary>
+        private void AutoSaveSettingsImmediately(string settingName = "设置")
+        {
+            if (!_isInitialized) return;
+            DoSaveSettings(settingName);
         }
 
         /// <summary>
@@ -269,6 +278,8 @@ namespace ObsMCLauncher.Pages
                     _isUpdatingMemory = true;
                     MaxMemorySlider.Value = value;
                     _isUpdatingMemory = false;
+                    // 手动编辑文本框也需要保存（使用防抖）
+                    AutoSaveSettings("最大内存");
                 }
                 else if (value > maxMemory)
                 {
@@ -277,6 +288,7 @@ namespace ObsMCLauncher.Pages
                     MaxMemoryTextBox.Text = maxMemory.ToString();
                     MaxMemorySlider.Value = maxMemory;
                     _isUpdatingMemory = false;
+                    AutoSaveSettings("最大内存");
                 }
             }
         }
@@ -307,7 +319,7 @@ namespace ObsMCLauncher.Pages
                 var source = (DownloadSource)DownloadSourceComboBox.SelectedIndex;
                 DownloadSourceDescription.Text = DownloadSourceManager.GetSourceDescription(source);
             }
-            AutoSaveSettings("下载源");
+            AutoSaveSettingsImmediately("下载源");
         }
 
         /// <summary>
@@ -402,7 +414,7 @@ namespace ObsMCLauncher.Pages
                     JavaPathTextBox.Text = bestJava.Path;
                     
                     // ✅ 自动保存设置
-                    AutoSaveSettings("Java路径");
+                    AutoSaveSettingsImmediately("Java路径");
                     
                     MessageBox.Show(
                         $"已选择 Java {bestJava.MajorVersion}！\n\n" +
@@ -524,7 +536,7 @@ namespace ObsMCLauncher.Pages
         /// </summary>
         private void JavaPathTextBox_LostFocus(object sender, RoutedEventArgs e)
         {
-            AutoSaveSettings("Java路径");
+            AutoSaveSettingsImmediately("Java路径");
         }
 
         /// <summary>
@@ -532,7 +544,7 @@ namespace ObsMCLauncher.Pages
         /// </summary>
         private void JvmArgumentsTextBox_LostFocus(object sender, RoutedEventArgs e)
         {
-            AutoSaveSettings("JVM参数");
+            AutoSaveSettingsImmediately("JVM参数");
         }
 
         /// <summary>
@@ -540,7 +552,7 @@ namespace ObsMCLauncher.Pages
         /// </summary>
         private void ToggleButton_Changed(object sender, RoutedEventArgs e)
         {
-            AutoSaveSettings("启动器设置");
+            AutoSaveSettingsImmediately("启动器设置");
         }
 
         /// <summary>
@@ -553,7 +565,7 @@ namespace ObsMCLauncher.Pages
             var location = (DirectoryLocation)GameDirectoryLocationComboBox.SelectedIndex;
             CustomGameDirectoryPanel.Visibility = location == DirectoryLocation.Custom ? Visibility.Visible : Visibility.Collapsed;
             UpdateGameDirectoryDisplay();
-            AutoSaveSettings("游戏目录");
+            AutoSaveSettingsImmediately("游戏目录");
         }
 
         /// <summary>
@@ -566,7 +578,7 @@ namespace ObsMCLauncher.Pages
             var location = (DirectoryLocation)ConfigFileLocationComboBox.SelectedIndex;
             CustomConfigFilePanel.Visibility = location == DirectoryLocation.Custom ? Visibility.Visible : Visibility.Collapsed;
             UpdateConfigFileDisplay();
-            AutoSaveSettings("配置文件位置");
+            AutoSaveSettingsImmediately("配置文件位置");
         }
 
         /// <summary>
@@ -575,7 +587,7 @@ namespace ObsMCLauncher.Pages
         private void AccountFileLocation_Changed_AutoSave(object sender, SelectionChangedEventArgs e)
         {
             UpdateAccountFileDisplay();
-            AutoSaveSettings("账号文件位置");
+            AutoSaveSettingsImmediately("账号文件位置");
         }
 
         /// <summary>
@@ -583,7 +595,7 @@ namespace ObsMCLauncher.Pages
         /// </summary>
         private void ComboBox_Changed(object sender, SelectionChangedEventArgs e)
         {
-            AutoSaveSettings("下载设置");
+            AutoSaveSettingsImmediately("下载设置");
         }
 
         /// <summary>

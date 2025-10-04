@@ -322,9 +322,9 @@
                 Grid.Row="0"
                 Grid.Column="1"
                 Grid.RowSpan="2"
-                IsHitTestVisible="False"
                 Panel.ZIndex="999">
             <!-- 通知将动态添加到这里 -->
+            <!-- Canvas不设置Background，让鼠标事件穿透到下层UI，但通知本身有Background可以接收事件 -->
         </Canvas>
 
         <!-- 全局：登录进度悬浮窗（已废弃，保留用于兼容） -->

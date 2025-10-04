@@ -105,12 +105,21 @@ namespace ObsMCLauncher.Utils
                 _notifications.Add(notification);
                 _container.Children.Add(element);
                 UpdateNotificationPositions();
-                AnimateIn(element);
+                // 不再使用淡入动画，通知直接显示
 
-                // 启动倒计时进度条动画
+                // 启动倒计时进度条动画（延迟1000ms，确保用户看到满条状态）
                 if (durationSeconds.HasValue && type != NotificationType.Progress)
                 {
-                    StartCountdownAnimation(element, durationSeconds.Value);
+                    var delayTimer = new System.Windows.Threading.DispatcherTimer
+                    {
+                        Interval = TimeSpan.FromMilliseconds(1000)
+                    };
+                    delayTimer.Tick += (s, e) =>
+                    {
+                        delayTimer.Stop();
+                        StartCountdownAnimation(element, durationSeconds.Value - 1.0); // 减去延迟时间
+                    };
+                    delayTimer.Start();
                 }
             });
 
@@ -155,24 +164,19 @@ namespace ObsMCLauncher.Utils
         /// </summary>
         public void RemoveNotification(string id)
         {
-            System.Diagnostics.Debug.WriteLine($"[NotificationManager] RemoveNotification 被调用: {id}");
-            
             var notification = _notifications.FirstOrDefault(n => n.Id == id);
             if (notification?.UIElement != null)
             {
-                System.Diagnostics.Debug.WriteLine($"[NotificationManager] 找到通知，准备移除: {notification.Title}");
-                
                 // 停止定时器
                 if (notification.Timer != null)
                 {
                     notification.Timer.Stop();
                     notification.Timer = null;
-                    System.Diagnostics.Debug.WriteLine($"[NotificationManager] 定时器已停止");
                 }
 
                 _container?.Dispatcher.Invoke(() =>
                 {
-                    // 停止所有动画
+                    // 停止通知自身的所有动画
                     notification.UIElement.BeginAnimation(UIElement.OpacityProperty, null);
                     notification.UIElement.BeginAnimation(Canvas.TopProperty, null);
                     
@@ -181,21 +185,16 @@ namespace ObsMCLauncher.Utils
                     if (progressBar != null)
                     {
                         progressBar.BeginAnimation(System.Windows.Controls.Primitives.RangeBase.ValueProperty, null);
-                        System.Diagnostics.Debug.WriteLine($"[NotificationManager] 倒计时进度条动画已停止");
+                        progressBar.Opacity = 0;
                     }
 
                     AnimateOut(notification.UIElement, () =>
                     {
                         _container.Children.Remove(notification.UIElement);
                         _notifications.Remove(notification);
-                        System.Diagnostics.Debug.WriteLine($"[NotificationManager] 通知已从容器中移除，剩余通知数: {_notifications.Count}");
                         UpdateNotificationPositions();
                     });
                 });
-            }
-            else
-            {
-                System.Diagnostics.Debug.WriteLine($"[NotificationManager] 未找到通知: {id}");
             }
         }
 
@@ -212,7 +211,8 @@ namespace ObsMCLauncher.Utils
                 Padding = new Thickness(0),
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Top,
-                Opacity = 0,
+                Opacity = 1, // 直接显示，不使用淡入动画
+                IsHitTestVisible = true, // 确保可以接收鼠标事件
                 Effect = new DropShadowEffect
                 {
                     Color = Colors.Black,
@@ -232,7 +232,7 @@ namespace ObsMCLauncher.Utils
             var topGrid = new Grid { Margin = new Thickness(0, 0, 0, notification.IsProgress ? 8 : 0) };
             topGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             topGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            topGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            topGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(36, GridUnitType.Pixel) }); // 固定宽度36px
 
             // 图标
             var iconBorder = new Border
@@ -276,38 +276,60 @@ namespace ObsMCLauncher.Utils
             topGrid.Children.Add(iconBorder);
             topGrid.Children.Add(textPanel);
 
-            // 关闭按钮（非进度通知）
+            // 关闭按钮（非进度通知）- 使用真正的Button，填充整个Grid单元格高度
             if (!notification.IsProgress)
             {
                 var closeButton = new Button
                 {
-                    Style = (Style)Application.Current.FindResource("MaterialDesignIconButton"),
-                    Width = 24,
-                    Height = 24,
-                    Padding = new Thickness(0),
-                    Margin = new Thickness(8, 0, 0, 0),
-                    Tag = notification.Id,
-                    Opacity = 0.7,
+                    Width = 28,
+                    // 不设置Height，让它填充整个Grid单元格高度
+                    Background = new SolidColorBrush(Color.FromArgb(40, 255, 255, 255)),
+                    BorderThickness = new Thickness(0),
+                    Margin = new Thickness(4, 0, 4, 0), // 左右边距4px，上下0px填充整个高度
                     Cursor = System.Windows.Input.Cursors.Hand,
-                    VerticalAlignment = VerticalAlignment.Center
+                    Padding = new Thickness(0),
+                    VerticalAlignment = VerticalAlignment.Stretch, // 拉伸填充整个Grid单元格高度
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    Style = null
                 };
+                
+                // 设置Button的模板，包含圆角
+                var template = new ControlTemplate(typeof(Button));
+                var borderFactory = new FrameworkElementFactory(typeof(Border));
+                borderFactory.SetValue(Border.BackgroundProperty, new TemplateBindingExtension(Button.BackgroundProperty));
+                borderFactory.SetValue(Border.CornerRadiusProperty, new CornerRadius(14));
+                
+                var contentFactory = new FrameworkElementFactory(typeof(ContentPresenter));
+                contentFactory.SetValue(ContentPresenter.HorizontalAlignmentProperty, HorizontalAlignment.Center);
+                contentFactory.SetValue(ContentPresenter.VerticalAlignmentProperty, VerticalAlignment.Center);
+                borderFactory.AppendChild(contentFactory);
+                
+                template.VisualTree = borderFactory;
+                closeButton.Template = template;
+                
+                // 设置按钮内容为关闭图标
                 closeButton.Content = new PackIcon
                 {
                     Kind = PackIconKind.Close,
                     Width = 16,
-                    Height = 16
+                    Height = 16,
+                    Foreground = Brushes.White
                 };
                 
-                // 添加鼠标悬停效果
-                closeButton.MouseEnter += (s, e) => closeButton.Opacity = 1.0;
-                closeButton.MouseLeave += (s, e) => closeButton.Opacity = 0.7;
+                // 鼠标悬停效果
+                closeButton.MouseEnter += (s, e) =>
+                {
+                    closeButton.Background = new SolidColorBrush(Color.FromArgb(60, 255, 255, 255));
+                };
+                closeButton.MouseLeave += (s, e) =>
+                {
+                    closeButton.Background = new SolidColorBrush(Color.FromArgb(40, 255, 255, 255));
+                };
                 
-                // 点击关闭
-                var notificationId = notification.Id; // 捕获局部变量
+                // 点击事件
+                var notificationId = notification.Id;
                 closeButton.Click += (s, e) =>
                 {
-                    e.Handled = true; // 防止事件冒泡
-                    System.Diagnostics.Debug.WriteLine($"[NotificationManager] 关闭按钮被点击: {notificationId}");
                     RemoveNotification(notificationId);
                 };
                 
@@ -327,8 +349,20 @@ namespace ObsMCLauncher.Utils
                     Foreground = (Brush)Application.Current.FindResource("PrimaryBrush"),
                     Background = new SolidColorBrush(Color.FromRgb(63, 63, 70)),
                     BorderThickness = new Thickness(0),
-                    Margin = new Thickness(0, 8, 0, 0)
+                    Margin = new Thickness(0, 8, 0, 0),
+                    Opacity = 1.0 // 确保完全可见
                 };
+                
+                // 确保使用MaterialDesign样式
+                try
+                {
+                    progressBar.Style = (Style)Application.Current.FindResource("MaterialDesignLinearProgressBar");
+                }
+                catch
+                {
+                    // 如果找不到样式，使用默认
+                }
+                
                 stackPanel.Children.Add(progressBar);
             }
 
@@ -344,11 +378,11 @@ namespace ObsMCLauncher.Utils
                     Height = 2,
                     Minimum = 0,
                     Maximum = 100,
-                    Value = 100, // 初始值满，等待border淡入后再倒计时
+                    Value = 100, // 初始值满
                     Foreground = GetTypeColor(notification.Type),
                     Background = Brushes.Transparent,
                     BorderThickness = new Thickness(0),
-                    Opacity = 0.5, // 稍微提高可见度
+                    Opacity = 1.0, // 立即完全可见，满条状态
                     VerticalAlignment = VerticalAlignment.Bottom,
                     IsIndeterminate = false // 确保不是不确定进度模式
                 };
@@ -361,20 +395,24 @@ namespace ObsMCLauncher.Utils
         }
 
         /// <summary>
-        /// 启动倒计时进度条动画（延迟启动，避免与淡入动画冲突）
+        /// 启动倒计时进度条动画（简单直接，从100%倒计时到0%）
         /// </summary>
-        private void StartCountdownAnimation(Border element, int durationSeconds)
+        private void StartCountdownAnimation(Border element, double durationSeconds)
         {
             var progressBar = FindVisualChild<ProgressBar>(element, "CountdownProgress");
             if (progressBar != null)
             {
+                progressBar.Value = 100;
+                progressBar.Opacity = 1.0;
+                
                 var animation = new DoubleAnimation
                 {
                     From = 100,
                     To = 0,
                     Duration = TimeSpan.FromSeconds(durationSeconds),
-                    BeginTime = TimeSpan.FromMilliseconds(250) // 等待淡入动画完成（250ms）
+                    FillBehavior = FillBehavior.HoldEnd
                 };
+                
                 progressBar.BeginAnimation(System.Windows.Controls.Primitives.RangeBase.ValueProperty, animation);
             }
         }
@@ -411,8 +449,8 @@ namespace ObsMCLauncher.Utils
                             if (width <= 0 || double.IsNaN(width)) width = 380; // 默认宽度
                             
                             // 水平居中：(容器宽度 - 通知宽度) / 2 - 微调偏移
-                            // 减去50px使通知稍微偏左，相对于整个窗口更居中
-                            double centerX = (containerWidth - width) / 2 - 50;
+                            // 减去100px使通知偏左，相对于整个窗口更居中（考虑左侧侧边栏200px）
+                            double centerX = (containerWidth - width) / 2 - 100;
                             if (centerX < 0) centerX = 0;
                             notification.UIElement.SetValue(Canvas.LeftProperty, centerX);
                             
@@ -422,7 +460,7 @@ namespace ObsMCLauncher.Utils
                         catch (Exception ex)
                         {
                             System.Diagnostics.Debug.WriteLine($"[NotificationManager] 位置更新错误: {ex.Message}");
-                            double centerX = (containerWidth - 380) / 2 - 50;
+                            double centerX = (containerWidth - 380) / 2 - 100;
                             if (centerX < 0) centerX = 0;
                             notification.UIElement.SetValue(Canvas.LeftProperty, centerX);
                             AnimatePosition(notification.UIElement, currentY);
