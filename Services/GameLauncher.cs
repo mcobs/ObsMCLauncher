@@ -17,9 +17,14 @@ namespace ObsMCLauncher.Services
         public static string LastError { get; private set; } = string.Empty;
         
         /// <summary>
-        /// 缺失的库文件列表（用于UI显示）
+        /// 缺失的必需库文件列表
         /// </summary>
         public static List<string> MissingLibraries { get; private set; } = new List<string>();
+        
+        /// <summary>
+        /// 缺失的可选库列表（natives、Twitch、JInput等）
+        /// </summary>
+        public static List<string> MissingOptionalLibraries { get; private set; } = new List<string>();
 
         /// <summary>
         /// 检查游戏完整性（不启动游戏）
@@ -32,6 +37,7 @@ namespace ObsMCLauncher.Services
         {
             LastError = string.Empty;
             MissingLibraries.Clear();
+            MissingOptionalLibraries.Clear();
             
             try
             {
@@ -89,17 +95,25 @@ namespace ObsMCLauncher.Services
                 // 4. 检查库文件完整性（包括文件大小验证）
                 onProgressUpdate?.Invoke("正在检查游戏依赖库...");
                 Debug.WriteLine($"检查库文件完整性...");
-                var missingLibs = GetMissingLibraries(config.GameDirectory, versionId, versionInfo);
+                var (missingRequired, missingOptional) = GetMissingLibraries(config.GameDirectory, versionId, versionInfo);
                 
-                if (missingLibs.Count > 0)
+                MissingLibraries = missingRequired;
+                MissingOptionalLibraries = missingOptional;
+                
+                if (missingRequired.Count > 0)
                 {
-                    MissingLibraries = missingLibs;
-                    LastError = $"检测到 {missingLibs.Count} 个缺失或不完整的库文件";
-                    Debug.WriteLine($"❌ 缺失 {missingLibs.Count} 个库文件");
+                    LastError = $"检测到 {missingRequired.Count} 个缺失或不完整的必需库文件";
+                    Debug.WriteLine($"❌ 缺失 {missingRequired.Count} 个必需库文件");
                     return true; // 有完整性问题
                 }
                 
-                Debug.WriteLine($"✅ 所有库文件完整");
+                if (missingOptional.Count > 0)
+                {
+                    Debug.WriteLine($"⚠️ 检测到 {missingOptional.Count} 个缺失的可选库（将尝试下载，失败不影响启动）");
+                    // 可选库缺失不算完整性问题，但需要尝试下载
+                }
+                
+                Debug.WriteLine($"✅ 所有必需库文件完整");
                 onProgressUpdate?.Invoke("游戏完整性检查完成");
                 return false; // 没有完整性问题
             }
@@ -233,17 +247,24 @@ namespace ObsMCLauncher.Services
                 // 5. 检查并下载缺失的库文件
                 onProgressUpdate?.Invoke("正在检查游戏依赖库...");
                 Debug.WriteLine($"检查库文件完整性...");
-                var missingLibs = GetMissingLibraries(config.GameDirectory, versionId, versionInfo);
+                var (missingRequired, missingOptional) = GetMissingLibraries(config.GameDirectory, versionId, versionInfo);
                 
-                if (missingLibs.Count > 0)
+                MissingLibraries = missingRequired;
+                MissingOptionalLibraries = missingOptional;
+                
+                if (missingRequired.Count > 0)
                 {
-                    MissingLibraries = missingLibs;
-                    LastError = $"检测到 {missingLibs.Count} 个缺失的库文件\n请在主页点击启动按钮，系统将自动下载";
-                    Debug.WriteLine($"❌ 缺失 {missingLibs.Count} 个库文件，需要下载");
+                    LastError = $"检测到 {missingRequired.Count} 个缺失的必需库文件\n请在主页点击启动按钮，系统将自动下载";
+                    Debug.WriteLine($"❌ 缺失 {missingRequired.Count} 个必需库文件，需要下载");
                     return false;
                 }
                 
-                Debug.WriteLine($"✅ 所有库文件完整");
+                if (missingOptional.Count > 0)
+                {
+                    Debug.WriteLine($"⚠️ 检测到 {missingOptional.Count} 个缺失的可选库（将在主页尝试下载）");
+                }
+                
+                Debug.WriteLine($"✅ 所有必需库文件完整");
                 onProgressUpdate?.Invoke("游戏依赖检查完成");
 
                 // 6. 构建启动参数
@@ -457,19 +478,24 @@ namespace ObsMCLauncher.Services
         }
 
         /// <summary>
-        /// 获取缺失的库文件列表
+        /// 获取缺失的库文件列表（区分必需库和可选库）
         /// </summary>
-        private static List<string> GetMissingLibraries(string gameDir, string versionId, VersionInfo versionInfo)
+        /// <returns>(缺失的必需库列表, 缺失的可选库列表)</returns>
+        private static (List<string> missingRequired, List<string> missingOptional) GetMissingLibraries(string gameDir, string versionId, VersionInfo versionInfo)
         {
-            var missing = new List<string>();
+            var missingRequired = new List<string>();
+            var missingOptional = new List<string>();
             var librariesDir = Path.Combine(gameDir, "libraries");
             
-            if (versionInfo.Libraries == null) return missing;
+            if (versionInfo.Libraries == null) return (missingRequired, missingOptional);
             
             foreach (var lib in versionInfo.Libraries)
             {
                 if (IsLibraryAllowed(lib))
                 {
+                    // 区分必需库和可选库
+                    bool isOptional = lib.Downloads?.Artifact == null;
+                    
                     var libPath = GetLibraryPath(librariesDir, lib);
                     if (!string.IsNullOrEmpty(libPath))
                     {
@@ -479,11 +505,19 @@ namespace ObsMCLauncher.Services
                         if (!File.Exists(libPath))
                         {
                             isMissing = true;
-                            Debug.WriteLine($"   ❌ 文件不存在: {lib.Name}");
-                            Console.WriteLine($"   ❌ 文件不存在: {lib.Name}");
+                            if (isOptional)
+                            {
+                                Debug.WriteLine($"   ⚠️ 可选库不存在: {lib.Name} (将尝试下载)");
+                                Console.WriteLine($"   ⚠️ 可选库不存在: {lib.Name}");
+                            }
+                            else
+                            {
+                                Debug.WriteLine($"   ❌ 必需库不存在: {lib.Name}");
+                                Console.WriteLine($"   ❌ 必需库不存在: {lib.Name}");
+                            }
                         }
-                        // 如果文件存在，验证文件大小
-                        else if (lib.Downloads?.Artifact?.Size > 0)
+                        // 如果文件存在且是必需库，验证文件大小
+                        else if (!isOptional && lib.Downloads?.Artifact?.Size > 0)
                         {
                             var fileInfo = new FileInfo(libPath);
                             if (fileInfo.Length != lib.Downloads.Artifact.Size)
@@ -498,14 +532,21 @@ namespace ObsMCLauncher.Services
                         
                         if (isMissing)
                         {
-                            missing.Add(lib.Name ?? "Unknown");
+                            if (isOptional)
+                            {
+                                missingOptional.Add(lib.Name ?? "Unknown");
+                            }
+                            else
+                            {
+                                missingRequired.Add(lib.Name ?? "Unknown");
+                            }
                             Debug.WriteLine($"      期望路径: {libPath}");
                         }
                     }
                 }
             }
             
-            return missing;
+            return (missingRequired, missingOptional);
         }
 
         /// <summary>

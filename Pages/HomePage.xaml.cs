@@ -254,29 +254,29 @@ namespace ObsMCLauncher.Pages
                     LaunchButton.Content = progress;
                 });
 
-                // 6. 如果检测到缺失的库文件，自动下载
+                // 6. 如果检测到缺失的必需库文件，自动下载
                 if (hasIntegrityIssue && GameLauncher.MissingLibraries.Count > 0)
                 {
-                    Debug.WriteLine($"检测到 {GameLauncher.MissingLibraries.Count} 个缺失的依赖库，开始自动补全...");
-                    Console.WriteLine($"检测到 {GameLauncher.MissingLibraries.Count} 个缺失的依赖库，开始自动补全...");
+                    Debug.WriteLine($"检测到 {GameLauncher.MissingLibraries.Count} 个缺失的必需依赖库，开始自动补全...");
+                    Console.WriteLine($"检测到 {GameLauncher.MissingLibraries.Count} 个缺失的必需依赖库，开始自动补全...");
                     
                     // 更新启动通知
                     NotificationManager.Instance.UpdateNotification(
                         launchNotificationId,
-                        $"检测到 {GameLauncher.MissingLibraries.Count} 个缺失的依赖库"
+                        $"检测到 {GameLauncher.MissingLibraries.Count} 个缺失的必需依赖库"
                     );
                     
                     // 显示独立的依赖下载进度通知
                     var dependencyNotificationId = NotificationManager.Instance.ShowNotification(
-                        "正在下载游戏依赖",
-                        $"准备下载 {GameLauncher.MissingLibraries.Count} 个依赖库文件...",
+                        "正在下载必需依赖",
+                        $"准备下载 {GameLauncher.MissingLibraries.Count} 个必需依赖库...",
                         NotificationType.Progress
                     );
                     
                     LaunchButton.Content = "补全依赖中...";
                     
-                    // 下载缺失的库文件
-                    bool downloadSuccess = await DownloadMissingLibraries(versionId, config, dependencyNotificationId);
+                    // 下载缺失的必需库文件
+                    bool downloadSuccess = await DownloadMissingLibraries(versionId, config, dependencyNotificationId, isOptional: false);
                     
                     // 移除依赖下载进度通知
                     if (!string.IsNullOrEmpty(dependencyNotificationId))
@@ -288,8 +288,8 @@ namespace ObsMCLauncher.Pages
                     {
                         // 显示补全成功通知
                         NotificationManager.Instance.ShowNotification(
-                            "依赖补全完成",
-                            $"已成功下载 {GameLauncher.MissingLibraries.Count} 个依赖库",
+                            "必需依赖补全完成",
+                            $"已成功下载 {GameLauncher.MissingLibraries.Count} 个必需依赖库",
                             NotificationType.Success,
                             3
                         );
@@ -297,7 +297,7 @@ namespace ObsMCLauncher.Pages
                         // 更新启动通知，准备继续
                         NotificationManager.Instance.UpdateNotification(
                             launchNotificationId,
-                            "依赖补全完成，继续检查资源..."
+                            "必需依赖补全完成，继续检查资源..."
                         );
                         
                         // 设置标志，继续检查Assets（依赖已补全，认为没有完整性问题）
@@ -305,13 +305,13 @@ namespace ObsMCLauncher.Pages
                     }
                     else
                     {
-                        Debug.WriteLine("❌ 依赖库下载失败！");
-                        Console.WriteLine("❌ 依赖库下载失败！");
+                        Debug.WriteLine("❌ 必需依赖库下载失败！");
+                        Console.WriteLine("❌ 必需依赖库下载失败！");
                         
                         // 显示下载失败通知
                         NotificationManager.Instance.ShowNotification(
-                            "依赖补全失败",
-                            "部分依赖库下载失败，请检查网络连接或稍后重试",
+                            "必需依赖补全失败",
+                            "必需依赖库下载失败，游戏无法启动",
                             NotificationType.Error,
                             5
                         );
@@ -319,6 +319,27 @@ namespace ObsMCLauncher.Pages
                         // 移除启动通知
                         NotificationManager.Instance.RemoveNotification(launchNotificationId);
                         return;
+                    }
+                }
+
+                // 6.5 静默尝试下载可选库（natives、Twitch等），失败不影响启动
+                if (!hasIntegrityIssue && GameLauncher.MissingOptionalLibraries.Count > 0)
+                {
+                    Debug.WriteLine($"检测到 {GameLauncher.MissingOptionalLibraries.Count} 个缺失的可选库，静默尝试下载...");
+                    Console.WriteLine($"检测到 {GameLauncher.MissingOptionalLibraries.Count} 个缺失的可选库，静默尝试下载...");
+                    
+                    // 静默下载可选库文件（失败不阻止启动，不显示任何用户通知）
+                    bool optionalSuccess = await DownloadMissingLibraries(versionId, config, notificationId: null, isOptional: true);
+                    
+                    // 只在调试日志中记录结果
+                    if (optionalSuccess)
+                    {
+                        Debug.WriteLine($"✅ 可选库下载成功");
+                    }
+                    else
+                    {
+                        Debug.WriteLine("⚠️ 部分可选库下载失败（不影响游戏启动）");
+                        Console.WriteLine("⚠️ 部分可选库下载失败（不影响游戏启动）");
                     }
                 }
 
@@ -471,21 +492,25 @@ namespace ObsMCLauncher.Pages
                 // 恢复启动按钮
                 LaunchButton.IsEnabled = true;
                 LaunchButton.Content = "启动游戏";
-                
-                // 隐藏下载面板
-                DependencyDownloadPanel.Visibility = Visibility.Collapsed;
             }
         }
 
         /// <summary>
         /// 下载缺失的库文件
         /// </summary>
-        private async Task<bool> DownloadMissingLibraries(string versionId, LauncherConfig config, string? notificationId = null)
+        /// <param name="isOptional">是否下载可选库（natives、Twitch等）</param>
+        private async Task<bool> DownloadMissingLibraries(string versionId, LauncherConfig config, string? notificationId = null, bool isOptional = false)
         {
             try
             {
-                // 显示下载面板
-                DependencyDownloadPanel.Visibility = Visibility.Visible;
+                // 根据isOptional选择下载列表
+                var targetLibraries = isOptional ? GameLauncher.MissingOptionalLibraries : GameLauncher.MissingLibraries;
+                
+                if (targetLibraries.Count == 0)
+                {
+                    Debug.WriteLine($"没有需要下载的{(isOptional ? "可选" : "必需")}库");
+                    return true;
+                }
                 
                 // 读取版本JSON
                 var versionJsonPath = Path.Combine(config.GameDirectory, "versions", versionId, $"{versionId}.json");
@@ -511,19 +536,19 @@ namespace ObsMCLauncher.Pages
                 var httpClient = new System.Net.Http.HttpClient();
                 httpClient.Timeout = TimeSpan.FromMinutes(5);
                 
-                int totalLibs = GameLauncher.MissingLibraries.Count;
+                int totalLibs = targetLibraries.Count;
                 int processedLibs = 0;        // 已处理的库数量
                 int successfullyDownloaded = 0;  // 成功下载的库数量
                 int skippedLibs = 0;          // 跳过的库（没有URL等）
 
-                Debug.WriteLine($"开始下载 {totalLibs} 个缺失的库文件...");
+                Debug.WriteLine($"开始下载 {totalLibs} 个缺失的{(isOptional ? "可选" : "必需")}库文件...");
 
                 foreach (var lib in versionDetail.Libraries)
                 {
                     if (lib.Name == null) continue;
                     
                     // 检查是否是缺失的库
-                    if (!GameLauncher.MissingLibraries.Contains(lib.Name)) continue;
+                    if (!targetLibraries.Contains(lib.Name)) continue;
 
                     // 检查操作系统规则
                     if (!IsLibraryAllowedForOS(lib))
@@ -536,12 +561,9 @@ namespace ObsMCLauncher.Pages
                     processedLibs++;
                     var progress = (processedLibs * 100.0 / totalLibs);
                     
-                    // 更新UI和通知
+                    // 更新通知
                     Dispatcher.Invoke(() =>
                     {
-                        DependencyDownloadStatus.Text = $"下载中: {lib.Name} ({processedLibs}/{totalLibs})";
-                        DependencyDownloadProgress.Value = progress;
-                        
                         // 更新进度通知
                         if (!string.IsNullOrEmpty(notificationId))
                         {
