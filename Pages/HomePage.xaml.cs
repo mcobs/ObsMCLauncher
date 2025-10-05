@@ -203,6 +203,9 @@ namespace ObsMCLauncher.Pages
         /// </summary>
         private async void LaunchButton_Click(object sender, RoutedEventArgs e)
         {
+            // 创建取消令牌源用于取消启动流程
+            var launchCts = new System.Threading.CancellationTokenSource();
+            
             try
             {
                 // 1. 检查是否选择了版本
@@ -235,11 +238,17 @@ namespace ObsMCLauncher.Pages
                 LaunchButton.IsEnabled = false;
                 LaunchButton.Content = "检查中...";
 
-                // 5. 显示启动流程通知
+                // 5. 显示启动流程通知（传递CancellationTokenSource，让关闭按钮能够取消启动）
                 var launchNotificationId = NotificationManager.Instance.ShowNotification(
                     "正在启动游戏",
                     "正在检查游戏完整性...",
-                    NotificationType.Progress
+                    NotificationType.Progress,
+                    durationSeconds: null,
+                    onCancel: () => 
+                    {
+                        Debug.WriteLine("[HomePage] 用户取消了游戏启动");
+                    },
+                    cancellationTokenSource: launchCts
                 );
 
                 // 5. 先检查游戏完整性（不启动游戏）
@@ -492,6 +501,9 @@ namespace ObsMCLauncher.Pages
                 // 恢复启动按钮
                 LaunchButton.IsEnabled = true;
                 LaunchButton.Content = "启动游戏";
+                
+                // 释放取消令牌源
+                launchCts?.Dispose();
             }
         }
 

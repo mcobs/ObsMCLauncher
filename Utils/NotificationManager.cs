@@ -35,6 +35,8 @@ namespace ObsMCLauncher.Utils
         public bool IsProgress { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.Now;
         public System.Windows.Threading.DispatcherTimer? Timer { get; set; } // 用于存储定时器
+        public Action? OnCancel { get; set; } // 取消操作的回调
+        public System.Threading.CancellationTokenSource? CancellationTokenSource { get; set; } // 取消令牌源
     }
 
     /// <summary>
@@ -64,7 +66,7 @@ namespace ObsMCLauncher.Utils
         /// <summary>
         /// 显示通知
         /// </summary>
-        public string ShowNotification(string title, string message, NotificationType type = NotificationType.Info, int? durationSeconds = null)
+        public string ShowNotification(string title, string message, NotificationType type = NotificationType.Info, int? durationSeconds = null, Action? onCancel = null, System.Threading.CancellationTokenSource? cancellationTokenSource = null)
         {
             if (_container == null)
             {
@@ -94,7 +96,9 @@ namespace ObsMCLauncher.Utils
                 Title = title,
                 Message = message,
                 Type = type,
-                IsProgress = type == NotificationType.Progress
+                IsProgress = type == NotificationType.Progress,
+                OnCancel = onCancel,
+                CancellationTokenSource = cancellationTokenSource
             };
 
             var element = CreateNotificationElement(notification, durationSeconds);
@@ -162,11 +166,23 @@ namespace ObsMCLauncher.Utils
         /// <summary>
         /// 移除通知
         /// </summary>
-        public void RemoveNotification(string id)
+        public void RemoveNotification(string id, bool triggerCancel = false)
         {
             var notification = _notifications.FirstOrDefault(n => n.Id == id);
             if (notification?.UIElement != null)
             {
+                // 如果需要触发取消操作
+                if (triggerCancel)
+                {
+                    // 取消CancellationToken
+                    notification.CancellationTokenSource?.Cancel();
+                    
+                    // 调用取消回调
+                    notification.OnCancel?.Invoke();
+                    
+                    System.Diagnostics.Debug.WriteLine($"[NotificationManager] 用户取消了操作: {notification.Title}");
+                }
+
                 // 停止定时器
                 if (notification.Timer != null)
                 {
@@ -226,13 +242,15 @@ namespace ObsMCLauncher.Utils
             mainGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             mainGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
-            var stackPanel = new StackPanel { Margin = new Thickness(14, 11, 14, 11) };
+            // 主内容区域
+            var contentGrid = new Grid { Margin = new Thickness(14, 11, 14, 11) };
+            
+            var stackPanel = new StackPanel();
 
-            // 顶部内容（图标 + 标题 + 关闭按钮）
-            var topGrid = new Grid { Margin = new Thickness(0, 0, 0, notification.IsProgress ? 8 : 0) };
+            // 顶部内容（图标 + 标题 + 消息）
+            var topGrid = new Grid { Margin = new Thickness(0, 0, 36, notification.IsProgress ? 8 : 0) }; // 右侧留出36px给关闭按钮
             topGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             topGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            topGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(36, GridUnitType.Pixel) }); // 固定宽度36px
 
             // 图标
             var iconBorder = new Border
@@ -272,28 +290,54 @@ namespace ObsMCLauncher.Utils
             });
             Grid.SetColumn(textPanel, 1);
 
-            // 先添加基本元素到Grid
             topGrid.Children.Add(iconBorder);
             topGrid.Children.Add(textPanel);
-
-            // TODO: 技术债 - 关闭按钮点击区域问题待解决
-            // 临时隐藏关闭按钮，通知会在3秒后自动消失
-            // 问题：WPF Grid + Button 的点击区域和视觉区域不一致
-            // 后续需要：
-            // 1. 重新设计通知布局（使用StackPanel而不是Grid）
-            // 2. 或者使用XAML定义Button样式而不是代码创建
-            // 3. 或者使用自定义UserControl
             
-            /* 关闭按钮代码已临时注释
-            if (!notification.IsProgress)
-            {
-                var closeButton = new Button { ... };
-                Grid.SetColumn(closeButton, 2);
-                topGrid.Children.Add(closeButton);
-            }
-            */
-
             stackPanel.Children.Add(topGrid);
+
+            // 关闭按钮（使用绝对定位在右上角，增大点击区域）
+            var closeButton = new Button
+            {
+                Width = 28,  // 增大到36px，提供更大的点击区域
+                Height = 28,
+                Background = Brushes.Transparent,
+                BorderThickness = new Thickness(0),
+                HorizontalAlignment = HorizontalAlignment.Right,
+                VerticalAlignment = VerticalAlignment.Top,
+                Padding = new Thickness(0),
+                Margin = new Thickness(-4, -4, -4, 0), // 负边距让按钮稍微超出边界，点击更容易
+                Cursor = System.Windows.Input.Cursors.Hand,
+                Content = new PackIcon
+                {
+                    Kind = PackIconKind.Close,
+                    Width = 18,  // 图标稍微增大一点
+                    Height = 18,
+                    Foreground = (Brush)Application.Current.FindResource("TextSecondaryBrush")
+                }
+            };
+            
+            // 创建按钮样式（必须在赋值前配置完所有内容）
+            var buttonStyle = new Style(typeof(Button));
+            buttonStyle.Setters.Add(new Setter(Button.BackgroundProperty, Brushes.Transparent));
+            buttonStyle.Setters.Add(new Setter(Button.BorderThicknessProperty, new Thickness(0)));
+            
+            // 鼠标悬停效果
+            var hoverTrigger = new System.Windows.Trigger { Property = Button.IsMouseOverProperty, Value = true };
+            hoverTrigger.Setters.Add(new Setter(Button.BackgroundProperty, new SolidColorBrush(Color.FromArgb(30, 255, 255, 255))));
+            buttonStyle.Triggers.Add(hoverTrigger);
+            
+            // 应用样式（必须在所有配置完成后）
+            closeButton.Style = buttonStyle;
+            
+            // 点击事件：只有存在取消回调或CancellationTokenSource时才触发取消，否则仅关闭通知
+            closeButton.Click += (s, e) =>
+            {
+                bool shouldTriggerCancel = notification.OnCancel != null || notification.CancellationTokenSource != null;
+                RemoveNotification(notification.Id, triggerCancel: shouldTriggerCancel);
+            };
+            
+            contentGrid.Children.Add(stackPanel);
+            contentGrid.Children.Add(closeButton);
 
             // 进度条（仅进度通知）
             if (notification.IsProgress)
@@ -322,8 +366,8 @@ namespace ObsMCLauncher.Utils
                 stackPanel.Children.Add(progressBar);
             }
 
-            Grid.SetRow(stackPanel, 0);
-            mainGrid.Children.Add(stackPanel);
+            Grid.SetRow(contentGrid, 0);
+            mainGrid.Children.Add(contentGrid);
 
             // 倒计时进度条（细线，优雅隐蔽）
             if (durationSeconds.HasValue && notification.Type != NotificationType.Progress)

@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media.Animation;
@@ -12,6 +13,7 @@ namespace ObsMCLauncher
     {
         private string _currentAuthUrl = "";
         private string? _currentLoginNotificationId;
+        private CancellationTokenSource? _loginCancellationTokenSource;
 
         public MainWindow()
         {
@@ -22,6 +24,14 @@ namespace ObsMCLauncher
             
             // 默认导航到主页
             MainFrame.Navigate(new HomePage());
+        }
+        
+        /// <summary>
+        /// 设置登录取消令牌源
+        /// </summary>
+        public void SetLoginCancellationTokenSource(CancellationTokenSource cts)
+        {
+            _loginCancellationTokenSource = cts;
         }
 
         #region 新版通知系统方法
@@ -65,7 +75,15 @@ namespace ObsMCLauncher
             }
             else
             {
-                _currentLoginNotificationId = ShowNotification("微软账户登录", status, NotificationType.Progress);
+                // 传递CancellationTokenSource，让通知的关闭按钮能够取消登录操作
+                _currentLoginNotificationId = NotificationManager.Instance.ShowNotification(
+                    "微软账户登录", 
+                    status, 
+                    NotificationType.Progress, 
+                    durationSeconds: null,
+                    onCancel: null,
+                    cancellationTokenSource: _loginCancellationTokenSource
+                );
             }
         }
 
@@ -177,6 +195,28 @@ namespace ObsMCLauncher
         {
             GlobalModalOverlay.Visibility = Visibility.Collapsed;
             GlobalAuthUrlDialog.Visibility = Visibility.Collapsed;
+        }
+        
+        /// <summary>
+        /// 关闭按钮点击事件（取消微软登录）
+        /// </summary>
+        private void GlobalAuthUrlCloseButton_Click(object sender, RoutedEventArgs e)
+        {
+            // 取消登录操作
+            _loginCancellationTokenSource?.Cancel();
+            
+            // 关闭对话框
+            GlobalModalOverlay.Visibility = Visibility.Collapsed;
+            GlobalAuthUrlDialog.Visibility = Visibility.Collapsed;
+            
+            // 移除登录通知
+            if (_currentLoginNotificationId != null)
+            {
+                RemoveNotification(_currentLoginNotificationId);
+                _currentLoginNotificationId = null;
+            }
+            
+            System.Diagnostics.Debug.WriteLine("[MainWindow] 用户取消了微软登录");
         }
 
         /// <summary>

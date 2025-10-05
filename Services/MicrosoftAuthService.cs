@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using ObsMCLauncher.Models;
 
@@ -34,12 +35,13 @@ namespace ObsMCLauncher.Services
         /// <summary>
         /// 微软登录（完整OAuth2流程）
         /// </summary>
-        public async Task<GameAccount?> LoginAsync()
+        public async Task<GameAccount?> LoginAsync(CancellationToken cancellationToken = default)
         {
             try
             {
                 Console.WriteLine("========== 开始微软账户登录 ==========");
                 OnProgressUpdate?.Invoke("正在启动本地服务器...");
+                cancellationToken.ThrowIfCancellationRequested();
                 
                 // 1. 构建授权URL
                 var authUrl = BuildAuthUrl();
@@ -69,33 +71,39 @@ namespace ObsMCLauncher.Services
                     Console.WriteLine("⚠️ 无法自动打开浏览器，请手动访问授权URL");
                 }
 
-                // 3. 等待回调
+                // 3. 等待回调（支持取消）
                 Console.WriteLine("等待用户授权...");
-                var authCode = await authCodeTask;
+                var authCode = await Task.Run(async () => await authCodeTask, cancellationToken);
+                cancellationToken.ThrowIfCancellationRequested();
                 Console.WriteLine($"✅ 收到授权码: {authCode.Substring(0, Math.Min(10, authCode.Length))}...");
 
                 // 4. 使用授权码获取微软访问令牌
                 OnProgressUpdate?.Invoke("正在获取微软访问令牌...");
+                cancellationToken.ThrowIfCancellationRequested();
                 var msTokens = await GetMicrosoftTokenAsync(authCode);
                 Console.WriteLine("✅ 获取微软访问令牌成功");
 
                 // 5. 使用微软令牌进行Xbox Live认证
                 OnProgressUpdate?.Invoke("正在进行 Xbox Live 认证...");
+                cancellationToken.ThrowIfCancellationRequested();
                 var xblToken = await AuthenticateXboxLiveAsync(msTokens.AccessToken);
                 Console.WriteLine("✅ Xbox Live 认证成功");
 
                 // 6. 使用XBL令牌获取XSTS令牌
                 OnProgressUpdate?.Invoke("正在获取 XSTS 令牌...");
+                cancellationToken.ThrowIfCancellationRequested();
                 var xstsData = await GetXSTSTokenAsync(xblToken);
                 Console.WriteLine($"✅ XSTS 认证成功，UserHash: {xstsData.UserHash}");
 
                 // 7. 使用XSTS令牌登录Minecraft
                 OnProgressUpdate?.Invoke("正在登录 Minecraft Services...");
+                cancellationToken.ThrowIfCancellationRequested();
                 var mcData = await LoginMinecraftAsync(xstsData.UserHash, xstsData.Token);
                 Console.WriteLine($"✅ Minecraft 登录成功，AccessToken: {mcData.AccessToken.Substring(0, 10)}...");
 
                 // 8. 检查是否拥有Minecraft
                 OnProgressUpdate?.Invoke("正在验证 Minecraft 授权...");
+                cancellationToken.ThrowIfCancellationRequested();
                 var hasMinecraft = await CheckMinecraftOwnershipAsync(mcData.AccessToken);
                 if (!hasMinecraft)
                 {
@@ -107,6 +115,7 @@ namespace ObsMCLauncher.Services
 
                 // 9. 获取玩家信息
                 OnProgressUpdate?.Invoke("正在获取玩家信息...");
+                cancellationToken.ThrowIfCancellationRequested();
                 var profile = await GetMinecraftProfileAsync(mcData.AccessToken);
                 Console.WriteLine($"✅ 获取玩家信息成功: {profile.Name} ({profile.Id})");
 
@@ -127,6 +136,12 @@ namespace ObsMCLauncher.Services
 
                 Console.WriteLine("========== 微软账户登录完成 ==========");
                 return account;
+            }
+            catch (OperationCanceledException)
+            {
+                Console.WriteLine("❌ 微软登录已取消");
+                OnProgressUpdate?.Invoke("登录已取消");
+                return null;
             }
             catch (Exception ex)
             {

@@ -201,18 +201,24 @@ namespace ObsMCLauncher.Pages
             var mainWindow = Application.Current.MainWindow as MainWindow;
             if (mainWindow == null) return;
             
+            // 创建取消令牌源
+            var cts = new System.Threading.CancellationTokenSource();
+            
             try
             {
                 // 1. 显示登录进度（使用MainWindow的全局UI）
                 mainWindow.ShowLoginProgress("准备登录...");
+                
+                // 设置取消令牌源到MainWindow
+                mainWindow.SetLoginCancellationTokenSource(cts);
 
                 // 2. 创建认证服务并设置进度回调
                 var authService = new MicrosoftAuthService();
                 authService.OnProgressUpdate = mainWindow.UpdateLoginProgress;
                 authService.OnAuthUrlGenerated = mainWindow.ShowAuthUrlDialog;
 
-                // 3. 开始登录
-                var account = await authService.LoginAsync();
+                // 3. 开始登录（传入取消令牌）
+                var account = await authService.LoginAsync(cts.Token);
 
                 if (account != null)
                 {
@@ -261,6 +267,7 @@ namespace ObsMCLauncher.Pages
             finally
             {
                 _isLoggingIn = false;
+                cts?.Dispose();
             }
         }
 
