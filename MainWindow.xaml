@@ -315,6 +315,7 @@
                Grid.Row="1"
                Grid.Column="1" 
                NavigationUIVisibility="Hidden"
+               JournalOwnership="OwnsJournal"
                Background="{StaticResource BackgroundBrush}"/>
 
         <!-- 全局：通知容器 -->

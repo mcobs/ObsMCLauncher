@@ -15,6 +15,13 @@ namespace ObsMCLauncher
         private string? _currentLoginNotificationId;
         private CancellationTokenSource? _loginCancellationTokenSource;
 
+        // 页面实例缓存 - 实现状态保持
+        private readonly HomePage _homePage;
+        private readonly AccountManagementPage _accountPage;
+        private readonly VersionDownloadPage _versionPage;
+        private readonly ResourcesPage _resourcesPage;
+        private readonly SettingsPage _settingsPage;
+
         public MainWindow()
         {
             InitializeComponent();
@@ -22,8 +29,15 @@ namespace ObsMCLauncher
             // 初始化通知管理器
             NotificationManager.Instance.Initialize(GlobalNotificationContainer);
             
+            // 预创建所有页面实例
+            _homePage = new HomePage();
+            _accountPage = new AccountManagementPage();
+            _versionPage = new VersionDownloadPage();
+            _resourcesPage = new ResourcesPage();
+            _settingsPage = new SettingsPage();
+            
             // 默认导航到主页
-            MainFrame.Navigate(new HomePage());
+            MainFrame.Navigate(_homePage);
         }
         
         /// <summary>
@@ -233,22 +247,23 @@ namespace ObsMCLauncher
         {
             if (sender is RadioButton button && button.Tag is string tag)
             {
+                // 使用缓存的页面实例，保持状态
                 switch (tag)
                 {
                     case "Home":
-                        MainFrame.Navigate(new HomePage());
+                        MainFrame.Navigate(_homePage);
                         break;
                     case "Account":
-                        MainFrame.Navigate(new AccountManagementPage());
+                        MainFrame.Navigate(_accountPage);
                         break;
                     case "Version":
-                        MainFrame.Navigate(new VersionDownloadPage());
+                        MainFrame.Navigate(_versionPage);
                         break;
                     case "Resources":
-                        MainFrame.Navigate(new ResourcesPage());
+                        MainFrame.Navigate(_resourcesPage);
                         break;
                     case "Settings":
-                        MainFrame.Navigate(new SettingsPage());
+                        MainFrame.Navigate(_settingsPage);
                         break;
                 }
             }

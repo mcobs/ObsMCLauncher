@@ -15,6 +15,13 @@ namespace ObsMCLauncher.Pages
     {
         private List<MinecraftVersion> _allVersions = new();
         private List<MinecraftVersion> _filteredVersions = new();
+        
+        // 缓存版本详情页实例，保持下载状态
+        private readonly Dictionary<string, VersionDetailPage> _versionDetailPages = new Dictionary<string, VersionDetailPage>();
+        
+        // 记住当前显示的详情页
+        private VersionDetailPage? _currentDetailPage = null;
+        private bool _isShowingDetail = false;
 
         public VersionDownloadPage()
         {
@@ -25,19 +32,71 @@ namespace ObsMCLauncher.Pages
 
         private async void VersionDownloadPage_Loaded(object sender, RoutedEventArgs e)
         {
-            // 加载已安装版本
-            LoadInstalledVersions();
-            // 自动加载在线版本列表
-            await LoadVersionsAsync();
+            // 如果之前在显示详情页，恢复显示
+            if (_isShowingDetail && _currentDetailPage != null)
+            {
+                ShowDetailPage(_currentDetailPage);
+            }
+            else
+            {
+                // 加载已安装版本
+                LoadInstalledVersions();
+                // 自动加载在线版本列表
+                await LoadVersionsAsync();
+            }
         }
 
         private void VersionItem_Click(object sender, RoutedEventArgs e)
         {
             if (sender is Button button && button.Tag is MinecraftVersion version)
             {
-                // 导航到版本详情配置页面
-                NavigationService?.Navigate(new VersionDetailPage(version));
+                // 使用缓存的版本详情页，如果不存在则创建
+                if (!_versionDetailPages.ContainsKey(version.Id))
+                {
+                    var detailPage = new VersionDetailPage(version);
+                    
+                    // 监听返回按钮事件
+                    detailPage.Loaded += (s, ev) =>
+                    {
+                        if (detailPage.FindName("BackButton") is Button backButton)
+                        {
+                            backButton.Click -= DetailPage_BackButton_Click; // 避免重复订阅
+                            backButton.Click += DetailPage_BackButton_Click;
+                        }
+                    };
+                    
+                    _versionDetailPages[version.Id] = detailPage;
+                }
+                
+                // 显示版本详情页
+                ShowDetailPage(_versionDetailPages[version.Id]);
             }
+        }
+        
+        /// <summary>
+        /// 显示详情页
+        /// </summary>
+        private void ShowDetailPage(VersionDetailPage detailPage)
+        {
+            _currentDetailPage = detailPage;
+            _isShowingDetail = true;
+            
+            // 使用嵌套 Frame 显示详情页，保持Page特性
+            DetailFrame.Navigate(detailPage);
+            DetailFrame.Visibility = Visibility.Visible;
+            VersionListGrid.Visibility = Visibility.Collapsed;
+        }
+        
+        /// <summary>
+        /// 详情页返回按钮点击事件
+        /// </summary>
+        private void DetailPage_BackButton_Click(object sender, RoutedEventArgs e)
+        {
+            _isShowingDetail = false;
+            
+            // 返回到版本列表
+            DetailFrame.Visibility = Visibility.Collapsed;
+            VersionListGrid.Visibility = Visibility.Visible;
         }
 
         private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)

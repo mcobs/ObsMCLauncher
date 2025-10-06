@@ -9,25 +9,27 @@
       KeepAlive="True"
       Background="{StaticResource BackgroundBrush}">
 
-    <Grid Margin="30">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-        </Grid.RowDefinitions>
+    <Grid>
+        <!-- 版本列表内容 -->
+        <Grid x:Name="VersionListGrid" Margin="30">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
 
-        <!-- 标题区域 -->
-        <StackPanel Grid.Row="0">
-            <TextBlock Text="版本管理" 
-                     FontSize="28" 
-                     FontWeight="Bold"
-                     Margin="0,0,0,10"/>
-            <TextBlock Text="管理已安装的版本或下载新版本" 
-                     FontSize="14" 
-                     Foreground="{StaticResource TextSecondaryBrush}"
-                     Margin="0,0,0,25"/>
-        </StackPanel>
+            <!-- 标题区域 -->
+            <StackPanel Grid.Row="0">
+                <TextBlock Text="版本管理" 
+                         FontSize="28" 
+                         FontWeight="Bold"
+                         Margin="0,0,0,10"/>
+                <TextBlock Text="管理已安装的版本或下载新版本" 
+                         FontSize="14" 
+                         Foreground="{StaticResource TextSecondaryBrush}"
+                         Margin="0,0,0,25"/>
+            </StackPanel>
 
-        <!-- Tab 控件 -->
+            <!-- Tab 控件 -->
         <TabControl Grid.Row="1" 
                     Style="{StaticResource MaterialDesignTabControl}"
                     materialDesign:ColorZoneAssist.Mode="PrimaryMid">
@@ -238,6 +240,12 @@
                     </Border>
                 </Grid>
             </TabItem>
-        </TabControl>
+            </TabControl>
+        </Grid>
+        
+        <!-- 版本详情内容（叠加显示） -->
+        <Frame x:Name="DetailFrame" 
+               NavigationUIVisibility="Hidden"
+               Visibility="Collapsed"/>
     </Grid>
 </Page>
