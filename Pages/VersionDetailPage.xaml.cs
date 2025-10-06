@@ -1369,31 +1369,133 @@ namespace ObsMCLauncher.Pages
                 var forgeVersionDir = Path.Combine(gameDirectory, "versions", customVersionName);
                 Directory.CreateDirectory(forgeVersionDir);
 
-                // 6. 修改version.json中的id并保存
-                var jsonDoc = JsonDocument.Parse(versionJson);
-                var root = jsonDoc.RootElement;
+                // 6. 合并原版和Forge的version.json
+                var vanillaJsonPath = Path.Combine(gameDirectory, "versions", currentVersion, $"{currentVersion}.json");
+                var vanillaJsonContent = await File.ReadAllTextAsync(vanillaJsonPath);
+                var vanillaDoc = JsonDocument.Parse(vanillaJsonContent);
+                var vanillaRoot = vanillaDoc.RootElement;
+                
+                var forgeDoc = JsonDocument.Parse(versionJson);
+                var forgeRoot = forgeDoc.RootElement;
                 
                 var modifiedJson = new Dictionary<string, object>();
-                foreach (var property in root.EnumerateObject())
+                
+                // 首先复制Forge的所有属性
+                foreach (var property in forgeRoot.EnumerateObject())
                 {
                     if (property.Name == "id")
                     {
                         modifiedJson["id"] = customVersionName;
+                    }
+                    else if (property.Name == "libraries")
+                    {
+                        // 稍后处理libraries的合并
+                        continue;
                     }
                     else
                     {
                         modifiedJson[property.Name] = JsonSerializer.Deserialize<object>(property.Value.GetRawText())!;
                     }
                 }
+                
+                // 合并libraries：Forge的libraries + 原版的libraries
+                var mergedLibraries = new List<object>();
+                
+                // 先添加Forge的libraries
+                if (forgeRoot.TryGetProperty("libraries", out var forgeLibraries))
+                {
+                    foreach (var lib in forgeLibraries.EnumerateArray())
+                    {
+                        mergedLibraries.Add(JsonSerializer.Deserialize<object>(lib.GetRawText())!);
+                    }
+                    System.Diagnostics.Debug.WriteLine($"[Forge] 添加了 {mergedLibraries.Count} 个Forge库");
+                }
+                
+                // 再添加原版的libraries（去重）
+                var forgeLibNames = new HashSet<string>();
+                if (forgeRoot.TryGetProperty("libraries", out var forgeLibs))
+                {
+                    foreach (var lib in forgeLibs.EnumerateArray())
+                    {
+                        if (lib.TryGetProperty("name", out var name))
+                        {
+                            forgeLibNames.Add(name.GetString() ?? "");
+                        }
+                    }
+                }
+                
+                if (vanillaRoot.TryGetProperty("libraries", out var vanillaLibraries))
+                {
+                    int vanillaCount = 0;
+                    foreach (var lib in vanillaLibraries.EnumerateArray())
+                    {
+                        // 跳过已经在Forge libraries中的库
+                        if (lib.TryGetProperty("name", out var libName))
+                        {
+                            var name = libName.GetString() ?? "";
+                            if (forgeLibNames.Contains(name))
+                            {
+                                continue;
+                            }
+                        }
+                        mergedLibraries.Add(JsonSerializer.Deserialize<object>(lib.GetRawText())!);
+                        vanillaCount++;
+                    }
+                    System.Diagnostics.Debug.WriteLine($"[Forge] 添加了 {vanillaCount} 个原版库（去重后）");
+                }
+                
+                modifiedJson["libraries"] = mergedLibraries;
+                System.Diagnostics.Debug.WriteLine($"[Forge] 合并后共 {mergedLibraries.Count} 个库");
+                
+                // 从原版继承部分缺失的属性（如assetIndex）
+                if (!modifiedJson.ContainsKey("assetIndex") && vanillaRoot.TryGetProperty("assetIndex", out var assetIndex))
+                {
+                    modifiedJson["assetIndex"] = JsonSerializer.Deserialize<object>(assetIndex.GetRawText())!;
+                    System.Diagnostics.Debug.WriteLine($"[Forge] 从原版继承了assetIndex");
+                }
+                
+                if (!modifiedJson.ContainsKey("assets") && vanillaRoot.TryGetProperty("assets", out var assets))
+                {
+                    modifiedJson["assets"] = assets.GetString()!;
+                    System.Diagnostics.Debug.WriteLine($"[Forge] 从原版继承了assets: {assets.GetString()}");
+                }
+                
+                if (!modifiedJson.ContainsKey("javaVersion") && vanillaRoot.TryGetProperty("javaVersion", out var javaVersion))
+                {
+                    modifiedJson["javaVersion"] = JsonSerializer.Deserialize<object>(javaVersion.GetRawText())!;
+                    System.Diagnostics.Debug.WriteLine($"[Forge] 从原版继承了javaVersion");
+                }
 
                 var versionJsonPath = Path.Combine(forgeVersionDir, $"{customVersionName}.json");
                 await File.WriteAllTextAsync(versionJsonPath, JsonSerializer.Serialize(modifiedJson, new JsonSerializerOptions { WriteIndented = true }));
-                System.Diagnostics.Debug.WriteLine($"[Forge] 已创建version.json: {versionJsonPath}");
+                System.Diagnostics.Debug.WriteLine($"[Forge] 已创建合并后的version.json: {versionJsonPath}");
 
-                // 7. 创建空的.jar文件（启动器识别用）
-                var versionJarPath = Path.Combine(forgeVersionDir, $"{customVersionName}.jar");
-                File.WriteAllBytes(versionJarPath, Array.Empty<byte>());
-                System.Diagnostics.Debug.WriteLine($"[Forge] 已创建标记jar: {versionJarPath}");
+                // 7. 复制原版Minecraft客户端JAR到Forge版本目录（Forge需要原版JAR）
+                var vanillaJarPath = Path.Combine(gameDirectory, "versions", currentVersion, $"{currentVersion}.jar");
+                var forgeJarPath = Path.Combine(forgeVersionDir, $"{customVersionName}.jar");
+                
+                if (File.Exists(vanillaJarPath))
+                {
+                    File.Copy(vanillaJarPath, forgeJarPath, true);
+                    System.Diagnostics.Debug.WriteLine($"[Forge] 已复制原版JAR: {vanillaJarPath} -> {forgeJarPath}");
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"[Forge] ⚠️ 原版JAR不存在: {vanillaJarPath}，创建空JAR");
+                    // 创建一个有效的空ZIP文件（最小ZIP结构）
+                    byte[] emptyZip = new byte[] 
+                    { 
+                        0x50, 0x4B, 0x05, 0x06, // End of central directory signature
+                        0x00, 0x00, 0x00, 0x00, // Number of this disk
+                        0x00, 0x00, 0x00, 0x00, // Disk where central directory starts
+                        0x00, 0x00, 0x00, 0x00, // Number of central directory records on this disk
+                        0x00, 0x00, 0x00, 0x00, // Total number of central directory records
+                        0x00, 0x00, 0x00, 0x00, // Size of central directory
+                        0x00, 0x00, 0x00, 0x00, // Offset of start of central directory
+                        0x00, 0x00              // ZIP file comment length
+                    };
+                    File.WriteAllBytes(forgeJarPath, emptyZip);
+                }
 
                 // 8. 下载Forge依赖库
                 _ = Dispatcher.BeginInvoke(new Action(() =>

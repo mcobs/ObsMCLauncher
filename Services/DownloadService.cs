@@ -179,13 +179,22 @@ namespace ObsMCLauncher.Services
                 var clientJarPath = Path.Combine(gameDirectory, "versions", installName, $"{installName}.jar");
                 if (versionInfo.Downloads?.Client?.Url != null)
                 {
-                    System.Diagnostics.Debug.WriteLine($"开始下载客户端JAR: {versionInfo.Downloads.Client.Url}");
+                    // 根据下载源替换客户端JAR的URL
+                    var clientJarUrl = versionInfo.Downloads.Client.Url;
+                    if (downloadSource is BMCLAPIService)
+                    {
+                        // BMCLAPI的客户端JAR下载格式: https://bmclapi2.bangbang93.com/version/{version}/client
+                        clientJarUrl = $"https://bmclapi2.bangbang93.com/version/{versionId}/client";
+                        System.Diagnostics.Debug.WriteLine($"使用BMCLAPI镜像源下载客户端JAR");
+                    }
+                    
+                    System.Diagnostics.Debug.WriteLine($"开始下载客户端JAR: {clientJarUrl}");
                     System.Diagnostics.Debug.WriteLine($"保存路径: {clientJarPath}");
 
                     var clientSize = versionInfo.Downloads.Client.Size;
                     
                     await DownloadFileWithProgressAsync(
-                        versionInfo.Downloads.Client.Url,
+                        clientJarUrl,
                         clientJarPath,
                         (currentBytes, speed) =>
                         {
