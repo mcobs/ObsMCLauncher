@@ -21,6 +21,9 @@ namespace ObsMCLauncher.Pages
         private MinecraftVersion? versionInfo;
         private CancellationTokenSource? _downloadCancellationToken;
         private bool _isUpdatingVersionName = false; // 防止循环更新
+        
+        // 返回回调，由父页面设置
+        public Action? OnBackRequested { get; set; }
 
         public VersionDetailPage(MinecraftVersion version)
         {
@@ -228,8 +231,16 @@ namespace ObsMCLauncher.Pages
 
         private void BackButton_Click(object sender, RoutedEventArgs e)
         {
-            // 返回版本列表
-            NavigationService?.GoBack();
+            // 如果设置了返回回调，使用回调（由父页面控制）
+            if (OnBackRequested != null)
+            {
+                OnBackRequested.Invoke();
+            }
+            else
+            {
+                // 否则使用默认导航返回
+                NavigationService?.GoBack();
+            }
         }
 
         private void LoaderRadio_Checked(object sender, RoutedEventArgs e)

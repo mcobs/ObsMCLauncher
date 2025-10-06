@@ -64,15 +64,8 @@ namespace ObsMCLauncher.Pages
                 {
                     var detailPage = new VersionDetailPage(version);
                     
-                    // 监听返回按钮事件
-                    detailPage.Loaded += (s, ev) =>
-                    {
-                        if (detailPage.FindName("BackButton") is Button backButton)
-                        {
-                            backButton.Click -= DetailPage_BackButton_Click; // 避免重复订阅
-                            backButton.Click += DetailPage_BackButton_Click;
-                        }
-                    };
+                    // 设置返回回调，不使用导航历史
+                    detailPage.OnBackRequested = () => DetailPage_BackButton_Click(null, null);
                     
                     _versionDetailPages[version.Id] = detailPage;
                 }
@@ -105,18 +98,22 @@ namespace ObsMCLauncher.Pages
         /// <summary>
         /// 详情页返回按钮点击事件
         /// </summary>
-        private void DetailPage_BackButton_Click(object sender, RoutedEventArgs e)
+        private void DetailPage_BackButton_Click(object? sender, RoutedEventArgs? e)
         {
             _isShowingDetail = false;
             
-            // 返回到版本列表
+            // 返回到版本列表（不使用导航，直接显示隐藏）
             DetailFrame.Visibility = Visibility.Collapsed;
             VersionListGrid.Visibility = Visibility.Visible;
             
             // 恢复滚动位置
             if (VersionScrollViewer != null && _savedScrollOffset > 0)
             {
-                VersionScrollViewer.ScrollToVerticalOffset(_savedScrollOffset);
+                // 使用 Dispatcher 延迟执行，确保布局更新完成
+                Dispatcher.InvokeAsync(() =>
+                {
+                    VersionScrollViewer.ScrollToVerticalOffset(_savedScrollOffset);
+                }, System.Windows.Threading.DispatcherPriority.Loaded);
             }
         }
 
