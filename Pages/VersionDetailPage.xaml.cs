@@ -11,6 +11,7 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using ObsMCLauncher.Models;
 using ObsMCLauncher.Services;
+using ObsMCLauncher.Utils;
 
 namespace ObsMCLauncher.Pages
 {
@@ -628,22 +629,35 @@ namespace ObsMCLauncher.Pages
             {
                 System.Diagnostics.Debug.WriteLine($"下载已被用户取消");
                 
-                // 删除已下载的文件夹
-                try
+                // 在后台异步删除已下载的文件夹，避免阻塞UI
+                var versionDirToDelete = Path.Combine(gameDirectory, "versions", customVersionName);
+                _ = Task.Run(() =>
                 {
-                    var versionDir = Path.Combine(gameDirectory, "versions", customVersionName);
-                    
-                    if (Directory.Exists(versionDir))
+                    try
                     {
-                        System.Diagnostics.Debug.WriteLine($"正在删除已下载的文件夹: {versionDir}");
-                        Directory.Delete(versionDir, true); // 递归删除
-                        System.Diagnostics.Debug.WriteLine($"✅ 已删除文件夹: {versionDir}");
+                        if (Directory.Exists(versionDirToDelete))
+                        {
+                            System.Diagnostics.Debug.WriteLine($"正在后台删除已下载的文件夹: {versionDirToDelete}");
+                            Directory.Delete(versionDirToDelete, true); // 递归删除
+                            System.Diagnostics.Debug.WriteLine($"✅ 已删除文件夹: {versionDirToDelete}");
+                            
+                            // 删除完成后在UI线程显示通知
+                            Dispatcher.Invoke(() =>
+                            {
+                                NotificationManager.Instance.ShowNotification(
+                                    "下载已取消",
+                                    "已删除未完成的下载文件",
+                                    NotificationType.Info,
+                                    3
+                                );
+                            });
+                        }
                     }
-                }
-                catch (Exception deleteEx)
-                {
-                    System.Diagnostics.Debug.WriteLine($"删除文件夹失败: {deleteEx.Message}");
-                }
+                    catch (Exception deleteEx)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"删除文件夹失败: {deleteEx.Message}");
+                    }
+                });
             }
             catch (Exception ex)
             {

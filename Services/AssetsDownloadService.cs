@@ -294,8 +294,18 @@ namespace ObsMCLauncher.Services
                     downloadTasks.Add(task);
                 }
 
-                // 等待所有下载任务完成
-                await Task.WhenAll(downloadTasks);
+                // 等待所有任务完成或取消
+                try
+                {
+                    await Task.WhenAll(downloadTasks);
+                }
+                catch (OperationCanceledException)
+                {
+                    System.Diagnostics.Debug.WriteLine("Assets下载被取消，等待任务清理...");
+                    // 等待所有任务结束（即使有异常）
+                    await Task.WhenAll(downloadTasks.Select(t => t.ContinueWith(_ => { })));
+                    throw; // 重新抛出取消异常
+                }
                 
                 cancellationToken.ThrowIfCancellationRequested();
                 Debug.WriteLine($"========== Assets下载完成 ==========");
