@@ -150,9 +150,15 @@ namespace ObsMCLauncher.Services
     public class ForgeService
     {
         private static readonly HttpClient _httpClient = new HttpClient();
+        
+        // BMCLAPI镜像源
         private const string BMCL_FORGE_SUPPORT = "https://bmclapi2.bangbang93.com/forge/minecraft";
         private const string BMCL_FORGE_LIST = "https://bmclapi2.bangbang93.com/forge/minecraft/{0}";
         private const string BMCL_FORGE_DOWNLOAD = "https://bmclapi2.bangbang93.com/forge/download/{0}";
+        
+        // 官方源（Forge官方文件服务器）
+        private const string OFFICIAL_FORGE_MAVEN = "https://maven.minecraftforge.net/net/minecraftforge/forge/";
+        private const string OFFICIAL_FORGE_PROMO = "https://files.minecraftforge.net/net/minecraftforge/forge/promotions_slim.json";
 
         /// <summary>
         /// 获取Forge支持的Minecraft版本列表
@@ -161,15 +167,48 @@ namespace ObsMCLauncher.Services
         {
             try
             {
-                Debug.WriteLine($"[ForgeService] 获取Forge支持的MC版本列表...");
-                var response = await _httpClient.GetAsync(BMCL_FORGE_SUPPORT);
-                response.EnsureSuccessStatusCode();
+                var config = LauncherConfig.Load();
+                Debug.WriteLine($"[ForgeService] 获取Forge支持的MC版本列表... (源: {config.DownloadSource})");
+                
+                if (config.DownloadSource == DownloadSource.BMCLAPI)
+                {
+                    // 使用BMCLAPI镜像源
+                    var response = await _httpClient.GetAsync(BMCL_FORGE_SUPPORT);
+                    response.EnsureSuccessStatusCode();
 
-                var json = await response.Content.ReadAsStringAsync();
-                var versions = JsonSerializer.Deserialize<List<string>>(json);
+                    var json = await response.Content.ReadAsStringAsync();
+                    var versions = JsonSerializer.Deserialize<List<string>>(json);
 
-                Debug.WriteLine($"[ForgeService] 获取到 {versions?.Count ?? 0} 个支持的MC版本");
-                return versions ?? new List<string>();
+                    Debug.WriteLine($"[ForgeService] 从BMCLAPI获取到 {versions?.Count ?? 0} 个支持的MC版本");
+                    return versions ?? new List<string>();
+                }
+                else
+                {
+                    // 使用官方源 - 通过解析promotions文件获取支持的版本
+                    var response = await _httpClient.GetAsync(OFFICIAL_FORGE_PROMO);
+                    response.EnsureSuccessStatusCode();
+
+                    var json = await response.Content.ReadAsStringAsync();
+                    var promoData = JsonSerializer.Deserialize<Dictionary<string, object>>(json);
+                    
+                    if (promoData != null && promoData.ContainsKey("promos"))
+                    {
+                        var promosJson = promoData["promos"].ToString();
+                        var promos = JsonSerializer.Deserialize<Dictionary<string, string>>(promosJson ?? "{}");
+                        
+                        // 从promos中提取MC版本号
+                        var versions = promos?.Keys
+                            .Select(k => k.Split('-')[0])
+                            .Distinct()
+                            .OrderByDescending(v => v)
+                            .ToList() ?? new List<string>();
+                        
+                        Debug.WriteLine($"[ForgeService] 从官方源获取到 {versions.Count} 个支持的MC版本");
+                        return versions;
+                    }
+                    
+                    return new List<string>();
+                }
             }
             catch (Exception ex)
             {
@@ -185,28 +224,96 @@ namespace ObsMCLauncher.Services
         {
             try
             {
-                Debug.WriteLine($"[ForgeService] 获取 MC {mcVersion} 的Forge版本列表...");
-                var url = string.Format(BMCL_FORGE_LIST, mcVersion);
-                var response = await _httpClient.GetAsync(url);
-                response.EnsureSuccessStatusCode();
-
-                var json = await response.Content.ReadAsStringAsync();
-                var forgeList = JsonSerializer.Deserialize<List<ForgeVersion>>(json);
-
-                if (forgeList != null)
+                var config = LauncherConfig.Load();
+                Debug.WriteLine($"[ForgeService] 获取 MC {mcVersion} 的Forge版本列表... (源: {config.DownloadSource})");
+                
+                if (config.DownloadSource == DownloadSource.BMCLAPI)
                 {
-                    // 按build号降序排序（最新的在前）
-                    forgeList = forgeList.OrderByDescending(f => f.Build).ToList();
-                    Debug.WriteLine($"[ForgeService] 获取到 {forgeList.Count} 个Forge版本");
-                }
+                    // 使用BMCLAPI镜像源
+                    var url = string.Format(BMCL_FORGE_LIST, mcVersion);
+                    var response = await _httpClient.GetAsync(url);
+                    response.EnsureSuccessStatusCode();
 
-                return forgeList ?? new List<ForgeVersion>();
+                    var json = await response.Content.ReadAsStringAsync();
+                    var forgeList = JsonSerializer.Deserialize<List<ForgeVersion>>(json);
+
+                    if (forgeList != null)
+                    {
+                        // 按build号降序排序（最新的在前）
+                        forgeList = forgeList.OrderByDescending(f => f.Build).ToList();
+                        Debug.WriteLine($"[ForgeService] 从BMCLAPI获取到 {forgeList.Count} 个Forge版本");
+                    }
+
+                    return forgeList ?? new List<ForgeVersion>();
+                }
+                else
+                {
+                    // 使用官方源 - 从Maven仓库获取版本列表
+                    var response = await _httpClient.GetAsync(OFFICIAL_FORGE_MAVEN + "maven-metadata.xml");
+                    response.EnsureSuccessStatusCode();
+                    
+                    var xml = await response.Content.ReadAsStringAsync();
+                    var forgeList = ParseForgeMavenMetadata(xml, mcVersion);
+                    
+                    Debug.WriteLine($"[ForgeService] 从官方源获取到 {forgeList.Count} 个Forge版本");
+                    return forgeList;
+                }
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"[ForgeService] 获取Forge版本列表失败: {ex.Message}");
                 return new List<ForgeVersion>();
             }
+        }
+
+        /// <summary>
+        /// 解析Forge Maven元数据XML
+        /// </summary>
+        private static List<ForgeVersion> ParseForgeMavenMetadata(string xml, string mcVersion)
+        {
+            var forgeList = new List<ForgeVersion>();
+            
+            try
+            {
+                // 简单的XML解析，提取<version>标签
+                var lines = xml.Split('\n');
+                int build = 1000; // 从高数字开始，确保排序正确
+                
+                foreach (var line in lines)
+                {
+                    var trimmed = line.Trim();
+                    if (trimmed.StartsWith("<version>") && trimmed.EndsWith("</version>"))
+                    {
+                        var versionText = trimmed.Replace("<version>", "").Replace("</version>", "");
+                        
+                        // 格式: 1.20.1-47.2.0 或 1.20.1-47.2.0-1.20.1
+                        if (versionText.StartsWith(mcVersion + "-"))
+                        {
+                            var parts = versionText.Split('-');
+                            if (parts.Length >= 2)
+                            {
+                                var forgeVer = parts[1];
+                                forgeList.Add(new ForgeVersion
+                                {
+                                    Build = build--,
+                                    McVersion = mcVersion,
+                                    Version = forgeVer,
+                                    Modified = DateTime.Now.ToString("yyyy-MM-dd")
+                                });
+                            }
+                        }
+                    }
+                }
+                
+                // 按build号降序排序
+                forgeList = forgeList.OrderByDescending(f => f.Build).ToList();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[ForgeService] 解析Maven元数据失败: {ex.Message}");
+            }
+            
+            return forgeList;
         }
 
         /// <summary>
@@ -222,8 +329,23 @@ namespace ObsMCLauncher.Services
         {
             try
             {
-                Debug.WriteLine($"[ForgeService] 开始下载Forge安装器: {forgeVersion}");
-                var url = string.Format(BMCL_FORGE_DOWNLOAD, forgeVersion);
+                var config = LauncherConfig.Load();
+                Debug.WriteLine($"[ForgeService] 开始下载Forge安装器: {forgeVersion} (源: {config.DownloadSource})");
+                
+                string url;
+                if (config.DownloadSource == DownloadSource.BMCLAPI)
+                {
+                    // 使用BMCLAPI镜像源
+                    url = string.Format(BMCL_FORGE_DOWNLOAD, forgeVersion);
+                }
+                else
+                {
+                    // 使用官方源
+                    // 格式: https://maven.minecraftforge.net/net/minecraftforge/forge/1.20.1-47.2.0/forge-1.20.1-47.2.0-installer.jar
+                    url = $"{OFFICIAL_FORGE_MAVEN}{forgeVersion}/forge-{forgeVersion}-installer.jar";
+                }
+
+                Debug.WriteLine($"[ForgeService] 下载URL: {url}");
 
                 // 确保目录存在
                 var directory = Path.GetDirectoryName(savePath);
