@@ -1554,11 +1554,11 @@ namespace ObsMCLauncher.Pages
 
                     if (!assetsResult.Success && assetsResult.FailedAssets > 0)
                     {
-                        MessageBox.Show(
-                            $"Forge已安装完成，但有 {assetsResult.FailedAssets} 个资源文件下载失败。\n\n游戏可能缺少部分资源（如声音、语言文件等）。",
+                        NotificationManager.Instance.ShowNotification(
                             "资源下载部分失败",
-                            MessageBoxButton.OK,
-                            MessageBoxImage.Warning
+                            $"Forge已安装完成，但有 {assetsResult.FailedAssets} 个资源文件下载失败\n游戏可能缺少部分资源（如声音、语言文件等）",
+                            NotificationType.Warning,
+                            durationSeconds: 8
                         );
                     }
                 }
@@ -1588,11 +1588,12 @@ namespace ObsMCLauncher.Pages
                 }
                 catch { }
 
-                MessageBox.Show(
-                    $"Forge {forgeVersion} 安装完成！\n\n版本已安装为: {customVersionName}\nMinecraft版本: {currentVersion}",
-                    "安装成功",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information
+                // 使用通知管理器显示安装完成消息
+                NotificationManager.Instance.ShowNotification(
+                    "Forge安装完成",
+                    $"Forge {forgeVersion} 安装完成！\n版本: {customVersionName}\nMinecraft: {currentVersion}",
+                    NotificationType.Success,
+                    durationSeconds: 5
                 );
 
                 // 返回版本列表

@@ -451,6 +451,15 @@ namespace ObsMCLauncher.Services
             // 资源索引
             var assetIndex = versionInfo.AssetIndex?.Id ?? versionInfo.Assets ?? "legacy";
 
+            // 检测是否是Forge版本（通过MainClass判断）
+            bool isForge = versionInfo.MainClass?.Contains("forge", StringComparison.OrdinalIgnoreCase) ?? false;
+            
+            // Forge需要先添加--launchTarget参数
+            if (isForge)
+            {
+                args.Append("--launchTarget fmlclient ");
+            }
+
             // 标准参数
             args.Append($"--username {account.Username} ");
             args.Append($"--version {versionId} ");
