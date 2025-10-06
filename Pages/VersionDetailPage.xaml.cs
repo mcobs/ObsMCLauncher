@@ -48,6 +48,9 @@ namespace ObsMCLauncher.Pages
             
             // 显示下载提示（如果启用了完整下载）
             UpdateDownloadAssetsHint();
+            
+            // 异步加载Forge版本列表
+            _ = LoadForgeVersionsAsync();
         }
         
         /// <summary>
@@ -241,6 +244,113 @@ namespace ObsMCLauncher.Pages
             {
                 // 否则使用默认导航返回
                 NavigationService?.GoBack();
+            }
+        }
+
+        /// <summary>
+        /// 加载Forge版本列表
+        /// </summary>
+        private async Task LoadForgeVersionsAsync()
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] 检查Forge支持: {currentVersion}");
+
+                // 检查Forge是否支持当前MC版本
+                var supportedVersions = await ForgeService.GetSupportedMinecraftVersionsAsync();
+                
+                if (!supportedVersions.Contains(currentVersion))
+                {
+                    System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] Forge不支持版本 {currentVersion}");
+                    
+                    Dispatcher.BeginInvoke(new Action(() =>
+                    {
+                        if (ForgeRadio != null)
+                        {
+                            ForgeRadio.IsEnabled = false;
+                            ForgeRadio.ToolTip = $"Forge暂不支持 Minecraft {currentVersion}";
+                        }
+                        if (ForgeVersionComboBox != null)
+                        {
+                            ForgeVersionComboBox.Items.Clear();
+                            var item = new ComboBoxItem { Content = "不支持此版本", IsEnabled = false };
+                            ForgeVersionComboBox.Items.Add(item);
+                            ForgeVersionComboBox.SelectedIndex = 0;
+                        }
+                    }));
+                    return;
+                }
+
+                // 获取Forge版本列表
+                System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] 获取Forge版本列表...");
+                var forgeVersions = await ForgeService.GetForgeVersionsAsync(currentVersion);
+
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    if (ForgeVersionComboBox != null)
+                    {
+                        ForgeVersionComboBox.Items.Clear();
+
+                        if (forgeVersions.Count == 0)
+                        {
+                            var item = new ComboBoxItem { Content = "暂无可用版本", IsEnabled = false };
+                            ForgeVersionComboBox.Items.Add(item);
+                            ForgeVersionComboBox.SelectedIndex = 0;
+                            
+                            if (ForgeRadio != null)
+                            {
+                                ForgeRadio.IsEnabled = false;
+                                ForgeRadio.ToolTip = "暂无可用的Forge版本";
+                            }
+                        }
+                        else
+                        {
+                            // 添加Forge版本到下拉列表
+                            foreach (var version in forgeVersions)
+                            {
+                                var item = new ComboBoxItem 
+                                { 
+                                    Content = version.Version,
+                                    Tag = version,
+                                    ToolTip = $"Build {version.Build} - {version.Modified}"
+                                };
+                                ForgeVersionComboBox.Items.Add(item);
+                            }
+
+                            // 默认选择第一个（最新版本）
+                            ForgeVersionComboBox.SelectedIndex = 0;
+
+                            // 启用Forge选项
+                            if (ForgeRadio != null)
+                            {
+                                ForgeRadio.IsEnabled = true;
+                                ForgeRadio.ToolTip = $"Forge for Minecraft {currentVersion} ({forgeVersions.Count} 个版本可用)";
+                            }
+
+                            System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] 加载了 {forgeVersions.Count} 个Forge版本");
+                        }
+                    }
+                }));
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] 加载Forge版本失败: {ex.Message}");
+                
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    if (ForgeRadio != null)
+                    {
+                        ForgeRadio.IsEnabled = false;
+                        ForgeRadio.ToolTip = "加载Forge版本列表失败";
+                    }
+                    if (ForgeVersionComboBox != null)
+                    {
+                        ForgeVersionComboBox.Items.Clear();
+                        var item = new ComboBoxItem { Content = "加载失败", IsEnabled = false };
+                        ForgeVersionComboBox.Items.Add(item);
+                        ForgeVersionComboBox.SelectedIndex = 0;
+                    }
+                }));
             }
         }
 

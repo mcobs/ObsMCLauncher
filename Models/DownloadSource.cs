@@ -11,7 +11,7 @@ namespace ObsMCLauncher.Models
         BMCLAPI,
 
         /// <summary>
-        /// Mojang 官方源
+        /// 官方源
         /// </summary>
         Mojang
     }

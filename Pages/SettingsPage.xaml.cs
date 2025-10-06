@@ -451,7 +451,7 @@ namespace ObsMCLauncher.Pages
                 "是否要测试所有下载源的连接状态？\n\n" +
                 "这将测试：\n" +
                 "• BMCLAPI 镜像源\n" +
-                "• Mojang 官方源\n\n" +
+                "• 官方源\n\n" +
                 "测试可能需要几秒钟。",
                 "测试下载源",
                 MessageBoxButton.YesNo,
@@ -474,8 +474,8 @@ namespace ObsMCLauncher.Pages
                 sb.AppendLine(bmclResult.Success ? $"✅ {bmclResult.Message}" : $"❌ {bmclResult.Message}");
                 sb.AppendLine();
 
-                // 测试 Mojang 官方源
-                sb.AppendLine("【Mojang 官方源】");
+                // 测试官方源
+                sb.AppendLine("【官方源】");
                 var mojangUrl = "https://launchermeta.mojang.com/mc/game/version_manifest.json";
                 sb.AppendLine($"URL: {mojangUrl}");
                 var mojangResult = await ApiTester.TestApiAsync(mojangUrl);
@@ -494,11 +494,11 @@ namespace ObsMCLauncher.Pages
 
                 if (mojangResult.Success)
                 {
-                    sb.AppendLine("• Mojang 官方源可用");
+                    sb.AppendLine("• 官方源可用");
                 }
                 else
                 {
-                    sb.AppendLine("• Mojang 官方源不可用，可能需要代理");
+                    sb.AppendLine("• 官方源不可用，可能需要代理");
                 }
 
                 MessageBox.Show(sb.ToString(), "测试结果", MessageBoxButton.OK, MessageBoxImage.Information);
