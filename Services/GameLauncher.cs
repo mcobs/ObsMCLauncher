@@ -388,6 +388,30 @@ namespace ObsMCLauncher.Services
                 args.Append($"{config.JvmArguments} ");
             }
 
+            // 2.5. version.json中定义的JVM参数（如Forge的额外JVM参数）
+            if (versionInfo.Arguments?.Jvm != null)
+            {
+                foreach (var arg in versionInfo.Arguments.Jvm)
+                {
+                    if (arg is string str)
+                    {
+                        // 跳过需要动态替换的参数
+                        if (!str.StartsWith("${"))
+                        {
+                            args.Append($"{str} ");
+                        }
+                    }
+                    else if (arg is System.Text.Json.JsonElement jsonElement && jsonElement.ValueKind == System.Text.Json.JsonValueKind.String)
+                    {
+                        var argStr = jsonElement.GetString();
+                        if (!string.IsNullOrEmpty(argStr) && !argStr.StartsWith("${"))
+                        {
+                            args.Append($"{argStr} ");
+                        }
+                    }
+                }
+            }
+
             // 3. 游戏目录相关
             var gameDir = config.GameDirectory;
             var versionDir = Path.Combine(gameDir, "versions", versionId);
@@ -451,16 +475,31 @@ namespace ObsMCLauncher.Services
             // 资源索引
             var assetIndex = versionInfo.AssetIndex?.Id ?? versionInfo.Assets ?? "legacy";
 
-            // 检测是否是Forge版本（通过MainClass判断）
-            bool isForge = versionInfo.MainClass?.Contains("forge", StringComparison.OrdinalIgnoreCase) ?? false;
-            
-            // Forge需要先添加--launchTarget参数
-            if (isForge)
+            // 1. 首先添加version.json中定义的额外游戏参数（如Forge的--launchTarget参数）
+            if (versionInfo.Arguments?.Game != null)
             {
-                args.Append("--launchTarget fmlclient ");
+                foreach (var arg in versionInfo.Arguments.Game)
+                {
+                    if (arg is string str)
+                    {
+                        // 跳过需要动态替换的参数（这些参数我们会在后面手动添加）
+                        if (!str.StartsWith("${"))
+                        {
+                            args.Append($"{str} ");
+                        }
+                    }
+                    else if (arg is System.Text.Json.JsonElement jsonElement && jsonElement.ValueKind == System.Text.Json.JsonValueKind.String)
+                    {
+                        var argStr = jsonElement.GetString();
+                        if (!string.IsNullOrEmpty(argStr) && !argStr.StartsWith("${"))
+                        {
+                            args.Append($"{argStr} ");
+                        }
+                    }
+                }
             }
 
-            // 标准参数
+            // 2. 标准参数
             args.Append($"--username {account.Username} ");
             args.Append($"--version {versionId} ");
             args.Append($"--gameDir \"{gameDir}\" ");
@@ -673,6 +712,13 @@ namespace ObsMCLauncher.Services
             public string? Assets { get; set; }
             public AssetIndexInfo? AssetIndex { get; set; }
             public Library[]? Libraries { get; set; }
+            public GameArguments? Arguments { get; set; }
+        }
+
+        private class GameArguments
+        {
+            public List<object>? Game { get; set; }
+            public List<object>? Jvm { get; set; }
         }
 
         private class AssetIndexInfo
