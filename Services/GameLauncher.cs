@@ -448,8 +448,26 @@ namespace ObsMCLauncher.Services
             }
 
             // 添加客户端JAR
+            // 如果有inheritsFrom字段（如Forge），需要加载父版本的JAR
+            if (!string.IsNullOrEmpty(versionInfo.InheritsFrom))
+            {
+                var parentJar = Path.Combine(gameDir, "versions", versionInfo.InheritsFrom, $"{versionInfo.InheritsFrom}.jar");
+                if (File.Exists(parentJar))
+                {
+                    classpathItems.Add(parentJar);
+                    Debug.WriteLine($"添加父版本JAR到classpath: {parentJar}");
+                }
+                else
+                {
+                    Debug.WriteLine($"⚠️ 父版本JAR不存在: {parentJar}");
+                }
+            }
+            
             var clientJar = Path.Combine(versionDir, $"{versionId}.jar");
-            classpathItems.Add(clientJar);
+            if (File.Exists(clientJar))
+            {
+                classpathItems.Add(clientJar);
+            }
             
             // 使用系统路径分隔符连接
             args.Append(string.Join(Path.PathSeparator, classpathItems));
@@ -713,6 +731,7 @@ namespace ObsMCLauncher.Services
             public AssetIndexInfo? AssetIndex { get; set; }
             public Library[]? Libraries { get; set; }
             public GameArguments? Arguments { get; set; }
+            public string? InheritsFrom { get; set; }
         }
 
         private class GameArguments

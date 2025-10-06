@@ -1474,28 +1474,14 @@ namespace ObsMCLauncher.Pages
                 var vanillaJarPath = Path.Combine(gameDirectory, "versions", currentVersion, $"{currentVersion}.jar");
                 var forgeJarPath = Path.Combine(forgeVersionDir, $"{customVersionName}.jar");
                 
-                if (File.Exists(vanillaJarPath))
+                if (!File.Exists(vanillaJarPath))
                 {
-                    File.Copy(vanillaJarPath, forgeJarPath, true);
-                    System.Diagnostics.Debug.WriteLine($"[Forge] 已复制原版JAR: {vanillaJarPath} -> {forgeJarPath}");
+                    System.Diagnostics.Debug.WriteLine($"[Forge] ❌ 原版JAR不存在: {vanillaJarPath}");
+                    throw new FileNotFoundException($"原版Minecraft客户端JAR不存在！\n路径: {vanillaJarPath}\n\nForge需要原版Minecraft才能正常运行。");
                 }
-                else
-                {
-                    System.Diagnostics.Debug.WriteLine($"[Forge] ⚠️ 原版JAR不存在: {vanillaJarPath}，创建空JAR");
-                    // 创建一个有效的空ZIP文件（最小ZIP结构）
-                    byte[] emptyZip = new byte[] 
-                    { 
-                        0x50, 0x4B, 0x05, 0x06, // End of central directory signature
-                        0x00, 0x00, 0x00, 0x00, // Number of this disk
-                        0x00, 0x00, 0x00, 0x00, // Disk where central directory starts
-                        0x00, 0x00, 0x00, 0x00, // Number of central directory records on this disk
-                        0x00, 0x00, 0x00, 0x00, // Total number of central directory records
-                        0x00, 0x00, 0x00, 0x00, // Size of central directory
-                        0x00, 0x00, 0x00, 0x00, // Offset of start of central directory
-                        0x00, 0x00              // ZIP file comment length
-                    };
-                    File.WriteAllBytes(forgeJarPath, emptyZip);
-                }
+                
+                File.Copy(vanillaJarPath, forgeJarPath, true);
+                System.Diagnostics.Debug.WriteLine($"[Forge] 已复制原版JAR: {vanillaJarPath} -> {forgeJarPath}");
 
                 // 8. 下载Forge依赖库
                 _ = Dispatcher.BeginInvoke(new Action(() =>
