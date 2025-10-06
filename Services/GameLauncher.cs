@@ -33,8 +33,9 @@ namespace ObsMCLauncher.Services
         /// <param name="versionId">版本ID</param>
         /// <param name="config">启动器配置</param>
         /// <param name="onProgressUpdate">进度更新回调</param>
+        /// <param name="cancellationToken">取消令牌</param>
         /// <returns>是否存在完整性问题（true表示有缺失文件）</returns>
-        public static async System.Threading.Tasks.Task<bool> CheckGameIntegrityAsync(string versionId, LauncherConfig config, Action<string>? onProgressUpdate = null)
+        public static async System.Threading.Tasks.Task<bool> CheckGameIntegrityAsync(string versionId, LauncherConfig config, Action<string>? onProgressUpdate = null, System.Threading.CancellationToken cancellationToken = default)
         {
             LastError = string.Empty;
             MissingLibraries.Clear();
@@ -48,6 +49,7 @@ namespace ObsMCLauncher.Services
 
                 // 1. 验证Java路径
                 onProgressUpdate?.Invoke("正在验证Java环境...");
+                cancellationToken.ThrowIfCancellationRequested();
                 if (!File.Exists(config.JavaPath))
                 {
                     LastError = $"Java路径不存在: {config.JavaPath}";
@@ -57,6 +59,7 @@ namespace ObsMCLauncher.Services
 
                 // 2. 读取版本JSON
                 onProgressUpdate?.Invoke("正在读取版本信息...");
+                cancellationToken.ThrowIfCancellationRequested();
                 var versionJsonPath = Path.Combine(config.GameDirectory, "versions", versionId, $"{versionId}.json");
                 if (!File.Exists(versionJsonPath))
                 {
@@ -84,6 +87,7 @@ namespace ObsMCLauncher.Services
 
                 // 3. 检查客户端JAR文件
                 onProgressUpdate?.Invoke("正在检查游戏主文件...");
+                cancellationToken.ThrowIfCancellationRequested();
                 var clientJarPath = Path.Combine(config.GameDirectory, "versions", versionId, $"{versionId}.jar");
                 if (!File.Exists(clientJarPath))
                 {
@@ -95,6 +99,7 @@ namespace ObsMCLauncher.Services
 
                 // 4. 检查库文件完整性（包括文件大小验证）
                 onProgressUpdate?.Invoke("正在检查游戏依赖库...");
+                cancellationToken.ThrowIfCancellationRequested();
                 Debug.WriteLine($"检查库文件完整性...");
                 var (missingRequired, missingOptional) = GetMissingLibraries(config.GameDirectory, versionId, versionInfo);
                 
@@ -118,6 +123,12 @@ namespace ObsMCLauncher.Services
                 onProgressUpdate?.Invoke("游戏完整性检查完成");
                 return false; // 没有完整性问题
             }
+            catch (OperationCanceledException)
+            {
+                Debug.WriteLine("❌ 游戏完整性检查已取消");
+                LastError = "检查已取消";
+                return true; // 有问题（被取消）
+            }
             catch (Exception ex)
             {
                 if (string.IsNullOrEmpty(LastError))
@@ -131,14 +142,15 @@ namespace ObsMCLauncher.Services
         }
 
         /// <summary>
-        /// 启动游戏（异步版本）
+        /// 启动游戏（异步）
         /// </summary>
         /// <param name="versionId">版本ID（文件夹名称）</param>
         /// <param name="account">游戏账号</param>
         /// <param name="config">启动器配置</param>
         /// <param name="onProgressUpdate">进度更新回调</param>
+        /// <param name="cancellationToken">取消令牌</param>
         /// <returns>是否启动成功</returns>
-        public static async System.Threading.Tasks.Task<bool> LaunchGameAsync(string versionId, GameAccount account, LauncherConfig config, Action<string>? onProgressUpdate = null)
+        public static async System.Threading.Tasks.Task<bool> LaunchGameAsync(string versionId, GameAccount account, LauncherConfig config, Action<string>? onProgressUpdate = null, System.Threading.CancellationToken cancellationToken = default)
         {
             LastError = string.Empty;
             
@@ -151,6 +163,7 @@ namespace ObsMCLauncher.Services
                 Debug.WriteLine($"Java路径: {config.JavaPath}");
 
                 // 0. 如果是微软账号且令牌过期，尝试刷新
+                cancellationToken.ThrowIfCancellationRequested();
                 if (account.Type == AccountType.Microsoft && account.IsTokenExpired())
                 {
                     Debug.WriteLine("⚠️ 微软账号令牌已过期，尝试刷新...");
@@ -187,6 +200,7 @@ namespace ObsMCLauncher.Services
 
                 // 1. 验证Java路径
                 onProgressUpdate?.Invoke("正在验证Java环境...");
+                cancellationToken.ThrowIfCancellationRequested();
                 if (!File.Exists(config.JavaPath))
                 {
                     LastError = $"Java可执行文件不存在\n路径: {config.JavaPath}";
@@ -195,6 +209,7 @@ namespace ObsMCLauncher.Services
 
                 // 2. 读取版本JSON
                 onProgressUpdate?.Invoke("正在读取游戏版本信息...");
+                cancellationToken.ThrowIfCancellationRequested();
                 var versionJsonPath = Path.Combine(config.GameDirectory, "versions", versionId, $"{versionId}.json");
                 Debug.WriteLine($"版本JSON路径: {versionJsonPath}");
                 
@@ -236,10 +251,12 @@ namespace ObsMCLauncher.Services
                 
                 // 解压natives库文件（LWJGL等本地库）
                 onProgressUpdate?.Invoke("正在解压本地库文件...");
+                cancellationToken.ThrowIfCancellationRequested();
                 ExtractNatives(config.GameDirectory, versionId, versionInfo, nativesDir);
 
                 // 4. 验证客户端JAR存在
                 onProgressUpdate?.Invoke("正在验证游戏客户端文件...");
+                cancellationToken.ThrowIfCancellationRequested();
                 var clientJar = Path.Combine(versionDir, $"{versionId}.jar");
                 Debug.WriteLine($"客户端JAR: {clientJar}");
                 
@@ -251,6 +268,7 @@ namespace ObsMCLauncher.Services
 
                 // 5. 检查并下载缺失的库文件
                 onProgressUpdate?.Invoke("正在检查游戏依赖库...");
+                cancellationToken.ThrowIfCancellationRequested();
                 Debug.WriteLine($"检查库文件完整性...");
                 var (missingRequired, missingOptional) = GetMissingLibraries(config.GameDirectory, versionId, versionInfo);
                 
@@ -275,11 +293,13 @@ namespace ObsMCLauncher.Services
 
                 // 6. 构建启动参数
                 onProgressUpdate?.Invoke("正在准备启动参数...");
+                cancellationToken.ThrowIfCancellationRequested();
                 var arguments = BuildLaunchArguments(versionId, account, config, versionInfo);
                 Debug.WriteLine($"完整启动命令: \"{config.JavaPath}\" {arguments}");
 
                 // 7. 启动游戏进程
                 onProgressUpdate?.Invoke("正在启动游戏进程...");
+                cancellationToken.ThrowIfCancellationRequested();
                 var processInfo = new ProcessStartInfo
                 {
                     FileName = config.JavaPath,
@@ -331,6 +351,12 @@ namespace ObsMCLauncher.Services
                 Debug.WriteLine($"========== 启动完成 ==========");
                 onProgressUpdate?.Invoke("启动完成");
                 return true;
+            }
+            catch (OperationCanceledException)
+            {
+                Debug.WriteLine("❌ 游戏启动已取消");
+                LastError = "启动已取消";
+                return false;
             }
             catch (Exception ex)
             {

@@ -261,7 +261,7 @@ namespace ObsMCLauncher.Pages
                 {
                     NotificationManager.Instance.UpdateNotification(launchNotificationId, progress);
                     LaunchButton.Content = progress;
-                });
+                }, launchCts.Token);
 
                 // 6. 如果检测到缺失的必需库文件，自动下载
                 if (hasIntegrityIssue && GameLauncher.MissingLibraries.Count > 0)
@@ -285,7 +285,7 @@ namespace ObsMCLauncher.Pages
                     LaunchButton.Content = "补全依赖中...";
                     
                     // 下载缺失的必需库文件
-                    bool downloadSuccess = await DownloadMissingLibraries(versionId, config, dependencyNotificationId, isOptional: false);
+                    bool downloadSuccess = await DownloadMissingLibraries(versionId, config, dependencyNotificationId, isOptional: false, launchCts.Token);
                     
                     // 移除依赖下载进度通知
                     if (!string.IsNullOrEmpty(dependencyNotificationId))
@@ -338,7 +338,7 @@ namespace ObsMCLauncher.Pages
                     Console.WriteLine($"检测到 {GameLauncher.MissingOptionalLibraries.Count} 个缺失的可选库，静默尝试下载...");
                     
                     // 静默下载可选库文件（失败不阻止启动，不显示任何用户通知）
-                    bool optionalSuccess = await DownloadMissingLibraries(versionId, config, notificationId: null, isOptional: true);
+                    bool optionalSuccess = await DownloadMissingLibraries(versionId, config, notificationId: null, isOptional: true, launchCts.Token);
                     
                     // 只在调试日志中记录结果
                     if (optionalSuccess)
@@ -377,7 +377,8 @@ namespace ObsMCLauncher.Pages
                                 );
                                 LaunchButton.Content = message;
                             });
-                        }
+                        },
+                        launchCts.Token
                     );
 
                     if (!assetsResult.Success)
@@ -429,7 +430,7 @@ namespace ObsMCLauncher.Pages
                     {
                         NotificationManager.Instance.UpdateNotification(launchNotificationId, progress);
                         LaunchButton.Content = progress;
-                    });
+                    }, launchCts.Token);
                     
                     // 移除启动进度通知
                     NotificationManager.Instance.RemoveNotification(launchNotificationId);
@@ -483,6 +484,19 @@ namespace ObsMCLauncher.Pages
                     }
                 }
             }
+            catch (OperationCanceledException)
+            {
+                Debug.WriteLine($"❌ 游戏启动已取消");
+                Console.WriteLine($"❌ 游戏启动已取消");
+                
+                // 显示取消通知
+                NotificationManager.Instance.ShowNotification(
+                    "游戏启动已取消",
+                    "用户取消了游戏启动流程",
+                    NotificationType.Warning,
+                    3
+                );
+            }
             catch (Exception ex)
             {
                 Debug.WriteLine($"❌ 启动游戏异常: {ex.Message}");
@@ -511,12 +525,15 @@ namespace ObsMCLauncher.Pages
         /// 下载缺失的库文件
         /// </summary>
         /// <param name="isOptional">是否下载可选库（natives、Twitch等）</param>
-        private async Task<bool> DownloadMissingLibraries(string versionId, LauncherConfig config, string? notificationId = null, bool isOptional = false)
+        /// <param name="cancellationToken">取消令牌</param>
+        private async Task<bool> DownloadMissingLibraries(string versionId, LauncherConfig config, string? notificationId = null, bool isOptional = false, System.Threading.CancellationToken cancellationToken = default)
         {
             try
             {
                 // 根据isOptional选择下载列表
                 var targetLibraries = isOptional ? GameLauncher.MissingOptionalLibraries : GameLauncher.MissingLibraries;
+                
+                cancellationToken.ThrowIfCancellationRequested();
                 
                 if (targetLibraries.Count == 0)
                 {
@@ -557,6 +574,8 @@ namespace ObsMCLauncher.Pages
 
                 foreach (var lib in versionDetail.Libraries)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    
                     if (lib.Name == null) continue;
                     
                     // 检查是否是缺失的库
@@ -614,7 +633,7 @@ namespace ObsMCLauncher.Pages
                                         Debug.WriteLine($"   保存到: {nativesPath}");
                                         Console.WriteLine($"📥 [{processedLibs}/{totalLibs}] {lib.Name} (natives)");
                                         
-                                        var response = await httpClient.GetAsync(url);
+                                        var response = await httpClient.GetAsync(url, cancellationToken);
                                         response.EnsureSuccessStatusCode();
                                         var fileBytes = await response.Content.ReadAsByteArrayAsync();
                                         await File.WriteAllBytesAsync(nativesPath, fileBytes);
@@ -683,7 +702,7 @@ namespace ObsMCLauncher.Pages
                                 Console.WriteLine($"📥 [{processedLibs}/{totalLibs}] {lib.Name}");
                                 
                                 // 使用HttpClient下载
-                                var response = await httpClient.GetAsync(url);
+                                var response = await httpClient.GetAsync(url, cancellationToken);
                                 response.EnsureSuccessStatusCode();
                                 var fileBytes = await response.Content.ReadAsByteArrayAsync();
                                 await File.WriteAllBytesAsync(libPath, fileBytes);
@@ -746,6 +765,11 @@ namespace ObsMCLauncher.Pages
                 }
                 
                 return allSuccessful;
+            }
+            catch (OperationCanceledException)
+            {
+                Debug.WriteLine($"❌ 库文件下载已取消");
+                return false;
             }
             catch (Exception ex)
             {

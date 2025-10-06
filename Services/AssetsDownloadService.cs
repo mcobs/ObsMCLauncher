@@ -35,16 +35,19 @@ namespace ObsMCLauncher.Services
         /// <param name="gameDir">游戏目录</param>
         /// <param name="versionId">版本ID</param>
         /// <param name="onProgress">进度回调 (当前, 总数, 消息)</param>
+        /// <param name="cancellationToken">取消令牌</param>
         /// <returns>下载结果</returns>
         public static async Task<AssetsDownloadResult> DownloadAndCheckAssetsAsync(
             string gameDir,
             string versionId,
-            Action<int, int, string>? onProgress = null)
+            Action<int, int, string>? onProgress = null,
+            System.Threading.CancellationToken cancellationToken = default)
         {
             try
             {
                 Debug.WriteLine($"========== 开始检查Assets资源 ==========");
                 onProgress?.Invoke(0, 100, "正在读取版本信息...");
+                cancellationToken.ThrowIfCancellationRequested();
 
                 // 1. 读取版本JSON获取AssetIndex信息
                 var versionJsonPath = Path.Combine(gameDir, "versions", versionId, $"{versionId}.json");
@@ -83,9 +86,10 @@ namespace ObsMCLauncher.Services
                 if (!File.Exists(assetIndexPath))
                 {
                     onProgress?.Invoke(5, 100, "正在下载资源索引文件...");
+                    cancellationToken.ThrowIfCancellationRequested();
                     Debug.WriteLine($"📥 下载AssetIndex: {assetIndexUrl}");
 
-                    var response = await _httpClient.GetAsync(assetIndexUrl);
+                    var response = await _httpClient.GetAsync(assetIndexUrl, cancellationToken);
                     response.EnsureSuccessStatusCode();
                     var indexContent = await response.Content.ReadAsStringAsync();
                     await File.WriteAllTextAsync(assetIndexPath, indexContent);
@@ -98,6 +102,7 @@ namespace ObsMCLauncher.Services
 
                 // 3. 解析AssetIndex
                 onProgress?.Invoke(10, 100, "正在解析资源索引...");
+                cancellationToken.ThrowIfCancellationRequested();
                 var assetIndexJson = await File.ReadAllTextAsync(assetIndexPath);
                 var assetIndex = JsonSerializer.Deserialize<AssetIndex>(assetIndexJson, new JsonSerializerOptions
                 {
@@ -111,6 +116,7 @@ namespace ObsMCLauncher.Services
                 }
 
                 // 4. 检查缺失的Assets
+                cancellationToken.ThrowIfCancellationRequested();
                 var missingAssets = new List<AssetObject>();
                 foreach (var asset in assetIndex.Objects)
                 {
@@ -170,9 +176,10 @@ namespace ObsMCLauncher.Services
                 {
                     var task = Task.Run(async () =>
                     {
-                        await semaphore.WaitAsync();
+                        await semaphore.WaitAsync(cancellationToken);
                         try
                         {
+                            cancellationToken.ThrowIfCancellationRequested();
                             var hash = asset.Hash;
                             var hashPrefix = hash.Substring(0, 2);
                             var assetPath = Path.Combine(objectsDir, hashPrefix, hash);
@@ -197,10 +204,10 @@ namespace ObsMCLauncher.Services
                                     if (retry > 0)
                                     {
                                         Debug.WriteLine($"⚠️ 重试下载 ({retry}/3): {asset.Name}");
-                                        await Task.Delay(1000 * retry); // 递增延迟
+                                        await Task.Delay(1000 * retry, cancellationToken); // 递增延迟
                                     }
                                     
-                                    var response = await _httpClient.GetAsync(url);
+                                    var response = await _httpClient.GetAsync(url, cancellationToken);
                                     response.EnsureSuccessStatusCode();
                                     var fileBytes = await response.Content.ReadAsByteArrayAsync();
                                     await File.WriteAllBytesAsync(assetPath, fileBytes);
@@ -263,7 +270,8 @@ namespace ObsMCLauncher.Services
 
                 // 等待所有下载任务完成
                 await Task.WhenAll(downloadTasks);
-
+                
+                cancellationToken.ThrowIfCancellationRequested();
                 Debug.WriteLine($"========== Assets下载完成 ==========");
                 Debug.WriteLine($"成功: {downloaded}/{total}");
                 Debug.WriteLine($"失败: {failed}/{total}");
@@ -292,6 +300,11 @@ namespace ObsMCLauncher.Services
                     FailedAssets = failed,
                     FailedAssetNames = failedAssets
                 };
+            }
+            catch (OperationCanceledException)
+            {
+                Debug.WriteLine("❌ Assets下载已取消");
+                return new AssetsDownloadResult { Success = false };
             }
             catch (Exception ex)
             {
