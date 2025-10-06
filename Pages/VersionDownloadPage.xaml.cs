@@ -22,6 +22,9 @@ namespace ObsMCLauncher.Pages
         // 记住当前显示的详情页
         private VersionDetailPage? _currentDetailPage = null;
         private bool _isShowingDetail = false;
+        
+        // 记住滚动位置
+        private double _savedScrollOffset = 0;
 
         public VersionDownloadPage()
         {
@@ -43,6 +46,12 @@ namespace ObsMCLauncher.Pages
                 LoadInstalledVersions();
                 // 自动加载在线版本列表
                 await LoadVersionsAsync();
+                
+                // 恢复滚动位置
+                if (VersionScrollViewer != null && _savedScrollOffset > 0)
+                {
+                    VersionScrollViewer.ScrollToVerticalOffset(_savedScrollOffset);
+                }
             }
         }
 
@@ -81,6 +90,12 @@ namespace ObsMCLauncher.Pages
             _currentDetailPage = detailPage;
             _isShowingDetail = true;
             
+            // 保存当前滚动位置
+            if (VersionScrollViewer != null)
+            {
+                _savedScrollOffset = VersionScrollViewer.VerticalOffset;
+            }
+            
             // 使用嵌套 Frame 显示详情页，保持Page特性
             DetailFrame.Navigate(detailPage);
             DetailFrame.Visibility = Visibility.Visible;
@@ -97,6 +112,12 @@ namespace ObsMCLauncher.Pages
             // 返回到版本列表
             DetailFrame.Visibility = Visibility.Collapsed;
             VersionListGrid.Visibility = Visibility.Visible;
+            
+            // 恢复滚动位置
+            if (VersionScrollViewer != null && _savedScrollOffset > 0)
+            {
+                VersionScrollViewer.ScrollToVerticalOffset(_savedScrollOffset);
+            }
         }
 
         private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)

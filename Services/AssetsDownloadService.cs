@@ -218,10 +218,13 @@ namespace ObsMCLauncher.Services
                 bool downloadSuccess = false;
                 Exception? lastException = null;
                 
-                for (int retry = 0; retry < 3; retry++)
+                            for (int retry = 0; retry < 3; retry++)
                             {
                                 try
                                 {
+                                    // 在重试前检查是否已取消
+                                    cancellationToken.ThrowIfCancellationRequested();
+                                    
                                     if (retry > 0)
                                     {
                                         Debug.WriteLine($"⚠️ 重试下载 ({retry}/3): {asset.Name}");
@@ -230,11 +233,16 @@ namespace ObsMCLauncher.Services
                                     
                                     var response = await _httpClient.GetAsync(url, cancellationToken);
                                     response.EnsureSuccessStatusCode();
-                                    var fileBytes = await response.Content.ReadAsByteArrayAsync();
-                                    await File.WriteAllBytesAsync(assetPath, fileBytes);
+                                    var fileBytes = await response.Content.ReadAsByteArrayAsync(cancellationToken);
+                                    await File.WriteAllBytesAsync(assetPath, fileBytes, cancellationToken);
                                     
                                     downloadSuccess = true;
                                     break;
+                                }
+                                catch (OperationCanceledException)
+                                {
+                                    // 取消操作，直接退出重试循环
+                                    throw;
                                 }
                                 catch (Exception ex)
                                 {
