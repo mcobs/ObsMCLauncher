@@ -6,6 +6,7 @@ using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using ObsMCLauncher.Pages;
 using ObsMCLauncher.Utils;
+using ObsMCLauncher.Services;
 
 namespace ObsMCLauncher
 {
@@ -38,6 +39,9 @@ namespace ObsMCLauncher
             
             // 默认导航到主页
             MainFrame.Navigate(_homePage);
+            
+            // 初始化下载管理器
+            InitializeDownloadManager();
         }
         
         /// <summary>
@@ -293,6 +297,97 @@ namespace ObsMCLauncher
         {
             Close();
         }
+
+        #region 下载管理器
+
+        /// <summary>
+        /// 初始化下载管理器
+        /// </summary>
+        private void InitializeDownloadManager()
+        {
+            // 绑定任务列表
+            DownloadTasksList.ItemsSource = DownloadTaskManager.Instance.Tasks;
+
+            // 监听任务变化
+            DownloadTaskManager.Instance.TasksChanged += OnDownloadTasksChanged;
+            DownloadTaskManager.Instance.PropertyChanged += (s, e) =>
+            {
+                if (e.PropertyName == nameof(DownloadTaskManager.HasActiveTasks))
+                {
+                    UpdateDownloadManagerVisibility();
+                }
+            };
+        }
+
+        /// <summary>
+        /// 任务变化时更新UI
+        /// </summary>
+        private void OnDownloadTasksChanged(object? sender, EventArgs e)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                UpdateDownloadManagerVisibility();
+                UpdateDownloadCount();
+            });
+        }
+
+        /// <summary>
+        /// 更新下载管理器按钮可见性
+        /// </summary>
+        private void UpdateDownloadManagerVisibility()
+        {
+            var hasActiveTasks = DownloadTaskManager.Instance.HasActiveTasks;
+            DownloadManagerButton.Visibility = hasActiveTasks ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        /// <summary>
+        /// 更新任务计数
+        /// </summary>
+        private void UpdateDownloadCount()
+        {
+            var count = DownloadTaskManager.Instance.ActiveTaskCount;
+            DownloadCountText.Text = count.ToString();
+            DownloadManagerCountText.Text = $"({count} 个任务)";
+        }
+
+        /// <summary>
+        /// 下载管理器按钮点击
+        /// </summary>
+        private void DownloadManagerButton_Click(object sender, RoutedEventArgs e)
+        {
+            DownloadManagerPanel.Visibility = DownloadManagerPanel.Visibility == Visibility.Visible
+                ? Visibility.Collapsed
+                : Visibility.Visible;
+        }
+
+        /// <summary>
+        /// 关闭下载管理器面板
+        /// </summary>
+        private void CloseDownloadManager_Click(object sender, RoutedEventArgs e)
+        {
+            DownloadManagerPanel.Visibility = Visibility.Collapsed;
+        }
+
+        /// <summary>
+        /// 取消任务
+        /// </summary>
+        private void CancelTask_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button button && button.Tag is string taskId)
+            {
+                DownloadTaskManager.Instance.CancelTask(taskId);
+            }
+        }
+
+        /// <summary>
+        /// 清除已完成的任务
+        /// </summary>
+        private void ClearCompletedTasks_Click(object sender, RoutedEventArgs e)
+        {
+            DownloadTaskManager.Instance.ClearInactiveTasks();
+        }
+
+        #endregion
     }
 }
 

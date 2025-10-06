@@ -21,6 +21,7 @@ namespace ObsMCLauncher.Pages
         private MinecraftVersion? versionInfo;
         private CancellationTokenSource? _downloadCancellationToken;
         private bool _isUpdatingVersionName = false; // 防止循环更新
+        private string? _currentDownloadTaskId; // 当前下载任务ID
         
         // 返回回调，由父页面设置
         public Action? OnBackRequested { get; set; }
@@ -486,7 +487,7 @@ namespace ObsMCLauncher.Pages
                 // 检查是否启用了完整下载（包括 Assets）
                 var enableAssetsDownload = config.DownloadAssetsWithGame;
                 
-                // 创建进度报告器
+                // 创建进度报告器，同时更新UI和下载管理器
                 var progress = new Progress<DownloadProgress>(p =>
                 {
                     Dispatcher.Invoke(() =>
@@ -495,6 +496,17 @@ namespace ObsMCLauncher.Pages
                         double adjustedProgress = enableAssetsDownload 
                             ? p.OverallPercentage * 0.6  // 主文件和库占 60%
                             : p.OverallPercentage;
+                        
+                        // 更新下载管理器任务进度
+                        if (_currentDownloadTaskId != null)
+                        {
+                            DownloadTaskManager.Instance.UpdateTaskProgress(
+                                _currentDownloadTaskId,
+                                adjustedProgress,
+                                p.CurrentFile,
+                                p.DownloadSpeed
+                            );
+                        }
                         
                         // 更新总体进度
                         DownloadOverallProgressBar.Value = adjustedProgress;
@@ -512,6 +524,15 @@ namespace ObsMCLauncher.Pages
                         DownloadSizeText.Text = $"{FormatFileSize(p.TotalDownloadedBytes)} / {FormatFileSize(p.TotalBytes)}";
                     });
                 });
+
+                // 创建下载任务并添加到管理器
+                var versionName = string.IsNullOrWhiteSpace(customVersionName) ? currentVersion : customVersionName;
+                var downloadTask = DownloadTaskManager.Instance.AddTask(
+                    $"Minecraft {versionName}",
+                    DownloadTaskType.Version,
+                    _downloadCancellationToken
+                );
+                _currentDownloadTaskId = downloadTask.Id;
 
                 // 开始下载（目前仅支持原版）
                 if (loaderType == "原版")
@@ -555,6 +576,17 @@ namespace ObsMCLauncher.Pages
                                     {
                                         // Assets 进度映射到 60%-100% 范围
                                         double assetsProgress = assetsBaseProgress + (current * assetsProgressRange / 100.0);
+                                        
+                                        // 更新下载管理器任务
+                                        if (_currentDownloadTaskId != null)
+                                        {
+                                            DownloadTaskManager.Instance.UpdateTaskProgress(
+                                                _currentDownloadTaskId,
+                                                assetsProgress,
+                                                message,
+                                                speed
+                                            );
+                                        }
                                         
                                         DownloadStatusText.Text = "下载游戏资源";
                                         CurrentFileText.Text = message;
@@ -606,6 +638,13 @@ namespace ObsMCLauncher.Pages
                             });
                         }
 
+                        // 标记任务完成
+                        if (_currentDownloadTaskId != null)
+                        {
+                            DownloadTaskManager.Instance.CompleteTask(_currentDownloadTaskId);
+                            _currentDownloadTaskId = null;
+                        }
+
                         MessageBox.Show(
                             $"Minecraft {currentVersion} 安装完成！\n\n版本已安装为: {customVersionName}",
                             "安装成功",
@@ -640,6 +679,9 @@ namespace ObsMCLauncher.Pages
             {
                 System.Diagnostics.Debug.WriteLine($"下载已被用户取消");
                 
+                // 标记任务已取消 (由 DownloadTaskManager 的 CancelTask 自动处理)
+                _currentDownloadTaskId = null;
+                
                 // 在后台异步删除已下载的文件夹，避免阻塞UI
                 var versionDirToDelete = Path.Combine(gameDirectory, "versions", customVersionName);
                 _ = Task.Run(() =>
@@ -673,6 +715,14 @@ namespace ObsMCLauncher.Pages
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"下载出错: {ex.Message}");
+                
+                // 标记任务失败
+                if (_currentDownloadTaskId != null)
+                {
+                    DownloadTaskManager.Instance.FailTask(_currentDownloadTaskId, ex.Message);
+                    _currentDownloadTaskId = null;
+                }
+                
                 MessageBox.Show(
                     $"下载过程中发生错误：\n{ex.Message}",
                     "错误",

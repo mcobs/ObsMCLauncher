@@ -328,6 +328,222 @@
             <!-- Canvas不设置Background，让鼠标事件穿透到下层UI，但通知本身有Background可以接收事件 -->
         </Canvas>
 
+        <!-- 下载管理器按钮（右下角） -->
+        <Button x:Name="DownloadManagerButton"
+                Grid.Row="1"
+                Grid.Column="1"
+                Width="56"
+                Height="56"
+                Style="{StaticResource MaterialDesignFloatingActionButton}"
+                Background="{StaticResource PrimaryBrush}"
+                VerticalAlignment="Bottom"
+                HorizontalAlignment="Right"
+                Margin="0,0,30,30"
+                Panel.ZIndex="998"
+                Click="DownloadManagerButton_Click"
+                Visibility="Collapsed"
+                ToolTip="下载管理器">
+            <Grid>
+                <materialDesign:PackIcon Kind="Download"
+                                       Width="28"
+                                       Height="28"/>
+                <!-- 下载任务计数徽章 -->
+                <Border x:Name="DownloadCountBadge"
+                        Width="22"
+                        Height="22"
+                        CornerRadius="11"
+                        Background="#DC3545"
+                        VerticalAlignment="Top"
+                        HorizontalAlignment="Right"
+                        Margin="0,-8,-8,0">
+                    <TextBlock x:Name="DownloadCountText"
+                             Text="0"
+                             FontSize="11"
+                             FontWeight="Bold"
+                             Foreground="White"
+                             HorizontalAlignment="Center"
+                             VerticalAlignment="Center"/>
+                </Border>
+            </Grid>
+        </Button>
+
+        <!-- 下载管理器悬浮窗 -->
+        <Border x:Name="DownloadManagerPanel"
+                Grid.Row="1"
+                Grid.Column="1"
+                Width="400"
+                MaxHeight="500"
+                Background="{StaticResource SurfaceBrush}"
+                CornerRadius="12"
+                Padding="0"
+                VerticalAlignment="Bottom"
+                HorizontalAlignment="Right"
+                Margin="0,0,100,30"
+                Panel.ZIndex="1000"
+                Visibility="Collapsed">
+            <Border.Effect>
+                <DropShadowEffect Color="Black" BlurRadius="30" ShadowDepth="5" Opacity="0.4"/>
+            </Border.Effect>
+
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- 标题栏 -->
+                <Border Grid.Row="0"
+                        Background="{StaticResource PrimaryBrush}"
+                        CornerRadius="12,12,0,0"
+                        Padding="20,15">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0" Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="Download"
+                                                   Width="24"
+                                                   Height="24"
+                                                   VerticalAlignment="Center"
+                                                   Margin="0,0,10,0"/>
+                            <TextBlock Text="下载管理器"
+                                     FontSize="16"
+                                     FontWeight="SemiBold"
+                                     VerticalAlignment="Center"/>
+                            <TextBlock x:Name="DownloadManagerCountText"
+                                     Text="(0 个任务)"
+                                     FontSize="13"
+                                     Margin="8,0,0,0"
+                                     Opacity="0.8"
+                                     VerticalAlignment="Center"/>
+                        </StackPanel>
+
+                        <Button Grid.Column="1"
+                                Width="32"
+                                Height="32"
+                                Style="{StaticResource MaterialDesignFlatButton}"
+                                Click="CloseDownloadManager_Click"
+                                Padding="0">
+                            <materialDesign:PackIcon Kind="Close"
+                                                   Width="20"
+                                                   Height="20"/>
+                        </Button>
+                    </Grid>
+                </Border>
+
+                <!-- 任务列表 -->
+                <ScrollViewer Grid.Row="1"
+                            VerticalScrollBarVisibility="Auto"
+                            MaxHeight="400">
+                    <ItemsControl x:Name="DownloadTasksList"
+                                Margin="15,15">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Background="{StaticResource BackgroundBrush}"
+                                      CornerRadius="8"
+                                      Padding="15"
+                                      Margin="0,0,0,10">
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+
+                                        <!-- 任务名称和操作 -->
+                                        <Grid Grid.Row="0" Margin="0,0,0,8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+
+                                            <TextBlock Grid.Column="0"
+                                                     Text="{Binding Name}"
+                                                     FontSize="14"
+                                                     FontWeight="SemiBold"
+                                                     TextTrimming="CharacterEllipsis"
+                                                     VerticalAlignment="Center"/>
+
+                                            <Button Grid.Column="1"
+                                                  Width="28"
+                                                  Height="28"
+                                                  Style="{StaticResource MaterialDesignIconButton}"
+                                                  ToolTip="取消下载"
+                                                  Visibility="{Binding CanCancel, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                                  Click="CancelTask_Click"
+                                                  Tag="{Binding Id}">
+                                                <materialDesign:PackIcon Kind="Close"
+                                                                       Width="18"
+                                                                       Height="18"/>
+                                            </Button>
+                                        </Grid>
+
+                                        <!-- 进度条 -->
+                                        <Grid Grid.Row="1" Margin="0,0,0,5">
+                                            <ProgressBar Value="{Binding Progress}"
+                                                       Height="6"
+                                                       Maximum="100"
+                                                       Foreground="{StaticResource PrimaryBrush}"
+                                                       Background="#3F3F46"/>
+                                        </Grid>
+
+                                        <!-- 状态信息 -->
+                                        <Grid Grid.Row="2">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+
+                                            <TextBlock Grid.Column="0"
+                                                     Text="{Binding StatusText}"
+                                                     FontSize="12"
+                                                     Foreground="{StaticResource TextSecondaryBrush}"/>
+
+                                            <TextBlock Grid.Column="1"
+                                                     Text="{Binding StatusMessage}"
+                                                     FontSize="11"
+                                                     Margin="10,0"
+                                                     TextTrimming="CharacterEllipsis"
+                                                     Foreground="{StaticResource TextSecondaryBrush}"/>
+
+                                            <StackPanel Grid.Column="2" Orientation="Horizontal">
+                                                <TextBlock Text="{Binding ProgressText}"
+                                                         FontSize="12"
+                                                         FontWeight="SemiBold"
+                                                         Foreground="{StaticResource PrimaryBrush}"/>
+                                                <TextBlock Text="{Binding SpeedText}"
+                                                         FontSize="11"
+                                                         Margin="8,0,0,0"
+                                                         Foreground="{StaticResource TextSecondaryBrush}"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+
+                <!-- 底部操作栏 -->
+                <Border Grid.Row="2"
+                        BorderBrush="{StaticResource BorderBrush}"
+                        BorderThickness="0,1,0,0"
+                        Padding="15,12"
+                        Background="{StaticResource BackgroundBrush}"
+                        CornerRadius="0,0,12,12">
+                    <Button Content="清除已完成"
+                          Style="{StaticResource MaterialDesignOutlinedButton}"
+                          Height="32"
+                          Click="ClearCompletedTasks_Click"
+                          HorizontalAlignment="Right"/>
+                </Border>
+            </Grid>
+        </Border>
+
         <!-- 全局：登录进度悬浮窗（已废弃，保留用于兼容） -->
         <Border x:Name="GlobalLoginProgressPanel"
                 Grid.Row="0"
