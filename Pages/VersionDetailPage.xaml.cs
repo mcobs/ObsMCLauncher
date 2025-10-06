@@ -452,17 +452,6 @@ namespace ObsMCLauncher.Pages
                 return;
             }
 
-            // 确认安装
-            var result = MessageBox.Show(
-                $"准备安装：\n\nMinecraft 版本：{currentVersion}\n加载器：{loaderType}\n加载器版本：{loaderVersion}\n安装名称：{customVersionName}\n\n是否开始下载？",
-                "安装确认",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Question
-            );
-
-            if (result != MessageBoxResult.Yes)
-                return;
-
             // 获取游戏目录
             var config = LauncherConfig.Load();
             var gameDirectory = config.GameDirectory;
@@ -482,14 +471,22 @@ namespace ObsMCLauncher.Pages
             {
                 _downloadCancellationToken = new CancellationTokenSource();
 
+                // 检查是否启用了完整下载（包括 Assets）
+                var enableAssetsDownload = config.DownloadAssetsWithGame;
+                
                 // 创建进度报告器
                 var progress = new Progress<DownloadProgress>(p =>
                 {
                     Dispatcher.Invoke(() =>
                     {
+                        // 如果启用了完整下载，主文件下载占 60%，否则占 100%
+                        double adjustedProgress = enableAssetsDownload 
+                            ? p.OverallPercentage * 0.6  // 主文件和库占 60%
+                            : p.OverallPercentage;
+                        
                         // 更新总体进度
-                        DownloadOverallProgressBar.Value = p.OverallPercentage;
-                        DownloadOverallPercentageText.Text = $"{p.OverallPercentage:F0}%";
+                        DownloadOverallProgressBar.Value = adjustedProgress;
+                        DownloadOverallPercentageText.Text = $"{adjustedProgress:F0}%";
                         DownloadOverallStatsText.Text = $"{p.CompletedFiles} / {p.TotalFiles} 个文件";
                         
                         // 更新当前文件进度
@@ -522,12 +519,19 @@ namespace ObsMCLauncher.Pages
                         {
                             System.Diagnostics.Debug.WriteLine("配置已启用，开始下载Assets资源文件...");
                             
+                            // Assets 阶段进度从 60% 开始，占剩余的 40%
+                            const double assetsBaseProgress = 60.0;
+                            const double assetsProgressRange = 40.0;
+                            
                             // 更新进度显示
                             Dispatcher.Invoke(() =>
                             {
                                 DownloadStatusText.Text = "正在下载游戏资源文件...";
                                 CurrentFileText.Text = "Assets资源包";
-                                DownloadOverallProgressBar.Value = 0;
+                                DownloadOverallProgressBar.Value = assetsBaseProgress;
+                                DownloadOverallPercentageText.Text = $"{assetsBaseProgress:F0}%";
+                                DownloadCurrentProgressBar.Value = 0;
+                                DownloadCurrentPercentageText.Text = "0%";
                             });
 
                             var assetsResult = await AssetsDownloadService.DownloadAndCheckAssetsAsync(
@@ -537,11 +541,18 @@ namespace ObsMCLauncher.Pages
                                 {
                                     Dispatcher.Invoke(() =>
                                     {
+                                        // Assets 进度映射到 60%-100% 范围
+                                        double assetsProgress = assetsBaseProgress + (current * assetsProgressRange / 100.0);
+                                        
                                         DownloadStatusText.Text = "下载游戏资源";
                                         CurrentFileText.Text = message;
-                                        DownloadOverallProgressBar.Value = current;
+                                        DownloadOverallProgressBar.Value = assetsProgress;
+                                        DownloadOverallPercentageText.Text = $"{assetsProgress:F0}%";
+                                        DownloadCurrentProgressBar.Value = current;
+                                        DownloadCurrentPercentageText.Text = $"{current:F0}%";
                                     });
-                                }
+                                },
+                                _downloadCancellationToken.Token
                             );
 
                             if (!assetsResult.Success)
@@ -562,6 +573,24 @@ namespace ObsMCLauncher.Pages
                             {
                                 System.Diagnostics.Debug.WriteLine("✅ Assets资源下载完成");
                             }
+                            
+                            // Assets 下载完成，确保进度条到达 100%
+                            Dispatcher.Invoke(() =>
+                            {
+                                DownloadOverallProgressBar.Value = 100;
+                                DownloadOverallPercentageText.Text = "100%";
+                                DownloadStatusText.Text = "下载完成";
+                            });
+                        }
+                        else
+                        {
+                            // 如果没有下载 Assets，确保进度条到达 100%
+                            Dispatcher.Invoke(() =>
+                            {
+                                DownloadOverallProgressBar.Value = 100;
+                                DownloadOverallPercentageText.Text = "100%";
+                                DownloadStatusText.Text = "下载完成";
+                            });
                         }
 
                         MessageBox.Show(
@@ -594,6 +623,29 @@ namespace ObsMCLauncher.Pages
                     );
                 }
             }
+            catch (OperationCanceledException)
+            {
+                System.Diagnostics.Debug.WriteLine($"下载已被用户取消");
+                
+                // 删除已下载的文件夹
+                try
+                {
+                    var config = LauncherConfig.Load();
+                    var gameDirectory = config.GameDirectory;
+                    var versionDir = Path.Combine(gameDirectory, "versions", customVersionName);
+                    
+                    if (Directory.Exists(versionDir))
+                    {
+                        System.Diagnostics.Debug.WriteLine($"正在删除已下载的文件夹: {versionDir}");
+                        Directory.Delete(versionDir, true); // 递归删除
+                        System.Diagnostics.Debug.WriteLine($"✅ 已删除文件夹: {versionDir}");
+                    }
+                }
+                catch (Exception deleteEx)
+                {
+                    System.Diagnostics.Debug.WriteLine($"删除文件夹失败: {deleteEx.Message}");
+                }
+            }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"下载出错: {ex.Message}");
@@ -613,6 +665,13 @@ namespace ObsMCLauncher.Pages
                 if (VersionNameTextBox != null)
                 {
                     VersionNameTextBox.IsEnabled = true;
+                }
+                
+                // 恢复取消按钮状态
+                if (CancelDownloadButton != null)
+                {
+                    CancelDownloadButton.IsEnabled = true;
+                    CancelDownloadButton.Content = "取消下载";
                 }
                 
                 _downloadCancellationToken?.Dispose();
@@ -742,6 +801,31 @@ namespace ObsMCLauncher.Pages
             }
             
             return $"{speed:F2} {sizes[order]}";
+        }
+        
+        /// <summary>
+        /// 取消下载按钮点击事件
+        /// </summary>
+        private void CancelDownloadButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("[VersionDetailPage] 用户点击了取消下载按钮");
+                
+                // 触发取消令牌
+                _downloadCancellationToken?.Cancel();
+                
+                // 禁用取消按钮，防止重复点击
+                if (CancelDownloadButton != null)
+                {
+                    CancelDownloadButton.IsEnabled = false;
+                    CancelDownloadButton.Content = "正在取消...";
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] 取消下载时出错: {ex.Message}");
+            }
         }
     }
 }

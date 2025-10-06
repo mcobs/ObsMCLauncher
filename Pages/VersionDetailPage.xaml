@@ -545,7 +545,8 @@
                     <!-- 详细信息 -->
                     <Border Background="{StaticResource SurfaceElevatedBrush}"
                           CornerRadius="8"
-                          Padding="20">
+                          Padding="20"
+                          Margin="0,0,0,20">
                         <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
@@ -633,6 +634,25 @@
                     </StackPanel>
                         </Grid>
                     </Border>
+                    
+                    <!-- 取消按钮 -->
+                    <Button x:Name="CancelDownloadButton"
+                          Content="取消下载"
+                          Height="44"
+                          Width="150"
+                          FontSize="14"
+                          Style="{StaticResource MaterialDesignOutlinedButton}"
+                          materialDesign:ButtonAssist.CornerRadius="8"
+                          BorderBrush="#DC3545"
+                          Foreground="#DC3545"
+                          HorizontalAlignment="Center"
+                          Click="CancelDownloadButton_Click">
+                        <Button.Resources>
+                            <Style TargetType="Border">
+                                <Setter Property="CornerRadius" Value="8"/>
+                            </Style>
+                        </Button.Resources>
+                    </Button>
                 </StackPanel>
             </Border>
 

@@ -263,6 +263,15 @@ namespace ObsMCLauncher.Services
 
                 return true;
             }
+            catch (OperationCanceledException)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ 下载已取消");
+                progress?.Report(new DownloadProgress
+                {
+                    Status = "下载已取消"
+                });
+                throw; // 重新抛出，让上层处理
+            }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"❌ 下载版本失败: {ex.Message}");
