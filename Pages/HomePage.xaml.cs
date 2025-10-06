@@ -367,7 +367,7 @@ namespace ObsMCLauncher.Pages
                     var assetsResult = await AssetsDownloadService.DownloadAndCheckAssetsAsync(
                         config.GameDirectory,
                         versionId,
-                        (current, total, message) =>
+                        (current, total, message, speed) =>
                         {
                             Dispatcher.Invoke(() =>
                             {

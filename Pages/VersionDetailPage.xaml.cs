@@ -537,7 +537,7 @@ namespace ObsMCLauncher.Pages
                             var assetsResult = await AssetsDownloadService.DownloadAndCheckAssetsAsync(
                                 gameDirectory,
                                 customVersionName,
-                                (current, total, message) =>
+                                (current, total, message, speed) =>
                                 {
                                     Dispatcher.Invoke(() =>
                                     {
@@ -550,6 +550,7 @@ namespace ObsMCLauncher.Pages
                                         DownloadOverallPercentageText.Text = $"{assetsProgress:F0}%";
                                         DownloadCurrentProgressBar.Value = current;
                                         DownloadCurrentPercentageText.Text = $"{current:F0}%";
+                                        DownloadSpeedText.Text = FormatSpeed(speed);
                                     });
                                 },
                                 _downloadCancellationToken.Token
@@ -630,8 +631,6 @@ namespace ObsMCLauncher.Pages
                 // 删除已下载的文件夹
                 try
                 {
-                    var config = LauncherConfig.Load();
-                    var gameDirectory = config.GameDirectory;
                     var versionDir = Path.Combine(gameDirectory, "versions", customVersionName);
                     
                     if (Directory.Exists(versionDir))

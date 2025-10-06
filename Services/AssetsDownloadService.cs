@@ -34,19 +34,19 @@ namespace ObsMCLauncher.Services
         /// </summary>
         /// <param name="gameDir">游戏目录</param>
         /// <param name="versionId">版本ID</param>
-        /// <param name="onProgress">进度回调 (当前, 总数, 消息)</param>
+        /// <param name="onProgress">进度回调 (当前进度, 总进度100, 消息, 下载速度)</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>下载结果</returns>
         public static async Task<AssetsDownloadResult> DownloadAndCheckAssetsAsync(
             string gameDir,
             string versionId,
-            Action<int, int, string>? onProgress = null,
+            Action<int, int, string, double>? onProgress = null,
             System.Threading.CancellationToken cancellationToken = default)
         {
             try
             {
                 Debug.WriteLine($"========== 开始检查Assets资源 ==========");
-                onProgress?.Invoke(0, 100, "正在读取版本信息...");
+                onProgress?.Invoke(0, 100, "正在读取版本信息...", 0);
                 cancellationToken.ThrowIfCancellationRequested();
 
                 // 1. 读取版本JSON获取AssetIndex信息
@@ -85,7 +85,7 @@ namespace ObsMCLauncher.Services
                 
                 if (!File.Exists(assetIndexPath))
                 {
-                    onProgress?.Invoke(5, 100, "正在下载资源索引文件...");
+                    onProgress?.Invoke(5, 100, "正在下载资源索引文件...", 0);
                     cancellationToken.ThrowIfCancellationRequested();
                     Debug.WriteLine($"📥 下载AssetIndex: {assetIndexUrl}");
 
@@ -101,7 +101,7 @@ namespace ObsMCLauncher.Services
                 }
 
                 // 3. 解析AssetIndex
-                onProgress?.Invoke(10, 100, "正在解析资源索引...");
+                onProgress?.Invoke(10, 100, "正在解析资源索引...", 0);
                 cancellationToken.ThrowIfCancellationRequested();
                 var assetIndexJson = await File.ReadAllTextAsync(assetIndexPath);
                 var assetIndex = JsonSerializer.Deserialize<AssetIndex>(assetIndexJson, new JsonSerializerOptions
@@ -141,7 +141,7 @@ namespace ObsMCLauncher.Services
                 if (missingAssets.Count == 0)
                 {
                     Debug.WriteLine($"✅ 所有Assets资源完整");
-                    onProgress?.Invoke(100, 100, "资源检查完成");
+                    onProgress?.Invoke(100, 100, "资源检查完成", 0);
                     return new AssetsDownloadResult 
                     { 
                         Success = true, 
@@ -171,6 +171,10 @@ namespace ObsMCLauncher.Services
                 using var semaphore = new System.Threading.SemaphoreSlim(maxThreads, maxThreads);
                 var downloadTasks = new List<Task>();
                 var lockObject = new object();
+                
+                // 速度计算相关
+                var startTime = DateTime.Now;
+                long totalBytesDownloaded = 0;
 
                 foreach (var asset in missingAssets)
                 {
@@ -185,19 +189,36 @@ namespace ObsMCLauncher.Services
                             var assetPath = Path.Combine(objectsDir, hashPrefix, hash);
                             var assetDir = Path.GetDirectoryName(assetPath);
 
-                            if (!string.IsNullOrEmpty(assetDir))
-                            {
-                                Directory.CreateDirectory(assetDir);
-                            }
+                if (!string.IsNullOrEmpty(assetDir))
+                {
+                    Directory.CreateDirectory(assetDir);
+                }
 
-                            // 使用下载源服务获取URL（支持镜像加速）
-                            var url = downloadSource.GetAssetUrl(hash);
-                            
-                            // 下载文件（带重试机制，最多3次）
-                            bool downloadSuccess = false;
-                            Exception? lastException = null;
-                            
-                            for (int retry = 0; retry < 3; retry++)
+                // 如果文件已存在，跳过
+                if (File.Exists(assetPath))
+                {
+                    var fileInfo = new FileInfo(assetPath);
+                    if (fileInfo.Length == asset.Size)
+                    {
+                        lock (lockObject)
+                        {
+                            downloaded++;
+                            var currentIndex = downloaded + failed;
+                            var progress = 10 + (int)((currentIndex / (float)total) * 90);
+                            onProgress?.Invoke(progress, 100, $"下载资源文件 ({currentIndex}/{total})", 0);
+                        }
+                        return;
+                    }
+                }
+
+                // 使用下载源服务获取URL（支持镜像加速）
+                var url = downloadSource.GetAssetUrl(hash);
+                
+                // 下载文件（带重试机制，最多3次）
+                bool downloadSuccess = false;
+                Exception? lastException = null;
+                
+                for (int retry = 0; retry < 3; retry++)
                             {
                                 try
                                 {
@@ -232,6 +253,7 @@ namespace ObsMCLauncher.Services
                                 if (downloadSuccess)
                                 {
                                     downloaded++;
+                                    totalBytesDownloaded += asset.Size;
                                 }
                                 else
                                 {
@@ -239,14 +261,18 @@ namespace ObsMCLauncher.Services
                                     failedAssets.Add($"{asset.Name} ({lastException?.Message})");
                                 }
 
+                                // 计算下载速度
+                                var elapsed = (DateTime.Now - startTime).TotalSeconds;
+                                var speed = elapsed > 0 ? totalBytesDownloaded / elapsed : 0;
+
                                 // 更新进度
                                 var currentIndex = downloaded + failed;
                                 var progress = 10 + (int)((currentIndex / (float)total) * 90);
-                                onProgress?.Invoke(progress, 100, $"下载资源文件 ({currentIndex}/{total})");
+                                onProgress?.Invoke(progress, 100, $"下载资源文件 ({currentIndex}/{total})", speed);
 
                                 if (currentIndex % 50 == 0)
                                 {
-                                    Debug.WriteLine($"📥 进度: {downloaded}成功 / {failed}失败 / {total}总计");
+                                    Debug.WriteLine($"📥 进度: {downloaded}成功 / {failed}失败 / {total}总计 - 速度: {FormatSpeed(speed)}");
                                 }
                             }
                         }
@@ -289,7 +315,7 @@ namespace ObsMCLauncher.Services
                     }
                 }
                 
-                onProgress?.Invoke(100, 100, $"资源下载完成 ({downloaded}成功, {failed}失败)");
+                onProgress?.Invoke(100, 100, $"资源下载完成 ({downloaded}成功, {failed}失败)", 0);
                 
                 // 返回下载结果
                 return new AssetsDownloadResult
@@ -332,6 +358,26 @@ namespace ObsMCLauncher.Services
         {
             public string? Id { get; set; }
             public string? Url { get; set; }
+        }
+
+        /// <summary>
+        /// 格式化下载速度
+        /// </summary>
+        private static string FormatSpeed(double bytesPerSecond)
+        {
+            if (bytesPerSecond == 0) return "0 B/s";
+            
+            string[] sizes = { "B/s", "KB/s", "MB/s", "GB/s" };
+            int order = 0;
+            double speed = bytesPerSecond;
+            
+            while (speed >= 1024 && order < sizes.Length - 1)
+            {
+                order++;
+                speed /= 1024;
+            }
+            
+            return $"{speed:F2} {sizes[order]}";
         }
 
         /// <summary>
