@@ -490,7 +490,7 @@ namespace ObsMCLauncher.Pages
                 // 创建进度报告器，同时更新UI和下载管理器
                 var progress = new Progress<DownloadProgress>(p =>
                 {
-                    Dispatcher.Invoke(() =>
+                    Dispatcher.BeginInvoke(new Action(() =>
                     {
                         // 如果启用了完整下载，主文件下载占 60%，否则占 100%
                         double adjustedProgress = enableAssetsDownload 
@@ -522,7 +522,7 @@ namespace ObsMCLauncher.Pages
                         CurrentFileText.Text = p.CurrentFile;
                         DownloadSpeedText.Text = FormatSpeed(p.DownloadSpeed);
                         DownloadSizeText.Text = $"{FormatFileSize(p.TotalDownloadedBytes)} / {FormatFileSize(p.TotalBytes)}";
-                    });
+                    }), System.Windows.Threading.DispatcherPriority.Normal);
                 });
 
                 // 创建下载任务并添加到管理器
@@ -556,8 +556,8 @@ namespace ObsMCLauncher.Pages
                             const double assetsBaseProgress = 60.0;
                             const double assetsProgressRange = 40.0;
                             
-                            // 更新进度显示
-                            Dispatcher.Invoke(() =>
+                            // 更新进度显示（异步）
+                            _ = Dispatcher.BeginInvoke(new Action(() =>
                             {
                                 DownloadStatusText.Text = "正在下载游戏资源文件...";
                                 CurrentFileText.Text = "Assets资源包";
@@ -565,14 +565,15 @@ namespace ObsMCLauncher.Pages
                                 DownloadOverallPercentageText.Text = $"{assetsBaseProgress:F0}%";
                                 DownloadCurrentProgressBar.Value = 0;
                                 DownloadCurrentPercentageText.Text = "0%";
-                            });
+                            }));
 
                             var assetsResult = await AssetsDownloadService.DownloadAndCheckAssetsAsync(
                                 gameDirectory,
                                 customVersionName,
                                 (current, total, message, speed) =>
                                 {
-                                    Dispatcher.Invoke(() =>
+                                    // 异步更新UI
+                                    Dispatcher.BeginInvoke(new Action(() =>
                                     {
                                         // Assets 进度映射到 60%-100% 范围
                                         double assetsProgress = assetsBaseProgress + (current * assetsProgressRange / 100.0);
@@ -595,7 +596,7 @@ namespace ObsMCLauncher.Pages
                                         DownloadCurrentProgressBar.Value = current;
                                         DownloadCurrentPercentageText.Text = $"{current:F0}%";
                                         DownloadSpeedText.Text = FormatSpeed(speed);
-                                    });
+                                    }), System.Windows.Threading.DispatcherPriority.Background);
                                 },
                                 _downloadCancellationToken.Token
                             );
@@ -620,22 +621,22 @@ namespace ObsMCLauncher.Pages
                             }
                             
                             // Assets 下载完成，确保进度条到达 100%
-                            Dispatcher.Invoke(() =>
+                            _ = Dispatcher.BeginInvoke(new Action(() =>
                             {
                                 DownloadOverallProgressBar.Value = 100;
                                 DownloadOverallPercentageText.Text = "100%";
                                 DownloadStatusText.Text = "下载完成";
-                            });
+                            }));
                         }
                         else
                         {
                             // 如果没有下载 Assets，确保进度条到达 100%
-                            Dispatcher.Invoke(() =>
+                            _ = Dispatcher.BeginInvoke(new Action(() =>
                             {
                                 DownloadOverallProgressBar.Value = 100;
                                 DownloadOverallPercentageText.Text = "100%";
                                 DownloadStatusText.Text = "下载完成";
-                            });
+                            }));
                         }
 
                         // 标记任务完成
@@ -695,7 +696,7 @@ namespace ObsMCLauncher.Pages
                             System.Diagnostics.Debug.WriteLine($"✅ 已删除文件夹: {versionDirToDelete}");
                             
                             // 删除完成后在UI线程显示通知
-                            Dispatcher.Invoke(() =>
+                            Dispatcher.BeginInvoke(new Action(() =>
                             {
                                 NotificationManager.Instance.ShowNotification(
                                     "下载已取消",
@@ -703,7 +704,7 @@ namespace ObsMCLauncher.Pages
                                     NotificationType.Info,
                                     3
                                 );
-                            });
+                            }));
                         }
                     }
                     catch (Exception deleteEx)
