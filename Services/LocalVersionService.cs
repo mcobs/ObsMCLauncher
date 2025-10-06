@@ -19,6 +19,11 @@ namespace ObsMCLauncher.Services
         public DateTime LastPlayed { get; set; }
         public string Path { get; set; } = "";
         public bool IsSelected { get; set; }
+        
+        /// <summary>
+        /// 加载器类型：null/空=原版, "Forge", "Fabric", "OptiFine", "Quilt"
+        /// </summary>
+        public string? LoaderType { get; set; }
     }
 
     /// <summary>
@@ -70,6 +75,9 @@ namespace ObsMCLauncher.Services
                         {
                             var lastPlayed = Directory.GetLastAccessTime(versionDir);
                             
+                            // 检测加载器类型
+                            var loaderType = DetectLoaderType(jsonContent);
+                            
                             installedVersions.Add(new InstalledVersion
                             {
                                 Id = versionId, // 文件夹名称（显示名称）
@@ -78,10 +86,12 @@ namespace ObsMCLauncher.Services
                                 ReleaseTime = versionData.ReleaseTime,
                                 LastPlayed = lastPlayed,
                                 Path = versionDir,
-                                IsSelected = false
+                                IsSelected = false,
+                                LoaderType = loaderType
                             });
                             
-                            System.Diagnostics.Debug.WriteLine($"  找到版本: {versionId} (实际版本: {versionData.Id})");
+                            var loaderInfo = string.IsNullOrEmpty(loaderType) ? "" : $" [{loaderType}]";
+                            System.Diagnostics.Debug.WriteLine($"  找到版本: {versionId} (实际版本: {versionData.Id}){loaderInfo}");
                         }
                     }
                     catch (Exception ex)
@@ -163,6 +173,52 @@ namespace ObsMCLauncher.Services
                 System.Diagnostics.Debug.WriteLine($"❌ 删除版本失败: {ex.Message}");
             }
             return false;
+        }
+
+        /// <summary>
+        /// 检测版本的加载器类型
+        /// </summary>
+        private static string? DetectLoaderType(string jsonContent)
+        {
+            try
+            {
+                // 转换为小写以便不区分大小写匹配
+                var jsonLower = jsonContent.ToLower();
+                
+                // 检测Forge - 通过mainClass或libraries
+                if (jsonLower.Contains("\"minecraftforge\"") || 
+                    jsonLower.Contains("\"net.minecraftforge\"") ||
+                    jsonLower.Contains("forge") && jsonLower.Contains("\"mainclass\""))
+                {
+                    return "Forge";
+                }
+                
+                // 检测Fabric
+                if (jsonLower.Contains("\"fabricmc\"") || 
+                    jsonLower.Contains("\"net.fabricmc\"") ||
+                    jsonLower.Contains("fabric") && jsonLower.Contains("\"mainclass\""))
+                {
+                    return "Fabric";
+                }
+                
+                // 检测OptiFine
+                if (jsonLower.Contains("optifine"))
+                {
+                    return "OptiFine";
+                }
+                
+                // 检测Quilt
+                if (jsonLower.Contains("quilt"))
+                {
+                    return "Quilt";
+                }
+                
+                return null; // 原版
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         // JSON 数据模型

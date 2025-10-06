@@ -263,7 +263,7 @@ namespace ObsMCLauncher.Pages
                 {
                     System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] Forge不支持版本 {currentVersion}");
                     
-                    Dispatcher.BeginInvoke(new Action(() =>
+                    _ = Dispatcher.BeginInvoke(new Action(() =>
                     {
                         if (ForgeRadio != null)
                         {
@@ -285,7 +285,7 @@ namespace ObsMCLauncher.Pages
                 System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] 获取Forge版本列表...");
                 var forgeVersions = await ForgeService.GetForgeVersionsAsync(currentVersion);
 
-                Dispatcher.BeginInvoke(new Action(() =>
+                _ = Dispatcher.BeginInvoke(new Action(() =>
                 {
                     if (ForgeVersionComboBox != null)
                     {
@@ -336,7 +336,7 @@ namespace ObsMCLauncher.Pages
             {
                 System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] 加载Forge版本失败: {ex.Message}");
                 
-                Dispatcher.BeginInvoke(new Action(() =>
+                _ = Dispatcher.BeginInvoke(new Action(() =>
                 {
                     if (ForgeRadio != null)
                     {
@@ -637,14 +637,18 @@ namespace ObsMCLauncher.Pages
 
                 // 创建下载任务并添加到管理器
                 var versionName = string.IsNullOrWhiteSpace(customVersionName) ? currentVersion : customVersionName;
+                var taskName = loaderType == "原版" 
+                    ? $"Minecraft {versionName}"
+                    : $"{loaderType} {loaderVersion} ({currentVersion})";
+                    
                 var downloadTask = DownloadTaskManager.Instance.AddTask(
-                    $"Minecraft {versionName}",
+                    taskName,
                     DownloadTaskType.Version,
                     _downloadCancellationToken
                 );
                 _currentDownloadTaskId = downloadTask.Id;
 
-                // 开始下载（目前仅支持原版）
+                // 开始下载
                 if (loaderType == "原版")
                 {
                     var success = await DownloadService.DownloadMinecraftVersion(
@@ -776,8 +780,14 @@ namespace ObsMCLauncher.Pages
                         );
                     }
                 }
+                else if (loaderType == "Forge")
+                {
+                    // Forge安装流程
+                    await InstallForgeAsync(loaderVersion, customVersionName, gameDirectory, config, progress);
+                }
                 else
                 {
+                    // 其他加载器暂不支持
                     MessageBox.Show(
                         $"{loaderType} 加载器的安装功能即将推出！",
                         "功能开发中",
@@ -991,6 +1001,248 @@ namespace ObsMCLauncher.Pages
         /// <summary>
         /// 取消下载按钮点击事件
         /// </summary>
+        /// <summary>
+        /// 安装Forge
+        /// </summary>
+        private async Task InstallForgeAsync(
+            string forgeVersion, 
+            string customVersionName, 
+            string gameDirectory, 
+            LauncherConfig config,
+            IProgress<DownloadProgress> progress)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine($"[Forge] 开始安装 Forge {forgeVersion} for MC {currentVersion}");
+
+                // 1. 先下载原版Minecraft
+                _ = Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    DownloadStatusText.Text = "下载原版Minecraft...";
+                    CurrentFileText.Text = $"Minecraft {currentVersion}";
+                }));
+
+                var vanillaSuccess = await DownloadService.DownloadMinecraftVersion(
+                    currentVersion,
+                    gameDirectory,
+                    currentVersion, // 原版使用MC版本号作为文件夹名
+                    progress,
+                    _downloadCancellationToken!.Token
+                );
+
+                if (!vanillaSuccess)
+                {
+                    MessageBox.Show("原版Minecraft下载失败！", "安装失败", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
+                // 2. 下载Forge安装器
+                _ = Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    DownloadStatusText.Text = "下载Forge安装器...";
+                    CurrentFileText.Text = $"forge-{currentVersion}-{forgeVersion}-installer.jar";
+                    DownloadOverallProgressBar.Value = 50;
+                    DownloadOverallPercentageText.Text = "50%";
+                }));
+
+                var forgeFullVersion = $"{currentVersion}-{forgeVersion}";
+                var tempDir = Path.Combine(Path.GetTempPath(), "ObsMCLauncher_Forge");
+                Directory.CreateDirectory(tempDir);
+                var installerPath = Path.Combine(tempDir, $"forge-{forgeFullVersion}-installer.jar");
+
+                var downloadProgress = new Progress<double>(p =>
+                {
+                    _ = Dispatcher.BeginInvoke(new Action(() =>
+                    {
+                        DownloadCurrentProgressBar.Value = p;
+                        DownloadCurrentPercentageText.Text = $"{p:F0}%";
+                    }));
+                });
+
+                var downloadSuccess = await ForgeService.DownloadForgeInstallerAsync(
+                    forgeFullVersion,
+                    installerPath,
+                    downloadProgress
+                );
+
+                if (!downloadSuccess)
+                {
+                    MessageBox.Show("Forge安装器下载失败！", "安装失败", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
+                // 3. 解析install_profile.json
+                _ = Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    DownloadStatusText.Text = "解析Forge安装器...";
+                    CurrentFileText.Text = "install_profile.json";
+                    DownloadOverallProgressBar.Value = 60;
+                    DownloadOverallPercentageText.Text = "60%";
+                }));
+
+                var installProfile = await ForgeService.ExtractInstallProfileAsync(installerPath);
+                if (installProfile == null)
+                {
+                    MessageBox.Show("解析Forge安装器失败！", "安装失败", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
+                // 4. 提取version.json
+                var versionJson = await ForgeService.ExtractVersionJsonAsync(installerPath, forgeFullVersion);
+                if (string.IsNullOrEmpty(versionJson))
+                {
+                    MessageBox.Show("提取Forge version.json失败！", "安装失败", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
+                // 5. 创建Forge版本目录
+                var forgeVersionDir = Path.Combine(gameDirectory, "versions", customVersionName);
+                Directory.CreateDirectory(forgeVersionDir);
+
+                // 6. 修改version.json中的id并保存
+                var jsonDoc = JsonDocument.Parse(versionJson);
+                var root = jsonDoc.RootElement;
+                
+                var modifiedJson = new Dictionary<string, object>();
+                foreach (var property in root.EnumerateObject())
+                {
+                    if (property.Name == "id")
+                    {
+                        modifiedJson["id"] = customVersionName;
+                    }
+                    else
+                    {
+                        modifiedJson[property.Name] = JsonSerializer.Deserialize<object>(property.Value.GetRawText())!;
+                    }
+                }
+
+                var versionJsonPath = Path.Combine(forgeVersionDir, $"{customVersionName}.json");
+                await File.WriteAllTextAsync(versionJsonPath, JsonSerializer.Serialize(modifiedJson, new JsonSerializerOptions { WriteIndented = true }));
+                System.Diagnostics.Debug.WriteLine($"[Forge] 已创建version.json: {versionJsonPath}");
+
+                // 7. 创建空的.jar文件（启动器识别用）
+                var versionJarPath = Path.Combine(forgeVersionDir, $"{customVersionName}.jar");
+                File.WriteAllBytes(versionJarPath, Array.Empty<byte>());
+                System.Diagnostics.Debug.WriteLine($"[Forge] 已创建标记jar: {versionJarPath}");
+
+                // 8. 下载Forge依赖库（如果需要）
+                _ = Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    DownloadStatusText.Text = "检查Forge依赖库...";
+                    CurrentFileText.Text = "libraries";
+                    DownloadOverallProgressBar.Value = 75;
+                    DownloadOverallPercentageText.Text = "75%";
+                }));
+
+                System.Diagnostics.Debug.WriteLine($"[Forge] Forge版本安装完成");
+
+                // 9. 如果配置启用，下载Assets资源文件
+                if (config.DownloadAssetsWithGame)
+                {
+                    _ = Dispatcher.BeginInvoke(new Action(() =>
+                    {
+                        DownloadStatusText.Text = "正在下载游戏资源文件...";
+                        CurrentFileText.Text = "Assets资源包";
+                        DownloadOverallProgressBar.Value = 80;
+                        DownloadOverallPercentageText.Text = "80%";
+                    }));
+
+                    var assetsResult = await AssetsDownloadService.DownloadAndCheckAssetsAsync(
+                        gameDirectory,
+                        currentVersion, // Assets使用原版MC版本
+                        (current, total, message, speed) =>
+                        {
+                            Dispatcher.BeginInvoke(new Action(() =>
+                            {
+                                double assetsProgress = 80 + (current * 0.2);
+                                
+                                if (_currentDownloadTaskId != null)
+                                {
+                                    DownloadTaskManager.Instance.UpdateTaskProgress(
+                                        _currentDownloadTaskId,
+                                        assetsProgress,
+                                        message,
+                                        speed
+                                    );
+                                }
+                                
+                                DownloadStatusText.Text = "下载游戏资源";
+                                CurrentFileText.Text = message;
+                                DownloadOverallProgressBar.Value = assetsProgress;
+                                DownloadOverallPercentageText.Text = $"{assetsProgress:F0}%";
+                                DownloadCurrentProgressBar.Value = current;
+                                DownloadCurrentPercentageText.Text = $"{current:F0}%";
+                                DownloadSpeedText.Text = FormatSpeed(speed);
+                            }), System.Windows.Threading.DispatcherPriority.Background);
+                        },
+                        _downloadCancellationToken!.Token
+                    );
+
+                    if (!assetsResult.Success && assetsResult.FailedAssets > 0)
+                    {
+                        MessageBox.Show(
+                            $"Forge已安装完成，但有 {assetsResult.FailedAssets} 个资源文件下载失败。\n\n游戏可能缺少部分资源（如声音、语言文件等）。",
+                            "资源下载部分失败",
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Warning
+                        );
+                    }
+                }
+
+                // 10. 完成
+                _ = Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    DownloadOverallProgressBar.Value = 100;
+                    DownloadOverallPercentageText.Text = "100%";
+                    DownloadStatusText.Text = "安装完成";
+                }));
+
+                // 标记任务完成
+                if (_currentDownloadTaskId != null)
+                {
+                    DownloadTaskManager.Instance.CompleteTask(_currentDownloadTaskId);
+                    _currentDownloadTaskId = null;
+                }
+
+                // 清理临时文件
+                try
+                {
+                    if (Directory.Exists(tempDir))
+                    {
+                        Directory.Delete(tempDir, true);
+                    }
+                }
+                catch { }
+
+                MessageBox.Show(
+                    $"Forge {forgeVersion} 安装完成！\n\n版本已安装为: {customVersionName}\nMinecraft版本: {currentVersion}",
+                    "安装成功",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information
+                );
+
+                // 返回版本列表
+                NavigationService?.GoBack();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Forge] 安装失败: {ex.Message}");
+                MessageBox.Show(
+                    $"Forge安装失败：{ex.Message}",
+                    "安装失败",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error
+                );
+
+                // 标记任务失败
+                if (_currentDownloadTaskId != null)
+                {
+                    DownloadTaskManager.Instance.FailTask(_currentDownloadTaskId, ex.Message);
+                    _currentDownloadTaskId = null;
+                }
+            }
+        }
+
         private void CancelDownloadButton_Click(object sender, RoutedEventArgs e)
         {
             try
