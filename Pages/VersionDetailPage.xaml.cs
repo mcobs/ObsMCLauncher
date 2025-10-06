@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -243,7 +244,7 @@ namespace ObsMCLauncher.Pages
             else
             {
                 // 否则使用默认导航返回
-                NavigationService?.GoBack();
+            NavigationService?.GoBack();
             }
         }
 
@@ -971,6 +972,263 @@ namespace ObsMCLauncher.Pages
         }
 
         /// <summary>
+        /// 下载Forge依赖库
+        /// </summary>
+        private async Task DownloadForgeLibrariesAsync(string versionJsonPath, string gameDirectory, LauncherConfig config)
+        {
+            try
+            {
+                // 读取version.json
+                var jsonContent = await File.ReadAllTextAsync(versionJsonPath);
+                var jsonDoc = JsonDocument.Parse(jsonContent);
+                var root = jsonDoc.RootElement;
+                
+                // 解析libraries数组
+                if (!root.TryGetProperty("libraries", out var librariesElement))
+                {
+                    System.Diagnostics.Debug.WriteLine("[Forge] version.json中没有libraries字段");
+                    return;
+                }
+                
+                var libraries = new List<ForgeLibrary>();
+                foreach (var libElement in librariesElement.EnumerateArray())
+                {
+                    var lib = new ForgeLibrary();
+                    
+                    if (libElement.TryGetProperty("name", out var nameElement))
+                    {
+                        lib.Name = nameElement.GetString();
+                    }
+                    
+                    if (libElement.TryGetProperty("downloads", out var downloadsElement))
+                    {
+                        if (downloadsElement.TryGetProperty("artifact", out var artifactElement))
+                        {
+                            lib.Downloads = new ForgeDownloads();
+                            lib.Downloads.Artifact = new ForgeArtifact();
+                            
+                            if (artifactElement.TryGetProperty("path", out var pathElement))
+                            {
+                                lib.Downloads.Artifact.Path = pathElement.GetString();
+                            }
+                            if (artifactElement.TryGetProperty("url", out var urlElement))
+                            {
+                                lib.Downloads.Artifact.Url = urlElement.GetString();
+                            }
+                        }
+                    }
+                    
+                    libraries.Add(lib);
+                }
+                
+                if (libraries.Count == 0)
+                {
+                    System.Diagnostics.Debug.WriteLine("[Forge] 没有库文件需要下载");
+                    return;
+                }
+                
+                // 过滤需要下载的Forge库
+                var forgeLibs = libraries.Where(lib => 
+                    lib.Name != null && (
+                        lib.Name.Contains("net.minecraftforge") ||
+                        lib.Name.Contains("org.ow2.asm") ||
+                        lib.Name.Contains("de.oceanlabs.mcp") ||
+                        lib.Name.Contains("org.openjdk.nashorn") ||
+                        lib.Name.Contains("com.electronwill") ||
+                        lib.Name.Contains("org.apache.maven") ||
+                        lib.Name.Contains("net.minecrell") ||
+                        lib.Name.Contains("org.jline") ||
+                        lib.Name.Contains("org.spongepowered") ||
+                        lib.Name.Contains("org.jspecify")
+                    )).ToList();
+
+                var librariesDir = Path.Combine(gameDirectory, "libraries");
+                Directory.CreateDirectory(librariesDir);
+
+                if (forgeLibs.Count == 0)
+                {
+                    System.Diagnostics.Debug.WriteLine("[Forge] 没有Forge库文件需要下载");
+                    return;
+                }
+
+                System.Diagnostics.Debug.WriteLine($"[Forge] 检测到 {forgeLibs.Count} 个Forge库文件");
+
+                var downloadService = DownloadSourceManager.Instance.CurrentService;
+                var httpClient = new HttpClient { Timeout = TimeSpan.FromMinutes(5) };
+                
+                int successCount = 0;
+                int skipCount = 0;
+                int failedCount = 0;
+
+                for (int i = 0; i < forgeLibs.Count; i++)
+                {
+                    var lib = forgeLibs[i];
+                    
+                    _ = Dispatcher.BeginInvoke(new Action(() =>
+                    {
+                        CurrentFileText.Text = $"[{i + 1}/{forgeLibs.Count}] {lib.Name}";
+                        var libraryProgress = 70 + ((double)(i + 1) / forgeLibs.Count * 8);
+                        DownloadOverallProgressBar.Value = libraryProgress;
+                        DownloadOverallPercentageText.Text = $"{libraryProgress:F0}%";
+                        
+                        if (_currentDownloadTaskId != null)
+                        {
+                            DownloadTaskManager.Instance.UpdateTaskProgress(
+                                _currentDownloadTaskId,
+                                libraryProgress,
+                                $"下载Forge库 ({i + 1}/{forgeLibs.Count}): {lib.Name}",
+                                0
+                            );
+                        }
+                    }));
+
+                    try
+                    {
+                        string? downloadUrl = null;
+                        string? savePath = null;
+
+                        // 尝试从Downloads.Artifact获取URL
+                        if (lib.Downloads?.Artifact != null)
+                        {
+                            if (!string.IsNullOrEmpty(lib.Downloads.Artifact.Path))
+                            {
+                                downloadUrl = downloadService.GetLibraryUrl(lib.Downloads.Artifact.Path);
+                                savePath = Path.Combine(librariesDir, lib.Downloads.Artifact.Path.Replace("/", "\\"));
+                            }
+                            else if (!string.IsNullOrEmpty(lib.Downloads.Artifact.Url))
+                            {
+                                downloadUrl = lib.Downloads.Artifact.Url;
+                                savePath = Path.Combine(librariesDir, lib.Downloads.Artifact.Path?.Replace("/", "\\") ?? "");
+                            }
+                        }
+
+                        // 如果没有Downloads信息，尝试从Name构建（使用Maven格式）
+                        if (string.IsNullOrEmpty(downloadUrl) && !string.IsNullOrEmpty(lib.Name))
+                        {
+                            var mavenPath = ForgeService.MavenToPath(lib.Name);
+                            if (!string.IsNullOrEmpty(mavenPath))
+                            {
+                                downloadUrl = downloadService.GetLibraryUrl(mavenPath);
+                                savePath = Path.Combine(librariesDir, mavenPath.Replace("/", "\\"));
+                            }
+                        }
+
+                        // 跳过无法构建URL或路径的库
+                        if (string.IsNullOrEmpty(downloadUrl) || string.IsNullOrEmpty(savePath))
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[Forge] ⚠️ 跳过库（无URL）: {lib.Name}");
+                            skipCount++;
+                            continue;
+                        }
+
+                        // 检查文件是否已存在
+                        if (File.Exists(savePath))
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[Forge] ✓ 库已存在: {lib.Name}");
+                            successCount++;
+                            continue;
+                        }
+
+                        // 创建目录
+                        var dir = Path.GetDirectoryName(savePath);
+                        if (!string.IsNullOrEmpty(dir))
+                        {
+                            Directory.CreateDirectory(dir);
+                        }
+
+                        // 下载文件
+                        System.Diagnostics.Debug.WriteLine($"[Forge] 📥 下载: {lib.Name}");
+                        System.Diagnostics.Debug.WriteLine($"[Forge]    URL: {downloadUrl}");
+                        
+                        var response = await httpClient.GetAsync(downloadUrl, _downloadCancellationToken!.Token);
+                        
+                        // 对于404错误且是特定的Forge库，跳过（这些库可能从JAR中提取或不需要）
+                        if (!response.IsSuccessStatusCode && response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                        {
+                            if (lib.Name != null && (lib.Name.Contains(":client") || lib.Name.Contains(":server")))
+                            {
+                                System.Diagnostics.Debug.WriteLine($"[Forge] ⚠️ 跳过库（不存在，但可忽略）: {lib.Name}");
+                                skipCount++;
+                                continue;
+                            }
+                        }
+                        
+                        response.EnsureSuccessStatusCode();
+                        var fileBytes = await response.Content.ReadAsByteArrayAsync();
+                        await File.WriteAllBytesAsync(savePath, fileBytes);
+                        
+                        System.Diagnostics.Debug.WriteLine($"[Forge] ✓ 下载完成: {lib.Name} ({fileBytes.Length} bytes)");
+                        successCount++;
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        throw;
+                    }
+                    catch (Exception ex)
+                    {
+                        // 对于特定的Forge库下载失败，记录但不中断安装
+                        if (lib.Name != null && (lib.Name.Contains(":client") || lib.Name.Contains(":server")))
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[Forge] ⚠️ 下载失败但继续: {lib.Name} - {ex.Message}");
+                            skipCount++;
+                        }
+                        else
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[Forge] ❌ 下载失败: {lib.Name} - {ex.Message}");
+                            failedCount++;
+                        }
+                    }
+                }
+
+                httpClient.Dispose();
+
+                System.Diagnostics.Debug.WriteLine($"[Forge] 库文件下载完成: 成功 {successCount}, 跳过 {skipCount}, 失败 {failedCount}");
+
+                if (failedCount > 0)
+                {
+                    MessageBox.Show(
+                        $"Forge库下载部分失败：\n成功: {successCount}\n跳过: {skipCount}\n失败: {failedCount}\n\n可能需要在启动时自动补全。",
+                        "提示",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning
+                    );
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Forge] 下载库文件时出错: {ex.Message}");
+                MessageBox.Show(
+                    $"下载Forge库文件时出错：\n{ex.Message}\n\n将在启动时尝试自动补全。",
+                    "警告",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning
+                );
+            }
+        }
+
+        // Forge库下载辅助类
+        private class ForgeLibrary
+        {
+            public string? Name { get; set; }
+            public ForgeDownloads? Downloads { get; set; }
+        }
+        
+        private class ForgeDownloads
+        {
+            public ForgeArtifact? Artifact { get; set; }
+        }
+        
+        private class ForgeArtifact
+        {
+            public string? Path { get; set; }
+            public string? Url { get; set; }
+        }
+
+        /// <summary>
         /// 格式化文件大小
         /// </summary>
         private string FormatFileSize(long bytes)
@@ -1137,14 +1395,16 @@ namespace ObsMCLauncher.Pages
                 File.WriteAllBytes(versionJarPath, Array.Empty<byte>());
                 System.Diagnostics.Debug.WriteLine($"[Forge] 已创建标记jar: {versionJarPath}");
 
-                // 8. 下载Forge依赖库（如果需要）
+                // 8. 下载Forge依赖库
                 _ = Dispatcher.BeginInvoke(new Action(() =>
                 {
-                    DownloadStatusText.Text = "检查Forge依赖库...";
-                    CurrentFileText.Text = "libraries";
-                    DownloadOverallProgressBar.Value = 75;
-                    DownloadOverallPercentageText.Text = "75%";
+                    DownloadStatusText.Text = "下载Forge依赖库...";
+                    CurrentFileText.Text = "正在解析库列表";
+                    DownloadOverallProgressBar.Value = 70;
+                    DownloadOverallPercentageText.Text = "70%";
                 }));
+
+                await DownloadForgeLibrariesAsync(versionJsonPath, gameDirectory, config);
 
                 System.Diagnostics.Debug.WriteLine($"[Forge] Forge版本安装完成");
 

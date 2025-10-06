@@ -527,6 +527,14 @@ namespace ObsMCLauncher.Services
             {
                 if (IsLibraryAllowed(lib))
                 {
+                    // 检查是否是Forge特殊库（client/server），这些库通常不存在或不需要
+                    if (lib.Name != null && lib.Name.Contains("forge") && 
+                        (lib.Name.Contains(":client") || lib.Name.Contains(":server")))
+                    {
+                        Debug.WriteLine($"   ⚠️ 跳过Forge特殊库检查: {lib.Name}");
+                        continue; // 直接跳过这些库的检查
+                    }
+                    
                     // 1. 检查普通库文件（artifact）
                     bool isOptional = lib.Downloads?.Artifact == null;
                     var libPath = GetLibraryPath(librariesDir, lib);

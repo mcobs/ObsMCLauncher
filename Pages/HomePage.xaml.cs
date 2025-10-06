@@ -703,6 +703,20 @@ namespace ObsMCLauncher.Pages
                                 
                                 // 使用HttpClient下载
                                 var response = await httpClient.GetAsync(url, cancellationToken);
+                                
+                                // 对于404错误且是特定的Forge库，跳过（这些库可能从JAR中提取或不需要）
+                                if (!response.IsSuccessStatusCode && response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                                {
+                                    if (lib.Name != null && (lib.Name.Contains("forge") && (lib.Name.Contains(":client") || lib.Name.Contains(":server"))))
+                                    {
+                                        Debug.WriteLine($"⚠️ 跳过库（Forge特殊库，不存在但可忽略）: {lib.Name}");
+                                        Console.WriteLine($"⚠️ 跳过: {lib.Name} (Forge特殊库)");
+                                        skippedLibs++;
+                                        downloaded = true; // 标记为已处理，避免计入失败
+                                        continue;
+                                    }
+                                }
+                                
                                 response.EnsureSuccessStatusCode();
                                 var fileBytes = await response.Content.ReadAsByteArrayAsync();
                                 await File.WriteAllBytesAsync(libPath, fileBytes);
