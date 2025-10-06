@@ -387,6 +387,18 @@ namespace ObsMCLauncher.Pages
             UpdateSelectedLoaderText();
         }
 
+        /// <summary>
+        /// 加载器版本下拉框选择改变事件
+        /// </summary>
+        private void LoaderVersionComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            // 更新版本名称
+            UpdateVersionName();
+            
+            // 更新选中的加载器显示
+            UpdateSelectedLoaderText();
+        }
+
         private void UpdateSelectedLoaderText()
         {
             if (SelectedLoaderText == null) return;

@@ -248,6 +248,7 @@
                                         IsEnabled="False"
                                         FontSize="12"
                                         Margin="10,0,0,0"
+                                        SelectionChanged="LoaderVersionComboBox_SelectionChanged"
                                         materialDesign:HintAssist.Hint="选择版本"
                                         Style="{StaticResource MaterialDesignOutlinedComboBox}">
                                     <ComboBoxItem Content="47.2.0 (推荐)" IsSelected="True"/>
@@ -298,6 +299,7 @@
                                         IsEnabled="False"
                                         FontSize="12"
                                         Margin="10,0,0,0"
+                                        SelectionChanged="LoaderVersionComboBox_SelectionChanged"
                                         materialDesign:HintAssist.Hint="选择版本"
                                         Style="{StaticResource MaterialDesignOutlinedComboBox}">
                                     <ComboBoxItem Content="0.15.6 (推荐)" IsSelected="True"/>
@@ -348,6 +350,7 @@
                                         IsEnabled="False"
                                         FontSize="12"
                                         Margin="10,0,0,0"
+                                        SelectionChanged="LoaderVersionComboBox_SelectionChanged"
                                         materialDesign:HintAssist.Hint="选择版本"
                                         Style="{StaticResource MaterialDesignOutlinedComboBox}">
                                     <ComboBoxItem Content="HD U I6 (推荐)" IsSelected="True"/>
@@ -398,6 +401,7 @@
                                         IsEnabled="False"
                                         FontSize="12"
                                         Margin="10,0,0,0"
+                                        SelectionChanged="LoaderVersionComboBox_SelectionChanged"
                                         materialDesign:HintAssist.Hint="选择版本"
                                         Style="{StaticResource MaterialDesignOutlinedComboBox}">
                                     <ComboBoxItem Content="0.24.0 (推荐)" IsSelected="True"/>

@@ -154,7 +154,8 @@ namespace ObsMCLauncher.Services
         // BMCLAPI镜像源
         private const string BMCL_FORGE_SUPPORT = "https://bmclapi2.bangbang93.com/forge/minecraft";
         private const string BMCL_FORGE_LIST = "https://bmclapi2.bangbang93.com/forge/minecraft/{0}";
-        private const string BMCL_FORGE_DOWNLOAD = "https://bmclapi2.bangbang93.com/forge/download/{0}";
+        // BMCLAPI的Forge下载使用Maven格式
+        private const string BMCL_FORGE_DOWNLOAD = "https://bmclapi2.bangbang93.com/maven/net/minecraftforge/forge/{0}/forge-{0}-installer.jar";
         
         // 官方源（Forge官方文件服务器）
         private const string OFFICIAL_FORGE_MAVEN = "https://maven.minecraftforge.net/net/minecraftforge/forge/";
@@ -335,7 +336,7 @@ namespace ObsMCLauncher.Services
                 string url;
                 if (config.DownloadSource == DownloadSource.BMCLAPI)
                 {
-                    // 使用BMCLAPI镜像源
+                    // 使用BMCLAPI镜像源 - Maven格式
                     url = string.Format(BMCL_FORGE_DOWNLOAD, forgeVersion);
                 }
                 else
