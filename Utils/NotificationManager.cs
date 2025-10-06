@@ -145,6 +145,14 @@ namespace ObsMCLauncher.Utils
         }
 
         /// <summary>
+        /// 显示测试通知（用于验证关闭按钮点击区域）
+        /// </summary>
+        public string ShowTestNotification()
+        {
+            return ShowNotification("测试通知", "这是一个测试通知，用于验证关闭按钮的点击区域是否已修复。现在整个关闭按钮区域都应该可以正常点击了。", NotificationType.Info, 10);
+        }
+
+        /// <summary>
         /// 更新进度通知
         /// </summary>
         public void UpdateNotification(string id, string message)
@@ -248,7 +256,7 @@ namespace ObsMCLauncher.Utils
             var stackPanel = new StackPanel();
 
             // 顶部内容（图标 + 标题 + 消息）
-            var topGrid = new Grid { Margin = new Thickness(0, 0, 36, notification.IsProgress ? 8 : 0) }; // 右侧留出36px给关闭按钮
+            var topGrid = new Grid { Margin = new Thickness(0, 0, 44, notification.IsProgress ? 8 : 0) }; // 右侧留出44px给更大的关闭按钮
             topGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             topGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
@@ -296,38 +304,116 @@ namespace ObsMCLauncher.Utils
             stackPanel.Children.Add(topGrid);
 
             // 关闭按钮（使用绝对定位在右上角，增大点击区域）
+            var closeButtonBorder = new Border
+            {
+                Width = 28,
+                Height = 28,
+                CornerRadius = new CornerRadius(14), // 圆形按钮
+                Background = new SolidColorBrush(Color.FromArgb(0, 255, 255, 255)), // 初始透明
+                HorizontalAlignment = HorizontalAlignment.Right,
+                VerticalAlignment = VerticalAlignment.Top,
+                Margin = new Thickness(0, -6, -6, 0),
+                Cursor = System.Windows.Input.Cursors.Hand
+            };
+            
             var closeButton = new Button
             {
-                Width = 28,  // 增大到36px，提供更大的点击区域
+                Width = 28,
                 Height = 28,
                 Background = Brushes.Transparent,
                 BorderThickness = new Thickness(0),
-                HorizontalAlignment = HorizontalAlignment.Right,
-                VerticalAlignment = VerticalAlignment.Top,
                 Padding = new Thickness(0),
-                Margin = new Thickness(-4, -4, -4, 0), // 负边距让按钮稍微超出边界，点击更容易
                 Cursor = System.Windows.Input.Cursors.Hand,
                 Content = new PackIcon
                 {
                     Kind = PackIconKind.Close,
-                    Width = 18,  // 图标稍微增大一点
-                    Height = 18,
+                    Width = 16,
+                    Height = 16,
                     Foreground = (Brush)Application.Current.FindResource("TextSecondaryBrush")
                 }
             };
             
-            // 创建按钮样式（必须在赋值前配置完所有内容）
+            // 创建按钮样式
             var buttonStyle = new Style(typeof(Button));
             buttonStyle.Setters.Add(new Setter(Button.BackgroundProperty, Brushes.Transparent));
             buttonStyle.Setters.Add(new Setter(Button.BorderThicknessProperty, new Thickness(0)));
+            buttonStyle.Setters.Add(new Setter(Button.HorizontalContentAlignmentProperty, HorizontalAlignment.Center));
+            buttonStyle.Setters.Add(new Setter(Button.VerticalContentAlignmentProperty, VerticalAlignment.Center));
             
-            // 鼠标悬停效果
+            // 鼠标悬停效果 - 使用边框背景变化，更加优雅
             var hoverTrigger = new System.Windows.Trigger { Property = Button.IsMouseOverProperty, Value = true };
-            hoverTrigger.Setters.Add(new Setter(Button.BackgroundProperty, new SolidColorBrush(Color.FromArgb(30, 255, 255, 255))));
+            hoverTrigger.Setters.Add(new Setter(FrameworkElement.CursorProperty, System.Windows.Input.Cursors.Hand));
             buttonStyle.Triggers.Add(hoverTrigger);
             
-            // 应用样式（必须在所有配置完成后）
+            // 鼠标按下效果 - 轻微缩放
+            var pressTrigger = new System.Windows.Trigger { Property = Button.IsPressedProperty, Value = true };
+            pressTrigger.Setters.Add(new Setter(UIElement.OpacityProperty, 0.7));
+            buttonStyle.Triggers.Add(pressTrigger);
+            
             closeButton.Style = buttonStyle;
+            
+            // 鼠标进入/离开事件处理边框背景动画
+            closeButton.MouseEnter += (s, e) =>
+            {
+                var hoverAnimation = new ColorAnimation
+                {
+                    To = Color.FromArgb(60, 255, 255, 255),
+                    Duration = TimeSpan.FromMilliseconds(200),
+                    EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+                };
+                var brush = new SolidColorBrush(Color.FromArgb(0, 255, 255, 255));
+                closeButtonBorder.Background = brush;
+                brush.BeginAnimation(SolidColorBrush.ColorProperty, hoverAnimation);
+                
+                // 图标颜色变化
+                var icon = closeButton.Content as PackIcon;
+                if (icon != null)
+                {
+                    var iconColorAnimation = new ColorAnimation
+                    {
+                        To = Colors.White,
+                        Duration = TimeSpan.FromMilliseconds(200),
+                        EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+                    };
+                    var iconBrush = new SolidColorBrush(((SolidColorBrush)icon.Foreground).Color);
+                    icon.Foreground = iconBrush;
+                    iconBrush.BeginAnimation(SolidColorBrush.ColorProperty, iconColorAnimation);
+                }
+            };
+            
+            closeButton.MouseLeave += (s, e) =>
+            {
+                var leaveAnimation = new ColorAnimation
+                {
+                    To = Color.FromArgb(0, 255, 255, 255),
+                    Duration = TimeSpan.FromMilliseconds(200),
+                    EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+                };
+                var brush = closeButtonBorder.Background as SolidColorBrush;
+                if (brush != null)
+                {
+                    brush.BeginAnimation(SolidColorBrush.ColorProperty, leaveAnimation);
+                }
+                
+                // 图标颜色恢复
+                var icon = closeButton.Content as PackIcon;
+                if (icon != null)
+                {
+                    var iconColorAnimation = new ColorAnimation
+                    {
+                        To = ((SolidColorBrush)Application.Current.FindResource("TextSecondaryBrush")).Color,
+                        Duration = TimeSpan.FromMilliseconds(200),
+                        EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+                    };
+                    var iconBrush = icon.Foreground as SolidColorBrush;
+                    if (iconBrush != null)
+                    {
+                        iconBrush.BeginAnimation(SolidColorBrush.ColorProperty, iconColorAnimation);
+                    }
+                }
+            };
+            
+            closeButtonBorder.Child = closeButton;
             
             // 点击事件：只有存在取消回调或CancellationTokenSource时才触发取消，否则仅关闭通知
             closeButton.Click += (s, e) =>
@@ -337,7 +423,7 @@ namespace ObsMCLauncher.Utils
             };
             
             contentGrid.Children.Add(stackPanel);
-            contentGrid.Children.Add(closeButton);
+            contentGrid.Children.Add(closeButtonBorder);
 
             // 进度条（仅进度通知）
             if (notification.IsProgress)
@@ -432,8 +518,8 @@ namespace ObsMCLauncher.Utils
                 var containerWidth = _container.ActualWidth;
                 if (containerWidth <= 0) containerWidth = 1200; // 默认宽度
 
-                // 从顶部开始，15px边距
-                double currentY = 15;
+                // 从标题栏下方开始，50px（标题栏40px + 10px边距）
+                double currentY = 50;
                 
                 foreach (var notification in _notifications)
                 {
