@@ -47,7 +47,7 @@ jobs:
         Configuration: ${{ matrix.configuration }}
       
     - name: Publish single-file executable
-      run: dotnet publish $env:Solution_Name -c $env:Configuration -r win-x64 -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=none -p:DebugSymbols=false -o ./publish
+      run: dotnet publish $env:Solution_Name -c $env:Configuration -r win-x64 --self-contained false -p:PublishSingleFile=true -p:DebugType=none -p:DebugSymbols=false -o ./publish
       env:
         Configuration: ${{ matrix.configuration }}
       
