@@ -18,18 +18,87 @@
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-            <!-- 欢迎区域 -->
-            <StackPanel Grid.Row="0">
-                <TextBlock Text="欢迎使用 Obs MC 启动器" 
-                         FontSize="32" 
-                         FontWeight="Bold"
-                         Foreground="{StaticResource TextBrush}"
-                         Margin="0,0,0,10"/>
-                <TextBlock Text="让您的 Minecraft 之旅更加轻松愉快" 
-                         FontSize="16" 
-                         Foreground="#AAAAAA"
-                         Margin="0,0,0,30"/>
-            </StackPanel>
+            <!-- 欢迎横幅 -->
+            <Border Grid.Row="0"
+                    CornerRadius="16"
+                    Margin="0,0,0,30"
+                    Height="200">
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                        <GradientStop Color="#1e3a8a" Offset="0"/>
+                        <GradientStop Color="#059669" Offset="1"/>
+                    </LinearGradientBrush>
+                </Border.Background>
+                
+                <Grid>
+                    <!-- 装饰性背景图案 -->
+                    <Canvas>
+                        <!-- 大圆形装饰 -->
+                        <Ellipse Width="200" Height="200" 
+                                Canvas.Right="-50" Canvas.Top="-50"
+                                Fill="#FFFFFF" Opacity="0.05"/>
+                        <Ellipse Width="150" Height="150" 
+                                Canvas.Left="-30" Canvas.Bottom="-30"
+                                Fill="#FFFFFF" Opacity="0.08"/>
+                        
+                        <Rectangle Width="40" Height="40" 
+                                  Canvas.Right="120" Canvas.Top="60"
+                                  Fill="#FFFFFF" Opacity="0.1"
+                                  RadiusX="4" RadiusY="4">
+                            <Rectangle.RenderTransform>
+                                <RotateTransform Angle="15"/>
+                            </Rectangle.RenderTransform>
+                        </Rectangle>
+                        <Rectangle Width="30" Height="30" 
+                                  Canvas.Left="80" Canvas.Bottom="80"
+                                  Fill="#FFFFFF" Opacity="0.12"
+                                  RadiusX="3" RadiusY="3">
+                            <Rectangle.RenderTransform>
+                                <RotateTransform Angle="-20"/>
+                            </Rectangle.RenderTransform>
+                        </Rectangle>
+                        <Rectangle Width="25" Height="25" 
+                                  Canvas.Right="200" Canvas.Bottom="120"
+                                  Fill="#FFFFFF" Opacity="0.1"
+                                  RadiusX="3" RadiusY="3">
+                            <Rectangle.RenderTransform>
+                                <RotateTransform Angle="45"/>
+                            </Rectangle.RenderTransform>
+                        </Rectangle>
+                    </Canvas>
+                    
+                    <!-- 主要内容 -->
+                    <StackPanel VerticalAlignment="Center"
+                              HorizontalAlignment="Center">
+                        <StackPanel Orientation="Horizontal" 
+                                  HorizontalAlignment="Center"
+                                  Margin="0,0,0,12">
+                            <materialDesign:PackIcon Kind="Minecraft" 
+                                                   Width="50" 
+                                                   Height="50"
+                                                   Foreground="White"
+                                                   VerticalAlignment="Center"
+                                                   Margin="0,0,12,0"/>
+                            <TextBlock Text="Obs MC Launcher" 
+                                     FontSize="38" 
+                                     FontWeight="Bold"
+                                     Foreground="White"
+                                     VerticalAlignment="Center"/>
+                        </StackPanel>
+                        
+                        <TextBlock Text="让您的 Minecraft 之旅更加轻松愉快" 
+                                 FontSize="16" 
+                                 Foreground="#E0E0E0"
+                                 HorizontalAlignment="Center"
+                                 Margin="0,0,0,8"/>
+                        
+                        <TextBlock Text="🎮 开始您的冒险吧" 
+                                 FontSize="14" 
+                                 Foreground="#B0B0B0"
+                                 HorizontalAlignment="Center"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
 
 
 
