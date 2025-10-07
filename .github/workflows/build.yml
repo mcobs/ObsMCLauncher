@@ -44,7 +44,7 @@ jobs:
         Configuration: ${{ matrix.configuration }}
       
     - name: Publish single-file executable
-      run: dotnet publish $env:Solution_Name -c $env:Configuration -r win-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=false -p:IncludeNativeLibrariesForSelfExtract=true -o ./publish
+      run: dotnet publish $env:Solution_Name -c $env:Configuration -r win-x64 -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=none -p:DebugSymbols=false -o ./publish
       env:
         Configuration: ${{ matrix.configuration }}
       
@@ -58,18 +58,21 @@ jobs:
         echo "version=$version" >> $env:GITHUB_OUTPUT
         echo "当前版本: $version"
         
-    - name: Create release package
+    - name: Rename executable
       shell: pwsh
       run: |
         $version = "${{ steps.version.outputs.version }}"
-        Compress-Archive -Path ./publish/* -DestinationPath "ObsMCLauncher-$version-win-x64.zip"
-        Write-Host "已创建压缩包: ObsMCLauncher-$version-win-x64.zip"
+        $exeName = "ObsMCLauncher-$version-win-x64.exe"
+        Copy-Item -Path "./publish/ObsMCLauncher.exe" -Destination $exeName
+        Write-Host "已重命名为: $exeName"
+        $fileSize = (Get-Item $exeName).Length / 1MB
+        Write-Host "文件大小: $([Math]::Round($fileSize, 2)) MB"
         
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
         name: ObsMCLauncher-${{ steps.version.outputs.version }}-win-x64
-        path: ObsMCLauncher-${{ steps.version.outputs.version }}-win-x64.zip
+        path: ObsMCLauncher-${{ steps.version.outputs.version }}-win-x64.exe
         retention-days: 90
-        compression-level: 0  # 已经是压缩包，无需再压缩
+        compression-level: 6  # GitHub 会自动压缩，下载时自动解压
 

@@ -1901,7 +1901,7 @@ namespace ObsMCLauncher.Pages
                 // 获取版本信息URL
                 var versionManifest = await MinecraftVersionService.GetVersionListAsync();
                 var versionInfo = versionManifest?.Versions?.FirstOrDefault(v => v.Id == version);
-                if (versionInfo == null)
+                if (versionInfo == null || string.IsNullOrEmpty(versionInfo.Url))
                 {
                     throw new Exception($"找不到版本 {version} 的信息");
                 }
@@ -1912,7 +1912,7 @@ namespace ObsMCLauncher.Pages
                 if (!File.Exists(jsonPath))
                 {
                     using var httpClient = new HttpClient();
-                    var jsonContent = await httpClient.GetStringAsync(versionInfo.Url, _downloadCancellationToken.Token);
+                    var jsonContent = await httpClient.GetStringAsync(versionInfo.Url, _downloadCancellationToken?.Token ?? default);
                     await File.WriteAllTextAsync(jsonPath, jsonContent);
                     System.Diagnostics.Debug.WriteLine($"[Forge] ✅ 已下载原版JSON");
                 }
@@ -1934,20 +1934,20 @@ namespace ObsMCLauncher.Pages
                 if (!File.Exists(jarPath))
                 {
                     using var httpClient = new HttpClient();
-                    using var response = await httpClient.GetAsync(clientUrl, HttpCompletionOption.ResponseHeadersRead, _downloadCancellationToken.Token);
+                    using var response = await httpClient.GetAsync(clientUrl!, HttpCompletionOption.ResponseHeadersRead, _downloadCancellationToken?.Token ?? default);
                     response.EnsureSuccessStatusCode();
                     
                     var totalBytes = response.Content.Headers.ContentLength ?? 0;
-                    using var contentStream = await response.Content.ReadAsStreamAsync(_downloadCancellationToken.Token);
+                    using var contentStream = await response.Content.ReadAsStreamAsync(_downloadCancellationToken?.Token ?? default);
                     using var fileStream = new FileStream(jarPath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true);
                     
                     var buffer = new byte[8192];
                     long totalRead = 0;
                     int bytesRead;
                     
-                    while ((bytesRead = await contentStream.ReadAsync(buffer, 0, buffer.Length, _downloadCancellationToken.Token)) > 0)
+                    while ((bytesRead = await contentStream.ReadAsync(buffer, 0, buffer.Length, _downloadCancellationToken?.Token ?? default)) > 0)
                     {
-                        await fileStream.WriteAsync(buffer, 0, bytesRead, _downloadCancellationToken.Token);
+                        await fileStream.WriteAsync(buffer, 0, bytesRead, _downloadCancellationToken?.Token ?? default);
                         totalRead += bytesRead;
                         
                         if (totalBytes > 0)
