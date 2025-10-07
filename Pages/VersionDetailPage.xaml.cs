@@ -1442,31 +1442,19 @@ namespace ObsMCLauncher.Pages
                 
                 await RenameForgeVersionAsync(gameDirectory, currentVersion, forgeVersion, customVersionName);
 
-                // 4.5. 对于新版本Forge，删除原版文件夹（已完全合并）
-                //      对于旧版本Forge，保留原版文件夹（通过inheritsFrom继承）
-                bool isOldVersion = !IsForgeInstallerNewVersion(currentVersion);
-                
-                if (!isOldVersion)
+                // 4.5. 删除原版文件夹（新旧版本都已完全合并，不再需要原版文件夹）
+                string vanillaDir = Path.Combine(gameDirectory, "versions", currentVersion);
+                if (Directory.Exists(vanillaDir))
                 {
-                    // 新版本Forge：可以安全删除原版文件夹
-                    string vanillaDir = Path.Combine(gameDirectory, "versions", currentVersion);
-                    if (Directory.Exists(vanillaDir))
+                    try
                     {
-                        try
-                        {
-                            await Task.Run(() => Directory.Delete(vanillaDir, true));
-                            System.Diagnostics.Debug.WriteLine($"[Forge] 🗑️ 已删除临时原版文件夹: {currentVersion}（信息已合并）");
-                        }
-                        catch (Exception ex)
-                        {
-                            System.Diagnostics.Debug.WriteLine($"[Forge] ⚠️ 删除原版文件夹失败: {ex.Message}");
-                        }
+                        await Task.Run(() => Directory.Delete(vanillaDir, true));
+                        System.Diagnostics.Debug.WriteLine($"[Forge] 🗑️ 已删除临时原版文件夹: {currentVersion}（信息已完全合并）");
                     }
-                }
-                else
-                {
-                    // 旧版本Forge：保留原版文件夹（通过inheritsFrom引用）
-                    System.Diagnostics.Debug.WriteLine($"[Forge] ℹ️ 旧版本Forge，保留原版文件夹: {currentVersion}（通过inheritsFrom继承）");
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[Forge] ⚠️ 删除原版文件夹失败: {ex.Message}");
+                    }
                 }
 
                 // 5. 下载Assets (如果需要)
@@ -1512,21 +1500,12 @@ namespace ObsMCLauncher.Pages
                         System.Diagnostics.Debug.WriteLine($"[Forge] 🗑️ 已清理Forge安装器: {installerPath}");
                     }
                     
-                    // 清理临时原版文件夹（仅针对新版本Forge，旧版本需要保留）
-                    bool isOldVersion = !IsForgeInstallerNewVersion(currentVersion);
-                    if (!isOldVersion)
+                    // 清理临时原版文件夹（新旧版本都删除，因为都已完全合并）
+                    string vanillaDir = Path.Combine(gameDirectory, "versions", currentVersion);
+                    if (Directory.Exists(vanillaDir))
                     {
-                        // 新版本Forge：清理原版文件夹
-                        string vanillaDir = Path.Combine(gameDirectory, "versions", currentVersion);
-                        if (Directory.Exists(vanillaDir))
-                        {
-                            await Task.Run(() => Directory.Delete(vanillaDir, true));
-                            System.Diagnostics.Debug.WriteLine($"[Forge] 🗑️ 已清理临时原版文件夹: {currentVersion}");
-                        }
-                    }
-                    else
-                    {
-                        System.Diagnostics.Debug.WriteLine($"[Forge] ℹ️ 旧版本Forge，保留原版文件夹（finally块）: {currentVersion}");
+                        await Task.Run(() => Directory.Delete(vanillaDir, true));
+                        System.Diagnostics.Debug.WriteLine($"[Forge] 🗑️ 已清理临时原版文件夹: {currentVersion}");
                     }
                     
                     // 清理未完成的Forge安装文件夹（如果安装被取消）
@@ -2187,41 +2166,57 @@ namespace ObsMCLauncher.Pages
                 // 1. 更新ID
                 forgeJson["id"] = customVersionName;
                 
+                // 读取原版JSON（新旧版本都需要合并）
+                string vanillaJsonPath = Path.Combine(gameDirectory, "versions", vanillaVersion, $"{vanillaVersion}.json");
+                if (!File.Exists(vanillaJsonPath))
+                {
+                    System.Diagnostics.Debug.WriteLine($"[Forge] ⚠️ 原版JSON不存在: {vanillaJsonPath}，保留inheritsFrom");
+                    forgeJson["inheritsFrom"] = vanillaVersion;
+                    await File.WriteAllTextAsync(forgeJsonPath, forgeJson.ToJsonString(new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+                    return;
+                }
+
+                var vanillaJsonContent = await File.ReadAllTextAsync(vanillaJsonPath);
+                var vanillaJson = System.Text.Json.Nodes.JsonNode.Parse(vanillaJsonContent)!.AsObject();
+                
                 if (isOldVersion)
                 {
-                    // 旧版本Forge：保留inheritsFrom，确保原版被正确加载
-                    if (!forgeJson.ContainsKey("inheritsFrom"))
+                    // 旧版本Forge：完全合并原版信息，然后删除原版文件夹
+                    System.Diagnostics.Debug.WriteLine($"[Forge] 旧版本Forge，开始完全合并原版信息");
+                    
+                    // 1. 合并 libraries（Forge的在前，原版的在后）
+                    var forgeLibraries = forgeJson["libraries"]?.AsArray() ?? new System.Text.Json.Nodes.JsonArray();
+                    var vanillaLibraries = vanillaJson["libraries"]?.AsArray() ?? new System.Text.Json.Nodes.JsonArray();
+                    foreach (var lib in vanillaLibraries)
                     {
-                        forgeJson["inheritsFrom"] = vanillaVersion;
+                        forgeLibraries.Add(lib?.DeepClone());
                     }
-                    else
+                    forgeJson["libraries"] = forgeLibraries;
+                    
+                    // 2. 合并 assetIndex（如果Forge中没有）
+                    if (!forgeJson.ContainsKey("assetIndex") && vanillaJson.ContainsKey("assetIndex"))
                     {
-                        // 确保inheritsFrom指向正确的原版版本
-                        forgeJson["inheritsFrom"] = vanillaVersion;
+                        forgeJson["assetIndex"] = vanillaJson["assetIndex"]?.DeepClone();
                     }
                     
-                    System.Diagnostics.Debug.WriteLine($"[Forge] ✅ 旧版本Forge，保留inheritsFrom: {vanillaVersion}");
+                    // 3. 合并 assets（如果Forge中没有）
+                    if (!forgeJson.ContainsKey("assets") && vanillaJson.ContainsKey("assets"))
+                    {
+                        forgeJson["assets"] = vanillaJson["assets"]?.DeepClone();
+                    }
                     
-                    // 保存更新后的JSON
+                    // 4. 移除 inheritsFrom（已完全合并）
+                    forgeJson.Remove("inheritsFrom");
+                    
+                    System.Diagnostics.Debug.WriteLine($"[Forge] ✅ 旧版本Forge已完全合并，总libraries: {forgeLibraries.Count}");
+                    System.Diagnostics.Debug.WriteLine($"[Forge] ✅ 已移除inheritsFrom依赖，可以删除原版文件夹");
+                    
                     await File.WriteAllTextAsync(forgeJsonPath, forgeJson.ToJsonString(new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
                 }
                 else
                 {
                     // 新版本Forge：完全合并，移除inheritsFrom依赖
                     System.Diagnostics.Debug.WriteLine($"[Forge] 新版本Forge，开始完全合并原版信息");
-                    
-                    // 读取原版JSON
-                    string vanillaJsonPath = Path.Combine(gameDirectory, "versions", vanillaVersion, $"{vanillaVersion}.json");
-                    if (!File.Exists(vanillaJsonPath))
-                    {
-                        System.Diagnostics.Debug.WriteLine($"[Forge] ⚠️ 原版JSON不存在: {vanillaJsonPath}，保留inheritsFrom");
-                        forgeJson["inheritsFrom"] = vanillaVersion;
-                        await File.WriteAllTextAsync(forgeJsonPath, forgeJson.ToJsonString(new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
-                        return;
-                    }
-                    
-                    var vanillaJsonContent = await File.ReadAllTextAsync(vanillaJsonPath);
-                    var vanillaJson = System.Text.Json.Nodes.JsonNode.Parse(vanillaJsonContent)!.AsObject();
                     
                     // 2. 合并libraries
                     var forgeLibraries = forgeJson["libraries"]?.AsArray() ?? new System.Text.Json.Nodes.JsonArray();

@@ -468,8 +468,22 @@ namespace ObsMCLauncher.Services
             
             var classpathItems = new System.Collections.Generic.List<string>();
             
-            // 如果使用inheritsFrom，需要先添加父版本的客户端JAR（包含Minecraft核心类）
-            if (!string.IsNullOrEmpty(versionInfo.InheritsFrom))
+            // 旧版本格式（使用minecraftArguments）需要在类路径中包含版本JAR（包含Minecraft核心类）
+            if (!string.IsNullOrEmpty(versionInfo.MinecraftArguments))
+            {
+                var versionJarPath = Path.Combine(versionDir, $"{versionId}.jar");
+                if (File.Exists(versionJarPath))
+                {
+                    classpathItems.Add(versionJarPath);
+                    Debug.WriteLine($"✅ 旧版本格式，已添加版本JAR到classpath: {versionId}.jar");
+                }
+                else
+                {
+                    Debug.WriteLine($"⚠️ 版本JAR不存在: {versionJarPath}");
+                }
+            }
+            // 如果使用inheritsFrom（向后兼容），也添加父版本JAR
+            else if (!string.IsNullOrEmpty(versionInfo.InheritsFrom))
             {
                 var parentVersionId = versionInfo.InheritsFrom;
                 var parentJarPath = Path.Combine(gameDir, "versions", parentVersionId, $"{parentVersionId}.jar");
