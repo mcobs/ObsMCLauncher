@@ -1432,6 +1432,24 @@ namespace ObsMCLauncher.Pages
                         await Task.Run(() => Directory.Delete(vanillaDir, true));
                         System.Diagnostics.Debug.WriteLine($"[Forge] 🗑️ 已清理临时原版文件夹: {currentVersion}");
                     }
+                    
+                    // 清理未完成的Forge安装文件夹（如果安装被取消）
+                    // Forge官方安装器创建的目录名格式：1.21.8-forge-58.1.6
+                    string officialForgeId = $"{currentVersion}-forge-{forgeVersion}";
+                    string officialForgeDir = Path.Combine(gameDirectory, "versions", officialForgeId);
+                    
+                    // 检查是否是未完成的安装（目录存在但不是最终的自定义名称）
+                    if (officialForgeId != customVersionName && Directory.Exists(officialForgeDir))
+                    {
+                        // 检查自定义名称的目录是否已经存在（说明安装成功并已重命名）
+                        string customDir = Path.Combine(gameDirectory, "versions", customVersionName);
+                        if (!Directory.Exists(customDir))
+                        {
+                            // 自定义目录不存在，说明安装未完成，删除临时Forge文件夹
+                            await Task.Run(() => Directory.Delete(officialForgeDir, true));
+                            System.Diagnostics.Debug.WriteLine($"[Forge] 🗑️ 已清理未完成的Forge文件夹: {officialForgeId}");
+                        }
+                    }
                 }
                 catch (Exception cleanupEx)
                 {
