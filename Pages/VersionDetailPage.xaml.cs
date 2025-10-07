@@ -1434,7 +1434,7 @@ namespace ObsMCLauncher.Pages
                 // 创建一个进度模拟器（因为Forge安装器不提供进度）
                 progressSimulator = SimulateForgeInstallerProgress();
 
-                bool installSuccess = await RunForgeInstallerAsync(installerPath, gameDirectory, currentVersion);
+                bool installSuccess = await RunForgeInstallerAsync(installerPath, gameDirectory, currentVersion, config);
                 
                 // 停止进度模拟
                 progressSimulator.Dispose();
@@ -1786,7 +1786,7 @@ namespace ObsMCLauncher.Pages
             return timer;
         }
 
-        private async Task<bool> RunForgeInstallerAsync(string installerPath, string gameDirectory, string mcVersion)
+        private async Task<bool> RunForgeInstallerAsync(string installerPath, string gameDirectory, string mcVersion, LauncherConfig config)
         {
             return await Task.Run(async () =>
             {
@@ -1905,7 +1905,7 @@ namespace ObsMCLauncher.Pages
                 if (isVeryOldVersion)
                 {
                     System.Diagnostics.Debug.WriteLine($"[Forge] 检测到非常旧的版本，尝试手动安装客户端...");
-                    return await ManualInstallVeryOldForgeClient(installerPath, gameDirectory, mcVersion);
+                    return await ManualInstallVeryOldForgeClient(installerPath, gameDirectory, mcVersion, config);
                 }
                 
                 return false;
@@ -2423,7 +2423,7 @@ namespace ObsMCLauncher.Pages
         /// <summary>
         /// 手动安装非常旧的Forge客户端（1.8.9等），直接从安装器JAR提取文件
         /// </summary>
-        private async Task<bool> ManualInstallVeryOldForgeClient(string installerPath, string gameDirectory, string mcVersion)
+        private async Task<bool> ManualInstallVeryOldForgeClient(string installerPath, string gameDirectory, string mcVersion, LauncherConfig config)
         {
             try
             {
@@ -2617,7 +2617,7 @@ namespace ObsMCLauncher.Pages
                             customUrl = urlProp.GetString();
                         }
                         
-                        // 构建下载URL列表
+                        // 构建下载URL列表（根据用户配置的下载源）
                         List<string> urls = new List<string>();
                         
                         // 如果有自定义URL，优先使用
@@ -2627,10 +2627,21 @@ namespace ObsMCLauncher.Pages
                             urls.Add($"{baseUrl}/{group}/{artifact}/{version}/{fileName}");
                         }
                         
-                        // 添加标准Maven仓库
-                        urls.Add($"https://bmclapi2.bangbang93.com/maven/{group}/{artifact}/{version}/{fileName}");
-                        urls.Add($"https://maven.minecraftforge.net/{group}/{artifact}/{version}/{fileName}");
-                        urls.Add($"https://libraries.minecraft.net/{group}/{artifact}/{version}/{fileName}");
+                        // 根据用户配置的下载源决定URL顺序
+                        if (config.DownloadSource == DownloadSource.BMCLAPI)
+                        {
+                            // BMCLAPI优先
+                            urls.Add($"https://bmclapi2.bangbang93.com/maven/{group}/{artifact}/{version}/{fileName}");
+                            urls.Add($"https://maven.minecraftforge.net/{group}/{artifact}/{version}/{fileName}");
+                            urls.Add($"https://libraries.minecraft.net/{group}/{artifact}/{version}/{fileName}");
+                        }
+                        else
+                        {
+                            // 官方源优先
+                            urls.Add($"https://maven.minecraftforge.net/{group}/{artifact}/{version}/{fileName}");
+                            urls.Add($"https://libraries.minecraft.net/{group}/{artifact}/{version}/{fileName}");
+                            urls.Add($"https://bmclapi2.bangbang93.com/maven/{group}/{artifact}/{version}/{fileName}");
+                        }
                         
                         // 尝试下载
                         bool downloaded = false;
@@ -2706,7 +2717,15 @@ namespace ObsMCLauncher.Pages
                 NotificationType.Success, 5);
 
             await Task.Delay(500);
-            _ = Dispatcher.BeginInvoke(() => { NavigationService?.GoBack(); });
+            
+            // 安全地返回上一页（检查是否可以返回）
+            _ = Dispatcher.BeginInvoke(() => 
+            {
+                if (NavigationService?.CanGoBack == true)
+                {
+                    NavigationService.GoBack();
+                }
+            });
         }
     }
 }
