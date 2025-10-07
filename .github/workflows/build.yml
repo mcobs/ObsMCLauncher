@@ -9,6 +9,9 @@ on:
 
 jobs:
   build:
+    # 如果提交信息包含 [CI skip] 或 [ci skip]，跳过构建
+    if: "!contains(github.event.head_commit.message, '[CI skip]') && !contains(github.event.head_commit.message, '[ci skip]')"
+    
     strategy:
       matrix:
         configuration: [Release]
