@@ -1792,88 +1792,150 @@ namespace ObsMCLauncher.Pages
                     await File.WriteAllTextAsync(profilesPath, System.Text.Json.JsonSerializer.Serialize(defaultProfiles, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
                 }
                 
-                // 判断是否是新版本Forge（1.13+需要 --installClient 参数）
+                // 判断是否是新版本Forge（1.13+）
                 bool isNewVersion = IsForgeInstallerNewVersion(mcVersion);
                 
-                var process = new System.Diagnostics.Process();
-                process.StartInfo.FileName = "java";
+                // 准备多个可能的参数组合（按优先级排序）
+                List<string> argumentsList = new List<string>();
                 
-                // 根据版本决定参数
                 if (isNewVersion)
                 {
-                    // 1.13+ 版本：需要 --installClient 参数
-                    process.StartInfo.Arguments = $"-jar \"{installerPath}\" --installClient \"{gameDirectory}\"";
-                    System.Diagnostics.Debug.WriteLine($"[Forge] 使用新版本安装器参数 (MC {mcVersion})");
+                    // 1.13+ 版本：优先使用 --installClient
+                    argumentsList.Add($"--installClient \"{gameDirectory}\"");
                 }
                 else
                 {
-                    // 1.12.2及之前：不需要参数
-                    process.StartInfo.Arguments = $"-jar \"{installerPath}\"";
-                    System.Diagnostics.Debug.WriteLine($"[Forge] 使用旧版本安装器参数 (MC {mcVersion})");
+                    // 1.12.2及之前：尝试多种参数组合
+                    // 1. 尝试 --installClient（1.12.2支持此参数，但需要较长时间下载库）
+                    argumentsList.Add($"--installClient \"{gameDirectory}\"");
                 }
-                process.StartInfo.WorkingDirectory = gameDirectory;
-                process.StartInfo.UseShellExecute = false;
-                process.StartInfo.RedirectStandardOutput = true;
-                process.StartInfo.RedirectStandardError = true;
-                process.StartInfo.CreateNoWindow = true;
-
-                var outputBuilder = new System.Text.StringBuilder();
-                var errorBuilder = new System.Text.StringBuilder();
-
-                process.OutputDataReceived += (sender, e) =>
+                
+                System.Diagnostics.Debug.WriteLine($"[Forge] 准备尝试 {argumentsList.Count} 种参数组合");
+                
+                // 依次尝试每种参数组合
+                for (int i = 0; i < argumentsList.Count; i++)
                 {
-                    if (!string.IsNullOrEmpty(e.Data))
+                    string args = argumentsList[i];
+                    System.Diagnostics.Debug.WriteLine($"[Forge] 尝试参数 {i + 1}/{argumentsList.Count}: {(string.IsNullOrEmpty(args) ? "(无参数)" : args)}");
+                    
+                    bool success = await TryRunForgeInstallerWithArgs(installerPath, gameDirectory, args);
+                    
+                    if (success)
                     {
-                        System.Diagnostics.Debug.WriteLine($"[Forge Installer] {e.Data}");
-                        outputBuilder.AppendLine(e.Data);
+                        System.Diagnostics.Debug.WriteLine($"[Forge] ✅ 参数 {i + 1} 安装成功！");
+                        return true;
                     }
-                };
+                    
+                    System.Diagnostics.Debug.WriteLine($"[Forge] ⚠️ 参数 {i + 1} 失败，尝试下一个...");
+                }
+                
+                // 所有参数都失败了
+                System.Diagnostics.Debug.WriteLine($"[Forge] ❌ 所有 {argumentsList.Count} 种参数组合都失败");
+                return false;
+            });
+        }
+        
+        /// <summary>
+        /// 使用指定参数尝试运行Forge安装器
+        /// </summary>
+        private async Task<bool> TryRunForgeInstallerWithArgs(string installerPath, string gameDirectory, string arguments)
+        {
+            var process = new System.Diagnostics.Process();
+            process.StartInfo.FileName = "java";
+            process.StartInfo.Arguments = string.IsNullOrEmpty(arguments) 
+                ? $"-jar \"{installerPath}\""
+                : $"-jar \"{installerPath}\" {arguments}";
+            process.StartInfo.WorkingDirectory = gameDirectory;
+            process.StartInfo.UseShellExecute = false;
+            process.StartInfo.RedirectStandardOutput = true;
+            process.StartInfo.RedirectStandardError = true;
+            process.StartInfo.CreateNoWindow = true;
 
-                process.ErrorDataReceived += (sender, e) =>
+            var outputBuilder = new System.Text.StringBuilder();
+            var errorBuilder = new System.Text.StringBuilder();
+
+            process.OutputDataReceived += (sender, e) =>
+            {
+                if (!string.IsNullOrEmpty(e.Data))
                 {
-                    if (!string.IsNullOrEmpty(e.Data))
-                    {
-                        System.Diagnostics.Debug.WriteLine($"[Forge Installer ERROR] {e.Data}");
-                        errorBuilder.AppendLine(e.Data);
-                    }
-                };
+                    System.Diagnostics.Debug.WriteLine($"[Forge Installer] {e.Data}");
+                    outputBuilder.AppendLine(e.Data);
+                }
+            };
 
+            process.ErrorDataReceived += (sender, e) =>
+            {
+                if (!string.IsNullOrEmpty(e.Data))
+                {
+                    System.Diagnostics.Debug.WriteLine($"[Forge Installer ERROR] {e.Data}");
+                    errorBuilder.AppendLine(e.Data);
+                }
+            };
+
+            try
+            {
                 process.Start();
                 process.BeginOutputReadLine();
                 process.BeginErrorReadLine();
 
-                // 创建一个任务来等待进程退出
+                // 创建一个任务来等待进程退出，设置超时时间（Forge需要下载库文件，给予充足时间）
                 var processTask = process.WaitForExitAsync(_downloadCancellationToken!.Token);
+                var timeoutTask = Task.Delay(TimeSpan.FromMinutes(5), _downloadCancellationToken!.Token); // 5分钟超时（足够下载所有库）
                 
-                try
+                var completedTask = await Task.WhenAny(processTask, timeoutTask);
+                
+                if (completedTask == timeoutTask)
                 {
-                    await processTask;
-                }
-                catch (OperationCanceledException)
-                {
-                    // 用户取消了下载，终止Forge安装进程
-                    System.Diagnostics.Debug.WriteLine("[Forge] 用户取消安装，正在终止Forge安装器进程...");
+                    // 超时，说明这个参数可能导致安装器卡住或弹出GUI
+                    System.Diagnostics.Debug.WriteLine("[Forge] 安装器超时（可能需要用户交互），终止进程");
                     
                     if (!process.HasExited)
                     {
-                        process.Kill(true); // 终止进程及其子进程
-                        System.Diagnostics.Debug.WriteLine("[Forge] ✅ 已终止Forge安装器进程");
+                        process.Kill(true);
                     }
                     
-                    throw; // 重新抛出取消异常
-                }
-
-                System.Diagnostics.Debug.WriteLine($"[Forge] 安装器退出码: {process.ExitCode}");
-                
-                if (process.ExitCode != 0)
-                {
-                    System.Diagnostics.Debug.WriteLine($"[Forge] 安装器错误输出:\n{errorBuilder}");
                     return false;
                 }
-
-                System.Diagnostics.Debug.WriteLine("[Forge] ✅ 官方安装器执行成功");
-                return true;
-            });
+                
+                // 正常退出
+                System.Diagnostics.Debug.WriteLine($"[Forge] 安装器退出码: {process.ExitCode}");
+                
+                if (process.ExitCode == 0)
+                {
+                    System.Diagnostics.Debug.WriteLine("[Forge] ✅ 官方安装器执行成功");
+                    return true;
+                }
+                
+                // 记录错误输出（但不抛出异常，因为还要尝试其他参数）
+                if (errorBuilder.Length > 0)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[Forge] 安装器错误: {errorBuilder.ToString().Trim()}");
+                }
+                
+                return false;
+            }
+            catch (OperationCanceledException)
+            {
+                // 用户取消了下载
+                System.Diagnostics.Debug.WriteLine("[Forge] 用户取消安装，正在终止Forge安装器进程...");
+                
+                if (!process.HasExited)
+                {
+                    process.Kill(true);
+                    System.Diagnostics.Debug.WriteLine("[Forge] ✅ 已终止Forge安装器进程");
+                }
+                
+                throw; // 重新抛出，停止整个安装流程
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Forge] 运行安装器时出错: {ex.Message}");
+                return false;
+            }
+            finally
+            {
+                process.Dispose();
+            }
         }
 
         private async Task RenameForgeVersionAsync(string gameDirectory, string gameVersion, string forgeVersion, string customVersionName)
@@ -1959,6 +2021,32 @@ namespace ObsMCLauncher.Pages
                         await MergeVanillaIntoForgeJson(jsonPath, customVersionName, gameDirectory, gameVersion);
                     }
                     System.Diagnostics.Debug.WriteLine($"[Forge] ℹ️ 版本名称相同，无需重命名");
+                }
+                
+                // 确保 Forge 版本目录中存在 JAR 文件（对于旧版本 Forge 很重要）
+                string forgeJarPath = Path.Combine(customDir, $"{customVersionName}.jar");
+                if (!File.Exists(forgeJarPath))
+                {
+                    System.Diagnostics.Debug.WriteLine($"[Forge] ⚠️ Forge版本缺少主JAR文件，尝试从原版复制...");
+                    
+                    // 从原版目录复制 JAR 文件
+                    string vanillaDir = Path.Combine(gameDirectory, "versions", gameVersion);
+                    string vanillaJarPath = Path.Combine(vanillaDir, $"{gameVersion}.jar");
+                    
+                    if (File.Exists(vanillaJarPath))
+                    {
+                        File.Copy(vanillaJarPath, forgeJarPath, true);
+                        System.Diagnostics.Debug.WriteLine($"[Forge] ✅ 已从原版复制主JAR文件: {gameVersion}.jar -> {customVersionName}.jar");
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[Forge] ⚠️ 原版JAR文件不存在: {vanillaJarPath}");
+                        System.Diagnostics.Debug.WriteLine($"[Forge] ℹ️ 对于旧版本Forge，主JAR文件由库文件提供，可能不需要独立JAR");
+                    }
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"[Forge] ✅ Forge版本已包含主JAR文件");
                 }
             });
         }
