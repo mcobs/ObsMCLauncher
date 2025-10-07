@@ -1795,6 +1795,9 @@ namespace ObsMCLauncher.Pages
                 // 判断是否是新版本Forge（1.13+）
                 bool isNewVersion = IsForgeInstallerNewVersion(mcVersion);
                 
+                // 判断是否是非常旧的版本（1.9 之前）
+                bool isVeryOldVersion = IsVeryOldForgeVersion(mcVersion);
+                
                 // 准备多个可能的参数组合（按优先级排序）
                 List<string> argumentsList = new List<string>();
                 
@@ -1803,10 +1806,18 @@ namespace ObsMCLauncher.Pages
                     // 1.13+ 版本：优先使用 --installClient
                     argumentsList.Add($"--installClient \"{gameDirectory}\"");
                 }
+                else if (isVeryOldVersion)
+                {
+                    // 1.8.9 及更早版本：这些版本的安装器参数格式不同
+                    // 注意：--install 会安装服务器端而不是客户端，已删除
+                    argumentsList.Add($"--installClient \"{gameDirectory}\"");  // 某些版本可能支持
+                    argumentsList.Add($"--install-client \"{gameDirectory}\"");  // 带连字符的格式
+                    argumentsList.Add($"-installClient \"{gameDirectory}\"");  // 短横线版本
+                    System.Diagnostics.Debug.WriteLine($"[Forge] 检测到非常旧的版本 ({mcVersion})，将尝试多种参数格式");
+                }
                 else
                 {
-                    // 1.12.2及之前：尝试多种参数组合
-                    // 1. 尝试 --installClient（1.12.2支持此参数，但需要较长时间下载库）
+                    // 1.9 - 1.12.2：这些版本通常支持 --installClient
                     argumentsList.Add($"--installClient \"{gameDirectory}\"");
                 }
                 
@@ -1822,7 +1833,47 @@ namespace ObsMCLauncher.Pages
                     
                     if (success)
                     {
-                        System.Diagnostics.Debug.WriteLine($"[Forge] ✅ 参数 {i + 1} 安装成功！");
+                        System.Diagnostics.Debug.WriteLine($"[Forge] ✅ 参数 {i + 1} 安装器执行成功");
+                        
+                        // 对于非常旧的版本，验证是否真的创建了客户端版本目录（因为--install可能安装的是服务器端）
+                        if (isVeryOldVersion)
+                        {
+                            // 检查可能的版本目录
+                            string versionsDir = Path.Combine(gameDirectory, "versions");
+                            bool foundClientVersion = false;
+                            
+                            if (Directory.Exists(versionsDir))
+                            {
+                                var dirs = Directory.GetDirectories(versionsDir);
+                                foreach (var dir in dirs)
+                                {
+                                    var dirName = Path.GetFileName(dir);
+                                    // 检查是否是Forge客户端目录（包含.json文件）
+                                    if (dirName.Contains("forge") && dirName.Contains(mcVersion))
+                                    {
+                                        var jsonPath = Path.Combine(dir, $"{dirName}.json");
+                                        if (File.Exists(jsonPath))
+                                        {
+                                            foundClientVersion = true;
+                                            System.Diagnostics.Debug.WriteLine($"[Forge] ✅ 找到客户端版本目录: {dirName}");
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            if (foundClientVersion)
+                            {
+                                return true;
+                            }
+                            else
+                            {
+                                System.Diagnostics.Debug.WriteLine($"[Forge] ⚠️ 安装器成功但未找到客户端版本目录，可能安装的是服务器端");
+                                System.Diagnostics.Debug.WriteLine($"[Forge] ⚠️ 继续尝试下一个参数...");
+                                continue;
+                            }
+                        }
+                        
                         return true;
                     }
                     
@@ -1831,6 +1882,14 @@ namespace ObsMCLauncher.Pages
                 
                 // 所有参数都失败了
                 System.Diagnostics.Debug.WriteLine($"[Forge] ❌ 所有 {argumentsList.Count} 种参数组合都失败");
+                
+                // 对于非常旧的版本（1.8.9等），尝试手动安装
+                if (isVeryOldVersion)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[Forge] 检测到非常旧的版本，尝试手动安装客户端...");
+                    return await ManualInstallVeryOldForgeClient(installerPath, gameDirectory, mcVersion);
+                }
+                
                 return false;
             });
         }
@@ -1967,6 +2026,35 @@ namespace ObsMCLauncher.Pages
                             officialDir = testDir;
                             System.Diagnostics.Debug.WriteLine($"[Forge] ✅ 找到Forge安装目录: {name}");
                             break;
+                        }
+                    }
+
+                    // 如果还是找不到，尝试模糊搜索（用于手动安装的目录）
+                    if (!Directory.Exists(officialDir))
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[Forge] 尝试模糊搜索包含 'forge' 和 '{gameVersion}' 的目录...");
+                        var versionsDir = Path.Combine(gameDirectory, "versions");
+                        if (Directory.Exists(versionsDir))
+                        {
+                            var dirs = Directory.GetDirectories(versionsDir);
+                            foreach (var dir in dirs)
+                            {
+                                var dirName = Path.GetFileName(dir);
+                                // 检查是否包含 forge 和游戏版本号
+                                if (dirName.Contains("forge", StringComparison.OrdinalIgnoreCase) && 
+                                    dirName.Contains(gameVersion))
+                                {
+                                    // 验证目录中是否有 JSON 文件
+                                    var jsonPath = Path.Combine(dir, $"{dirName}.json");
+                                    if (File.Exists(jsonPath))
+                                    {
+                                        officialForgeId = dirName;
+                                        officialDir = dir;
+                                        System.Diagnostics.Debug.WriteLine($"[Forge] ✅ 通过模糊搜索找到Forge安装目录: {dirName}");
+                                        break;
+                                    }
+                                }
+                            }
                         }
                     }
 
@@ -2282,6 +2370,300 @@ namespace ObsMCLauncher.Pages
             catch
             {
                 // 解析失败，默认使用旧版本参数（更安全）
+                return false;
+            }
+        }
+        
+        /// <summary>
+        /// 判断是否是非常旧的 Forge 版本（1.9 之前），这些版本的安装器参数格式不同
+        /// </summary>
+        private bool IsVeryOldForgeVersion(string mcVersion)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(mcVersion)) return false;
+                
+                // 解析版本号
+                var versionParts = mcVersion.Split('.');
+                if (versionParts.Length < 2) return false;
+                
+                if (!int.TryParse(versionParts[0], out int major)) return false;
+                if (!int.TryParse(versionParts[1], out int minor)) return false;
+                
+                // 1.8.x 及更早版本视为非常旧的版本
+                if (major < 1) return true;
+                if (major == 1 && minor < 9) return true;
+                
+                return false;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+        
+        /// <summary>
+        /// 手动安装非常旧的Forge客户端（1.8.9等），直接从安装器JAR提取文件
+        /// </summary>
+        private async Task<bool> ManualInstallVeryOldForgeClient(string installerPath, string gameDirectory, string mcVersion)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine($"[Forge] 开始手动安装 Forge {mcVersion} 客户端");
+                
+                using (var zip = System.IO.Compression.ZipFile.OpenRead(installerPath))
+                {
+                    // 1. 读取 install_profile.json
+                    var profileEntry = zip.GetEntry("install_profile.json");
+                    if (profileEntry == null)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[Forge] ❌ 安装器中找不到 install_profile.json");
+                        return false;
+                    }
+                    
+                    string profileJson;
+                    using (var stream = profileEntry.Open())
+                    using (var reader = new StreamReader(stream))
+                    {
+                        profileJson = await reader.ReadToEndAsync();
+                    }
+                    
+                    var profile = System.Text.Json.JsonDocument.Parse(profileJson);
+                    var versionInfo = profile.RootElement.GetProperty("versionInfo");
+                    
+                    // 2. 获取Forge版本ID
+                    string forgeVersionId = versionInfo.GetProperty("id").GetString()!;
+                    System.Diagnostics.Debug.WriteLine($"[Forge] Forge版本ID: {forgeVersionId}");
+                    
+                    // 3. 创建版本目录
+                    string versionDir = Path.Combine(gameDirectory, "versions", forgeVersionId);
+                    Directory.CreateDirectory(versionDir);
+                    System.Diagnostics.Debug.WriteLine($"[Forge] ✅ 创建版本目录: {forgeVersionId}");
+                    
+                    // 4. 提取并修正 version.json
+                    string versionJsonPath = Path.Combine(versionDir, $"{forgeVersionId}.json");
+                    
+                    // 解析为 JsonObject 以便修正字段格式
+                    var versionJson = System.Text.Json.Nodes.JsonNode.Parse(versionInfo.GetRawText())!.AsObject();
+                    
+                    // 修正 releaseTime 和 time 字段格式（确保符合 ISO 8601 标准）
+                    // 旧版 Forge 可能使用非标准时间格式（如 "1960-01-01T00:00:00-0700"）
+                    if (versionJson.ContainsKey("releaseTime"))
+                    {
+                        var releaseTimeValue = versionJson["releaseTime"];
+                        if (releaseTimeValue != null)
+                        {
+                            var releaseTimeStr = releaseTimeValue.GetValue<string>();
+                            try
+                            {
+                                // 尝试解析并重新格式化为标准 ISO 8601 格式
+                                if (DateTime.TryParse(releaseTimeStr, System.Globalization.CultureInfo.InvariantCulture, 
+                                    System.Globalization.DateTimeStyles.AdjustToUniversal, out DateTime parsedTime))
+                                {
+                                    versionJson["releaseTime"] = parsedTime.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ");
+                                    System.Diagnostics.Debug.WriteLine($"[Forge] 已规范化 releaseTime 字段: {releaseTimeStr} -> {parsedTime:yyyy-MM-ddTHH:mm:ssZ}");
+                                }
+                                else
+                                {
+                                    // 解析失败，使用默认值
+                                    versionJson["releaseTime"] = "2020-01-01T00:00:00Z";
+                                    System.Diagnostics.Debug.WriteLine($"[Forge] 无法解析 releaseTime，使用默认值: {releaseTimeStr}");
+                                }
+                            }
+                            catch
+                            {
+                                versionJson["releaseTime"] = "2020-01-01T00:00:00Z";
+                            }
+                        }
+                    }
+                    else
+                    {
+                        versionJson["releaseTime"] = "2020-01-01T00:00:00Z";
+                    }
+                    
+                    if (versionJson.ContainsKey("time"))
+                    {
+                        var timeValue = versionJson["time"];
+                        if (timeValue != null)
+                        {
+                            var timeStr = timeValue.GetValue<string>();
+                            try
+                            {
+                                // 尝试解析并重新格式化为标准 ISO 8601 格式
+                                if (DateTime.TryParse(timeStr, System.Globalization.CultureInfo.InvariantCulture,
+                                    System.Globalization.DateTimeStyles.AdjustToUniversal, out DateTime parsedTime))
+                                {
+                                    versionJson["time"] = parsedTime.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ");
+                                    System.Diagnostics.Debug.WriteLine($"[Forge] 已规范化 time 字段: {timeStr} -> {parsedTime:yyyy-MM-ddTHH:mm:ssZ}");
+                                }
+                                else
+                                {
+                                    // 解析失败，使用默认值
+                                    versionJson["time"] = "2020-01-01T00:00:00Z";
+                                    System.Diagnostics.Debug.WriteLine($"[Forge] 无法解析 time，使用默认值: {timeStr}");
+                                }
+                            }
+                            catch
+                            {
+                                versionJson["time"] = "2020-01-01T00:00:00Z";
+                            }
+                        }
+                    }
+                    else
+                    {
+                        versionJson["time"] = "2020-01-01T00:00:00Z";
+                    }
+                    
+                    await File.WriteAllTextAsync(versionJsonPath, versionJson.ToJsonString(new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+                    System.Diagnostics.Debug.WriteLine($"[Forge] ✅ 已创建 version.json");
+                    
+                    // 5. 提取 Forge universal JAR（如果存在）
+                    var forgeJarEntry = zip.Entries.FirstOrDefault(e => 
+                        e.Name.Contains("universal.jar") && !e.Name.Contains("installer"));
+                    
+                    if (forgeJarEntry != null)
+                    {
+                        string forgeJarPath = Path.Combine(gameDirectory, "libraries", "net", "minecraftforge", "forge");
+                        Directory.CreateDirectory(forgeJarPath);
+                        
+                        // 解析库路径
+                        var forgeLibraries = versionInfo.GetProperty("libraries").EnumerateArray();
+                        foreach (var lib in forgeLibraries)
+                        {
+                            var libName = lib.GetProperty("name").GetString();
+                            if (libName != null && libName.Contains("minecraftforge:forge"))
+                            {
+                                // 提取库文件
+                                var nameParts = libName.Split(':');
+                                if (nameParts.Length == 3)
+                                {
+                                    string libVersion = nameParts[2];
+                                    string libPath = Path.Combine(gameDirectory, "libraries", "net", "minecraftforge", "forge", libVersion, $"forge-{libVersion}.jar");
+                                    Directory.CreateDirectory(Path.GetDirectoryName(libPath)!);
+                                    
+                                    using (var entryStream = forgeJarEntry.Open())
+                                    using (var fileStream = File.Create(libPath))
+                                    {
+                                        await entryStream.CopyToAsync(fileStream);
+                                    }
+                                    System.Diagnostics.Debug.WriteLine($"[Forge] ✅ 已提取 Forge universal JAR");
+                                }
+                                break;
+                            }
+                        }
+                    }
+                    
+                    // 6. 下载其他必需的库文件
+                    System.Diagnostics.Debug.WriteLine($"[Forge] 开始下载Forge依赖库...");
+                    var libraries = versionInfo.GetProperty("libraries").EnumerateArray();
+                    int downloadedCount = 0;
+                    int totalCount = 0;
+                    
+                    foreach (var lib in libraries)
+                    {
+                        totalCount++;
+                        var libName = lib.GetProperty("name").GetString();
+                        if (libName == null) continue;
+                        
+                        // 跳过Forge自己的库（已经提取了）
+                        if (libName.Contains("minecraftforge:forge")) 
+                        {
+                            downloadedCount++; // 计数但跳过下载
+                            continue;
+                        }
+                        
+                        // 构建库文件路径
+                        var nameParts = libName.Split(':');
+                        if (nameParts.Length != 3) continue;
+                        
+                        string group = nameParts[0].Replace('.', '/');
+                        string artifact = nameParts[1];
+                        string version = nameParts[2];
+                        string fileName = $"{artifact}-{version}.jar";
+                        string libPath = Path.Combine(gameDirectory, "libraries", group, artifact, version, fileName);
+                        
+                        // 如果文件已存在，跳过
+                        if (File.Exists(libPath)) 
+                        {
+                            downloadedCount++;
+                            continue;
+                        }
+                        
+                        // 下载库文件
+                        Directory.CreateDirectory(Path.GetDirectoryName(libPath)!);
+                        
+                        // 检查是否有自定义URL
+                        string? customUrl = null;
+                        if (lib.TryGetProperty("url", out var urlProp))
+                        {
+                            customUrl = urlProp.GetString();
+                        }
+                        
+                        // 构建下载URL列表
+                        List<string> urls = new List<string>();
+                        
+                        // 如果有自定义URL，优先使用
+                        if (!string.IsNullOrEmpty(customUrl))
+                        {
+                            var baseUrl = customUrl.TrimEnd('/');
+                            urls.Add($"{baseUrl}/{group}/{artifact}/{version}/{fileName}");
+                        }
+                        
+                        // 添加标准Maven仓库
+                        urls.Add($"https://bmclapi2.bangbang93.com/maven/{group}/{artifact}/{version}/{fileName}");
+                        urls.Add($"https://maven.minecraftforge.net/{group}/{artifact}/{version}/{fileName}");
+                        urls.Add($"https://libraries.minecraft.net/{group}/{artifact}/{version}/{fileName}");
+                        
+                        // 尝试下载
+                        bool downloaded = false;
+                        foreach (var url in urls)
+                        {
+                            try
+                            {
+                                using var client = new HttpClient();
+                                client.Timeout = TimeSpan.FromMinutes(2);
+                                var response = await client.GetAsync(url, _downloadCancellationToken!.Token);
+                                
+                                if (response.IsSuccessStatusCode)
+                                {
+                                    using var stream = await response.Content.ReadAsStreamAsync();
+                                    using var fileStream = File.Create(libPath);
+                                    await stream.CopyToAsync(fileStream, _downloadCancellationToken!.Token);
+                                    downloaded = true;
+                                    downloadedCount++;
+                                    System.Diagnostics.Debug.WriteLine($"[Forge] ✅ 已下载库: {libName} (从 {url})");
+                                    break;
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"[Forge] ⚠️ 下载失败: {url} - {ex.Message}");
+                            }
+                        }
+                        
+                        if (!downloaded)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[Forge] ❌ 无法下载库: {libName}，所有URL都失败");
+                        }
+                    }
+                    
+                    System.Diagnostics.Debug.WriteLine($"[Forge] ✅ 库文件下载完成: {downloadedCount}/{totalCount}");
+                    
+                    // 7. 合并原版信息到Forge JSON
+                    string vanillaJsonPath = Path.Combine(gameDirectory, "versions", mcVersion, $"{mcVersion}.json");
+                    if (File.Exists(vanillaJsonPath))
+                    {
+                        await MergeVanillaIntoForgeJson(versionJsonPath, forgeVersionId, gameDirectory, mcVersion);
+                    }
+                    
+                    System.Diagnostics.Debug.WriteLine($"[Forge] ✅ 手动安装完成！");
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Forge] ❌ 手动安装失败: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[Forge] 堆栈跟踪: {ex.StackTrace}");
                 return false;
             }
         }

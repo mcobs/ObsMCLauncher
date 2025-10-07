@@ -562,6 +562,7 @@ namespace ObsMCLauncher.Services
                     .Replace("${assets_index_name}", assetIndex)
                     .Replace("${auth_uuid}", account.Type == AccountType.Microsoft ? (account.MinecraftUUID ?? account.UUID) : account.UUID)
                     .Replace("${auth_access_token}", account.Type == AccountType.Microsoft ? (account.MinecraftAccessToken ?? "0") : "0")
+                    .Replace("${user_properties}", "{}") // 用户属性，离线模式使用空对象
                     .Replace("${user_type}", account.Type == AccountType.Microsoft ? "msa" : "legacy")
                     .Replace("${version_type}", "ObsMCLauncher")
                     .Replace("${game_assets}", $"\"{assetsDir}\""); // 旧版本可能使用这个
@@ -780,6 +781,33 @@ namespace ObsMCLauncher.Services
                     {
                         return Path.Combine(librariesDir, classifierArtifact.Path.Replace('/', Path.DirectorySeparatorChar));
                     }
+                }
+            }
+
+            // 如果没有 downloads 字段，尝试使用 Maven 标准路径（适用于旧版 Forge）
+            if (!string.IsNullOrEmpty(lib.Name))
+            {
+                try
+                {
+                    var parts = lib.Name.Split(':');
+                    if (parts.Length >= 3)
+                    {
+                        string group = parts[0].Replace('.', Path.DirectorySeparatorChar);
+                        string artifact = parts[1];
+                        string version = parts[2];
+                        string? classifier = parts.Length > 3 ? parts[3] : null;
+                        
+                        string fileName = !string.IsNullOrEmpty(classifier) 
+                            ? $"{artifact}-{version}-{classifier}.jar" 
+                            : $"{artifact}-{version}.jar";
+                        
+                        string path = Path.Combine(librariesDir, group, artifact, version, fileName);
+                        return path;
+                    }
+                }
+                catch
+                {
+                    // 解析失败，返回空字符串
                 }
             }
 
