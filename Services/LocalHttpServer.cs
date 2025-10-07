@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace ObsMCLauncher.Services
@@ -21,48 +22,52 @@ namespace ObsMCLauncher.Services
             _port = port;
         }
 
-        /// <summary>
-        /// 启动服务器并等待授权码
-        /// </summary>
-        /// <returns>授权码</returns>
-        public async Task<string> WaitForAuthCodeAsync()
+    /// <summary>
+    /// 启动服务器并等待授权码
+    /// </summary>
+    /// <returns>授权码</returns>
+    public async Task<string> WaitForAuthCodeAsync(CancellationToken cancellationToken = default)
+    {
+        _authCodeReceived = new TaskCompletionSource<string>();
+
+        try
         {
-            _authCodeReceived = new TaskCompletionSource<string>();
+            // 创建HTTP监听器
+            _listener = new HttpListener();
+            _listener.Prefixes.Add($"http://localhost:{_port}/");
+            _listener.Start();
 
-            try
+            Debug.WriteLine($"本地服务器已启动，监听端口: {_port}");
+            Console.WriteLine($"本地服务器已启动，监听 http://localhost:{_port}/");
+
+            // 等待请求（支持取消）
+            HttpListenerContext context;
+            using (cancellationToken.Register(() => _listener?.Stop()))
             {
-                // 创建HTTP监听器
-                _listener = new HttpListener();
-                _listener.Prefixes.Add($"http://localhost:{_port}/");
-                _listener.Start();
+                context = await _listener.GetContextAsync();
+            }
+            var request = context.Request;
+            var response = context.Response;
 
-                Debug.WriteLine($"本地服务器已启动，监听端口: {_port}");
-                Console.WriteLine($"本地服务器已启动，监听 http://localhost:{_port}/");
+            Debug.WriteLine($"收到请求: {request.Url}");
 
-                // 等待请求
-                var context = await _listener.GetContextAsync();
-                var request = context.Request;
-                var response = context.Response;
+            // 解析授权码
+            var query = request.Url?.Query;
+            string? code = null;
+            string? error = null;
 
-                Debug.WriteLine($"收到请求: {request.Url}");
+            if (!string.IsNullOrEmpty(query))
+            {
+                var queryParams = System.Web.HttpUtility.ParseQueryString(query);
+                code = queryParams["code"];
+                error = queryParams["error"];
+            }
 
-                // 解析授权码
-                var query = request.Url?.Query;
-                string? code = null;
-                string? error = null;
-
-                if (!string.IsNullOrEmpty(query))
-                {
-                    var queryParams = System.Web.HttpUtility.ParseQueryString(query);
-                    code = queryParams["code"];
-                    error = queryParams["error"];
-                }
-
-                // 返回HTML页面给用户
-                string responseHtml;
-                if (!string.IsNullOrEmpty(code))
-                {
-                    responseHtml = @"
+            // 返回HTML页面给用户
+            string responseHtml;
+            if (!string.IsNullOrEmpty(code))
+            {
+                responseHtml = @"
 <!DOCTYPE html>
 <html>
 <head>
@@ -120,13 +125,13 @@ namespace ObsMCLauncher.Services
 </body>
 </html>";
 
-                    Debug.WriteLine($"✅ 成功获取授权码: {code.Substring(0, 10)}...");
-                    Console.WriteLine($"✅ 微软账号授权成功！");
-                    _authCodeReceived.SetResult(code);
-                }
-                else
-                {
-                    responseHtml = $@"
+                Debug.WriteLine($"✅ 成功获取授权码: {code.Substring(0, 10)}...");
+                Console.WriteLine($"✅ 微软账号授权成功！");
+                _authCodeReceived.SetResult(code);
+            }
+            else
+            {
+                responseHtml = $@"
 <!DOCTYPE html>
 <html>
 <head>
@@ -174,32 +179,44 @@ namespace ObsMCLauncher.Services
 </body>
 </html>";
 
-                    Debug.WriteLine($"❌ 授权失败: {error}");
-                    Console.WriteLine($"❌ 微软账号授权失败: {error}");
-                    _authCodeReceived.SetException(new Exception($"授权失败: {error}"));
-                }
+                Debug.WriteLine($"❌ 授权失败: {error}");
+                Console.WriteLine($"❌ 微软账号授权失败: {error}");
+                _authCodeReceived.SetException(new Exception($"授权失败: {error}"));
+            }
 
-                // 发送响应
-                var buffer = Encoding.UTF8.GetBytes(responseHtml);
-                response.ContentLength64 = buffer.Length;
-                response.ContentType = "text/html; charset=utf-8";
-                await response.OutputStream.WriteAsync(buffer, 0, buffer.Length);
-                response.Close();
+            // 发送响应
+            var buffer = Encoding.UTF8.GetBytes(responseHtml);
+            response.ContentLength64 = buffer.Length;
+            response.ContentType = "text/html; charset=utf-8";
+            await response.OutputStream.WriteAsync(buffer, 0, buffer.Length);
+            response.Close();
 
-                // 返回授权码
-                return await _authCodeReceived.Task;
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"❌ 本地服务器错误: {ex.Message}");
-                Console.WriteLine($"❌ 本地服务器错误: {ex.Message}");
-                throw;
-            }
-            finally
-            {
-                Stop();
-            }
+            // 返回授权码
+            return await _authCodeReceived.Task;
         }
+        catch (HttpListenerException ex) when (ex.ErrorCode == 995) // 操作已中止
+        {
+            Debug.WriteLine("❌ 本地服务器已被取消");
+            Console.WriteLine("❌ 本地服务器已被取消");
+            throw new OperationCanceledException("用户取消登录", ex);
+        }
+        catch (ObjectDisposedException)
+        {
+            Debug.WriteLine("❌ 本地服务器已被释放（可能是取消操作）");
+            Console.WriteLine("❌ 本地服务器已被释放");
+            throw new OperationCanceledException("用户取消登录");
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"❌ 本地服务器错误: {ex.Message}");
+            Console.WriteLine($"❌ 本地服务器错误: {ex.Message}");
+            throw;
+        }
+        finally
+        {
+            Stop();
+        }
+    }
 
         /// <summary>
         /// 停止服务器

@@ -21,6 +21,15 @@ namespace ObsMCLauncher.Pages
             Unloaded += AccountManagementPage_Unloaded;
         }
 
+        /// <summary>
+        /// 重置登录状态（供外部调用）
+        /// </summary>
+        public void ResetLoginState()
+        {
+            _isLoggingIn = false;
+            System.Diagnostics.Debug.WriteLine("[AccountManagementPage] 登录状态已重置");
+        }
+
         private void AccountManagementPage_Loaded(object sender, RoutedEventArgs e)
         {
             LoadAccounts();
@@ -193,8 +202,13 @@ namespace ObsMCLauncher.Pages
 
         private async void AddMicrosoftAccount_Click(object sender, RoutedEventArgs e)
         {
-            if (_isLoggingIn) return; // 防止重复点击
+            if (_isLoggingIn)
+            {
+                System.Diagnostics.Debug.WriteLine("[AccountManagementPage] 登录正在进行中，忽略重复点击");
+                return; // 防止重复点击
+            }
             
+            System.Diagnostics.Debug.WriteLine("[AccountManagementPage] 开始微软账户登录流程");
             _isLoggingIn = true;
             
             // 获取主窗口引用
@@ -206,18 +220,18 @@ namespace ObsMCLauncher.Pages
             
             try
             {
-                // 1. 显示登录进度（使用MainWindow的全局UI）
-                mainWindow.ShowLoginProgress("准备登录...");
-                
-                // 设置取消令牌源到MainWindow
+                // 1. 先设置取消令牌源到MainWindow（必须在ShowLoginProgress之前）
                 mainWindow.SetLoginCancellationTokenSource(cts);
+                
+                // 2. 显示登录进度（使用MainWindow的全局UI）
+                mainWindow.ShowLoginProgress("准备登录...");
 
-                // 2. 创建认证服务并设置进度回调
+                // 3. 创建认证服务并设置进度回调
                 var authService = new MicrosoftAuthService();
                 authService.OnProgressUpdate = mainWindow.UpdateLoginProgress;
                 authService.OnAuthUrlGenerated = mainWindow.ShowAuthUrlDialog;
 
-                // 3. 开始登录（传入取消令牌）
+                // 4. 开始登录（传入取消令牌）
                 var account = await authService.LoginAsync(cts.Token);
 
                 if (account != null)
@@ -249,6 +263,12 @@ namespace ObsMCLauncher.Pages
                         MessageBoxButton.OK,
                         MessageBoxImage.Warning);
                 }
+            }
+            catch (OperationCanceledException)
+            {
+                // 用户取消登录，不显示错误消息
+                mainWindow.HideAllLoginDialogs();
+                System.Diagnostics.Debug.WriteLine("[AccountManagementPage] 用户取消了微软登录");
             }
             catch (Exception ex)
             {

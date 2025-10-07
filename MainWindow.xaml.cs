@@ -49,7 +49,10 @@ namespace ObsMCLauncher
         /// </summary>
         public void SetLoginCancellationTokenSource(CancellationTokenSource cts)
         {
+            // 清理旧的取消令牌源（如果存在）
+            _loginCancellationTokenSource?.Dispose();
             _loginCancellationTokenSource = cts;
+            System.Diagnostics.Debug.WriteLine($"[MainWindow] 登录取消令牌源已设置: {cts.GetHashCode()}");
         }
 
         #region 新版通知系统方法
@@ -94,6 +97,7 @@ namespace ObsMCLauncher
             else
             {
                 // 传递CancellationTokenSource，让通知的关闭按钮能够取消登录操作
+                System.Diagnostics.Debug.WriteLine($"[MainWindow] 创建登录通知，CTS: {_loginCancellationTokenSource?.GetHashCode() ?? 0}");
                 _currentLoginNotificationId = NotificationManager.Instance.ShowNotification(
                     "微软账户登录", 
                     status, 
@@ -102,6 +106,7 @@ namespace ObsMCLauncher
                     onCancel: null,
                     cancellationTokenSource: _loginCancellationTokenSource
                 );
+                System.Diagnostics.Debug.WriteLine($"[MainWindow] 登录通知ID: {_currentLoginNotificationId}");
             }
         }
 
@@ -148,6 +153,13 @@ namespace ObsMCLauncher
                     RemoveNotification(_currentLoginNotificationId);
                     _currentLoginNotificationId = null;
                 }
+                
+                // 清理登录取消令牌源
+                _loginCancellationTokenSource?.Dispose();
+                _loginCancellationTokenSource = null;
+                
+                // 重置账户页面的登录状态
+                _accountPage.ResetLoginState();
                 
                 // 隐藏旧版UI（保留兼容）
                 GlobalLoginProgressPanel.Visibility = Visibility.Collapsed;
@@ -233,6 +245,13 @@ namespace ObsMCLauncher
                 RemoveNotification(_currentLoginNotificationId);
                 _currentLoginNotificationId = null;
             }
+            
+            // 清理登录取消令牌源
+            _loginCancellationTokenSource?.Dispose();
+            _loginCancellationTokenSource = null;
+            
+            // 重置账户页面的登录状态
+            _accountPage.ResetLoginState();
             
             System.Diagnostics.Debug.WriteLine("[MainWindow] 用户取消了微软登录");
         }

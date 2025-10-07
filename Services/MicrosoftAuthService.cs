@@ -2,6 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Net.Security;
+using System.Security.Authentication;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
@@ -19,8 +22,49 @@ namespace ObsMCLauncher.Services
         private const string ClientId = "83c332d7-9874-4ede-9ca5-37cbda08c232";
         private const string RedirectUri = "http://localhost:35565/callback";
         
-        private static readonly HttpClient _httpClient = new HttpClient();
+        private static readonly HttpClient _httpClient = CreateHttpClient();
         private LocalHttpServer? _localServer;
+
+        /// <summary>
+        /// 创建配置好的 HttpClient
+        /// </summary>
+        private static HttpClient CreateHttpClient()
+        {
+            var handler = new HttpClientHandler
+            {
+                // 允许自动重定向
+                AllowAutoRedirect = true,
+                MaxAutomaticRedirections = 10,
+                
+                // 配置 SSL/TLS
+                SslProtocols = System.Security.Authentication.SslProtocols.Tls12 | System.Security.Authentication.SslProtocols.Tls13,
+                
+                // 开发环境下放宽证书验证（生产环境应该移除或更严格）
+                ServerCertificateCustomValidationCallback = (message, cert, chain, sslPolicyErrors) =>
+                {
+                    // 在调试模式下，可以放宽验证
+                    #if DEBUG
+                    if (sslPolicyErrors != System.Net.Security.SslPolicyErrors.None)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[MicrosoftAuth] SSL 证书警告: {sslPolicyErrors}");
+                        // 调试模式下允许通过
+                        return true;
+                    }
+                    #endif
+                    return sslPolicyErrors == System.Net.Security.SslPolicyErrors.None;
+                }
+            };
+
+            var client = new HttpClient(handler)
+            {
+                Timeout = TimeSpan.FromSeconds(30)
+            };
+            
+            // 设置默认请求头
+            client.DefaultRequestHeaders.Add("User-Agent", "ObsMCLauncher/1.0");
+            
+            return client;
+        }
 
         /// <summary>
         /// 进度更新回调
@@ -50,9 +94,6 @@ namespace ObsMCLauncher.Services
                 // 2. 启动本地HTTP服务器并打开浏览器
                 _localServer = new LocalHttpServer(35565);
                 
-                // 在新任务中等待授权码
-                var authCodeTask = _localServer.WaitForAuthCodeAsync();
-                
                 // 通知UI显示授权URL
                 OnAuthUrlGenerated?.Invoke(authUrl);
                 OnProgressUpdate?.Invoke("等待浏览器授权...");
@@ -73,7 +114,7 @@ namespace ObsMCLauncher.Services
 
                 // 3. 等待回调（支持取消）
                 Console.WriteLine("等待用户授权...");
-                var authCode = await Task.Run(async () => await authCodeTask, cancellationToken);
+                var authCode = await _localServer.WaitForAuthCodeAsync(cancellationToken);
                 cancellationToken.ThrowIfCancellationRequested();
                 Console.WriteLine($"✅ 收到授权码: {authCode.Substring(0, Math.Min(10, authCode.Length))}...");
 
@@ -340,26 +381,47 @@ namespace ObsMCLauncher.Services
         /// </summary>
         private async Task<MinecraftLoginResponse> LoginMinecraftAsync(string userHash, string xstsToken)
         {
-            var requestData = new
+            const int maxRetries = 3;
+            Exception? lastException = null;
+
+            for (int i = 0; i < maxRetries; i++)
             {
-                identityToken = $"XBL3.0 x={userHash};{xstsToken}"
-            };
+                try
+                {
+                    Debug.WriteLine($"[MicrosoftAuth] 尝试 Minecraft 登录 ({i + 1}/{maxRetries})");
 
-            var json = JsonSerializer.Serialize(requestData);
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
+                    var requestData = new
+                    {
+                        identityToken = $"XBL3.0 x={userHash};{xstsToken}"
+                    };
 
-            var response = await _httpClient.PostAsync(
-                "https://api.minecraftservices.com/authentication/login_with_xbox",
-                content);
+                    var json = JsonSerializer.Serialize(requestData);
+                    var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-            var responseJson = await response.Content.ReadAsStringAsync();
-            if (!response.IsSuccessStatusCode)
-            {
-                throw new Exception($"Minecraft 登录失败: {responseJson}");
+                    var response = await _httpClient.PostAsync(
+                        "https://api.minecraftservices.com/authentication/login_with_xbox",
+                        content);
+
+                    var responseJson = await response.Content.ReadAsStringAsync();
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        throw new Exception($"Minecraft 登录失败: {responseJson}");
+                    }
+
+                    return JsonSerializer.Deserialize<MinecraftLoginResponse>(responseJson)
+                        ?? throw new Exception("解析 Minecraft 登录响应失败");
+                }
+                catch (HttpRequestException ex) when (i < maxRetries - 1)
+                {
+                    Debug.WriteLine($"[MicrosoftAuth] Minecraft 登录失败 (尝试 {i + 1}/{maxRetries}): {ex.Message}");
+                    lastException = ex;
+                    
+                    // 等待一段时间后重试
+                    await Task.Delay(TimeSpan.FromSeconds(2));
+                }
             }
 
-            return JsonSerializer.Deserialize<MinecraftLoginResponse>(responseJson)
-                ?? throw new Exception("解析 Minecraft 登录响应失败");
+            throw lastException ?? new Exception("Minecraft 登录失败");
         }
 
         /// <summary>
