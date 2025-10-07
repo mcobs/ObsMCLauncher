@@ -468,6 +468,22 @@ namespace ObsMCLauncher.Services
             
             var classpathItems = new System.Collections.Generic.List<string>();
             
+            // 如果使用inheritsFrom，需要先添加父版本的客户端JAR（包含Minecraft核心类）
+            if (!string.IsNullOrEmpty(versionInfo.InheritsFrom))
+            {
+                var parentVersionId = versionInfo.InheritsFrom;
+                var parentJarPath = Path.Combine(gameDir, "versions", parentVersionId, $"{parentVersionId}.jar");
+                if (File.Exists(parentJarPath))
+                {
+                    classpathItems.Add(parentJarPath);
+                    Debug.WriteLine($"✅ 已添加父版本客户端到classpath: {parentVersionId}.jar");
+                }
+                else
+                {
+                    Debug.WriteLine($"⚠️ 父版本客户端JAR不存在: {parentJarPath}");
+                }
+            }
+            
             // 遍历所有库，构建classpath
             if (versionInfo.Libraries != null)
             {
@@ -518,6 +534,29 @@ namespace ObsMCLauncher.Services
             // 资源索引
             var assetIndex = versionInfo.AssetIndex?.Id ?? versionInfo.Assets ?? "legacy";
 
+            // 处理旧版本格式（1.12.2及之前使用minecraftArguments字符串）
+            if (!string.IsNullOrEmpty(versionInfo.MinecraftArguments))
+            {
+                Debug.WriteLine($"使用旧版本参数格式: minecraftArguments");
+                
+                // 替换旧版本参数中的占位符
+                var minecraftArgs = versionInfo.MinecraftArguments
+                    .Replace("${auth_player_name}", account.Username)
+                    .Replace("${version_name}", versionId)
+                    .Replace("${game_directory}", $"\"{gameDir}\"")
+                    .Replace("${assets_root}", $"\"{assetsDir}\"")
+                    .Replace("${assets_index_name}", assetIndex)
+                    .Replace("${auth_uuid}", account.Type == AccountType.Microsoft ? (account.MinecraftUUID ?? account.UUID) : account.UUID)
+                    .Replace("${auth_access_token}", account.Type == AccountType.Microsoft ? (account.MinecraftAccessToken ?? "0") : "0")
+                    .Replace("${user_type}", account.Type == AccountType.Microsoft ? "msa" : "legacy")
+                    .Replace("${version_type}", "ObsMCLauncher")
+                    .Replace("${game_assets}", $"\"{assetsDir}\""); // 旧版本可能使用这个
+                
+                args.Append(minecraftArgs);
+                return args.ToString();
+            }
+
+            // 新版本格式（1.13+使用arguments.game数组）
             // 1. 首先添加version.json中定义的额外游戏参数（如Forge的--launchTarget参数）
             if (versionInfo.Arguments?.Game != null)
             {
@@ -755,6 +794,7 @@ namespace ObsMCLauncher.Services
             public AssetIndexInfo? AssetIndex { get; set; }
             public Library[]? Libraries { get; set; }
             public GameArguments? Arguments { get; set; }
+            public string? MinecraftArguments { get; set; }  // 旧版本格式（1.12.2及之前）
             public string? InheritsFrom { get; set; }
         }
 
@@ -958,6 +998,9 @@ namespace ObsMCLauncher.Services
                     childVersion.Assets = parentVersion.Assets;
                 if (childVersion.Arguments == null && parentVersion.Arguments != null)
                     childVersion.Arguments = parentVersion.Arguments;
+                // 合并旧版本参数格式（如果子版本没有minecraftArguments，使用父版本的）
+                if (string.IsNullOrEmpty(childVersion.MinecraftArguments) && !string.IsNullOrEmpty(parentVersion.MinecraftArguments))
+                    childVersion.MinecraftArguments = parentVersion.MinecraftArguments;
 
                 Debug.WriteLine($"✅ 已合并父版本 {parentVersionId}，总libraries: {childVersion.Libraries?.Length ?? 0}");
                 return childVersion;
