@@ -290,18 +290,28 @@ namespace ObsMCLauncher.Services
                         // 格式: 1.20.1-47.2.0 或 1.20.1-47.2.0-1.20.1
                         if (versionText.StartsWith(mcVersion + "-"))
                         {
-                            var parts = versionText.Split('-');
-                            if (parts.Length >= 2)
+                            // 移除MC版本号前缀，获取Forge版本号
+                            var forgeVer = versionText.Substring(mcVersion.Length + 1);
+                            
+                            // 如果有额外的后缀（如 47.2.0-1.20.1），只取前面部分
+                            var firstDashIndex = forgeVer.IndexOf('-');
+                            if (firstDashIndex > 0)
                             {
-                                var forgeVer = parts[1];
-                                forgeList.Add(new ForgeVersion
+                                // 检查是否是类似 "47.2.0-1.20.1" 的格式
+                                var afterDash = forgeVer.Substring(firstDashIndex + 1);
+                                if (afterDash.StartsWith(mcVersion))
                                 {
-                                    Build = build--,
-                                    McVersion = mcVersion,
-                                    Version = forgeVer,
-                                    Modified = DateTime.Now.ToString("yyyy-MM-dd")
-                                });
+                                    forgeVer = forgeVer.Substring(0, firstDashIndex);
+                                }
                             }
+                            
+                            forgeList.Add(new ForgeVersion
+                            {
+                                Build = build--,
+                                McVersion = mcVersion,
+                                Version = forgeVer,
+                                Modified = DateTime.Now.ToString("yyyy-MM-dd")
+                            });
                         }
                     }
                 }

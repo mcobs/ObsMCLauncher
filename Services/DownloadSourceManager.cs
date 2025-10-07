@@ -61,7 +61,7 @@ namespace ObsMCLauncher.Services
             _currentService = source switch
             {
                 DownloadSource.BMCLAPI => _bmclapiService,
-                DownloadSource.Mojang => _mojangService,
+                DownloadSource.Official => _mojangService,
                 _ => _bmclapiService
             };
         }
@@ -73,9 +73,9 @@ namespace ObsMCLauncher.Services
         {
             return source switch
             {
-                DownloadSource.BMCLAPI => "BMCLAPI (推荐-中国大陆)",
-                DownloadSource.Mojang => "Mojang 官方源",
-                _ => "未知源"
+                DownloadSource.BMCLAPI => "BMCLAPI",
+                DownloadSource.Official => "Official",
+                _ => "Unknown"
             };
         }
 
@@ -87,7 +87,7 @@ namespace ObsMCLauncher.Services
             return source switch
             {
                 DownloadSource.BMCLAPI => "使用BMCLAPI镜像加速下载，适合中国大陆用户",
-                DownloadSource.Mojang => "使用官方源下载，速度可能较慢",
+                DownloadSource.Official => "使用官方源下载，速度可能较慢",
                 _ => ""
             };
         }

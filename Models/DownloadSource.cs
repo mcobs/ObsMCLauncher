@@ -13,7 +13,7 @@ namespace ObsMCLauncher.Models
         /// <summary>
         /// 官方源
         /// </summary>
-        Mojang
+        Official
     }
 }
 
