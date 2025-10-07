@@ -20,73 +20,23 @@
 
 ---
 
-## 🎨 UI 技术栈
+## 运行要求
 
-### 核心框架
-- **.NET 8.0** - 最新的 .NET 框架
-- **WPF (Windows Presentation Foundation)** - Windows 桌面应用框架
-- **XAML** - 界面标记语言
-
-### UI 设计
-- **Material Design** - 采用 Google Material Design 设计规范
-  - `MaterialDesignThemes` (4.9.0) - UI 组件库
-  - `MaterialDesignColors` (2.1.4) - 颜色主题
+- Windows 10/11 (x64)
+- [.NET 8.0 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/8.0)
+  - 如果运行时提示缺少 .NET，请下载并安装上述 Runtime
   
-### 设计风格
-- **WinUI 3 风格** - 参考 Windows 11 设计语言
-  - 纯正暗色模式（#202020 背景）
-  - 翡翠绿主题色（#10B981）
-  - 12px 圆角卡片设计
-  - 柔和阴影和发光效果
-  - 流畅的页面过渡动画
-
-### 界面特点
-- 🎨 现代化深色主题
-- ✨ 流畅的动画过渡
-- 🎴 卡片式布局设计
-- 💚 翡翠绿配色方案
-- 🌊 呼吸动画和悬停效果
-
----
-
-## 👤 账号管理功能
-
-### 功能概述
-启动器支持多账号管理，方便切换不同的游戏身份。
-
-### 账号类型
-
-#### 1. 微软账户 (Microsoft Account)
-- ✅ 支持正版 Minecraft 账户登录
-- ✅ 显示正版皮肤和披风
-- ✅ 可进入正版验证服务器
-- ⚠️ 需要购买正版游戏
-
-#### 2. 离线账户 (Offline Account)
-- ✅ 无需购买即可使用
-- ✅ 自定义任意用户名
-- ✅ 适合单机和离线服务器
-- ⚠️ 无法进入正版验证服务器
-
-### 账号管理界面
-- 📋 账号列表展示
-- ⭐ 设置默认账号
-- ✏️ 编辑账号信息
-- 🗑️ 删除不需要的账号
-- 🔄 刷新微软账户状态
-
-### 快速切换
-在主页可以快速选择当前使用的账号，无需进入设置页面。
-
 ---
 
 ## 🔧 快速开始
 
 ### 前置要求
+
 - Windows 10/11 (x64)
 - .NET 8.0 SDK
 
 ### 构建运行
+
 ```bash
 # 克隆项目
 git clone https://github.com/x1aoren/ObsMCLauncher.git
@@ -103,15 +53,16 @@ dotnet run
 ```
 
 ### 发布为可执行文件
+
 ```bash
-dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true
+dotnet publish -c Release -r win-x64 -p:PublishSingleFile=true
 ```
 
 ---
 
 ## 📦 项目结构
 
-```
+```text
 ObsMCLauncher/
 ├── App.xaml                    # 全局样式和主题配置
 ├── MainWindow.xaml             # 主窗口（导航框架）
