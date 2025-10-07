@@ -1285,6 +1285,10 @@ namespace ObsMCLauncher.Pages
             LauncherConfig config,
             IProgress<DownloadProgress> progress)
         {
+            var forgeFullVersion = $"{currentVersion}-{forgeVersion}";
+            var installerPath = Path.Combine(Path.GetTempPath(), $"forge-installer-{forgeFullVersion}.jar");
+            System.Threading.Timer? progressSimulator = null;
+            
             try
             {
                 System.Diagnostics.Debug.WriteLine($"[Forge] 开始使用官方安装器安装 Forge {forgeVersion} for MC {currentVersion}");
@@ -1300,9 +1304,6 @@ namespace ObsMCLauncher.Pages
                     DownloadOverallProgressBar.Value = 20;
                     DownloadOverallPercentageText.Text = "20%";
                 });
-
-                var forgeFullVersion = $"{currentVersion}-{forgeVersion}";
-                var installerPath = Path.Combine(Path.GetTempPath(), $"forge-installer-{forgeFullVersion}.jar");
                 
                 // 创建一个简单的进度报告器用于下载安装器
                 var installerProgress = new Progress<double>(p => {
@@ -1338,12 +1339,13 @@ namespace ObsMCLauncher.Pages
                 });
 
                 // 创建一个进度模拟器（因为Forge安装器不提供进度）
-                var progressSimulator = SimulateForgeInstallerProgress();
+                progressSimulator = SimulateForgeInstallerProgress();
 
                 bool installSuccess = await RunForgeInstallerAsync(installerPath, gameDirectory);
                 
                 // 停止进度模拟
                 progressSimulator.Dispose();
+                progressSimulator = null;
                 
                 if (!installSuccess)
                     throw new Exception("Forge安装器执行失败，请查看日志");
@@ -1388,15 +1390,10 @@ namespace ObsMCLauncher.Pages
 
                 // 6. 完成
                 await FinalizeForgeInstallation(customVersionName, forgeVersion);
-                
-                // 清理安装器
-                if (File.Exists(installerPath))
-                {
-                    File.Delete(installerPath);
-                }
             }
             catch (OperationCanceledException)
             {
+                System.Diagnostics.Debug.WriteLine("[Forge] 安装被用户取消");
                 throw;
             }
             catch (Exception ex)
@@ -1412,6 +1409,34 @@ namespace ObsMCLauncher.Pages
                     _currentDownloadTaskId = null;
                 }
                 throw;
+            }
+            finally
+            {
+                // 清理工作（无论成功、失败还是取消）
+                try
+                {
+                    // 停止进度模拟器
+                    progressSimulator?.Dispose();
+                    
+                    // 清理Forge安装器
+                    if (File.Exists(installerPath))
+                    {
+                        File.Delete(installerPath);
+                        System.Diagnostics.Debug.WriteLine($"[Forge] 🗑️ 已清理Forge安装器: {installerPath}");
+                    }
+                    
+                    // 清理临时原版文件夹（无论安装成功还是失败）
+                    string vanillaDir = Path.Combine(gameDirectory, "versions", currentVersion);
+                    if (Directory.Exists(vanillaDir))
+                    {
+                        await Task.Run(() => Directory.Delete(vanillaDir, true));
+                        System.Diagnostics.Debug.WriteLine($"[Forge] 🗑️ 已清理临时原版文件夹: {currentVersion}");
+                    }
+                }
+                catch (Exception cleanupEx)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[Forge] ⚠️ 清理临时文件失败: {cleanupEx.Message}");
+                }
             }
         }
 
@@ -1708,7 +1733,26 @@ namespace ObsMCLauncher.Pages
                 process.BeginOutputReadLine();
                 process.BeginErrorReadLine();
 
-                await process.WaitForExitAsync();
+                // 创建一个任务来等待进程退出
+                var processTask = process.WaitForExitAsync(_downloadCancellationToken!.Token);
+                
+                try
+                {
+                    await processTask;
+                }
+                catch (OperationCanceledException)
+                {
+                    // 用户取消了下载，终止Forge安装进程
+                    System.Diagnostics.Debug.WriteLine("[Forge] 用户取消安装，正在终止Forge安装器进程...");
+                    
+                    if (!process.HasExited)
+                    {
+                        process.Kill(true); // 终止进程及其子进程
+                        System.Diagnostics.Debug.WriteLine("[Forge] ✅ 已终止Forge安装器进程");
+                    }
+                    
+                    throw; // 重新抛出取消异常
+                }
 
                 System.Diagnostics.Debug.WriteLine($"[Forge] 安装器退出码: {process.ExitCode}");
                 

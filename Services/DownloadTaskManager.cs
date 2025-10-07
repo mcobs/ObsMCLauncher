@@ -210,7 +210,20 @@ namespace ObsMCLauncher.Services
                 var task = _tasks.FirstOrDefault(t => t.Id == taskId);
                 if (task != null && task.CanCancel)
                 {
-                    task.CancellationTokenSource?.Cancel();
+                    try
+                    {
+                        // 检查CancellationTokenSource是否已经被disposed或已经取消
+                        if (task.CancellationTokenSource != null && !task.CancellationTokenSource.IsCancellationRequested)
+                        {
+                            task.CancellationTokenSource.Cancel();
+                        }
+                    }
+                    catch (ObjectDisposedException)
+                    {
+                        // CancellationTokenSource已经被dispose，忽略
+                        System.Diagnostics.Debug.WriteLine($"[DownloadTaskManager] CancellationTokenSource已被dispose，任务ID: {taskId}");
+                    }
+                    
                     task.Status = DownloadTaskStatus.Cancelled;
                     NotifyTasksChanged();
                 }
