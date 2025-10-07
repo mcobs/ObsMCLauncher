@@ -14,7 +14,6 @@
             <Grid Margin="30">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
@@ -32,205 +31,62 @@
                          Margin="0,0,0,30"/>
             </StackPanel>
 
+
+
             <!-- 快速启动区域 -->
-            <Border Grid.Row="1" 
-                    Background="{StaticResource SurfaceBrush}"
-                    CornerRadius="10"
-                    Padding="25"
-                    Margin="0,0,0,30">
-                <StackPanel>
-                    <TextBlock Text="快速启动" 
-                             FontSize="20" 
-                             FontWeight="SemiBold"
-                             Margin="0,0,0,20"/>
-                    
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="1*"/>
-                            <ColumnDefinition Width="15"/>
-                            <ColumnDefinition Width="1*"/>
-                            <ColumnDefinition Width="15"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-
-                        <!-- 账号选择 -->
-                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                            <TextBlock Text="当前账号" 
-                                     FontSize="14" 
-                                     Foreground="#AAAAAA"
-                                     Margin="0,0,0,5"/>
-                            <ComboBox x:Name="AccountComboBox"
-                                    HorizontalAlignment="Stretch"
-                                    materialDesign:HintAssist.Hint="选择游戏账号"
-                                    Style="{StaticResource MaterialDesignOutlinedComboBox}">
-                                <!-- 动态加载账号列表 -->
-                            </ComboBox>
-                        </StackPanel>
-
-                        <!-- 版本选择 -->
-                        <StackPanel Grid.Column="2" VerticalAlignment="Center">
-                            <TextBlock Text="当前版本" 
-                                     FontSize="14" 
-                                     Foreground="#AAAAAA"
-                                     Margin="0,0,0,5"/>
-                            <ComboBox x:Name="VersionComboBox"
-                                    HorizontalAlignment="Stretch"
-                                    materialDesign:HintAssist.Hint="选择游戏版本"
-                                    Style="{StaticResource MaterialDesignOutlinedComboBox}">
-                                <!-- 动态加载版本列表 -->
-                            </ComboBox>
-                        </StackPanel>
-
-                        <!-- 启动按钮 -->
-                        <Button Grid.Column="4"
-                              x:Name="LaunchButton"
-                              Content="启动游戏"
-                              Height="56"
-                              Width="150"
-                              FontSize="16"
-                              VerticalAlignment="Bottom"
-                              Style="{StaticResource MaterialDesignRaisedButton}"
-                              materialDesign:ButtonAssist.CornerRadius="8"
-                              Background="{StaticResource PrimaryBrush}"
-                              Click="LaunchButton_Click">
-                            <Button.Effect>
-                                <DropShadowEffect Color="{Binding Source={StaticResource PrimaryBrush}, Path=Color}" 
-                                                BlurRadius="16" 
-                                                Opacity="0.2" 
-                                                ShadowDepth="0"/>
-                            </Button.Effect>
-                        </Button>
-                    </Grid>
-
-                    <!-- 启动选项 -->
-                    <StackPanel Orientation="Horizontal" Margin="0,20,0,0">
-                        <CheckBox Content="离线模式" 
-                                Margin="0,0,20,0"
-                                Style="{StaticResource MaterialDesignCheckBox}"/>
-                        <CheckBox Content="显示启动日志" 
-                                Margin="0,0,20,0"
-                                Style="{StaticResource MaterialDesignCheckBox}"/>
-                    </StackPanel>
-                </StackPanel>
-            </Border>
-
-            <!-- 功能卡片区域 -->
-            <Grid Grid.Row="2">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-
-                <!-- 版本管理卡片 -->
-                <Border Grid.Row="0" Grid.Column="0"
-                        Background="{StaticResource SurfaceBrush}"
-                        CornerRadius="10"
-                        Padding="20"
-                        Margin="0,0,15,15">
-                    <StackPanel>
-                        <materialDesign:PackIcon Kind="Download" 
-                                               Width="40" 
-                                               Height="40"
-                                               Foreground="{StaticResource PrimaryBrush}"
-                                               Margin="0,0,0,15"/>
-                        <TextBlock Text="版本管理" 
-                                 FontSize="18" 
-                                 FontWeight="SemiBold"
-                                 Margin="0,0,0,10"/>
-                        <TextBlock Text="下载和管理不同的 Minecraft 版本" 
-                                 FontSize="13" 
-                                 Foreground="#AAAAAA"
-                                 TextWrapping="Wrap"
-                                 Margin="0,0,0,15"/>
-                        <Button Content="前往下载" 
-                              Style="{StaticResource MaterialDesignOutlinedButton}"
-                              HorizontalAlignment="Left"/>
-                    </StackPanel>
-                </Border>
-
-                <!-- 资源管理卡片 -->
-                <Border Grid.Row="0" Grid.Column="1"
-                        Background="{StaticResource SurfaceBrush}"
-                        CornerRadius="10"
-                        Padding="20"
-                        Margin="0,0,15,15">
-                    <StackPanel>
-                        <materialDesign:PackIcon Kind="Package" 
-                                               Width="40" 
-                                               Height="40"
-                                               Foreground="{StaticResource SecondaryBrush}"
-                                               Margin="0,0,0,15"/>
-                        <TextBlock Text="资源中心" 
-                                 FontSize="18" 
-                                 FontWeight="SemiBold"
-                                 Margin="0,0,0,10"/>
-                        <TextBlock Text="下载 MOD、材质包、光影等资源" 
-                                 FontSize="13" 
-                                 Foreground="#AAAAAA"
-                                 TextWrapping="Wrap"
-                                 Margin="0,0,0,15"/>
-                        <Button Content="浏览资源" 
-                              Style="{StaticResource MaterialDesignOutlinedButton}"
-                              HorizontalAlignment="Left"/>
-                    </StackPanel>
-                </Border>
-
-                <!-- 设置卡片 -->
-                <Border Grid.Row="0" Grid.Column="2"
-                        Background="{StaticResource SurfaceBrush}"
-                        CornerRadius="10"
-                        Padding="20"
-                        Margin="0,0,0,15">
-                    <StackPanel>
-                        <materialDesign:PackIcon Kind="Settings" 
-                                               Width="40" 
-                                               Height="40"
-                                               Foreground="{StaticResource AccentBrush}"
-                                               Margin="0,0,0,15"/>
-                        <TextBlock Text="个性化设置" 
-                                 FontSize="18" 
-                                 FontWeight="SemiBold"
-                                 Margin="0,0,0,10"/>
-                        <TextBlock Text="自定义启动器和游戏配置" 
-                                 FontSize="13" 
-                                 Foreground="#AAAAAA"
-                                 TextWrapping="Wrap"
-                                 Margin="0,0,0,15"/>
-                        <Button Content="打开设置" 
-                              Style="{StaticResource MaterialDesignOutlinedButton}"
-                              HorizontalAlignment="Left"/>
-                    </StackPanel>
-                </Border>
-            </Grid>
-
-            <!-- 底部状态栏 -->
-            <Border Grid.Row="3"
+            <Border Grid.Row="2"
                     Background="{StaticResource SurfaceBrush}"
                     CornerRadius="8"
                     Padding="20,15"
                     Margin="0,15,0,0">
                 <Grid>
-                    <StackPanel Orientation="Horizontal">
-                        <materialDesign:PackIcon Kind="InformationOutline" 
-                                               Width="20" 
-                                               Height="20"
-                                               VerticalAlignment="Center"
-                                               Margin="0,0,10,0"/>
-                        <TextBlock Text="启动器状态：就绪" 
-                                 VerticalAlignment="Center"
-                                 FontSize="13"/>
-                    </StackPanel>
-                    <TextBlock x:Name="SystemInfoText"
-                             Text="正在加载系统信息..." 
-                             HorizontalAlignment="Right"
-                             VerticalAlignment="Center"
-                             FontSize="13"
-                             Foreground="#AAAAAA"/>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="1*"/>
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition Width="1*"/>
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- 账号选择 -->
+                    <ComboBox Grid.Column="0"
+                            x:Name="AccountComboBox"
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Center"
+                            materialDesign:HintAssist.Hint="选择游戏账号"
+                            Style="{StaticResource MaterialDesignOutlinedComboBox}">
+                        <!-- 动态加载账号列表 -->
+                    </ComboBox>
+
+                    <!-- 版本选择 -->
+                    <ComboBox Grid.Column="2"
+                            x:Name="VersionComboBox"
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Center"
+                            materialDesign:HintAssist.Hint="选择游戏版本"
+                            Style="{StaticResource MaterialDesignOutlinedComboBox}">
+                        <!-- 动态加载版本列表 -->
+                    </ComboBox>
+
+                    <!-- 启动按钮 -->
+                    <Button Grid.Column="4"
+                          x:Name="LaunchButton"
+                          Content="启动游戏"
+                          Height="40"
+                          Width="140"
+                          FontSize="14"
+                          VerticalAlignment="Center"
+                          Style="{StaticResource MaterialDesignRaisedButton}"
+                          materialDesign:ButtonAssist.CornerRadius="6"
+                          Background="{StaticResource PrimaryBrush}"
+                          Click="LaunchButton_Click">
+                        <Button.Effect>
+                            <DropShadowEffect Color="{Binding Source={StaticResource PrimaryBrush}, Path=Color}" 
+                                            BlurRadius="12" 
+                                            Opacity="0.2" 
+                                            ShadowDepth="0"/>
+                        </Button.Effect>
+                    </Button>
                 </Grid>
             </Border>
             </Grid>
