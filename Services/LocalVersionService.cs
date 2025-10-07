@@ -57,26 +57,45 @@ namespace ObsMCLauncher.Services
                     var jsonPath = System.IO.Path.Combine(versionDir, $"{versionId}.json");
                     var jarPath = System.IO.Path.Combine(versionDir, $"{versionId}.jar");
 
-                    // 检查必要文件是否存在
-                    if (!File.Exists(jsonPath) || !File.Exists(jarPath))
+                    // 检查JSON文件是否存在（必须）
+                    if (!File.Exists(jsonPath))
                     {
-                        System.Diagnostics.Debug.WriteLine($"版本 {versionId} 不完整，跳过");
+                        System.Diagnostics.Debug.WriteLine($"版本 {versionId} 缺少JSON文件，跳过");
+                        continue;
+                    }
+                    
+                    // 读取JSON以判断是否为Forge等Mod加载器
+                    string jsonContent = "";
+                    try
+                    {
+                        jsonContent = File.ReadAllText(jsonPath);
+                    }
+                    catch
+                    {
+                        System.Diagnostics.Debug.WriteLine($"版本 {versionId} JSON读取失败，跳过");
+                        continue;
+                    }
+                    
+                    // 检测是否为Mod加载器版本（Forge/Fabric等的JAR在libraries中，不需要检查版本文件夹的JAR）
+                    var loaderType = DetectLoaderType(jsonContent);
+                    bool isModLoader = !string.IsNullOrEmpty(loaderType);
+                    
+                    // 对于原版，必须有JAR文件；对于Mod加载器，JAR在libraries中
+                    if (!isModLoader && !File.Exists(jarPath))
+                    {
+                        System.Diagnostics.Debug.WriteLine($"版本 {versionId} 缺少JAR文件，跳过");
                         continue;
                     }
 
                     try
                     {
-                        // 读取版本JSON
-                        var jsonContent = File.ReadAllText(jsonPath);
+                        // 解析版本JSON
                         var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
                         var versionData = JsonSerializer.Deserialize<VersionJsonData>(jsonContent, options);
 
                         if (versionData != null)
                         {
                             var lastPlayed = Directory.GetLastAccessTime(versionDir);
-                            
-                            // 检测加载器类型
-                            var loaderType = DetectLoaderType(jsonContent);
                             
                             installedVersions.Add(new InstalledVersion
                             {

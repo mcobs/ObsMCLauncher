@@ -326,7 +326,8 @@ namespace ObsMCLauncher.Services
         public static async Task<bool> DownloadForgeInstallerAsync(
             string forgeVersion,
             string savePath,
-            IProgress<double>? progress = null)
+            IProgress<double>? progress = null,
+            System.Threading.CancellationToken cancellationToken = default)
         {
             try
             {
@@ -334,6 +335,8 @@ namespace ObsMCLauncher.Services
                 Debug.WriteLine($"[ForgeService] 开始下载Forge安装器: {forgeVersion} (源: {config.DownloadSource})");
                 
                 string url;
+                bool usedFallback = false;
+                
                 if (config.DownloadSource == DownloadSource.BMCLAPI)
                 {
                     // 使用BMCLAPI镜像源 - Maven格式
@@ -355,20 +358,40 @@ namespace ObsMCLauncher.Services
                     Directory.CreateDirectory(directory);
                 }
 
-                using var response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
-                response.EnsureSuccessStatusCode();
+                HttpResponseMessage response;
+                try
+                {
+                    response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+                    response.EnsureSuccessStatusCode();
+                }
+                catch (HttpRequestException ex) when (config.DownloadSource == DownloadSource.BMCLAPI && ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+                {
+                    // BMCLAPI 404，回退到官方源
+                    Debug.WriteLine($"[ForgeService] BMCLAPI未找到该版本，回退到官方源");
+                    url = $"{OFFICIAL_FORGE_MAVEN}{forgeVersion}/forge-{forgeVersion}-installer.jar";
+                    Debug.WriteLine($"[ForgeService] 回退URL: {url}");
+                    usedFallback = true;
+                    
+                    response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+                    response.EnsureSuccessStatusCode();
+                }
+                
+                if (usedFallback)
+                {
+                    Debug.WriteLine($"[ForgeService] 使用官方源成功");
+                }
 
                 var totalBytes = response.Content.Headers.ContentLength ?? 0;
-                using var contentStream = await response.Content.ReadAsStreamAsync();
+                using var contentStream = await response.Content.ReadAsStreamAsync(cancellationToken);
                 using var fileStream = new FileStream(savePath, FileMode.Create, FileAccess.Write, FileShare.None);
 
                 var buffer = new byte[8192];
                 long totalRead = 0;
                 int bytesRead;
 
-                while ((bytesRead = await contentStream.ReadAsync(buffer, 0, buffer.Length)) > 0)
+                while ((bytesRead = await contentStream.ReadAsync(buffer, 0, buffer.Length, cancellationToken)) > 0)
                 {
-                    await fileStream.WriteAsync(buffer, 0, bytesRead);
+                    await fileStream.WriteAsync(buffer, 0, bytesRead, cancellationToken);
                     totalRead += bytesRead;
 
                     if (totalBytes > 0)

@@ -385,26 +385,21 @@ namespace ObsMCLauncher.Pages
                     {
                         Debug.WriteLine($"⚠️ Assets资源下载完成，但有 {assetsResult.FailedAssets} 个文件失败");
                         
-                        // 显示详细的失败通知
-                        string notificationMessage;
-                        if (assetsResult.FailedAssets > 0)
+                        // 只在失败文件数量较多时才显示通知（避免与启动成功通知冲突）
+                        if (assetsResult.FailedAssets > 50)
                         {
-                            notificationMessage = $"{assetsResult.FailedAssets} 个资源文件下载失败，游戏可能缺少部分资源（如声音）";
-                        }
-                        else
-                        {
-                            notificationMessage = "资源检查失败，游戏可能缺少资源文件";
+                            string notificationMessage = $"{assetsResult.FailedAssets} 个资源文件下载失败，游戏可能缺少部分资源（如声音）";
+                            
+                            NotificationManager.Instance.ShowNotification(
+                                "部分资源下载失败",
+                                notificationMessage,
+                                NotificationType.Warning,
+                                6
+                            );
                         }
                         
-                        NotificationManager.Instance.ShowNotification(
-                            "资源文件下载失败",
-                            notificationMessage,
-                            NotificationType.Warning,
-                            6
-                        );
-                        
-                        // 如果失败资源很多，显示错误通知
-                        if (assetsResult.FailedAssets > 100)
+                        // 如果失败资源很多，显示严重错误通知
+                        if (assetsResult.FailedAssets > 200)
                         {
                             NotificationManager.Instance.ShowNotification(
                                 "大量资源下载失败",

@@ -81,21 +81,42 @@ namespace ObsMCLauncher.Services
                     throw new Exception(LastError);
                 }
 
+                // 处理inheritsFrom（合并父版本的libraries和其他信息）
+                if (!string.IsNullOrEmpty(versionInfo.InheritsFrom))
+                {
+                    Debug.WriteLine($"检测到inheritsFrom: {versionInfo.InheritsFrom}，开始合并父版本信息");
+                    versionInfo = MergeInheritedVersion(config.GameDirectory, versionInfo);
+                }
+
                 Debug.WriteLine($"版本JSON路径: {versionJsonPath}");
                 Debug.WriteLine($"MainClass: {versionInfo.MainClass}");
                 Debug.WriteLine($"Libraries: {versionInfo.Libraries?.Length ?? 0} 个");
 
-                // 3. 检查客户端JAR文件
+                // 判断是否为Mod加载器（Forge/Fabric等的JAR在libraries中）
+                bool isModLoader = versionInfo.MainClass?.Contains("forge", StringComparison.OrdinalIgnoreCase) == true ||
+                                   versionInfo.MainClass?.Contains("fabric", StringComparison.OrdinalIgnoreCase) == true ||
+                                   versionInfo.MainClass?.Contains("quilt", StringComparison.OrdinalIgnoreCase) == true;
+
+                // 3. 检查客户端JAR文件（原版需要，Mod加载器不需要）
                 onProgressUpdate?.Invoke("正在检查游戏主文件...");
                 cancellationToken.ThrowIfCancellationRequested();
                 var clientJarPath = Path.Combine(config.GameDirectory, "versions", versionId, $"{versionId}.jar");
-                if (!File.Exists(clientJarPath))
+                
+                if (!isModLoader)
                 {
-                    LastError = $"游戏主文件不存在: {clientJarPath}\n请先下载游戏版本";
-                    Debug.WriteLine($"❌ {LastError}");
-                    throw new FileNotFoundException(LastError);
+                    // 原版Minecraft需要版本文件夹中的JAR
+                    if (!File.Exists(clientJarPath))
+                    {
+                        LastError = $"游戏主文件不存在: {clientJarPath}\n请先下载游戏版本";
+                        Debug.WriteLine($"❌ {LastError}");
+                        throw new FileNotFoundException(LastError);
+                    }
+                    Debug.WriteLine($"客户端JAR: {clientJarPath}");
                 }
-                Debug.WriteLine($"客户端JAR: {clientJarPath}");
+                else
+                {
+                    Debug.WriteLine($"检测到Mod加载器版本，跳过版本文件夹JAR检查（JAR在libraries中）");
+                }
 
                 // 4. 检查库文件完整性（包括文件大小验证）
                 onProgressUpdate?.Invoke("正在检查游戏依赖库...");
@@ -231,6 +252,13 @@ namespace ObsMCLauncher.Services
                     throw new Exception(LastError);
                 }
 
+                // 处理inheritsFrom（合并父版本的libraries和其他信息）
+                if (!string.IsNullOrEmpty(versionInfo.InheritsFrom))
+                {
+                    Debug.WriteLine($"检测到inheritsFrom: {versionInfo.InheritsFrom}，开始合并父版本信息");
+                    versionInfo = MergeInheritedVersion(config.GameDirectory, versionInfo);
+                }
+
                 Debug.WriteLine($"MainClass: {versionInfo.MainClass}");
                 Debug.WriteLine($"Libraries: {versionInfo.Libraries?.Length ?? 0} 个");
 
@@ -239,6 +267,11 @@ namespace ObsMCLauncher.Services
                     LastError = "版本JSON中缺少MainClass字段";
                     throw new Exception(LastError);
                 }
+
+                // 判断是否为Mod加载器（Forge/Fabric等的JAR在libraries中）
+                bool isModLoader = versionInfo.MainClass?.Contains("forge", StringComparison.OrdinalIgnoreCase) == true ||
+                                   versionInfo.MainClass?.Contains("fabric", StringComparison.OrdinalIgnoreCase) == true ||
+                                   versionInfo.MainClass?.Contains("quilt", StringComparison.OrdinalIgnoreCase) == true;
 
                 // 3. 确保natives目录存在并解压natives库
                 var versionDir = Path.Combine(config.GameDirectory, "versions", versionId);
@@ -254,16 +287,24 @@ namespace ObsMCLauncher.Services
                 cancellationToken.ThrowIfCancellationRequested();
                 ExtractNatives(config.GameDirectory, versionId, versionInfo, nativesDir);
 
-                // 4. 验证客户端JAR存在
+                // 4. 验证客户端JAR存在（原版需要，Mod加载器不需要）
                 onProgressUpdate?.Invoke("正在验证游戏客户端文件...");
                 cancellationToken.ThrowIfCancellationRequested();
                 var clientJar = Path.Combine(versionDir, $"{versionId}.jar");
-                Debug.WriteLine($"客户端JAR: {clientJar}");
                 
-                if (!File.Exists(clientJar))
+                if (!isModLoader)
                 {
-                    LastError = $"客户端JAR文件不存在\n路径: {clientJar}";
-                    throw new FileNotFoundException(LastError);
+                    // 原版Minecraft需要版本文件夹中的JAR
+                    Debug.WriteLine($"客户端JAR: {clientJar}");
+                    if (!File.Exists(clientJar))
+                    {
+                        LastError = $"客户端JAR文件不存在\n路径: {clientJar}";
+                        throw new FileNotFoundException(LastError);
+                    }
+                }
+                else
+                {
+                    Debug.WriteLine($"检测到Mod加载器版本，跳过版本文件夹JAR验证（JAR在libraries中）");
                 }
 
                 // 5. 检查并下载缺失的库文件
@@ -427,7 +468,7 @@ namespace ObsMCLauncher.Services
             
             var classpathItems = new System.Collections.Generic.List<string>();
             
-            // 添加所有库
+            // 遍历所有库，构建classpath
             if (versionInfo.Libraries != null)
             {
                 foreach (var lib in versionInfo.Libraries)
@@ -435,38 +476,22 @@ namespace ObsMCLauncher.Services
                     if (IsLibraryAllowed(lib))
                     {
                         var libPath = GetLibraryPath(librariesDir, lib);
-                        if (File.Exists(libPath))
+                        if (!string.IsNullOrEmpty(libPath) && File.Exists(libPath))
                         {
                             classpathItems.Add(libPath);
                         }
                         else
                         {
-                            Debug.WriteLine($"⚠️ 库文件不存在: {libPath}");
+                            // 仅当库不是可选的特殊库时才打印警告
+                            bool isForgeSpecialLib = lib.Name != null && lib.Name.StartsWith("net.minecraftforge") && 
+                                                     (lib.Name.Contains(":client") || lib.Name.Contains(":server"));
+                            if (!isForgeSpecialLib)
+                            {
+                                Debug.WriteLine($"⚠️ 库文件不存在或路径无效: {libPath} (来自: {lib.Name})");
+                            }
                         }
                     }
                 }
-            }
-
-            // 添加客户端JAR
-            // 如果有inheritsFrom字段（如Forge），需要加载父版本的JAR
-            if (!string.IsNullOrEmpty(versionInfo.InheritsFrom))
-            {
-                var parentJar = Path.Combine(gameDir, "versions", versionInfo.InheritsFrom, $"{versionInfo.InheritsFrom}.jar");
-                if (File.Exists(parentJar))
-                {
-                    classpathItems.Add(parentJar);
-                    Debug.WriteLine($"添加父版本JAR到classpath: {parentJar}");
-                }
-                else
-                {
-                    Debug.WriteLine($"⚠️ 父版本JAR不存在: {parentJar}");
-                }
-            }
-            
-            var clientJar = Path.Combine(versionDir, $"{versionId}.jar");
-            if (File.Exists(clientJar))
-            {
-                classpathItems.Add(clientJar);
             }
             
             // 使用系统路径分隔符连接
@@ -593,12 +618,13 @@ namespace ObsMCLauncher.Services
             {
                 if (IsLibraryAllowed(lib))
                 {
-                    // 检查是否是Forge特殊库（client/server），这些库通常不存在或不需要
-                    if (lib.Name != null && lib.Name.Contains("forge") && 
-                        (lib.Name.Contains(":client") || lib.Name.Contains(":server")))
+                    bool isForgeSpecialLib = lib.Name != null && lib.Name.StartsWith("net.minecraftforge") && 
+                                             (lib.Name.Contains(":client") || lib.Name.Contains(":server"));
+
+                    if (isForgeSpecialLib)
                     {
                         Debug.WriteLine($"   ⚠️ 跳过Forge特殊库检查: {lib.Name}");
-                        continue; // 直接跳过这些库的检查
+                        continue;
                     }
                     
                     // 1. 检查普通库文件（artifact）
@@ -690,19 +716,17 @@ namespace ObsMCLauncher.Services
         {
             if (lib.Downloads?.Artifact?.Path != null)
             {
-                return Path.Combine(librariesDir, lib.Downloads.Artifact.Path.Replace("/", "\\"));
+                return Path.Combine(librariesDir, lib.Downloads.Artifact.Path.Replace('/', Path.DirectorySeparatorChar));
             }
 
-            // 备用方式：从name构建路径
-            if (!string.IsNullOrEmpty(lib.Name))
+            if (lib.Natives != null && lib.Natives.TryGetValue("windows", out var nativeKey))
             {
-                var parts = lib.Name.Split(':');
-                if (parts.Length >= 3)
+                if (lib.Downloads?.Classifiers != null && lib.Downloads.Classifiers.TryGetValue(nativeKey, out var classifierArtifact))
                 {
-                    var package = parts[0].Replace('.', '\\');
-                    var name = parts[1];
-                    var version = parts[2];
-                    return Path.Combine(librariesDir, package, name, version, $"{name}-{version}.jar");
+                    if (!string.IsNullOrEmpty(classifierArtifact.Path))
+                    {
+                        return Path.Combine(librariesDir, classifierArtifact.Path.Replace('/', Path.DirectorySeparatorChar));
+                    }
                 }
             }
 
@@ -879,6 +903,69 @@ namespace ObsMCLauncher.Services
             catch (Exception ex)
             {
                 Debug.WriteLine($"❌ 解压natives过程出错: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 合并继承的版本信息（处理inheritsFrom字段）
+        /// </summary>
+        private static VersionInfo MergeInheritedVersion(string gameDirectory, VersionInfo childVersion)
+        {
+            try
+            {
+                var parentVersionId = childVersion.InheritsFrom;
+                if (string.IsNullOrEmpty(parentVersionId))
+                    return childVersion;
+
+                // 读取父版本JSON
+                var parentJsonPath = Path.Combine(gameDirectory, "versions", parentVersionId, $"{parentVersionId}.json");
+                if (!File.Exists(parentJsonPath))
+                {
+                    Debug.WriteLine($"⚠️ 父版本JSON不存在: {parentJsonPath}，跳过合并");
+                    return childVersion;
+                }
+
+                var parentJson = File.ReadAllText(parentJsonPath);
+                var parentVersion = JsonSerializer.Deserialize<VersionInfo>(parentJson, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+
+                if (parentVersion == null)
+                {
+                    Debug.WriteLine($"⚠️ 无法解析父版本JSON: {parentVersionId}");
+                    return childVersion;
+                }
+
+                // 递归处理父版本的inheritsFrom
+                if (!string.IsNullOrEmpty(parentVersion.InheritsFrom))
+                {
+                    parentVersion = MergeInheritedVersion(gameDirectory, parentVersion);
+                }
+
+                // 合并libraries（子版本的libraries优先，然后添加父版本的）
+                var mergedLibraries = new System.Collections.Generic.List<Library>();
+                if (childVersion.Libraries != null)
+                    mergedLibraries.AddRange(childVersion.Libraries);
+                if (parentVersion.Libraries != null)
+                    mergedLibraries.AddRange(parentVersion.Libraries);
+                childVersion.Libraries = mergedLibraries.ToArray();
+
+                // 合并其他缺失的字段
+                if (childVersion.AssetIndex == null && parentVersion.AssetIndex != null)
+                    childVersion.AssetIndex = parentVersion.AssetIndex;
+                if (string.IsNullOrEmpty(childVersion.Assets) && !string.IsNullOrEmpty(parentVersion.Assets))
+                    childVersion.Assets = parentVersion.Assets;
+                if (childVersion.Arguments == null && parentVersion.Arguments != null)
+                    childVersion.Arguments = parentVersion.Arguments;
+
+                Debug.WriteLine($"✅ 已合并父版本 {parentVersionId}，总libraries: {childVersion.Libraries?.Length ?? 0}");
+                return childVersion;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"❌ 合并继承版本失败: {ex.Message}");
+                return childVersion;
             }
         }
     }
