@@ -557,6 +557,8 @@ namespace ObsMCLauncher.Pages
             {
                 loaderType = "Forge";
                 loaderVersion = (ForgeVersionComboBox?.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "";
+                // 移除 "(推荐)" 等标记
+                loaderVersion = loaderVersion.Replace(" (推荐)", "").Replace(" (最新)", "").Replace(" (Latest)", "").Replace(" (Recommended)", "").Trim();
             }
             else if (FabricRadio?.IsChecked == true)
             {

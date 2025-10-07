@@ -87,7 +87,7 @@ namespace ObsMCLauncher.Services
             return source switch
             {
                 DownloadSource.BMCLAPI => "使用BMCLAPI镜像加速下载，适合中国大陆用户",
-                DownloadSource.Mojang => "使用Mojang官方服务器，速度可能较慢",
+                DownloadSource.Mojang => "使用官方源下载，速度可能较慢",
                 _ => ""
             };
         }
