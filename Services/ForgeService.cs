@@ -344,22 +344,70 @@ namespace ObsMCLauncher.Services
                 var config = LauncherConfig.Load();
                 Debug.WriteLine($"[ForgeService] 开始下载Forge安装器: {forgeVersion} (源: {config.DownloadSource})");
                 
-                string url;
-                bool usedFallback = false;
+                // 准备多个可能的URL格式
+                var urlsToTry = new List<string>();
+                
+                // 提取MC版本号，用于判断是否是旧版本
+                string mcVersion = "";
+                if (forgeVersion.Contains("-"))
+                {
+                    mcVersion = forgeVersion.Split('-')[0];
+                }
+                
+                // 判断是否是旧版本Forge（1.12.2及之前）
+                bool isOldVersion = IsOldForgeVersion(mcVersion);
                 
                 if (config.DownloadSource == DownloadSource.BMCLAPI)
                 {
                     // 使用BMCLAPI镜像源 - Maven格式
-                    url = string.Format(BMCL_FORGE_DOWNLOAD, forgeVersion);
+                    if (isOldVersion)
+                    {
+                        // 旧版本格式：1.8.9-11.15.1.2318-1.8.9
+                        string oldFormatVersion = $"{forgeVersion}-{mcVersion}";
+                        urlsToTry.Add(string.Format(BMCL_FORGE_DOWNLOAD, oldFormatVersion));
+                        // 也尝试不带后缀的格式
+                        urlsToTry.Add(string.Format(BMCL_FORGE_DOWNLOAD, forgeVersion));
+                    }
+                    else
+                    {
+                        urlsToTry.Add(string.Format(BMCL_FORGE_DOWNLOAD, forgeVersion));
+                    }
+                    
+                    // 添加官方源作为备用
+                    if (isOldVersion)
+                    {
+                        string oldFormatVersion = $"{forgeVersion}-{mcVersion}";
+                        urlsToTry.Add($"{OFFICIAL_FORGE_MAVEN}{oldFormatVersion}/forge-{oldFormatVersion}-installer.jar");
+                        urlsToTry.Add($"https://files.minecraftforge.net/maven/net/minecraftforge/forge/{oldFormatVersion}/forge-{oldFormatVersion}-installer.jar");
+                    }
+                    urlsToTry.Add($"{OFFICIAL_FORGE_MAVEN}{forgeVersion}/forge-{forgeVersion}-installer.jar");
+                    urlsToTry.Add($"https://files.minecraftforge.net/maven/net/minecraftforge/forge/{forgeVersion}/forge-{forgeVersion}-installer.jar");
                 }
                 else
                 {
                     // 使用官方源
-                    // 格式: https://maven.minecraftforge.net/net/minecraftforge/forge/1.20.1-47.2.0/forge-1.20.1-47.2.0-installer.jar
-                    url = $"{OFFICIAL_FORGE_MAVEN}{forgeVersion}/forge-{forgeVersion}-installer.jar";
+                    if (isOldVersion)
+                    {
+                        // 旧版本格式：1.8.9-11.15.1.2318-1.8.9
+                        string oldFormatVersion = $"{forgeVersion}-{mcVersion}";
+                        // 格式1: Maven 仓库（旧版本格式）
+                        urlsToTry.Add($"{OFFICIAL_FORGE_MAVEN}{oldFormatVersion}/forge-{oldFormatVersion}-installer.jar");
+                        // 格式2: files.minecraftforge.net（旧版本格式）
+                        urlsToTry.Add($"https://files.minecraftforge.net/maven/net/minecraftforge/forge/{oldFormatVersion}/forge-{oldFormatVersion}-installer.jar");
+                    }
+                    
+                    // 格式3: Maven 仓库 (标准格式)
+                    urlsToTry.Add($"{OFFICIAL_FORGE_MAVEN}{forgeVersion}/forge-{forgeVersion}-installer.jar");
+                    // 格式4: files.minecraftforge.net (标准格式)
+                    urlsToTry.Add($"https://files.minecraftforge.net/maven/net/minecraftforge/forge/{forgeVersion}/forge-{forgeVersion}-installer.jar");
+                    // 格式5: BMCLAPI 作为最终备用
+                    if (isOldVersion)
+                    {
+                        string oldFormatVersion = $"{forgeVersion}-{mcVersion}";
+                        urlsToTry.Add(string.Format(BMCL_FORGE_DOWNLOAD, oldFormatVersion));
+                    }
+                    urlsToTry.Add(string.Format(BMCL_FORGE_DOWNLOAD, forgeVersion));
                 }
-
-                Debug.WriteLine($"[ForgeService] 下载URL: {url}");
 
                 // 确保目录存在
                 var directory = Path.GetDirectoryName(savePath);
@@ -368,27 +416,47 @@ namespace ObsMCLauncher.Services
                     Directory.CreateDirectory(directory);
                 }
 
-                HttpResponseMessage response;
-                try
+                HttpResponseMessage? response = null;
+                string successUrl = "";
+                Exception? lastException = null;
+                
+                // 尝试所有可能的URL
+                foreach (var url in urlsToTry)
                 {
-                    response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-                    response.EnsureSuccessStatusCode();
-                }
-                catch (HttpRequestException ex) when (config.DownloadSource == DownloadSource.BMCLAPI && ex.StatusCode == System.Net.HttpStatusCode.NotFound)
-                {
-                    // BMCLAPI 404，回退到官方源
-                    Debug.WriteLine($"[ForgeService] BMCLAPI未找到该版本，回退到官方源");
-                    url = $"{OFFICIAL_FORGE_MAVEN}{forgeVersion}/forge-{forgeVersion}-installer.jar";
-                    Debug.WriteLine($"[ForgeService] 回退URL: {url}");
-                    usedFallback = true;
-                    
-                    response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-                    response.EnsureSuccessStatusCode();
+                    try
+                    {
+                        Debug.WriteLine($"[ForgeService] 尝试下载URL: {url}");
+                        response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+                        response.EnsureSuccessStatusCode();
+                        successUrl = url;
+                        Debug.WriteLine($"[ForgeService] 成功找到Forge安装器: {url}");
+                        break; // 成功，跳出循环
+                    }
+                    catch (HttpRequestException ex)
+                    {
+                        Debug.WriteLine($"[ForgeService] URL失败 ({ex.StatusCode}): {url}");
+                        lastException = ex;
+                        response?.Dispose();
+                        response = null;
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"[ForgeService] URL错误: {url} - {ex.Message}");
+                        lastException = ex;
+                        response?.Dispose();
+                        response = null;
+                    }
                 }
                 
-                if (usedFallback)
+                // 如果所有URL都失败了
+                if (response == null || !response.IsSuccessStatusCode)
                 {
-                    Debug.WriteLine($"[ForgeService] 使用官方源成功");
+                    Debug.WriteLine($"[ForgeService] 所有URL都无法下载Forge安装器");
+                    if (lastException != null)
+                    {
+                        throw new Exception($"无法下载Forge安装器，已尝试 {urlsToTry.Count} 个URL", lastException);
+                    }
+                    return false;
                 }
 
                 var totalBytes = response.Content.Headers.ContentLength ?? 0;
@@ -502,6 +570,38 @@ namespace ObsMCLauncher.Services
             {
                 Debug.WriteLine($"[ForgeService] 提取version.json失败: {ex.Message}");
                 return null;
+            }
+        }
+
+        /// <summary>
+        /// 判断是否是旧版本Forge（1.12.2及之前）
+        /// 旧版本使用 1.8.9-11.15.1.2318-1.8.9 格式
+        /// 新版本使用 1.16.5-36.2.34 格式
+        /// </summary>
+        private static bool IsOldForgeVersion(string mcVersion)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(mcVersion)) return false;
+                
+                // 解析版本号
+                var versionParts = mcVersion.Split('.');
+                if (versionParts.Length < 2) return false;
+                
+                if (!int.TryParse(versionParts[0], out int major)) return false;
+                if (!int.TryParse(versionParts[1], out int minor)) return false;
+                
+                // 1.12.2 及之前的版本
+                if (major == 1 && minor <= 12)
+                {
+                    return true;
+                }
+                
+                return false;
+            }
+            catch
+            {
+                return false;
             }
         }
 

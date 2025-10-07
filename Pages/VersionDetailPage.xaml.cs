@@ -255,6 +255,28 @@ namespace ObsMCLauncher.Pages
         /// </summary>
         private async Task LoadForgeVersionsAsync()
         {
+            // 设置加载状态
+            _ = Dispatcher.BeginInvoke(new Action(() =>
+            {
+                if (ForgeRadio != null)
+                {
+                    ForgeRadio.IsEnabled = false;
+                    ForgeRadio.ToolTip = "正在加载Forge版本列表...";
+                }
+                if (ForgeVersionComboBox != null)
+                {
+                    ForgeVersionComboBox.Items.Clear();
+                    var loadingItem = new ComboBoxItem 
+                    { 
+                        Content = "正在加载中...", 
+                        IsEnabled = false,
+                        FontStyle = FontStyles.Italic
+                    };
+                    ForgeVersionComboBox.Items.Add(loadingItem);
+                    ForgeVersionComboBox.SelectedIndex = 0;
+                }
+            }));
+            
             try
             {
                 System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] 检查Forge支持: {currentVersion}");
@@ -320,7 +342,7 @@ namespace ObsMCLauncher.Pages
                                 ForgeVersionComboBox.Items.Add(item);
                             }
 
-                            // 默认选择第一个（最新版本）
+                            // 自动选择第一个版本（最新版本）
                             ForgeVersionComboBox.SelectedIndex = 0;
 
                             // 启用Forge选项
@@ -330,7 +352,7 @@ namespace ObsMCLauncher.Pages
                                 ForgeRadio.ToolTip = $"Forge for Minecraft {currentVersion} ({forgeVersions.Count} 个版本可用)";
                             }
 
-                            System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] 加载了 {forgeVersions.Count} 个Forge版本");
+                            System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] 加载了 {forgeVersions.Count} 个Forge版本，自动选择: {forgeVersions[0].Version}");
                         }
                     }
                 }));
@@ -467,8 +489,13 @@ namespace ObsMCLauncher.Pages
             // 根据选中的加载器添加后缀
             if (ForgeRadio?.IsChecked == true)
             {
-                var forgeVersion = (ForgeVersionComboBox?.SelectedItem as ComboBoxItem)?.Content?.ToString();
-                if (!string.IsNullOrEmpty(forgeVersion))
+                var selectedItem = ForgeVersionComboBox?.SelectedItem as ComboBoxItem;
+                var forgeVersion = selectedItem?.Content?.ToString();
+                
+                // 只有在选择了有效版本时才添加后缀
+                if (!string.IsNullOrEmpty(forgeVersion) && 
+                    !forgeVersion.Contains("请选择") && 
+                    selectedItem?.IsEnabled == true)
                 {
                     // 移除 "(推荐)" 等标记
                     forgeVersion = forgeVersion.Replace(" (推荐)", "").Trim();
@@ -481,8 +508,13 @@ namespace ObsMCLauncher.Pages
             }
             else if (FabricRadio?.IsChecked == true)
             {
-                var fabricVersion = (FabricVersionComboBox?.SelectedItem as ComboBoxItem)?.Content?.ToString();
-                if (!string.IsNullOrEmpty(fabricVersion))
+                var selectedItem = FabricVersionComboBox?.SelectedItem as ComboBoxItem;
+                var fabricVersion = selectedItem?.Content?.ToString();
+                
+                // 只有在选择了有效版本时才添加后缀
+                if (!string.IsNullOrEmpty(fabricVersion) && 
+                    !fabricVersion.Contains("请选择") && 
+                    selectedItem?.IsEnabled == true)
                 {
                     fabricVersion = fabricVersion.Replace(" (推荐)", "").Trim();
                     versionName += $"-fabric-{fabricVersion}";
@@ -494,8 +526,13 @@ namespace ObsMCLauncher.Pages
             }
             else if (OptiFineRadio?.IsChecked == true)
             {
-                var optifineVersion = (OptiFineVersionComboBox?.SelectedItem as ComboBoxItem)?.Content?.ToString();
-                if (!string.IsNullOrEmpty(optifineVersion))
+                var selectedItem = OptiFineVersionComboBox?.SelectedItem as ComboBoxItem;
+                var optifineVersion = selectedItem?.Content?.ToString();
+                
+                // 只有在选择了有效版本时才添加后缀
+                if (!string.IsNullOrEmpty(optifineVersion) && 
+                    !optifineVersion.Contains("请选择") && 
+                    selectedItem?.IsEnabled == true)
                 {
                     optifineVersion = optifineVersion.Replace(" (推荐)", "").Trim();
                     versionName += $"-optifine-{optifineVersion}";
@@ -507,8 +544,13 @@ namespace ObsMCLauncher.Pages
             }
             else if (QuiltRadio?.IsChecked == true)
             {
-                var quiltVersion = (QuiltVersionComboBox?.SelectedItem as ComboBoxItem)?.Content?.ToString();
-                if (!string.IsNullOrEmpty(quiltVersion))
+                var selectedItem = QuiltVersionComboBox?.SelectedItem as ComboBoxItem;
+                var quiltVersion = selectedItem?.Content?.ToString();
+                
+                // 只有在选择了有效版本时才添加后缀
+                if (!string.IsNullOrEmpty(quiltVersion) && 
+                    !quiltVersion.Contains("请选择") && 
+                    selectedItem?.IsEnabled == true)
                 {
                     quiltVersion = quiltVersion.Replace(" (推荐)", "").Trim();
                     versionName += $"-quilt-{quiltVersion}";
@@ -556,24 +598,57 @@ namespace ObsMCLauncher.Pages
             if (ForgeRadio?.IsChecked == true)
             {
                 loaderType = "Forge";
-                loaderVersion = (ForgeVersionComboBox?.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "";
+                var selectedItem = ForgeVersionComboBox?.SelectedItem as ComboBoxItem;
+                loaderVersion = selectedItem?.Content?.ToString() ?? "";
+                
+                // 检查是否有选择版本
+                if (string.IsNullOrEmpty(loaderVersion))
+                {
+                    MessageBox.Show("请先选择一个Forge版本！", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+                
                 // 移除 "(推荐)" 等标记
                 loaderVersion = loaderVersion.Replace(" (推荐)", "").Replace(" (最新)", "").Replace(" (Latest)", "").Replace(" (Recommended)", "").Trim();
             }
             else if (FabricRadio?.IsChecked == true)
             {
                 loaderType = "Fabric";
-                loaderVersion = (FabricVersionComboBox?.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "";
+                var selectedItem = FabricVersionComboBox?.SelectedItem as ComboBoxItem;
+                loaderVersion = selectedItem?.Content?.ToString() ?? "";
+                
+                // 检查是否有选择版本
+                if (string.IsNullOrEmpty(loaderVersion))
+                {
+                    MessageBox.Show("请先选择一个Fabric版本！", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
             }
             else if (OptiFineRadio?.IsChecked == true)
             {
                 loaderType = "OptiFine";
-                loaderVersion = (OptiFineVersionComboBox?.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "";
+                var selectedItem = OptiFineVersionComboBox?.SelectedItem as ComboBoxItem;
+                loaderVersion = selectedItem?.Content?.ToString() ?? "";
+                
+                // 检查是否有选择版本
+                if (string.IsNullOrEmpty(loaderVersion))
+                {
+                    MessageBox.Show("请先选择一个OptiFine版本！", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
             }
             else if (QuiltRadio?.IsChecked == true)
             {
                 loaderType = "Quilt";
-                loaderVersion = (QuiltVersionComboBox?.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "";
+                var selectedItem = QuiltVersionComboBox?.SelectedItem as ComboBoxItem;
+                loaderVersion = selectedItem?.Content?.ToString() ?? "";
+                
+                // 检查是否有选择版本
+                if (string.IsNullOrEmpty(loaderVersion))
+                {
+                    MessageBox.Show("请先选择一个Quilt版本！", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
             }
 
             // 获取自定义版本名称
@@ -1341,7 +1416,7 @@ namespace ObsMCLauncher.Pages
                 // 创建一个进度模拟器（因为Forge安装器不提供进度）
                 progressSimulator = SimulateForgeInstallerProgress();
 
-                bool installSuccess = await RunForgeInstallerAsync(installerPath, gameDirectory);
+                bool installSuccess = await RunForgeInstallerAsync(installerPath, gameDirectory, currentVersion);
                 
                 // 停止进度模拟
                 progressSimulator.Dispose();
@@ -1693,7 +1768,7 @@ namespace ObsMCLauncher.Pages
             return timer;
         }
 
-        private async Task<bool> RunForgeInstallerAsync(string installerPath, string gameDirectory)
+        private async Task<bool> RunForgeInstallerAsync(string installerPath, string gameDirectory, string mcVersion)
         {
             return await Task.Run(async () =>
             {
@@ -1717,9 +1792,25 @@ namespace ObsMCLauncher.Pages
                     await File.WriteAllTextAsync(profilesPath, System.Text.Json.JsonSerializer.Serialize(defaultProfiles, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
                 }
                 
+                // 判断是否是新版本Forge（1.13+需要 --installClient 参数）
+                bool isNewVersion = IsForgeInstallerNewVersion(mcVersion);
+                
                 var process = new System.Diagnostics.Process();
                 process.StartInfo.FileName = "java";
-                process.StartInfo.Arguments = $"-jar \"{installerPath}\" --installClient \"{gameDirectory}\"";
+                
+                // 根据版本决定参数
+                if (isNewVersion)
+                {
+                    // 1.13+ 版本：需要 --installClient 参数
+                    process.StartInfo.Arguments = $"-jar \"{installerPath}\" --installClient \"{gameDirectory}\"";
+                    System.Diagnostics.Debug.WriteLine($"[Forge] 使用新版本安装器参数 (MC {mcVersion})");
+                }
+                else
+                {
+                    // 1.12.2及之前：不需要参数
+                    process.StartInfo.Arguments = $"-jar \"{installerPath}\"";
+                    System.Diagnostics.Debug.WriteLine($"[Forge] 使用旧版本安装器参数 (MC {mcVersion})");
+                }
                 process.StartInfo.WorkingDirectory = gameDirectory;
                 process.StartInfo.UseShellExecute = false;
                 process.StartInfo.RedirectStandardOutput = true;
@@ -2034,6 +2125,35 @@ namespace ObsMCLauncher.Pages
             {
                 System.Diagnostics.Debug.WriteLine($"[Forge] ❌ 合并原版信息失败: {ex.Message}");
                 throw;
+            }
+        }
+
+        /// <summary>
+        /// 判断Forge安装器是否是新版本（1.13+需要 --installClient 参数）
+        /// </summary>
+        private bool IsForgeInstallerNewVersion(string mcVersion)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(mcVersion)) return false;
+                
+                // 解析版本号
+                var versionParts = mcVersion.Split('.');
+                if (versionParts.Length < 2) return false;
+                
+                if (!int.TryParse(versionParts[0], out int major)) return false;
+                if (!int.TryParse(versionParts[1], out int minor)) return false;
+                
+                // 1.13.0 及以上需要 --installClient 参数
+                if (major > 1) return true;
+                if (major == 1 && minor >= 13) return true;
+                
+                return false;
+            }
+            catch
+            {
+                // 解析失败，默认使用旧版本参数（更安全）
+                return false;
             }
         }
 
