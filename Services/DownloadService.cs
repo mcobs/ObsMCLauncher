@@ -196,15 +196,19 @@ namespace ObsMCLauncher.Services
                     await DownloadFileWithProgressAsync(
                         clientJarUrl,
                         clientJarPath,
-                        (currentBytes, speed) =>
+                        (currentBytes, speed, actualTotalBytes) =>
                         {
+                            // 如果预先知道的大小为0，使用实际下载时获取的大小
+                            var effectiveClientSize = clientSize > 0 ? clientSize : actualTotalBytes;
+                            var effectiveTotalBytes = totalBytes > 0 ? totalBytes : actualTotalBytes;
+                            
                             progress?.Report(new DownloadProgress
                             {
                                 Status = "正在下载客户端JAR...",
                                 CurrentFile = $"{installName}.jar",
-                                CurrentFileTotalBytes = clientSize,
+                                CurrentFileTotalBytes = effectiveClientSize,
                                 CurrentFileBytes = currentBytes,
-                                TotalBytes = totalBytes,
+                                TotalBytes = effectiveTotalBytes,
                                 TotalDownloadedBytes = downloadState.TotalDownloadedBytes + currentBytes,
                                 CompletedFiles = downloadState.CompletedFiles,
                                 TotalFiles = totalFiles,
@@ -439,7 +443,7 @@ namespace ObsMCLauncher.Services
         private static async Task DownloadFileWithProgressAsync(
             string url,
             string savePath,
-            Action<long, double>? progressCallback,
+            Action<long, double, long>? progressCallback,
             CancellationToken cancellationToken)
         {
             try
@@ -477,7 +481,7 @@ namespace ObsMCLauncher.Services
                         var bytesInPeriod = downloadedBytes - lastReportedBytes;
                         var speed = elapsedSeconds > 0 ? bytesInPeriod / elapsedSeconds : 0;
                         
-                        progressCallback?.Invoke(downloadedBytes, speed);
+                        progressCallback?.Invoke(downloadedBytes, speed, totalBytes);
                         
                         lastReportTime = now;
                         lastReportedBytes = downloadedBytes;
@@ -485,7 +489,7 @@ namespace ObsMCLauncher.Services
                 }
 
                 // 最后再报告一次，确保100%
-                progressCallback?.Invoke(downloadedBytes, 0);
+                progressCallback?.Invoke(downloadedBytes, 0, totalBytes);
 
                 System.Diagnostics.Debug.WriteLine($"✅ 下载完成: {Path.GetFileName(savePath)} ({downloadedBytes / 1024.0 / 1024.0:F2} MB)");
             }
@@ -507,11 +511,12 @@ namespace ObsMCLauncher.Services
             CancellationToken cancellationToken)
         {
             await DownloadFileWithProgressAsync(url, savePath, 
-                (bytes, speed) =>
+                (bytes, speed, totalBytes) =>
                 {
                     progress?.Report(new DownloadProgress
                     {
                         CurrentFileBytes = bytes,
+                        CurrentFileTotalBytes = totalBytes,
                         CurrentFile = Path.GetFileName(savePath),
                         Status = $"正在下载 {Path.GetFileName(savePath)}...",
                         DownloadSpeed = speed
@@ -585,13 +590,16 @@ namespace ObsMCLauncher.Services
                     await DownloadFileWithProgressAsync(
                         url, 
                         libraryPath,
-                        (currentBytes, speed) =>
+                        (currentBytes, speed, actualTotalBytes) =>
                         {
+                            // 如果预先知道的大小为0，使用实际下载时获取的大小
+                            var effectiveLibSize = libSize > 0 ? libSize : actualTotalBytes;
+                            
                             progress?.Report(new DownloadProgress
                             {
                                 Status = $"正在下载库文件 ({state.CompletedFiles + 1}/{totalFiles})...",
                                 CurrentFile = Path.GetFileName(libraryPath),
-                                CurrentFileTotalBytes = libSize,
+                                CurrentFileTotalBytes = effectiveLibSize,
                                 CurrentFileBytes = currentBytes,
                                 TotalBytes = totalBytes,
                                 TotalDownloadedBytes = baseDownloadedBytes + currentBytes,

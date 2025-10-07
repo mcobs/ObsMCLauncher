@@ -328,6 +328,169 @@ namespace ObsMCLauncher.Services
         }
 
         /// <summary>
+        /// 下载Forge安装器（带详细进度信息）
+        /// </summary>
+        /// <param name="forgeVersion">Forge版本 (格式: mcVersion-forgeVersion, 例如: 1.20.1-47.2.0)</param>
+        /// <param name="savePath">保存路径</param>
+        /// <param name="progressCallback">进度回调（当前字节数, 速度, 总字节数）</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        public static async Task<bool> DownloadForgeInstallerWithDetailsAsync(
+            string forgeVersion,
+            string savePath,
+            Action<long, double, long>? progressCallback = null,
+            System.Threading.CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var config = LauncherConfig.Load();
+                Debug.WriteLine($"[ForgeService] 开始下载Forge安装器: {forgeVersion} (源: {config.DownloadSource})");
+                
+                // 准备多个可能的URL格式（与原方法相同的逻辑）
+                var urlsToTry = new List<string>();
+                
+                // 提取MC版本号，用于判断是否是旧版本
+                string mcVersion = "";
+                if (forgeVersion.Contains("-"))
+                {
+                    mcVersion = forgeVersion.Split('-')[0];
+                }
+                
+                // 判断是否是旧版本Forge（1.12.2及之前）
+                bool isOldVersion = IsOldForgeVersion(mcVersion);
+                
+                if (config.DownloadSource == DownloadSource.BMCLAPI)
+                {
+                    // 使用BMCLAPI镜像源 - Maven格式
+                    if (isOldVersion)
+                    {
+                        // 旧版本格式：1.8.9-11.15.1.2318-1.8.9
+                        string oldFormatVersion = $"{forgeVersion}-{mcVersion}";
+                        urlsToTry.Add(string.Format(BMCL_FORGE_DOWNLOAD, oldFormatVersion));
+                        // 也尝试不带后缀的格式
+                        urlsToTry.Add(string.Format(BMCL_FORGE_DOWNLOAD, forgeVersion));
+                    }
+                    else
+                    {
+                        urlsToTry.Add(string.Format(BMCL_FORGE_DOWNLOAD, forgeVersion));
+                    }
+                    
+                    // 添加官方源作为备用
+                    if (isOldVersion)
+                    {
+                        string oldFormatVersion = $"{forgeVersion}-{mcVersion}";
+                        urlsToTry.Add($"{OFFICIAL_FORGE_MAVEN}{oldFormatVersion}/forge-{oldFormatVersion}-installer.jar");
+                        urlsToTry.Add($"https://files.minecraftforge.net/maven/net/minecraftforge/forge/{oldFormatVersion}/forge-{oldFormatVersion}-installer.jar");
+                    }
+                    urlsToTry.Add($"{OFFICIAL_FORGE_MAVEN}{forgeVersion}/forge-{forgeVersion}-installer.jar");
+                    urlsToTry.Add($"https://files.minecraftforge.net/maven/net/minecraftforge/forge/{forgeVersion}/forge-{forgeVersion}-installer.jar");
+                }
+                else
+                {
+                    // 使用官方源
+                    if (isOldVersion)
+                    {
+                        // 格式1: 1.8.9-11.15.1.2318-1.8.9
+                        string oldFormatVersion = $"{forgeVersion}-{mcVersion}";
+                        urlsToTry.Add($"{OFFICIAL_FORGE_MAVEN}{oldFormatVersion}/forge-{oldFormatVersion}-installer.jar");
+                        urlsToTry.Add($"https://files.minecraftforge.net/maven/net/minecraftforge/forge/{oldFormatVersion}/forge-{oldFormatVersion}-installer.jar");
+                    }
+                    // 格式2: 标准格式
+                    urlsToTry.Add($"{OFFICIAL_FORGE_MAVEN}{forgeVersion}/forge-{forgeVersion}-installer.jar");
+                    // 格式3: files.minecraftforge.net (标准格式)
+                    urlsToTry.Add($"https://files.minecraftforge.net/maven/net/minecraftforge/forge/{forgeVersion}/forge-{forgeVersion}-installer.jar");
+                    // 格式4: BMCLAPI 作为最终备用
+                    if (isOldVersion)
+                    {
+                        string oldFormatVersion = $"{forgeVersion}-{mcVersion}";
+                        urlsToTry.Add(string.Format(BMCL_FORGE_DOWNLOAD, oldFormatVersion));
+                    }
+                    urlsToTry.Add(string.Format(BMCL_FORGE_DOWNLOAD, forgeVersion));
+                }
+                
+                // 确保目录存在
+                var directory = Path.GetDirectoryName(savePath);
+                if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+                {
+                    Directory.CreateDirectory(directory);
+                }
+
+                HttpResponseMessage? response = null;
+                Exception? lastException = null;
+                
+                // 尝试所有可能的URL
+                foreach (var url in urlsToTry)
+                {
+                    try
+                    {
+                        Debug.WriteLine($"[ForgeService] 尝试下载URL: {url}");
+                        response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+                        response.EnsureSuccessStatusCode();
+                        Debug.WriteLine($"[ForgeService] 成功找到Forge安装器: {url}");
+                        break; // 成功，跳出循环
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"[ForgeService] URL失败: {url} - {ex.Message}");
+                        lastException = ex;
+                        response?.Dispose();
+                        response = null;
+                    }
+                }
+                
+                // 如果所有URL都失败了
+                if (response == null || !response.IsSuccessStatusCode)
+                {
+                    Debug.WriteLine($"[ForgeService] 所有URL都无法下载Forge安装器");
+                    return false;
+                }
+
+                var totalBytes = response.Content.Headers.ContentLength ?? 0;
+                using var contentStream = await response.Content.ReadAsStreamAsync(cancellationToken);
+                using var fileStream = new FileStream(savePath, FileMode.Create, FileAccess.Write, FileShare.None);
+
+                var buffer = new byte[8192];
+                long totalRead = 0;
+                int bytesRead;
+                
+                // 用于计算下载速度
+                var startTime = DateTime.Now;
+                var lastReportTime = startTime;
+                var lastReportedBytes = 0L;
+
+                while ((bytesRead = await contentStream.ReadAsync(buffer, 0, buffer.Length, cancellationToken)) > 0)
+                {
+                    await fileStream.WriteAsync(buffer, 0, bytesRead, cancellationToken);
+                    totalRead += bytesRead;
+
+                    // 每100ms报告一次进度
+                    var now = DateTime.Now;
+                    if ((now - lastReportTime).TotalMilliseconds >= 100 || totalRead == totalBytes)
+                    {
+                        var elapsedSeconds = (now - lastReportTime).TotalSeconds;
+                        var bytesInPeriod = totalRead - lastReportedBytes;
+                        var speed = elapsedSeconds > 0 ? bytesInPeriod / elapsedSeconds : 0;
+                        
+                        progressCallback?.Invoke(totalRead, speed, totalBytes);
+                        
+                        lastReportTime = now;
+                        lastReportedBytes = totalRead;
+                    }
+                }
+                
+                // 最后再报告一次
+                progressCallback?.Invoke(totalRead, 0, totalBytes);
+
+                Debug.WriteLine($"[ForgeService] Forge安装器下载完成: {savePath}");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[ForgeService] 下载Forge安装器失败: {ex.Message}");
+                return false;
+            }
+        }
+        
+        /// <summary>
         /// 下载Forge安装器
         /// </summary>
         /// <param name="forgeVersion">Forge版本 (格式: mcVersion-forgeVersion, 例如: 1.20.1-47.2.0)</param>
@@ -466,16 +629,29 @@ namespace ObsMCLauncher.Services
                 var buffer = new byte[8192];
                 long totalRead = 0;
                 int bytesRead;
+                
+                // 用于计算下载速度
+                var startTime = DateTime.Now;
+                var lastReportTime = startTime;
+                var lastReportedBytes = 0L;
 
                 while ((bytesRead = await contentStream.ReadAsync(buffer, 0, buffer.Length, cancellationToken)) > 0)
                 {
                     await fileStream.WriteAsync(buffer, 0, bytesRead, cancellationToken);
                     totalRead += bytesRead;
 
-                    if (totalBytes > 0)
+                    // 每100ms报告一次进度
+                    var now = DateTime.Now;
+                    if ((now - lastReportTime).TotalMilliseconds >= 100 || totalRead == totalBytes)
                     {
-                        var percentage = (double)totalRead / totalBytes * 100;
-                        progress?.Report(percentage);
+                        if (totalBytes > 0)
+                        {
+                            var percentage = (double)totalRead / totalBytes * 100;
+                            progress?.Report(percentage);
+                        }
+                        
+                        lastReportTime = now;
+                        lastReportedBytes = totalRead;
                     }
                 }
 

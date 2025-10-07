@@ -1378,16 +1378,34 @@ namespace ObsMCLauncher.Pages
                     CurrentFileText.Text = $"forge-{currentVersion}-{forgeVersion}-installer.jar";
                     DownloadOverallProgressBar.Value = 20;
                     DownloadOverallPercentageText.Text = "20%";
+                    DownloadSpeedText.Text = "准备下载...";
+                    DownloadSizeText.Text = "0 B / 0 B";
                 });
                 
-                // 创建一个简单的进度报告器用于下载安装器
-                var installerProgress = new Progress<double>(p => {
-                    _ = Dispatcher.BeginInvoke(() => {
-                        DownloadOverallProgressBar.Value = 20 + (p * 0.2); // 20%-40%
-                    }, System.Windows.Threading.DispatcherPriority.Background);
-                });
-                
-                if (!await ForgeService.DownloadForgeInstallerAsync(forgeFullVersion, installerPath, installerProgress, _downloadCancellationToken!.Token))
+                // 使用带详细进度信息的下载方法
+                if (!await ForgeService.DownloadForgeInstallerWithDetailsAsync(
+                    forgeFullVersion, 
+                    installerPath, 
+                    (currentBytes, speed, totalBytes) =>
+                    {
+                        _ = Dispatcher.BeginInvoke(() => {
+                            // 计算百分比
+                            double percentage = totalBytes > 0 ? (double)currentBytes / totalBytes * 100 : 0;
+                            
+                            // 更新总体进度（20%-40%）
+                            DownloadOverallProgressBar.Value = 20 + (percentage * 0.2);
+                            DownloadOverallPercentageText.Text = $"{(int)(20 + percentage * 0.2)}%";
+                            
+                            // 更新当前文件进度
+                            DownloadCurrentProgressBar.Value = percentage;
+                            DownloadCurrentPercentageText.Text = $"{percentage:F0}%";
+                            
+                            // 更新速度和文件大小
+                            DownloadSpeedText.Text = FormatSpeed(speed);
+                            DownloadSizeText.Text = $"{FormatFileSize(currentBytes)} / {FormatFileSize(totalBytes)}";
+                        }, System.Windows.Threading.DispatcherPriority.Background);
+                    },
+                    _downloadCancellationToken!.Token))
                     throw new Exception("Forge安装器下载失败");
 
                 // 3. 下载原版文件（Forge安装器需要）
