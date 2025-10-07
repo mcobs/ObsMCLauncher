@@ -30,6 +30,9 @@ namespace ObsMCLauncher
             // 初始化通知管理器
             NotificationManager.Instance.Initialize(GlobalNotificationContainer);
             
+            // 初始化对话框管理器
+            DialogManager.Instance.Initialize(GlobalDialogContainer);
+            
             // 预创建所有页面实例
             _homePage = new HomePage();
             _accountPage = new AccountManagementPage();

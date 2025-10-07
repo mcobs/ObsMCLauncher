@@ -7,6 +7,7 @@ using System.Windows.Media.Animation;
 using MaterialDesignThemes.Wpf;
 using ObsMCLauncher.Models;
 using ObsMCLauncher.Services;
+using ObsMCLauncher.Utils;
 
 namespace ObsMCLauncher.Pages
 {
@@ -242,26 +243,21 @@ namespace ObsMCLauncher.Pages
                     // 隐藏所有对话框
                     mainWindow.HideAllLoginDialogs();
                     
-                    MessageBox.Show(
-                        $"✅ 成功添加微软账户\n\n" +
-                        $"游戏名: {account.Username}\n" +
-                        $"UUID: {account.MinecraftUUID}",
+                    // 使用通知管理器显示成功消息
+                    NotificationManager.Instance.ShowNotification(
                         "登录成功",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Information);
+                        $"成功添加微软账户：{account.Username}",
+                        NotificationType.Success,
+                        5
+                    );
                 }
                 else
                 {
                     mainWindow.HideAllLoginDialogs();
-                    MessageBox.Show(
-                        "❌ 登录失败！\n\n" +
-                        "可能的原因：\n" +
-                        "• 未购买正版 Minecraft\n" +
-                        "• 网络连接问题\n" +
-                        "• 授权被取消",
+                    await DialogManager.Instance.ShowWarning(
                         "登录失败",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Warning);
+                        "登录失败！\n\n可能的原因：\n• 未购买正版 Minecraft\n• 网络连接问题\n• 授权被取消"
+                    );
                 }
             }
             catch (OperationCanceledException)
@@ -274,13 +270,10 @@ namespace ObsMCLauncher.Pages
             {
                 mainWindow.HideAllLoginDialogs();
                 
-                MessageBox.Show(
-                    $"❌ 微软账户登录失败\n\n" +
-                    $"错误: {ex.Message}\n\n" +
-                    "请检查网络连接后重试",
+                await DialogManager.Instance.ShowError(
                     "登录错误",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Error);
+                    $"微软账户登录失败\n\n错误: {ex.Message}\n\n请检查网络连接后重试"
+                );
                 
                 System.Diagnostics.Debug.WriteLine($"微软登录错误详情: {ex}");
             }
@@ -299,19 +292,19 @@ namespace ObsMCLauncher.Pages
             UsernameTextBox.Focus();
         }
 
-        private void ConfirmAddAccount_Click(object sender, RoutedEventArgs e)
+        private async void ConfirmAddAccount_Click(object sender, RoutedEventArgs e)
         {
             var username = UsernameTextBox.Text.Trim();
 
             if (string.IsNullOrEmpty(username))
             {
-                MessageBox.Show("请输入用户名", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                await DialogManager.Instance.ShowWarning("提示", "请输入用户名");
                 return;
             }
 
             if (username.Length < 3 || username.Length > 16)
             {
-                MessageBox.Show("用户名长度必须在 3-16 个字符之间", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                await DialogManager.Instance.ShowWarning("提示", "用户名长度必须在 3-16 个字符之间");
                 return;
             }
 
@@ -320,11 +313,18 @@ namespace ObsMCLauncher.Pages
                 AccountService.Instance.AddOfflineAccount(username);
                 AddAccountPanel.Visibility = Visibility.Collapsed;
                 LoadAccounts();
-                MessageBox.Show($"成功添加离线账户：{username}", "成功", MessageBoxButton.OK, MessageBoxImage.Information);
+                
+                // 使用通知管理器显示成功消息
+                NotificationManager.Instance.ShowNotification(
+                    "添加成功",
+                    $"成功添加离线账户：{username}",
+                    NotificationType.Success,
+                    3
+                );
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message, "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                await DialogManager.Instance.ShowError("错误", ex.Message);
             }
         }
 
@@ -343,7 +343,7 @@ namespace ObsMCLauncher.Pages
             }
         }
 
-        private void DeleteAccount_Click(object sender, RoutedEventArgs e)
+        private async void DeleteAccount_Click(object sender, RoutedEventArgs e)
         {
             if (sender is Button button && button.Tag is string accountId)
             {
@@ -352,16 +352,24 @@ namespace ObsMCLauncher.Pages
 
                 if (account != null)
                 {
-                    var result = MessageBox.Show(
-                        $"确定要删除账号 '{account.Username}' 吗？",
+                    var result = await DialogManager.Instance.ShowQuestion(
                         "确认删除",
-                        MessageBoxButton.YesNo,
-                        MessageBoxImage.Question);
+                        $"确定要删除账号 '{account.Username}' 吗？",
+                        DialogButtons.YesNo
+                    );
 
-                    if (result == MessageBoxResult.Yes)
+                    if (result == DialogResult.Yes)
                     {
                         AccountService.Instance.DeleteAccount(accountId);
                         LoadAccounts();
+                        
+                        // 使用通知管理器显示成功消息
+                        NotificationManager.Instance.ShowNotification(
+                            "删除成功",
+                            $"账号 '{account.Username}' 已删除",
+                            NotificationType.Success,
+                            3
+                        );
                     }
                 }
             }

@@ -604,7 +604,7 @@ namespace ObsMCLauncher.Pages
                 // 检查是否有选择版本
                 if (string.IsNullOrEmpty(loaderVersion))
                 {
-                    MessageBox.Show("请先选择一个Forge版本！", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    await DialogManager.Instance.ShowWarning("提示", "请先选择一个Forge版本！");
                     return;
                 }
                 
@@ -620,7 +620,7 @@ namespace ObsMCLauncher.Pages
                 // 检查是否有选择版本
                 if (string.IsNullOrEmpty(loaderVersion))
                 {
-                    MessageBox.Show("请先选择一个Fabric版本！", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    await DialogManager.Instance.ShowWarning("提示", "请先选择一个Fabric版本！");
                     return;
                 }
             }
@@ -633,7 +633,7 @@ namespace ObsMCLauncher.Pages
                 // 检查是否有选择版本
                 if (string.IsNullOrEmpty(loaderVersion))
                 {
-                    MessageBox.Show("请先选择一个OptiFine版本！", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    await DialogManager.Instance.ShowWarning("提示", "请先选择一个OptiFine版本！");
                     return;
                 }
             }
@@ -646,7 +646,7 @@ namespace ObsMCLauncher.Pages
                 // 检查是否有选择版本
                 if (string.IsNullOrEmpty(loaderVersion))
                 {
-                    MessageBox.Show("请先选择一个Quilt版本！", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    await DialogManager.Instance.ShowWarning("提示", "请先选择一个Quilt版本！");
                     return;
                 }
             }
@@ -655,7 +655,7 @@ namespace ObsMCLauncher.Pages
             var customVersionName = VersionNameTextBox?.Text?.Trim();
             if (string.IsNullOrEmpty(customVersionName))
             {
-                MessageBox.Show("请输入版本名称！", "错误", MessageBoxButton.OK, MessageBoxImage.Warning);
+                await DialogManager.Instance.ShowWarning("错误", "请输入版本名称！");
                 return;
             }
 
@@ -663,7 +663,7 @@ namespace ObsMCLauncher.Pages
             var invalidChars = Path.GetInvalidFileNameChars();
             if (customVersionName.Any(c => invalidChars.Contains(c)))
             {
-                MessageBox.Show("版本名称包含非法字符，请修改！", "错误", MessageBoxButton.OK, MessageBoxImage.Warning);
+                await DialogManager.Instance.ShowWarning("错误", "版本名称包含非法字符，请修改！");
                 return;
             }
 
@@ -813,11 +813,11 @@ namespace ObsMCLauncher.Pages
                                 
                                 if (assetsResult.FailedAssets > 0)
                                 {
-                                    MessageBox.Show(
-                                        $"游戏主体已安装完成，但有 {assetsResult.FailedAssets} 个资源文件下载失败。\n\n游戏可能缺少部分资源（如声音、语言文件等）。\n\n建议稍后在启动游戏时重新下载，或更换下载源。",
+                                    NotificationManager.Instance.ShowNotification(
                                         "资源下载部分失败",
-                                        MessageBoxButton.OK,
-                                        MessageBoxImage.Warning
+                                        $"{assetsResult.FailedAssets} 个资源文件下载失败，游戏可能缺少部分资源",
+                                        NotificationType.Warning,
+                                        6
                                     );
                                 }
                             }
@@ -852,11 +852,11 @@ namespace ObsMCLauncher.Pages
                             _currentDownloadTaskId = null;
                         }
 
-                        MessageBox.Show(
-                            $"Minecraft {currentVersion} 安装完成！\n\n版本已安装为: {customVersionName}",
+                        NotificationManager.Instance.ShowNotification(
                             "安装成功",
-                            MessageBoxButton.OK,
-                            MessageBoxImage.Information
+                            $"Minecraft {currentVersion} 已安装为: {customVersionName}",
+                            NotificationType.Success,
+                            5
                         );
 
                         // 返回版本列表
@@ -864,11 +864,9 @@ namespace ObsMCLauncher.Pages
                     }
                     else
                     {
-                        MessageBox.Show(
-                            "版本下载失败，请查看日志了解详细信息。",
+                        await DialogManager.Instance.ShowError(
                             "安装失败",
-                            MessageBoxButton.OK,
-                            MessageBoxImage.Error
+                            "版本下载失败，请查看日志了解详细信息。"
                         );
                     }
                 }
@@ -880,11 +878,9 @@ namespace ObsMCLauncher.Pages
                 else
                 {
                     // 其他加载器暂不支持
-                    MessageBox.Show(
-                        $"{loaderType} 加载器的安装功能即将推出！",
+                    await DialogManager.Instance.ShowInfo(
                         "功能开发中",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Information
+                        $"{loaderType} 加载器的安装功能即将推出！"
                     );
                 }
             }
@@ -936,11 +932,9 @@ namespace ObsMCLauncher.Pages
                     _currentDownloadTaskId = null;
                 }
                 
-                MessageBox.Show(
-                    $"下载过程中发生错误：\n{ex.Message}",
+                await DialogManager.Instance.ShowError(
                     "错误",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Error
+                    $"下载过程中发生错误：\n{ex.Message}"
                 );
             }
             finally
@@ -1265,11 +1259,11 @@ namespace ObsMCLauncher.Pages
 
                 if (failedCount > 0)
                 {
-                    MessageBox.Show(
-                        $"Forge库下载部分失败：\n成功: {successCount}\n跳过: {skipCount}\n失败: {failedCount}\n\n可能需要在启动时自动补全。",
+                    NotificationManager.Instance.ShowNotification(
                         "提示",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Warning
+                        $"Forge库下载部分失败（成功: {successCount}, 失败: {failedCount}），将在启动时自动补全",
+                        NotificationType.Warning,
+                        5
                     );
                 }
             }
@@ -1280,11 +1274,11 @@ namespace ObsMCLauncher.Pages
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[Forge] 下载库文件时出错: {ex.Message}");
-                MessageBox.Show(
-                    $"下载Forge库文件时出错：\n{ex.Message}\n\n将在启动时尝试自动补全。",
+                NotificationManager.Instance.ShowNotification(
                     "警告",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning
+                    "下载Forge库文件时出错，将在启动时尝试自动补全",
+                    NotificationType.Warning,
+                    5
                 );
             }
         }

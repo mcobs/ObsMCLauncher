@@ -328,6 +328,16 @@
             <!-- Canvas不设置Background，让鼠标事件穿透到下层UI，但通知本身有Background可以接收事件 -->
         </Canvas>
 
+        <!-- 全局：对话框容器 -->
+        <Grid x:Name="GlobalDialogContainer"
+              Grid.Row="0"
+              Grid.Column="0"
+              Grid.ColumnSpan="2"
+              Grid.RowSpan="2"
+              Panel.ZIndex="1000">
+            <!-- 对话框将动态添加到这里 -->
+        </Grid>
+
         <!-- 下载管理器按钮（右下角） -->
         <Button x:Name="DownloadManagerButton"
                 Grid.Row="1"

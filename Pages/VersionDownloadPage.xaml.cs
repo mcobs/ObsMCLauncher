@@ -8,6 +8,7 @@ using System.Windows.Media;
 using MaterialDesignThemes.Wpf;
 using ObsMCLauncher.Models;
 using ObsMCLauncher.Services;
+using ObsMCLauncher.Utils;
 
 namespace ObsMCLauncher.Pages
 {
@@ -42,10 +43,14 @@ namespace ObsMCLauncher.Pages
             }
             else
             {
-                // 加载已安装版本
-                LoadInstalledVersions();
-                // 自动加载在线版本列表
-                await LoadVersionsAsync();
+                // 每次加载页面都刷新已安装版本
+                RefreshInstalledVersions();
+                
+                // 自动加载在线版本列表（仅在首次加载时）
+                if (_allVersions.Count == 0)
+                {
+                    await LoadVersionsAsync();
+                }
                 
                 // 恢复滚动位置
                 if (VersionScrollViewer != null && _savedScrollOffset > 0)
@@ -175,8 +180,7 @@ namespace ObsMCLauncher.Pages
                 errorMessage += "3. 检查防火墙是否拦截了启动器\n";
                 errorMessage += "4. 点击设置中的\"测试下载源\"按钮";
                 
-                MessageBox.Show(errorMessage, "加载失败", 
-                    MessageBoxButton.OK, MessageBoxImage.Error);
+                await DialogManager.Instance.ShowError("加载失败", errorMessage);
             }
             finally
             {
@@ -747,32 +751,39 @@ namespace ObsMCLauncher.Pages
         /// <summary>
         /// 删除版本按钮点击
         /// </summary>
-        private void DeleteVersionButton_Click(object sender, RoutedEventArgs e)
+        private async void DeleteVersionButton_Click(object sender, RoutedEventArgs e)
         {
             if (sender is Button button && button.Tag is Tuple<string, string> data)
             {
                 var versionId = data.Item1;
                 var versionPath = data.Item2;
 
-                var result = MessageBox.Show(
-                    $"确定要删除版本 {versionId} 吗？\n\n此操作不可恢复！",
+                var result = await DialogManager.Instance.ShowWarning(
                     "确认删除",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Warning
+                    $"确定要删除版本 {versionId} 吗？\n\n此操作不可恢复！",
+                    DialogButtons.YesNo
                 );
 
-                if (result == MessageBoxResult.Yes)
+                if (result == DialogResult.Yes)
                 {
                     if (LocalVersionService.DeleteVersion(versionPath))
                     {
-                        LoadInstalledVersions(); // 刷新列表
-                        MessageBox.Show($"版本 {versionId} 已删除", "删除成功",
-                            MessageBoxButton.OK, MessageBoxImage.Information);
+                        RefreshInstalledVersions(); // 刷新列表
+                        
+                        // 使用通知管理器显示成功消息
+                        NotificationManager.Instance.ShowNotification(
+                            "删除成功",
+                            $"版本 {versionId} 已删除",
+                            NotificationType.Success,
+                            3
+                        );
                     }
                     else
                     {
-                        MessageBox.Show($"删除版本 {versionId} 失败", "删除失败",
-                            MessageBoxButton.OK, MessageBoxImage.Error);
+                        await DialogManager.Instance.ShowError(
+                            "删除失败",
+                            $"删除版本 {versionId} 失败，可能文件正在使用或没有权限"
+                        );
                     }
                 }
             }
@@ -783,7 +794,16 @@ namespace ObsMCLauncher.Pages
         /// </summary>
         private void RefreshInstalledButton_Click(object sender, RoutedEventArgs e)
         {
+            RefreshInstalledVersions();
+        }
+
+        /// <summary>
+        /// 刷新已安装版本列表（公共方法，供外部调用）
+        /// </summary>
+        public void RefreshInstalledVersions()
+        {
             LoadInstalledVersions();
+            System.Diagnostics.Debug.WriteLine("已刷新已安装版本列表");
         }
 
         #endregion

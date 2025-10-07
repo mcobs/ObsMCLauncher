@@ -233,19 +233,24 @@ namespace ObsMCLauncher.Pages
         /// <summary>
         /// 恢复默认设置
         /// </summary>
-        private void ResetButton_Click(object sender, RoutedEventArgs e)
+        private async void ResetButton_Click(object sender, RoutedEventArgs e)
         {
-            var result = MessageBox.Show(
-                "确定要恢复默认设置吗？所有当前设置将会丢失。", 
+            var result = await DialogManager.Instance.ShowQuestion(
                 "确认", 
-                MessageBoxButton.YesNo, 
-                MessageBoxImage.Question);
+                "确定要恢复默认设置吗？所有当前设置将会丢失。",
+                DialogButtons.YesNo
+            );
 
-            if (result == MessageBoxResult.Yes)
+            if (result == DialogResult.Yes)
             {
                 _config = new LauncherConfig();
                 LoadSettings();
-                MessageBox.Show("已恢复默认设置", "成功", MessageBoxButton.OK, MessageBoxImage.Information);
+                NotificationManager.Instance.ShowNotification(
+                    "成功",
+                    "已恢复默认设置",
+                    NotificationType.Success,
+                    3
+                );
             }
         }
 
@@ -361,7 +366,7 @@ namespace ObsMCLauncher.Pages
         /// <summary>
         /// 自动检测Java
         /// </summary>
-        private void AutoDetectJava_Click(object sender, RoutedEventArgs e)
+        private async void AutoDetectJava_Click(object sender, RoutedEventArgs e)
         {
             try
             {
@@ -371,16 +376,10 @@ namespace ObsMCLauncher.Pages
 
                 if (javaList.Count == 0)
                 {
-                    MessageBox.Show(
-                        "未检测到任何Java安装！\n\n" +
-                        "请手动安装Java后重试，或手动指定Java路径。\n\n" +
-                        "推荐Java版本：\n" +
-                        "• Minecraft 1.17+: Java 17或更高\n" +
-                        "• Minecraft 1.13-1.16: Java 8或更高\n" +
-                        "• Minecraft 1.12及以下: Java 8",
+                    await DialogManager.Instance.ShowWarning(
                         "未检测到Java",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Warning);
+                        "未检测到任何Java安装！\n\n请手动安装Java后重试，或手动指定Java路径。\n\n推荐Java版本：\n• Minecraft 1.17+: Java 17或更高\n• Minecraft 1.13-1.16: Java 8或更高\n• Minecraft 1.12及以下: Java 8"
+                    );
                     return;
                 }
 
@@ -403,13 +402,13 @@ namespace ObsMCLauncher.Pages
                 sb.AppendLine();
                 sb.AppendLine("是否使用推荐的Java？");
 
-                var result = MessageBox.Show(
-                    sb.ToString(),
+                var result = await DialogManager.Instance.ShowInfo(
                     "Java自动检测",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Information);
+                    sb.ToString(),
+                    DialogButtons.YesNo
+                );
 
-                if (result == MessageBoxResult.Yes)
+                if (result == DialogResult.Yes)
                 {
                     // 使用推荐的Java（第一个，版本最高）
                     var bestJava = javaList[0];
@@ -418,15 +417,12 @@ namespace ObsMCLauncher.Pages
                     // ✅ 自动保存设置
                     AutoSaveSettingsImmediately("Java路径");
                     
-                    MessageBox.Show(
-                        $"已选择 Java {bestJava.MajorVersion}！\n\n" +
-                        $"版本: {bestJava.Version}\n" +
-                        $"架构: {bestJava.Architecture}\n" +
-                        $"路径: {bestJava.Path}\n\n" +
-                        "设置已自动保存。",
+                    NotificationManager.Instance.ShowNotification(
                         "设置成功",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Information);
+                        $"已选择 Java {bestJava.MajorVersion} ({bestJava.Version})",
+                        NotificationType.Success,
+                        5
+                    );
 
                     System.Diagnostics.Debug.WriteLine($"已选择Java: {bestJava.Path}");
                 }
@@ -434,11 +430,10 @@ namespace ObsMCLauncher.Pages
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"❌ 自动检测Java失败: {ex.Message}");
-                MessageBox.Show(
-                    $"自动检测Java时出现错误：\n\n{ex.Message}",
+                await DialogManager.Instance.ShowError(
                     "错误",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Error);
+                    $"自动检测Java时出现错误：\n\n{ex.Message}"
+                );
             }
         }
 
@@ -447,17 +442,13 @@ namespace ObsMCLauncher.Pages
         /// </summary>
         private async void TestDownloadSource_Click(object sender, RoutedEventArgs e)
         {
-            var result = MessageBox.Show(
-                "是否要测试所有下载源的连接状态？\n\n" +
-                "这将测试：\n" +
-                "• BMCLAPI 镜像源\n" +
-                "• 官方源\n\n" +
-                "测试可能需要几秒钟。",
+            var result = await DialogManager.Instance.ShowQuestion(
                 "测试下载源",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Question);
+                "是否要测试所有下载源的连接状态？\n\n这将测试：\n• BMCLAPI 镜像源\n• 官方源\n\n测试可能需要几秒钟。",
+                DialogButtons.YesNo
+            );
 
-            if (result != MessageBoxResult.Yes)
+            if (result != DialogResult.Yes)
                 return;
 
             var sb = new StringBuilder();
@@ -501,11 +492,11 @@ namespace ObsMCLauncher.Pages
                     sb.AppendLine("• 官方源不可用，可能需要代理");
                 }
 
-                MessageBox.Show(sb.ToString(), "测试结果", MessageBoxButton.OK, MessageBoxImage.Information);
+                await DialogManager.Instance.ShowInfo("测试结果", sb.ToString());
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"测试过程中出现异常：\n{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                await DialogManager.Instance.ShowError("错误", $"测试过程中出现异常：\n{ex.Message}");
             }
         }
 
