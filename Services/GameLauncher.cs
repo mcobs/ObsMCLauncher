@@ -423,6 +423,14 @@ namespace ObsMCLauncher.Services
             args.Append($"-Xms{config.MinMemory}M ");
             args.Append($"-Xmx{config.MaxMemory}M ");
 
+            // 1.5. 对非常旧的Forge版本添加安全绕过参数（1.6.4, 1.7.10等）
+            if (IsVeryOldForgeVersion(versionId))
+            {
+                args.Append("-Dfml.ignoreInvalidMinecraftCertificates=true ");
+                args.Append("-Dfml.ignorePatchDiscrepancies=true ");
+                Debug.WriteLine($"[GameLauncher] 检测到非常旧的Forge版本 ({versionId})，已添加安全绕过参数");
+            }
+
             // 2. 自定义JVM参数
             if (!string.IsNullOrWhiteSpace(config.JvmArguments))
             {
@@ -624,6 +632,23 @@ namespace ObsMCLauncher.Services
             args.Append($"--versionType \"ObsMCLauncher\" ");
 
             return args.ToString();
+        }
+
+        /// <summary>
+        /// 检测是否为非常旧的Forge版本（需要安全绕过参数）
+        /// </summary>
+        private static bool IsVeryOldForgeVersion(string versionId)
+        {
+            // 检查是否包含forge标识
+            if (!versionId.Contains("forge", StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            // 检查是否为非常旧的版本（1.6.x, 1.7.x）
+            // 这些版本的Forge有严格的JAR完整性检查
+            if (versionId.Contains("1.6.") || versionId.Contains("1.7."))
+                return true;
+
+            return false;
         }
 
         /// <summary>
