@@ -170,8 +170,8 @@
                         FontSize="13"
                         Margin="0,0,10,0"
                         SelectionChanged="VersionTypeComboBox_SelectionChanged">
-                    <ComboBoxItem Content="全部版本" IsSelected="True"/>
-                    <ComboBoxItem Content="正式版"/>
+                    <ComboBoxItem Content="全部版本"/>
+                    <ComboBoxItem Content="正式版" IsSelected="True"/>
                     <ComboBoxItem Content="快照版"/>
                     <ComboBoxItem Content="远古版"/>
                 </ComboBox>
