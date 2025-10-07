@@ -4,6 +4,8 @@
   <img src="https://img.shields.io/badge/.NET-8.0-512BD4?style=for-the-badge&logo=dotnet" alt=".NET 8.0"/>
   <img src="https://img.shields.io/badge/WPF-Windows-0078D6?style=for-the-badge&logo=windows" alt="WPF"/>
   <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License"/>
+  <br/>
+  <img src="https://github.com/x1aoren/ObsMCLauncher/actions/workflows/build.yml/badge.svg" alt="Build Status"/>
 </div>
 
 <div align="center">
@@ -87,7 +89,7 @@
 ### 构建运行
 ```bash
 # 克隆项目
-git clone https://github.com/yourusername/ObsMCLauncher.git
+git clone https://github.com/x1aoren/ObsMCLauncher.git
 cd ObsMCLauncher
 
 # 还原依赖
