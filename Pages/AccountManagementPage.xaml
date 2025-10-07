@@ -7,7 +7,10 @@
       mc:Ignorable="d" 
       d:DesignHeight="700" d:DesignWidth="900"
       KeepAlive="True"
-      Background="{StaticResource BackgroundBrush}">
+      Background="{StaticResource BackgroundBrush}"
+      UseLayoutRounding="True"
+      TextOptions.TextFormattingMode="Display"
+      TextOptions.TextRenderingMode="ClearType">
 
     <Grid>
         <!-- 主内容区域 -->
