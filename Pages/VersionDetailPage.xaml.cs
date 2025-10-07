@@ -1930,13 +1930,29 @@ namespace ObsMCLauncher.Pages
 
             var outputBuilder = new System.Text.StringBuilder();
             var errorBuilder = new System.Text.StringBuilder();
+            int outputLineCount = 0;
+            int lastReportedLine = 0;
 
             process.OutputDataReceived += (sender, e) =>
             {
                 if (!string.IsNullOrEmpty(e.Data))
                 {
-                    System.Diagnostics.Debug.WriteLine($"[Forge Installer] {e.Data}");
                     outputBuilder.AppendLine(e.Data);
+                    outputLineCount++;
+                    
+                    // 只记录关键信息，忽略大量的数据文件处理输出（避免UI卡死）
+                    // 只记录：设置信息、消息、下载信息、错误，以及每100行一次的进度
+                    if (e.Data.Contains("Setting up") || 
+                        e.Data.Contains("MESSAGE:") || 
+                        e.Data.Contains("Downloading") ||
+                        e.Data.Contains("Download") ||
+                        e.Data.Contains("Exception") ||
+                        e.Data.Contains("successfully") ||
+                        (outputLineCount - lastReportedLine >= 100))
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[Forge Installer] {e.Data}");
+                        lastReportedLine = outputLineCount;
+                    }
                 }
             };
 
@@ -1944,6 +1960,7 @@ namespace ObsMCLauncher.Pages
             {
                 if (!string.IsNullOrEmpty(e.Data))
                 {
+                    // 错误输出总是记录
                     System.Diagnostics.Debug.WriteLine($"[Forge Installer ERROR] {e.Data}");
                     errorBuilder.AppendLine(e.Data);
                 }
@@ -1976,6 +1993,7 @@ namespace ObsMCLauncher.Pages
                 
                 // 正常退出
                 System.Diagnostics.Debug.WriteLine($"[Forge] 安装器退出码: {process.ExitCode}");
+                System.Diagnostics.Debug.WriteLine($"[Forge] 处理了 {outputLineCount} 行输出");
                 
                 if (process.ExitCode == 0)
                 {
