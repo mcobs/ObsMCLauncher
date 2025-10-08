@@ -414,35 +414,9 @@ namespace ObsMCLauncher.Pages
             
             try
             {
-                System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] 检查NeoForge支持: {currentVersion}");
+                System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] 获取NeoForge版本列表 for {currentVersion}...");
 
-                // 检查NeoForge是否支持当前MC版本
-                var supportedVersions = await NeoForgeService.GetSupportedMinecraftVersionsAsync();
-                
-                if (!supportedVersions.Contains(currentVersion))
-                {
-                    System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] NeoForge不支持版本 {currentVersion}");
-                    
-                    _ = Dispatcher.BeginInvoke(new Action(() =>
-                    {
-                        if (NeoForgeRadio != null)
-                        {
-                            NeoForgeRadio.IsEnabled = false;
-                            NeoForgeRadio.ToolTip = $"NeoForge暂不支持 Minecraft {currentVersion}";
-                        }
-                        if (NeoForgeVersionComboBox != null)
-                        {
-                            NeoForgeVersionComboBox.Items.Clear();
-                            var item = new ComboBoxItem { Content = "不支持此版本", IsEnabled = false };
-                            NeoForgeVersionComboBox.Items.Add(item);
-                            NeoForgeVersionComboBox.SelectedIndex = 0;
-                        }
-                    }));
-                    return;
-                }
-
-                // 获取NeoForge版本列表
-                System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] 获取NeoForge版本列表...");
+                // 直接获取NeoForge版本列表（如果不支持会返回空列表）
                 var neoforgeVersions = await NeoForgeService.GetNeoForgeVersionsAsync(currentVersion);
 
                 _ = Dispatcher.BeginInvoke(new Action(() =>
@@ -455,7 +429,7 @@ namespace ObsMCLauncher.Pages
                         {
                             var noVersionItem = new ComboBoxItem 
                             { 
-                                Content = "无可用版本", 
+                                Content = "不支持此版本", 
                                 IsEnabled = false,
                                 FontStyle = FontStyles.Italic,
                                 Foreground = new SolidColorBrush(Colors.Gray)
@@ -466,8 +440,10 @@ namespace ObsMCLauncher.Pages
                             if (NeoForgeRadio != null)
                             {
                                 NeoForgeRadio.IsEnabled = false;
-                                NeoForgeRadio.ToolTip = "暂无可用的NeoForge版本";
+                                NeoForgeRadio.ToolTip = $"NeoForge暂不支持 Minecraft {currentVersion}";
                             }
+                            
+                            System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] NeoForge不支持版本 {currentVersion}");
                         }
                         else
                         {
@@ -1212,6 +1188,11 @@ namespace ObsMCLauncher.Pages
                 {
                     // Forge安装流程
                     await InstallForgeAsync(loaderVersion, customVersionName, gameDirectory, config, progress);
+                }
+                else if (loaderType == "NeoForge")
+                {
+                    // NeoForge安装流程
+                    await InstallNeoForgeAsync(loaderVersion, customVersionName, gameDirectory, config, progress);
                 }
                 else if (loaderType == "Fabric")
                 {
@@ -2071,6 +2052,216 @@ namespace ObsMCLauncher.Pages
         }
 
         /// <summary>
+        /// 安装NeoForge
+        /// </summary>
+        private async Task InstallNeoForgeAsync(
+            string neoforgeVersion,
+            string customVersionName,
+            string gameDirectory,
+            LauncherConfig config,
+            IProgress<DownloadProgress> progress)
+        {
+            var installerPath = Path.Combine(Path.GetTempPath(), $"neoforge-installer-{neoforgeVersion}.jar");
+            
+            try
+            {
+                System.Diagnostics.Debug.WriteLine($"[NeoForge] 开始安装 NeoForge {neoforgeVersion} for MC {currentVersion}");
+
+                // 1. 下载 NeoForge 安装器
+                progress?.Report(new DownloadProgress
+                {
+                    Status = "正在下载NeoForge安装器...",
+                    CurrentFile = $"neoforge-{neoforgeVersion}-installer.jar",
+                    TotalBytes = 0,
+                    TotalDownloadedBytes = 0,
+                    DownloadSpeed = 0
+                });
+                
+                // 使用带详细进度信息的下载方法
+                if (!await NeoForgeService.DownloadNeoForgeInstallerWithDetailsAsync(
+                    neoforgeVersion, 
+                    installerPath, 
+                    (currentBytes, speed, totalBytes) =>
+                    {
+                        // 计算百分比
+                        double percentage = totalBytes > 0 ? (double)currentBytes / totalBytes * 100 : 0;
+                        double overallProgress = 10 + (percentage * 0.2); // 10%-30%
+                        
+                        // 通过progress报告
+                        progress?.Report(new DownloadProgress
+                        {
+                            Status = "正在下载NeoForge安装器",
+                            CurrentFile = $"neoforge-installer.jar",
+                            CurrentFileBytes = currentBytes,
+                            CurrentFileTotalBytes = totalBytes,
+                            TotalDownloadedBytes = currentBytes,
+                            TotalBytes = totalBytes,
+                            DownloadSpeed = speed,
+                            CompletedFiles = 0,
+                            TotalFiles = 3 // 安装器、原版、库文件
+                        });
+                    },
+                    _downloadCancellationToken!.Token))
+                {
+                    throw new Exception("NeoForge安装器下载失败");
+                }
+
+                System.Diagnostics.Debug.WriteLine($"[NeoForge] 安装器下载完成: {installerPath}");
+
+                // 2. 下载原版文件到标准位置
+                string standardVanillaDir = Path.Combine(gameDirectory, "versions", currentVersion);
+                
+                // 创建进度回调，将原版下载进度映射到30%-50%
+                var vanillaProgress = new Progress<DownloadProgress>(p => {
+                    // 计算文件进度百分比
+                    double fileProgress = p.CurrentFileTotalBytes > 0 
+                        ? (double)p.CurrentFileBytes / p.CurrentFileTotalBytes * 100 
+                        : 0;
+                    
+                    // 映射到30%-50%的范围
+                    var overallProgress = 30 + (fileProgress / 100.0 * 20);
+                    
+                    // 通过progress报告
+                    progress?.Report(new DownloadProgress
+                    {
+                        Status = p.Status,
+                        CurrentFile = p.CurrentFile ?? $"{currentVersion}.jar",
+                        CurrentFileBytes = p.CurrentFileBytes,
+                        CurrentFileTotalBytes = p.CurrentFileTotalBytes,
+                        TotalDownloadedBytes = p.TotalDownloadedBytes,
+                        TotalBytes = p.TotalBytes,
+                        DownloadSpeed = p.DownloadSpeed,
+                        CompletedFiles = 1,
+                        TotalFiles = 3
+                    });
+                });
+                
+                await DownloadVanillaForForge(gameDirectory, currentVersion, standardVanillaDir, vanillaProgress);
+
+                // 3. 运行 NeoForge 安装器
+                progress?.Report(new DownloadProgress
+                {
+                    Status = "执行NeoForge安装...",
+                    CurrentFile = "正在处理Minecraft文件（请稍候）",
+                    CurrentFileBytes = 50,
+                    CurrentFileTotalBytes = 100,
+                    CompletedFiles = 2,
+                    TotalFiles = 3
+                });
+
+                System.Diagnostics.Debug.WriteLine($"[NeoForge] 开始执行安装器...");
+                
+                // NeoForge 安装器使用与 Forge 相同的方式
+                bool installSuccess = await RunNeoForgeInstallerAsync(installerPath, gameDirectory, currentVersion, neoforgeVersion, config);
+                
+                if (!installSuccess)
+                {
+                    throw new Exception("NeoForge安装器执行失败");
+                }
+
+                // 4. 重命名版本文件夹
+                var neoforgeVersionDir = Path.Combine(gameDirectory, "versions", $"neoforge-{neoforgeVersion}");
+                var targetVersionDir = Path.Combine(gameDirectory, "versions", customVersionName);
+
+                if (Directory.Exists(neoforgeVersionDir) && !Directory.Exists(targetVersionDir))
+                {
+                    Directory.Move(neoforgeVersionDir, targetVersionDir);
+                    System.Diagnostics.Debug.WriteLine($"[NeoForge] 版本文件夹已重命名: {neoforgeVersionDir} -> {targetVersionDir}");
+                }
+
+                // 重命名json文件
+                var neoforgeJsonFile = Path.Combine(targetVersionDir, $"neoforge-{neoforgeVersion}.json");
+                var targetJsonFile = Path.Combine(targetVersionDir, $"{customVersionName}.json");
+                
+                if (File.Exists(neoforgeJsonFile))
+                {
+                    if (File.Exists(targetJsonFile))
+                    {
+                        File.Delete(targetJsonFile);
+                    }
+                    File.Move(neoforgeJsonFile, targetJsonFile);
+                    
+                    // 更新json文件中的id字段
+                    var jsonContent = File.ReadAllText(targetJsonFile);
+                    jsonContent = jsonContent.Replace($"\"id\": \"neoforge-{neoforgeVersion}\"", $"\"id\": \"{customVersionName}\"");
+                    File.WriteAllText(targetJsonFile, jsonContent);
+                    
+                    System.Diagnostics.Debug.WriteLine($"[NeoForge] JSON文件已更新: {targetJsonFile}");
+                }
+
+                // 5. 库文件已由安装器自动下载
+                System.Diagnostics.Debug.WriteLine($"[NeoForge] 库文件已由安装器处理");
+
+                // 6. 完成安装
+                progress?.Report(new DownloadProgress
+                {
+                    Status = "NeoForge安装完成",
+                    CurrentFile = "",
+                    CompletedFiles = 3,
+                    TotalFiles = 3
+                });
+
+                _ = Dispatcher.BeginInvoke(() =>
+                {
+                    DownloadOverallProgressBar.Value = 100;
+                    DownloadOverallPercentageText.Text = "100%";
+                    DownloadStatusText.Text = "安装完成";
+                });
+
+                // 标记任务完成
+                if (_currentDownloadTaskId != null)
+                {
+                    DownloadTaskManager.Instance.CompleteTask(_currentDownloadTaskId);
+                    _currentDownloadTaskId = null;
+                }
+
+                NotificationManager.Instance.ShowNotification(
+                    "安装成功",
+                    $"NeoForge {neoforgeVersion} 已安装为: {customVersionName}",
+                    NotificationType.Success,
+                    5
+                );
+
+                System.Diagnostics.Debug.WriteLine($"[NeoForge] 安装完成!");
+
+                // 返回版本列表
+                NavigationService?.GoBack();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[NeoForge] 安装失败: {ex.Message}\n{ex.StackTrace}");
+                
+                // 标记任务失败
+                if (_currentDownloadTaskId != null)
+                {
+                    DownloadTaskManager.Instance.FailTask(_currentDownloadTaskId, ex.Message);
+                    _currentDownloadTaskId = null;
+                }
+                
+                await DialogManager.Instance.ShowError(
+                    "NeoForge安装失败",
+                    $"安装过程中发生错误：\n{ex.Message}"
+                );
+            }
+            finally
+            {
+                // 清理安装器文件
+                try
+                {
+                    if (File.Exists(installerPath))
+                    {
+                        File.Delete(installerPath);
+                        System.Diagnostics.Debug.WriteLine($"[NeoForge] 已清理安装器文件: {installerPath}");
+                    }
+                }
+                catch (Exception cleanupEx)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[NeoForge] 清理安装器文件失败: {cleanupEx.Message}");
+                }
+            }
+        }
+
+        /// <summary>
         /// 安装Fabric
         /// </summary>
         private async Task InstallFabricAsync(
@@ -2526,6 +2717,147 @@ namespace ObsMCLauncher.Pages
                 
                 return installResult;
             });
+        }
+
+        /// <summary>
+        /// 运行NeoForge安装器
+        /// </summary>
+        private async Task<bool> RunNeoForgeInstallerAsync(string installerPath, string gameDirectory, string mcVersion, string neoforgeVersion, LauncherConfig config)
+        {
+            return await Task.Run(async () =>
+            {
+                // 确保 launcher_profiles.json 存在（安装器需要此文件）
+                string profilesPath = Path.Combine(gameDirectory, "launcher_profiles.json");
+                if (!File.Exists(profilesPath))
+                {
+                    System.Diagnostics.Debug.WriteLine($"[NeoForge] 创建 launcher_profiles.json");
+                    var defaultProfiles = new
+                    {
+                        profiles = new { },
+                        selectedProfile = (string?)null,
+                        clientToken = Guid.NewGuid().ToString(),
+                        authenticationDatabase = new { },
+                        launcherVersion = new
+                        {
+                            name = "ObsMCLauncher",
+                            format = 21
+                        }
+                    };
+                    await File.WriteAllTextAsync(profilesPath, System.Text.Json.JsonSerializer.Serialize(defaultProfiles, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+                }
+
+                // NeoForge 使用与新版 Forge 相同的安装方式
+                string arguments = $"--installClient \"{gameDirectory}\"";
+                
+                System.Diagnostics.Debug.WriteLine($"[NeoForge] 执行安装器: {installerPath}");
+                System.Diagnostics.Debug.WriteLine($"[NeoForge] 参数: {arguments}");
+
+                try
+                {
+                    bool success = await TryRunNeoForgeInstallerWithArgs(installerPath, gameDirectory, arguments);
+                    
+                    if (success)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[NeoForge] ✅ 安装器执行成功");
+                        return true;
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[NeoForge] ❌ 安装器执行失败");
+                        return false;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[NeoForge] 安装器执行出错: {ex.Message}");
+                    return false;
+                }
+            });
+        }
+
+        /// <summary>
+        /// 使用指定参数尝试运行NeoForge安装器
+        /// </summary>
+        private async Task<bool> TryRunNeoForgeInstallerWithArgs(string installerPath, string gameDirectory, string arguments)
+        {
+            // 查找Java路径
+            var config = LauncherConfig.Load();
+            var javaPath = config.JavaPath;
+            
+            if (string.IsNullOrEmpty(javaPath) || !File.Exists(javaPath))
+            {
+                // 尝试使用系统Java
+                javaPath = "java";
+                System.Diagnostics.Debug.WriteLine($"[NeoForge] 使用系统Java: {javaPath}");
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine($"[NeoForge] 使用配置的Java: {javaPath}");
+            }
+
+            var startInfo = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = javaPath,
+                Arguments = $"-jar \"{installerPath}\" {arguments}",
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                WorkingDirectory = gameDirectory
+            };
+
+            System.Diagnostics.Debug.WriteLine($"[NeoForge] 执行命令: {startInfo.FileName} {startInfo.Arguments}");
+
+            using (var process = new System.Diagnostics.Process { StartInfo = startInfo })
+            {
+                var outputBuilder = new System.Text.StringBuilder();
+                var errorBuilder = new System.Text.StringBuilder();
+
+                process.OutputDataReceived += (sender, e) =>
+                {
+                    if (!string.IsNullOrEmpty(e.Data))
+                    {
+                        outputBuilder.AppendLine(e.Data);
+                        System.Diagnostics.Debug.WriteLine($"[NeoForge] {e.Data}");
+                    }
+                };
+
+                process.ErrorDataReceived += (sender, e) =>
+                {
+                    if (!string.IsNullOrEmpty(e.Data))
+                    {
+                        errorBuilder.AppendLine(e.Data);
+                        System.Diagnostics.Debug.WriteLine($"[NeoForge Error] {e.Data}");
+                    }
+                };
+
+                process.Start();
+                process.BeginOutputReadLine();
+                process.BeginErrorReadLine();
+
+                await process.WaitForExitAsync();
+
+                var output = outputBuilder.ToString();
+                var errors = errorBuilder.ToString();
+
+                System.Diagnostics.Debug.WriteLine($"[NeoForge] 安装器退出码: {process.ExitCode}");
+
+                // 检查是否成功
+                if (process.ExitCode == 0)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[NeoForge] 安装器返回成功");
+                    return true;
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"[NeoForge] 安装器返回失败，退出码: {process.ExitCode}");
+                    if (!string.IsNullOrEmpty(errors))
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[NeoForge] 错误信息: {errors}");
+                    }
+                    return false;
+                }
+            }
         }
         
         /// <summary>
