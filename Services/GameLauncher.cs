@@ -85,7 +85,7 @@ namespace ObsMCLauncher.Services
                 if (!string.IsNullOrEmpty(versionInfo.InheritsFrom))
                 {
                     Debug.WriteLine($"检测到inheritsFrom: {versionInfo.InheritsFrom}，开始合并父版本信息");
-                    versionInfo = MergeInheritedVersion(config.GameDirectory, versionInfo);
+                    versionInfo = MergeInheritedVersion(config.GameDirectory, versionId, versionInfo);
                 }
 
                 Debug.WriteLine($"版本JSON路径: {versionJsonPath}");
@@ -256,7 +256,7 @@ namespace ObsMCLauncher.Services
                 if (!string.IsNullOrEmpty(versionInfo.InheritsFrom))
                 {
                     Debug.WriteLine($"检测到inheritsFrom: {versionInfo.InheritsFrom}，开始合并父版本信息");
-                    versionInfo = MergeInheritedVersion(config.GameDirectory, versionInfo);
+                    versionInfo = MergeInheritedVersion(config.GameDirectory, versionId, versionInfo);
                 }
 
                 Debug.WriteLine($"MainClass: {versionInfo.MainClass}");
@@ -490,19 +490,20 @@ namespace ObsMCLauncher.Services
                     Debug.WriteLine($"⚠️ 版本JAR不存在: {versionJarPath}");
                 }
             }
-            // 如果使用inheritsFrom（向后兼容），也添加父版本JAR
+            // 如果使用inheritsFrom（Fabric/Forge等Mod加载器），添加Minecraft客户端JAR
             else if (!string.IsNullOrEmpty(versionInfo.InheritsFrom))
             {
-                var parentVersionId = versionInfo.InheritsFrom;
-                var parentJarPath = Path.Combine(gameDir, "versions", parentVersionId, $"{parentVersionId}.jar");
-                if (File.Exists(parentJarPath))
+                // 直接从当前版本目录读取（Fabric/Forge安装时下载到这里的）
+                var versionJarInCurrentDir = Path.Combine(versionDir, $"{versionId}.jar");
+                
+                if (File.Exists(versionJarInCurrentDir))
                 {
-                    classpathItems.Add(parentJarPath);
-                    Debug.WriteLine($"✅ 已添加父版本客户端到classpath: {parentVersionId}.jar");
+                    classpathItems.Add(versionJarInCurrentDir);
+                    Debug.WriteLine($"✅ 已添加Minecraft客户端到classpath: {versionJarInCurrentDir}");
                 }
                 else
                 {
-                    Debug.WriteLine($"⚠️ 父版本客户端JAR不存在: {parentJarPath}");
+                    Debug.WriteLine($"❌ Minecraft客户端JAR不存在: {versionJarInCurrentDir}");
                 }
             }
             
@@ -915,20 +916,31 @@ namespace ObsMCLauncher.Services
         {
             try
             {
-                Debug.WriteLine($"开始检查natives库文件: {nativesDir}");
+                Debug.WriteLine($"========== 开始解压Natives库 ==========");
+                Debug.WriteLine($"Natives目录: {nativesDir}");
+                
+                // 清理并重新创建natives目录
+                if (Directory.Exists(nativesDir))
+                {
+                    Debug.WriteLine($"清理旧的natives目录...");
+                    Directory.Delete(nativesDir, true);
+                }
+                Directory.CreateDirectory(nativesDir);
+                Debug.WriteLine($"✅ Natives目录已创建");
                 
                 if (versionInfo.Libraries == null)
                 {
-                    Debug.WriteLine("没有库文件");
+                    Debug.WriteLine("⚠️ 没有库文件");
                     return;
                 }
                 
                 var librariesDir = Path.Combine(gameDir, "libraries");
                 var osName = GetOSName();
-                int extractedCount = 0;
-#pragma warning disable CS0219
-                int skippedCount = 0;
-#pragma warning restore CS0219
+                int extractedFileCount = 0;
+                int extractedJarCount = 0;
+                
+                Debug.WriteLine($"操作系统: {osName}");
+                Debug.WriteLine($"开始扫描natives库...");
                 
                 foreach (var lib in versionInfo.Libraries)
                 {
@@ -936,34 +948,53 @@ namespace ObsMCLauncher.Services
                     if (!IsLibraryAllowed(lib))
                         continue;
                     
-                    // 检查是否有natives字段（1.19+版本没有natives字段，直接跳过）
-                    if (lib.Natives == null || lib.Downloads?.Classifiers == null)
+                    string? nativesJarPath = null;
+                    
+                    // 方式1：检查是否有natives字段（旧版本格式，1.18及之前）
+                    if (lib.Natives != null && lib.Downloads?.Classifiers != null)
                     {
-                        skippedCount++;
-                        continue;
+                        // 获取当前操作系统对应的natives键
+                        if (lib.Natives.TryGetValue(osName, out var nativesKey) && !string.IsNullOrEmpty(nativesKey))
+                        {
+                            // 获取natives文件路径
+                            if (lib.Downloads.Classifiers.TryGetValue(nativesKey, out var nativeArtifact) && 
+                                !string.IsNullOrEmpty(nativeArtifact.Path))
+                            {
+                                nativesJarPath = Path.Combine(librariesDir, nativeArtifact.Path.Replace("/", "\\"));
+                                Debug.WriteLine($"[方式1] 找到natives库: {lib.Name}");
+                            }
+                        }
+                    }
+                    // 方式2：检查库名中是否包含natives-windows（新版本格式，1.19+）
+                    else if (lib.Name != null && lib.Name.Contains("natives-windows"))
+                    {
+                        var libPath = GetLibraryPath(librariesDir, lib);
+                        if (!string.IsNullOrEmpty(libPath))
+                        {
+                            nativesJarPath = libPath;
+                            Debug.WriteLine($"[方式2] 找到natives库: {lib.Name}");
+                        }
                     }
                     
-                    // 获取当前操作系统对应的natives键
-                    if (!lib.Natives.TryGetValue(osName, out var nativesKey) || string.IsNullOrEmpty(nativesKey))
+                    // 如果没有找到natives文件，跳过
+                    if (string.IsNullOrEmpty(nativesJarPath))
                         continue;
                     
-                    // 获取natives文件路径
-                    if (!lib.Downloads.Classifiers.TryGetValue(nativesKey, out var nativeArtifact) || 
-                        string.IsNullOrEmpty(nativeArtifact.Path))
-                        continue;
-                    
-                    var nativesJarPath = Path.Combine(librariesDir, nativeArtifact.Path.Replace("/", "\\"));
-                    
+                    // 检查natives JAR文件是否存在
                     if (!File.Exists(nativesJarPath))
                     {
-                        Debug.WriteLine($"   ⚠️ Natives文件不存在: {lib.Name} -> {nativesJarPath}");
+                        Debug.WriteLine($"   ❌ Natives JAR不存在: {nativesJarPath}");
                         continue;
                     }
+                    
+                    Debug.WriteLine($"   开始解压: {Path.GetFileName(nativesJarPath)}");
                     
                     try
                     {
                         // 解压jar文件
                         using var archive = System.IO.Compression.ZipFile.OpenRead(nativesJarPath);
+                        int fileCountInJar = 0;
+                        
                         foreach (var entry in archive.Entries)
                         {
                             // 只解压.dll、.so、.dylib等本地库文件
@@ -972,39 +1003,53 @@ namespace ObsMCLauncher.Services
                             {
                                 var destPath = Path.Combine(nativesDir, entry.Name);
                                 
-                                // 如果文件已存在且大小相同，跳过
-                                if (File.Exists(destPath))
-                                {
-                                    var existingFile = new FileInfo(destPath);
-                                    if (existingFile.Length == entry.Length)
-                                        continue;
-                                }
-                                
                                 entry.ExtractToFile(destPath, overwrite: true);
-                                extractedCount++;
+                                extractedFileCount++;
+                                fileCountInJar++;
+                                Debug.WriteLine($"      ✅ {entry.Name} ({entry.Length} bytes)");
                             }
                         }
                         
-                        Debug.WriteLine($"   ✅ 已解压natives: {lib.Name}");
+                        if (fileCountInJar > 0)
+                        {
+                            extractedJarCount++;
+                            Debug.WriteLine($"   ✅ 完成，解压了 {fileCountInJar} 个文件");
+                        }
+                        else
+                        {
+                            Debug.WriteLine($"   ⚠️ JAR中没有找到natives文件");
+                        }
                     }
                     catch (Exception ex)
                     {
-                        Debug.WriteLine($"   ❌ 解压natives失败: {lib.Name} - {ex.Message}");
+                        Debug.WriteLine($"   ❌ 解压失败: {ex.Message}");
                     }
                 }
                 
-                // 输出解压结果
-                if (extractedCount > 0)
+                Debug.WriteLine($"========== Natives解压统计 ==========");
+                Debug.WriteLine($"解压的JAR数量: {extractedJarCount}");
+                Debug.WriteLine($"解压的文件数量: {extractedFileCount}");
+                
+                // 列出natives目录中的所有文件
+                if (Directory.Exists(nativesDir))
                 {
-                    Debug.WriteLine($"✅ Natives解压完成，共解压 {extractedCount} 个文件");
+                    var files = Directory.GetFiles(nativesDir, "*.*", SearchOption.AllDirectories);
+                    Debug.WriteLine($"========== Natives目录文件列表 ==========");
+                    Debug.WriteLine($"总共 {files.Length} 个文件:");
+                    foreach (var file in files)
+                    {
+                        var fileInfo = new FileInfo(file);
+                        Debug.WriteLine($"  - {Path.GetFileName(file)} ({fileInfo.Length} bytes)");
+                    }
                 }
-                else if (skippedCount > 0)
+                
+                if (extractedFileCount == 0)
                 {
-                    Debug.WriteLine($"ℹ️ 当前版本无需解压natives（可能是1.19+版本），已跳过 {skippedCount} 个库");
+                    Debug.WriteLine("❌ 没有解压任何natives文件，游戏将无法启动！");
                 }
                 else
                 {
-                    Debug.WriteLine("ℹ️ 没有需要处理的natives库");
+                    Debug.WriteLine($"✅ Natives解压完成");
                 }
             }
             catch (Exception ex)
@@ -1014,9 +1059,38 @@ namespace ObsMCLauncher.Services
         }
 
         /// <summary>
+        /// 获取库文件的唯一标识（groupId:artifactId[:classifier]，忽略版本号）
+        /// </summary>
+        /// <param name="libraryName">库名称，格式如 "org.ow2.asm:asm:9.8" 或 "org.lwjgl:lwjgl:3.3.3:natives-windows"</param>
+        /// <returns>库的唯一标识，如 "org.ow2.asm:asm" 或 "org.lwjgl:lwjgl:natives-windows"</returns>
+        private static string GetLibraryKey(string? libraryName)
+        {
+            if (string.IsNullOrEmpty(libraryName))
+                return string.Empty;
+            
+            // 库名格式：groupId:artifactId:version[:classifier][@extension]
+            // 例如：org.ow2.asm:asm:9.8 或 org.lwjgl:lwjgl:3.3.3:natives-windows
+            var parts = libraryName.Split(':');
+            
+            if (parts.Length >= 4)
+            {
+                // 有classifier（如natives-windows），返回 groupId:artifactId:classifier
+                // 这样不同平台的natives库不会被误判为冲突
+                return $"{parts[0]}:{parts[1]}:{parts[3]}";
+            }
+            else if (parts.Length >= 2)
+            {
+                // 没有classifier，返回 groupId:artifactId（忽略版本号）
+                return $"{parts[0]}:{parts[1]}";
+            }
+            
+            return libraryName;
+        }
+
+        /// <summary>
         /// 合并继承的版本信息（处理inheritsFrom字段）
         /// </summary>
-        private static VersionInfo MergeInheritedVersion(string gameDirectory, VersionInfo childVersion)
+        private static VersionInfo MergeInheritedVersion(string gameDirectory, string childVersionId, VersionInfo childVersion)
         {
             try
             {
@@ -1024,12 +1098,27 @@ namespace ObsMCLauncher.Services
                 if (string.IsNullOrEmpty(parentVersionId))
                     return childVersion;
 
-                // 读取父版本JSON
+                // 尝试读取父版本JSON
+                // 1. 优先从标准位置读取：versions/1.21.10/1.21.10.json
                 var parentJsonPath = Path.Combine(gameDirectory, "versions", parentVersionId, $"{parentVersionId}.json");
+                
+                // 2. 如果不存在，尝试从子版本目录读取：versions/Minecraft-1.21.10-fabric-xxx/1.21.10.json
+                // （Fabric安装时会将原版JSON保存在这里）
                 if (!File.Exists(parentJsonPath))
                 {
-                    Debug.WriteLine($"⚠️ 父版本JSON不存在: {parentJsonPath}，跳过合并");
-                    return childVersion;
+                    var childVersionDir = Path.Combine(gameDirectory, "versions", childVersionId);
+                    var parentJsonInChildDir = Path.Combine(childVersionDir, $"{parentVersionId}.json");
+                    
+                    if (File.Exists(parentJsonInChildDir))
+                    {
+                        parentJsonPath = parentJsonInChildDir;
+                        Debug.WriteLine($"✅ 从子版本目录找到父版本JSON: {parentJsonInChildDir}");
+                    }
+                    else
+                    {
+                        Debug.WriteLine($"⚠️ 父版本JSON不存在: {parentJsonPath}，跳过合并");
+                        return childVersion;
+                    }
                 }
 
                 var parentJson = File.ReadAllText(parentJsonPath);
@@ -1047,15 +1136,42 @@ namespace ObsMCLauncher.Services
                 // 递归处理父版本的inheritsFrom
                 if (!string.IsNullOrEmpty(parentVersion.InheritsFrom))
                 {
-                    parentVersion = MergeInheritedVersion(gameDirectory, parentVersion);
+                    parentVersion = MergeInheritedVersion(gameDirectory, parentVersionId, parentVersion);
                 }
 
-                // 合并libraries（子版本的libraries优先，然后添加父版本的）
+                // 合并libraries（子版本的libraries优先，避免版本冲突）
                 var mergedLibraries = new System.Collections.Generic.List<Library>();
+                var libraryKeys = new System.Collections.Generic.HashSet<string>();
+                
+                // 先添加子版本（Fabric/Forge）的库，并记录库的标识
                 if (childVersion.Libraries != null)
-                    mergedLibraries.AddRange(childVersion.Libraries);
+                {
+                    foreach (var library in childVersion.Libraries)
+                    {
+                        mergedLibraries.Add(library);
+                        var libKey = GetLibraryKey(library.Name);
+                        libraryKeys.Add(libKey);
+                    }
+                }
+                
+                // 再添加父版本的库，跳过已存在的（避免冲突，如ASM 9.6和9.8！！！！！！！！！！！！！牛魔的）
                 if (parentVersion.Libraries != null)
-                    mergedLibraries.AddRange(parentVersion.Libraries);
+                {
+                    foreach (var library in parentVersion.Libraries)
+                    {
+                        var libKey = GetLibraryKey(library.Name);
+                        if (!libraryKeys.Contains(libKey))
+                        {
+                            mergedLibraries.Add(library);
+                            libraryKeys.Add(libKey);
+                        }
+                        else
+                        {
+                            Debug.WriteLine($"⚠️ 跳过冲突的父版本库: {library.Name} (已有子版本库)");
+                        }
+                    }
+                }
+                
                 childVersion.Libraries = mergedLibraries.ToArray();
 
                 // 合并其他缺失的字段

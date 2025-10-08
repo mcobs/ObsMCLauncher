@@ -54,6 +54,9 @@ namespace ObsMCLauncher.Pages
             
             // 异步加载Forge版本列表
             _ = LoadForgeVersionsAsync();
+            
+            // 异步加载Fabric版本列表
+            _ = LoadFabricVersionsAsync();
         }
         
         /// <summary>
@@ -379,6 +382,150 @@ namespace ObsMCLauncher.Pages
             }
         }
 
+        /// <summary>
+        /// 加载Fabric版本列表
+        /// </summary>
+        private async Task LoadFabricVersionsAsync()
+        {
+            // 设置加载状态
+            _ = Dispatcher.BeginInvoke(new Action(() =>
+            {
+                if (FabricRadio != null)
+                {
+                    FabricRadio.IsEnabled = false;
+                    FabricRadio.ToolTip = "正在加载Fabric版本列表...";
+                }
+                if (FabricVersionComboBox != null)
+                {
+                    FabricVersionComboBox.Items.Clear();
+                    var loadingItem = new ComboBoxItem 
+                    { 
+                        Content = "正在加载中...", 
+                        IsEnabled = false,
+                        FontStyle = FontStyles.Italic
+                    };
+                    FabricVersionComboBox.Items.Add(loadingItem);
+                    FabricVersionComboBox.SelectedIndex = 0;
+                }
+            }));
+            
+            try
+            {
+                System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] 检查Fabric支持: {currentVersion}");
+
+                // 检查Fabric是否支持当前MC版本
+                var supportedVersions = await FabricService.GetSupportedMinecraftVersionsAsync();
+                
+                if (!supportedVersions.Contains(currentVersion))
+                {
+                    System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] Fabric不支持版本 {currentVersion}");
+                    
+                    _ = Dispatcher.BeginInvoke(new Action(() =>
+                    {
+                        if (FabricRadio != null)
+                        {
+                            FabricRadio.IsEnabled = false;
+                            FabricRadio.ToolTip = $"Fabric暂不支持 Minecraft {currentVersion}";
+                        }
+                        if (FabricVersionComboBox != null)
+                        {
+                            FabricVersionComboBox.Items.Clear();
+                            var item = new ComboBoxItem 
+                            { 
+                                Content = "不支持此版本", 
+                                IsEnabled = false,
+                                FontStyle = FontStyles.Italic,
+                                Foreground = new SolidColorBrush(Colors.Gray)
+                            };
+                            FabricVersionComboBox.Items.Add(item);
+                            FabricVersionComboBox.SelectedIndex = 0;
+                        }
+                    }));
+                    return;
+                }
+
+                // 获取Fabric版本列表
+                var fabricVersions = await FabricService.GetFabricVersionsAsync(currentVersion);
+                
+                _ = Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    if (fabricVersions != null && fabricVersions.Count > 0)
+                    {
+                        if (FabricVersionComboBox != null)
+                        {
+                            FabricVersionComboBox.Items.Clear();
+                            
+                            foreach (var version in fabricVersions)
+                            {
+                                var displayText = version.Version;
+                                
+                                // 标记推荐版本（稳定版）
+                                if (version.Stable && version == fabricVersions.First(v => v.Stable))
+                                {
+                                    displayText += " (推荐)";
+                                }
+                                
+                                var item = new ComboBoxItem 
+                                { 
+                                    Content = displayText,
+                                    Tag = version.Version,
+                                    ToolTip = $"Fabric Loader {version.Version}\n构建号: {version.Build}"
+                                };
+                                FabricVersionComboBox.Items.Add(item);
+                            }
+                            
+                            // 自动选择第一个（最新）版本
+                            FabricVersionComboBox.SelectedIndex = 0;
+                        }
+
+                        // 启用Fabric选项
+                        if (FabricRadio != null)
+                        {
+                            FabricRadio.IsEnabled = true;
+                            FabricRadio.ToolTip = $"Fabric for Minecraft {currentVersion} ({fabricVersions.Count} 个版本可用)";
+                        }
+
+                        System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] 加载了 {fabricVersions.Count} 个Fabric版本，自动选择: {fabricVersions[0].Version}");
+                    }
+                    else
+                    {
+                        if (FabricRadio != null)
+                        {
+                            FabricRadio.IsEnabled = false;
+                            FabricRadio.ToolTip = "未找到可用的Fabric版本";
+                        }
+                        if (FabricVersionComboBox != null)
+                        {
+                            FabricVersionComboBox.Items.Clear();
+                            var item = new ComboBoxItem { Content = "无可用版本", IsEnabled = false };
+                            FabricVersionComboBox.Items.Add(item);
+                            FabricVersionComboBox.SelectedIndex = 0;
+                        }
+                    }
+                }));
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] 加载Fabric版本失败: {ex.Message}");
+                
+                _ = Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    if (FabricRadio != null)
+                    {
+                        FabricRadio.IsEnabled = false;
+                        FabricRadio.ToolTip = "加载Fabric版本列表失败";
+                    }
+                    if (FabricVersionComboBox != null)
+                    {
+                        FabricVersionComboBox.Items.Clear();
+                        var item = new ComboBoxItem { Content = "加载失败", IsEnabled = false };
+                        FabricVersionComboBox.Items.Add(item);
+                        FabricVersionComboBox.SelectedIndex = 0;
+                    }
+                }));
+            }
+        }
+
         private void LoaderRadio_Checked(object sender, RoutedEventArgs e)
         {
             // 禁用所有版本选择框
@@ -509,14 +656,13 @@ namespace ObsMCLauncher.Pages
             else if (FabricRadio?.IsChecked == true)
             {
                 var selectedItem = FabricVersionComboBox?.SelectedItem as ComboBoxItem;
-                var fabricVersion = selectedItem?.Content?.ToString();
+                // 从Tag获取实际版本号
+                var fabricVersion = selectedItem?.Tag?.ToString();
                 
                 // 只有在选择了有效版本时才添加后缀
                 if (!string.IsNullOrEmpty(fabricVersion) && 
-                    !fabricVersion.Contains("请选择") && 
                     selectedItem?.IsEnabled == true)
                 {
-                    fabricVersion = fabricVersion.Replace(" (推荐)", "").Trim();
                     versionName += $"-fabric-{fabricVersion}";
                 }
                 else
@@ -615,7 +761,8 @@ namespace ObsMCLauncher.Pages
             {
                 loaderType = "Fabric";
                 var selectedItem = FabricVersionComboBox?.SelectedItem as ComboBoxItem;
-                loaderVersion = selectedItem?.Content?.ToString() ?? "";
+                // 从Tag获取实际版本号，而不是从Content（显示文本可能包含"(推荐)"等标签）
+                loaderVersion = selectedItem?.Tag?.ToString() ?? "";
                 
                 // 检查是否有选择版本
                 if (string.IsNullOrEmpty(loaderVersion))
@@ -874,6 +1021,11 @@ namespace ObsMCLauncher.Pages
                 {
                     // Forge安装流程
                     await InstallForgeAsync(loaderVersion, customVersionName, gameDirectory, config, progress);
+                }
+                else if (loaderType == "Fabric")
+                {
+                    // Fabric安装流程
+                    await InstallFabricAsync(loaderVersion, customVersionName, gameDirectory, config, progress);
                 }
                 else
                 {
@@ -1692,6 +1844,179 @@ namespace ObsMCLauncher.Pages
                     "资源下载部分失败",
                     $"Forge已安装，但有 {assetsResult.FailedAssets} 个资源文件下载失败",
                     NotificationType.Warning, 8);
+            }
+        }
+
+        /// <summary>
+        /// 安装Fabric
+        /// </summary>
+        private async Task InstallFabricAsync(
+            string fabricLoaderVersion,
+            string customVersionName,
+            string gameDirectory,
+            LauncherConfig config,
+            IProgress<DownloadProgress> progress)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine($"[Fabric] 开始安装 Fabric Loader {fabricLoaderVersion} for MC {currentVersion}");
+
+                // 1. 更新UI - 开始安装
+                _ = Dispatcher.BeginInvoke(() =>
+                {
+                    DownloadStatusText.Text = "正在准备安装Fabric...";
+                    CurrentFileText.Text = $"Fabric Loader {fabricLoaderVersion}";
+                    DownloadOverallProgressBar.Value = 10;
+                    DownloadOverallPercentageText.Text = "10%";
+                    DownloadSpeedText.Text = "准备中...";
+                    DownloadSizeText.Text = "";
+                });
+
+                // 2. 使用FabricService安装Fabric
+                var installSuccess = await FabricService.InstallFabricAsync(
+                    currentVersion,
+                    fabricLoaderVersion,
+                    gameDirectory,
+                    customVersionName,
+                    (status, currentBytes, speed, totalBytes) =>
+                    {
+                        // 更新UI进度
+                        _ = Dispatcher.BeginInvoke(() =>
+                        {
+                            DownloadStatusText.Text = status;
+                            
+                            // 根据状态计算总体进度
+                            double overallProgress = 10;
+                            if (status.Contains("获取Fabric配置"))
+                                overallProgress = 20;
+                            else if (status.Contains("下载基础版本"))
+                            {
+                                // 基础版本下载占40%（20-60）
+                                if (totalBytes > 0 && currentBytes > 0)
+                                {
+                                    overallProgress = 20 + (currentBytes * 40.0 / totalBytes);
+                                }
+                                else
+                                {
+                                    overallProgress = 40;
+                                }
+                            }
+                            else if (status.Contains("安装Fabric配置"))
+                                overallProgress = 65;
+                            else if (status.Contains("下载Fabric库"))
+                            {
+                                // 库文件下载占25%（65-90）
+                                if (totalBytes > 0 && currentBytes > 0)
+                                {
+                                    overallProgress = 65 + (currentBytes * 25.0 / totalBytes);
+                                }
+                                else
+                                {
+                                    overallProgress = 80;
+                                }
+                            }
+                            else if (status.Contains("完成"))
+                                overallProgress = 100;
+
+                            DownloadOverallProgressBar.Value = overallProgress;
+                            DownloadOverallPercentageText.Text = $"{overallProgress:F0}%";
+                            
+                            // 更新当前文件进度（如果有）
+                            if (totalBytes > 0)
+                            {
+                                var currentProgress = (currentBytes * 100.0 / totalBytes);
+                                DownloadCurrentProgressBar.Value = currentProgress;
+                                DownloadCurrentPercentageText.Text = $"{currentProgress:F0}%";
+                                
+                                // 格式化大小显示
+                                DownloadSizeText.Text = $"{FormatFileSize(currentBytes)} / {FormatFileSize(totalBytes)}";
+                            }
+                            
+                            // 更新速度显示
+                            if (speed > 0)
+                            {
+                                DownloadSpeedText.Text = FormatSpeed(speed);
+                            }
+                            
+                            // 更新下载任务管理器
+                            if (_currentDownloadTaskId != null)
+                            {
+                                DownloadTaskManager.Instance.UpdateTaskProgress(
+                                    _currentDownloadTaskId,
+                                    overallProgress,
+                                    status,
+                                    speed
+                                );
+                            }
+                        });
+                    },
+                    _downloadCancellationToken!.Token
+                );
+
+                if (!installSuccess)
+                {
+                    throw new Exception("Fabric安装失败");
+                }
+
+                // 3. 安装成功
+                System.Diagnostics.Debug.WriteLine($"[Fabric] ✅ Fabric安装成功: {customVersionName}");
+                
+                _ = Dispatcher.BeginInvoke(() =>
+                {
+                    DownloadStatusText.Text = "Fabric安装完成！";
+                    DownloadOverallProgressBar.Value = 100;
+                    DownloadOverallPercentageText.Text = "100%";
+                    DownloadCurrentProgressBar.Value = 100;
+                    DownloadCurrentPercentageText.Text = "100%";
+                    DownloadSpeedText.Text = "完成";
+                });
+
+                // 标记任务完成
+                if (_currentDownloadTaskId != null)
+                {
+                    DownloadTaskManager.Instance.CompleteTask(_currentDownloadTaskId);
+                    _currentDownloadTaskId = null;
+                }
+
+                // 4. 显示成功消息
+                await Task.Delay(500); // 短暂延迟，让用户看到100%
+                await DialogManager.Instance.ShowSuccess(
+                    "安装完成",
+                    $"Fabric Loader {fabricLoaderVersion} for Minecraft {currentVersion}\n\n已成功安装到版本 {customVersionName}！"
+                );
+
+                // 返回列表页面
+                BackButton_Click(null!, null!);
+            }
+            catch (OperationCanceledException)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Fabric] 安装已取消");
+                throw; // 重新抛出，让上层处理
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Fabric] 安装失败: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[Fabric] 堆栈跟踪: {ex.StackTrace}");
+                
+                // 标记任务失败
+                if (_currentDownloadTaskId != null)
+                {
+                    DownloadTaskManager.Instance.FailTask(_currentDownloadTaskId, ex.Message);
+                    _currentDownloadTaskId = null;
+                }
+
+                _ = Dispatcher.BeginInvoke(() =>
+                {
+                    DownloadStatusText.Text = "安装失败";
+                    DownloadOverallProgressBar.Value = 0;
+                });
+
+                await DialogManager.Instance.ShowError(
+                    "安装失败",
+                    $"Fabric安装失败：\n\n{ex.Message}\n\n请检查网络连接或尝试切换下载源。"
+                );
+
+                throw;
             }
         }
 

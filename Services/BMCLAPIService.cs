@@ -103,6 +103,46 @@ namespace ObsMCLauncher.Services
                 return Task.FromResult<string?>(null);
             }
         }
+
+        /// <summary>
+        /// 获取Fabric Meta API URL
+        /// </summary>
+        public string GetFabricMetaUrl()
+        {
+            return $"{BaseUrl}/fabric-meta";
+        }
+
+        /// <summary>
+        /// 获取Fabric Loader版本列表URL
+        /// </summary>
+        public string GetFabricLoaderVersionsUrl()
+        {
+            return $"{BaseUrl}/fabric-meta/v2/versions/loader";
+        }
+
+        /// <summary>
+        /// 获取Fabric支持的游戏版本列表URL
+        /// </summary>
+        public string GetFabricGameVersionsUrl()
+        {
+            return $"{BaseUrl}/fabric-meta/v2/versions/game";
+        }
+
+        /// <summary>
+        /// 获取Fabric Profile URL
+        /// </summary>
+        public string GetFabricProfileUrl(string mcVersion, string loaderVersion)
+        {
+            return $"{BaseUrl}/fabric-meta/v2/versions/loader/{mcVersion}/{loaderVersion}/profile/json";
+        }
+
+        /// <summary>
+        /// 获取Fabric Maven库文件URL
+        /// </summary>
+        public string GetFabricMavenUrl(string path)
+        {
+            return $"{BaseUrl}/maven/{path}";
+        }
     }
 }
 

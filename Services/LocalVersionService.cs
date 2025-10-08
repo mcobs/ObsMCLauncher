@@ -3,10 +3,57 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using ObsMCLauncher.Models;
 
 namespace ObsMCLauncher.Services
 {
+    /// <summary>
+    /// 自定义DateTime转换器，支持多种时间格式
+    /// </summary>
+    public class FlexibleDateTimeConverter : JsonConverter<DateTime>
+    {
+        public override DateTime Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            var dateString = reader.GetString();
+            if (string.IsNullOrEmpty(dateString))
+                return DateTime.MinValue;
+
+            // 尝试标准解析
+            if (DateTime.TryParse(dateString, out DateTime result))
+                return result;
+
+            // 处理Fabric的特殊格式: "2025-10-07T18:03:46+0000" (缺少冒号)
+            try
+            {
+                if (dateString.Length >= 24 && dateString.Contains("+"))
+                {
+                    // 找到 + 或 - 的位置
+                    var tzIndex = dateString.LastIndexOf('+');
+                    if (tzIndex < 0)
+                        tzIndex = dateString.LastIndexOf('-');
+
+                    if (tzIndex > 0 && dateString.Length - tzIndex == 5)
+                    {
+                        // 格式: +0000 或 -0000，需要转换为 +00:00 或 -00:00
+                        var fixedString = dateString.Substring(0, tzIndex + 3) + ":" + dateString.Substring(tzIndex + 3);
+                        if (DateTime.TryParse(fixedString, out result))
+                            return result;
+                    }
+                }
+            }
+            catch { }
+
+            System.Diagnostics.Debug.WriteLine($"[LocalVersionService] 无法解析时间格式: {dateString}");
+            return DateTime.MinValue;
+        }
+
+        public override void Write(Utf8JsonWriter writer, DateTime value, JsonSerializerOptions options)
+        {
+            writer.WriteStringValue(value.ToString("yyyy-MM-ddTHH:mm:ss+00:00"));
+        }
+    }
+
     /// <summary>
     /// 本地已安装版本信息
     /// </summary>
@@ -89,8 +136,12 @@ namespace ObsMCLauncher.Services
 
                     try
                     {
-                        // 解析版本JSON
-                        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                        // 解析版本JSON，使用自定义DateTime转换器
+                        var options = new JsonSerializerOptions 
+                        { 
+                            PropertyNameCaseInsensitive = true,
+                            Converters = { new FlexibleDateTimeConverter() }
+                        };
                         var versionData = JsonSerializer.Deserialize<VersionJsonData>(jsonContent, options);
 
                         if (versionData != null)
