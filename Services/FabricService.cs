@@ -432,8 +432,10 @@ namespace ObsMCLauncher.Services
                         }
                     }
                     
-                    // 如果没有releaseTime和time字段，从基础MC版本JSON中获取
-                    if (!doc.RootElement.TryGetProperty("releaseTime", out _))
+                    // 如果没有releaseTime、time或assetIndex字段，从基础MC版本JSON中获取
+                    if (!doc.RootElement.TryGetProperty("releaseTime", out _) || 
+                        !doc.RootElement.TryGetProperty("time", out _) ||
+                        !doc.RootElement.TryGetProperty("assetIndex", out _))
                     {
                         try
                         {
@@ -459,6 +461,17 @@ namespace ObsMCLauncher.Services
                                     else
                                     {
                                         writer.WriteString("time", DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss+00:00"));
+                                    }
+                                }
+                                
+                                // ⭐ 复制assetIndex（Fabric profile中没有，需要从原版JSON复制）
+                                if (!doc.RootElement.TryGetProperty("assetIndex", out _))
+                                {
+                                    if (mcDoc.RootElement.TryGetProperty("assetIndex", out var assetIndex))
+                                    {
+                                        writer.WritePropertyName("assetIndex");
+                                        assetIndex.WriteTo(writer);
+                                        Debug.WriteLine($"[Fabric] ✅ 已从原版JSON复制assetIndex: {assetIndex.GetProperty("id").GetString()}");
                                     }
                                 }
                             }

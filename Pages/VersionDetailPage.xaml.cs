@@ -1518,14 +1518,13 @@ namespace ObsMCLauncher.Pages
                 await CleanupPreviousForgeInstallation(gameDirectory, customVersionName);
 
                 // 2. 下载官方 Forge 安装器
-                _ = Dispatcher.BeginInvoke(() =>
+                progress?.Report(new DownloadProgress
                 {
-                    DownloadStatusText.Text = "下载Forge安装器...";
-                    CurrentFileText.Text = $"forge-{currentVersion}-{forgeVersion}-installer.jar";
-                    DownloadOverallProgressBar.Value = 20;
-                    DownloadOverallPercentageText.Text = "20%";
-                    DownloadSpeedText.Text = "准备下载...";
-                    DownloadSizeText.Text = "0 B / 0 B";
+                    Status = "正在下载Forge安装器...",
+                    CurrentFile = $"forge-{currentVersion}-{forgeVersion}-installer.jar",
+                    TotalBytes = 0,
+                    TotalDownloadedBytes = 0,
+                    DownloadSpeed = 0
                 });
                 
                 // 使用带详细进度信息的下载方法
@@ -1534,53 +1533,70 @@ namespace ObsMCLauncher.Pages
                     installerPath, 
                     (currentBytes, speed, totalBytes) =>
                     {
-                        _ = Dispatcher.BeginInvoke(() => {
-                            // 计算百分比
-                            double percentage = totalBytes > 0 ? (double)currentBytes / totalBytes * 100 : 0;
-                            
-                            // 更新总体进度（20%-40%）
-                            DownloadOverallProgressBar.Value = 20 + (percentage * 0.2);
-                            DownloadOverallPercentageText.Text = $"{(int)(20 + percentage * 0.2)}%";
-                            
-                            // 更新当前文件进度
-                            DownloadCurrentProgressBar.Value = percentage;
-                            DownloadCurrentPercentageText.Text = $"{percentage:F0}%";
-                            
-                            // 更新速度和文件大小
-                            DownloadSpeedText.Text = FormatSpeed(speed);
-                            DownloadSizeText.Text = $"{FormatFileSize(currentBytes)} / {FormatFileSize(totalBytes)}";
-                        }, System.Windows.Threading.DispatcherPriority.Background);
+                        // 计算百分比
+                        double percentage = totalBytes > 0 ? (double)currentBytes / totalBytes * 100 : 0;
+                        double overallProgress = 20 + (percentage * 0.2); // 20%-40%
+                        
+                        // 通过progress报告（会自动更新UI和DownloadTaskManager）
+                        progress?.Report(new DownloadProgress
+                        {
+                            Status = "正在下载Forge安装器",
+                            CurrentFile = $"forge-installer.jar",
+                            CurrentFileBytes = currentBytes,
+                            CurrentFileTotalBytes = totalBytes,
+                            TotalDownloadedBytes = currentBytes,
+                            TotalBytes = totalBytes,
+                            DownloadSpeed = speed,
+                            CompletedFiles = 0,
+                            TotalFiles = 3 // 安装器、原版、库文件
+                        });
                     },
                     _downloadCancellationToken!.Token))
                     throw new Exception("Forge安装器下载失败");
 
-                // 3. 先创建Forge版本目录，然后下载原版文件到这个目录
-                var vanillaProgress = new Progress<double>(p => {
-                    _ = Dispatcher.BeginInvoke(() => {
-                        DownloadStatusText.Text = "下载原版文件...";
-                        CurrentFileText.Text = $"minecraft-{currentVersion}.jar";
-                        // p的范围是0-100，映射到40%-50%
-                        var overallProgress = 40 + (p / 100.0 * 10);
-                        DownloadOverallProgressBar.Value = overallProgress;
-                        DownloadOverallPercentageText.Text = $"{(int)overallProgress}%";
-                    }, System.Windows.Threading.DispatcherPriority.Background);
-                });
-
-                // 下载原版文件到标准位置（Forge安装器期望文件在这里）
+                // 3. 下载原版文件到标准位置（Forge安装器期望文件在这里）
                 string standardVanillaDir = Path.Combine(gameDirectory, "versions", currentVersion);
+                
+                // 创建进度回调，将原版下载进度映射到40%-50%
+                var vanillaProgress = new Progress<DownloadProgress>(p => {
+                    // 计算文件进度百分比
+                    double fileProgress = p.CurrentFileTotalBytes > 0 
+                        ? (double)p.CurrentFileBytes / p.CurrentFileTotalBytes * 100 
+                        : 0;
+                    
+                    // 映射到40%-50%的范围
+                    var overallProgress = 40 + (fileProgress / 100.0 * 10);
+                    
+                    // 通过progress报告（自动更新UI和DownloadTaskManager）
+                    progress?.Report(new DownloadProgress
+                    {
+                        Status = p.Status,
+                        CurrentFile = p.CurrentFile ?? $"{currentVersion}.jar",
+                        CurrentFileBytes = p.CurrentFileBytes,
+                        CurrentFileTotalBytes = p.CurrentFileTotalBytes,
+                        TotalDownloadedBytes = p.TotalDownloadedBytes,
+                        TotalBytes = p.TotalBytes,
+                        DownloadSpeed = p.DownloadSpeed,
+                        CompletedFiles = 1,
+                        TotalFiles = 3
+                    });
+                });
+                
                 await DownloadVanillaForForge(gameDirectory, currentVersion, standardVanillaDir, vanillaProgress);
 
                 // 4. 运行官方安装器（带进度模拟）
-                _ = Dispatcher.BeginInvoke(() =>
+                progress?.Report(new DownloadProgress
                 {
-                    DownloadStatusText.Text = "执行Forge安装...";
-                    CurrentFileText.Text = "正在处理Minecraft文件（请稍候）";
-                    DownloadOverallProgressBar.Value = 50;
-                    DownloadOverallPercentageText.Text = "50%";
+                    Status = "执行Forge安装...",
+                    CurrentFile = "正在处理Minecraft文件（请稍候）",
+                    CurrentFileBytes = 50,
+                    CurrentFileTotalBytes = 100,
+                    CompletedFiles = 2,
+                    TotalFiles = 3
                 });
 
                 // 创建一个进度模拟器（因为Forge安装器不提供进度）
-                progressSimulator = SimulateForgeInstallerProgress();
+                progressSimulator = SimulateForgeInstallerProgress(progress);
 
                 bool installSuccess = await RunForgeInstallerAsync(installerPath, gameDirectory, currentVersion, forgeVersion, config);
                 
@@ -1592,18 +1608,24 @@ namespace ObsMCLauncher.Pages
                     throw new Exception("Forge安装器执行失败，请查看日志");
                 
                 // 安装完成，设置为70%
-                _ = Dispatcher.BeginInvoke(() =>
+                progress?.Report(new DownloadProgress
                 {
-                    DownloadOverallProgressBar.Value = 70;
-                    DownloadOverallPercentageText.Text = "70%";
+                    Status = "Forge安装完成",
+                    CurrentFileBytes = 70,
+                    CurrentFileTotalBytes = 100,
+                    CompletedFiles = 2,
+                    TotalFiles = 3
                 });
 
                 // 4. 重命名官方生成的版本到自定义名称
-                _ = Dispatcher.BeginInvoke(() =>
+                progress?.Report(new DownloadProgress
                 {
-                    DownloadStatusText.Text = "配置版本信息...";
-                    DownloadOverallProgressBar.Value = 75;
-                    DownloadOverallPercentageText.Text = "75%";
+                    Status = "配置版本信息...",
+                    CurrentFile = "正在重命名版本文件",
+                    CurrentFileBytes = 75,
+                    CurrentFileTotalBytes = 100,
+                    CompletedFiles = 2,
+                    TotalFiles = 3
                 });
                 
                 await RenameForgeVersionAsync(gameDirectory, currentVersion, forgeVersion, customVersionName);
@@ -2078,7 +2100,7 @@ namespace ObsMCLauncher.Pages
         /// <summary>
         /// 模拟Forge安装器进度（因为官方安装器不提供实时进度）
         /// </summary>
-        private System.Threading.Timer SimulateForgeInstallerProgress()
+        private System.Threading.Timer SimulateForgeInstallerProgress(IProgress<DownloadProgress>? progress)
         {
             double currentProgress = 50;
             var random = new Random();
@@ -2092,21 +2114,27 @@ namespace ObsMCLauncher.Pages
                     {
                         currentProgress += random.NextDouble() * 0.5; // 每次增加0-0.5%
                         
-                        _ = Dispatcher.BeginInvoke(() =>
+                        // 根据进度确定当前状态文本
+                        string statusText;
+                        if (currentProgress < 55)
+                            statusText = "正在下载依赖库...";
+                        else if (currentProgress < 60)
+                            statusText = "正在处理混淆映射...";
+                        else if (currentProgress < 65)
+                            statusText = "正在应用访问转换器...";
+                        else
+                            statusText = "正在生成Forge客户端...";
+                        
+                        // 通过progress报告（自动更新UI和DownloadTaskManager）
+                        progress?.Report(new DownloadProgress
                         {
-                            DownloadOverallProgressBar.Value = currentProgress;
-                            DownloadOverallPercentageText.Text = $"{(int)currentProgress}%";
-                            
-                            // 根据进度更新提示文本
-                            if (currentProgress < 55)
-                                CurrentFileText.Text = "正在下载依赖库...";
-                            else if (currentProgress < 60)
-                                CurrentFileText.Text = "正在处理混淆映射...";
-                            else if (currentProgress < 65)
-                                CurrentFileText.Text = "正在应用访问转换器...";
-                            else
-                                CurrentFileText.Text = "正在生成Forge客户端...";
-                        }, System.Windows.Threading.DispatcherPriority.Background);
+                            Status = statusText,
+                            CurrentFile = statusText,
+                            CurrentFileBytes = (long)currentProgress,
+                            CurrentFileTotalBytes = 100,
+                            CompletedFiles = 2,
+                            TotalFiles = 3
+                        });
                     }
                 }
                 catch { }
@@ -2600,7 +2628,7 @@ namespace ObsMCLauncher.Pages
         /// <param name="version">原版Minecraft版本号</param>
         /// <param name="targetDirectory">目标目录（Forge版本目录）</param>
         /// <param name="progress">进度回调</param>
-        private async Task DownloadVanillaForForge(string gameDirectory, string version, string targetDirectory, IProgress<double>? progress = null)
+        private async Task DownloadVanillaForForge(string gameDirectory, string version, string targetDirectory, IProgress<DownloadProgress>? progress = null)
         {
             try
             {
@@ -2617,11 +2645,11 @@ namespace ObsMCLauncher.Pages
                 if (File.Exists(jsonPath) && File.Exists(jarPath))
                 {
                     System.Diagnostics.Debug.WriteLine($"[Forge] 原版文件已存在，跳过下载");
-                    progress?.Report(100);
+                    progress?.Report(new DownloadProgress { Status = "原版文件已准备完成" });
                     return;
                 }
 
-                progress?.Report(0);
+                progress?.Report(new DownloadProgress { Status = "正在获取版本信息..." });
 
                 // 获取版本信息URL
                 var versionManifest = await MinecraftVersionService.GetVersionListAsync();
@@ -2631,7 +2659,7 @@ namespace ObsMCLauncher.Pages
                     throw new Exception($"找不到版本 {version} 的信息");
                 }
 
-                progress?.Report(10);
+                progress?.Report(new DownloadProgress { Status = "正在下载版本清单..." });
 
                 // 下载版本JSON
                 if (!File.Exists(jsonPath))
@@ -2642,31 +2670,42 @@ namespace ObsMCLauncher.Pages
                     System.Diagnostics.Debug.WriteLine($"[Forge] ✅ 已下载原版JSON");
                 }
 
-                progress?.Report(20);
+                progress?.Report(new DownloadProgress { Status = "正在解析版本信息..." });
 
-                // 解析JSON获取JAR下载URL
+                // 解析JSON获取JAR下载URL和大小
                 var jsonDoc = System.Text.Json.JsonDocument.Parse(await File.ReadAllTextAsync(jsonPath));
                 var clientUrl = jsonDoc.RootElement.GetProperty("downloads").GetProperty("client").GetProperty("url").GetString();
+                var clientSize = jsonDoc.RootElement.GetProperty("downloads").GetProperty("client").GetProperty("size").GetInt64();
                 
                 if (string.IsNullOrEmpty(clientUrl))
                 {
                     throw new Exception("无法获取原版JAR下载地址");
                 }
 
-                progress?.Report(30);
+                // 根据配置的下载源转换URL
+                var downloadUrl = clientUrl;
+                if (DownloadSourceManager.Instance.CurrentService is BMCLAPIService)
+                {
+                    downloadUrl = $"https://bmclapi2.bangbang93.com/version/{version}/client";
+                    System.Diagnostics.Debug.WriteLine($"[Forge] 使用BMCLAPI镜像下载原版JAR");
+                }
 
-                // 下载原版JAR（带进度）
+                // 下载原版JAR（带详细进度和速度计算）
                 if (!File.Exists(jarPath))
                 {
-                    using var httpClient = new HttpClient();
-                    using var response = await httpClient.GetAsync(clientUrl!, HttpCompletionOption.ResponseHeadersRead, _downloadCancellationToken?.Token ?? default);
+                    var startTime = DateTime.Now;
+                    var lastReportTime = startTime;
+                    long lastReportedBytes = 0;
+                    
+                    using var httpClient = new HttpClient { Timeout = TimeSpan.FromMinutes(30) };
+                    using var response = await httpClient.GetAsync(downloadUrl!, HttpCompletionOption.ResponseHeadersRead, _downloadCancellationToken?.Token ?? default);
                     response.EnsureSuccessStatusCode();
                     
-                    var totalBytes = response.Content.Headers.ContentLength ?? 0;
+                    var totalBytes = response.Content.Headers.ContentLength ?? clientSize;
                     using var contentStream = await response.Content.ReadAsStreamAsync(_downloadCancellationToken?.Token ?? default);
-                    using var fileStream = new FileStream(jarPath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true);
+                    using var fileStream = new FileStream(jarPath, FileMode.Create, FileAccess.Write, FileShare.None, 81920, true);
                     
-                    var buffer = new byte[8192];
+                    var buffer = new byte[81920];
                     long totalRead = 0;
                     int bytesRead;
                     
@@ -2675,17 +2714,45 @@ namespace ObsMCLauncher.Pages
                         await fileStream.WriteAsync(buffer, 0, bytesRead, _downloadCancellationToken?.Token ?? default);
                         totalRead += bytesRead;
                         
-                        if (totalBytes > 0)
+                        // 每200ms报告一次进度（避免UI更新过于频繁）
+                        var now = DateTime.Now;
+                        if ((now - lastReportTime).TotalMilliseconds >= 200)
                         {
-                            var downloadProgress = (double)totalRead / totalBytes;
-                            progress?.Report(30 + downloadProgress * 70); // 30%-100%
+                            var elapsed = (now - lastReportTime).TotalSeconds;
+                            var speed = elapsed > 0 ? (totalRead - lastReportedBytes) / elapsed : 0;
+                            
+                            progress?.Report(new DownloadProgress
+                            {
+                                Status = $"正在下载原版文件 {version}.jar",
+                                CurrentFile = $"{version}.jar",
+                                CurrentFileBytes = totalRead,
+                                CurrentFileTotalBytes = totalBytes,
+                                TotalDownloadedBytes = totalRead,
+                                TotalBytes = totalBytes,
+                                DownloadSpeed = speed
+                            });
+                            
+                            lastReportTime = now;
+                            lastReportedBytes = totalRead;
                         }
                     }
+                    
+                    // 最后报告一次完成
+                    progress?.Report(new DownloadProgress
+                    {
+                        Status = $"原版文件下载完成",
+                        CurrentFile = $"{version}.jar",
+                        CurrentFileBytes = totalRead,
+                        CurrentFileTotalBytes = totalBytes,
+                        TotalDownloadedBytes = totalRead,
+                        TotalBytes = totalBytes,
+                        DownloadSpeed = 0
+                    });
                     
                     System.Diagnostics.Debug.WriteLine($"[Forge] ✅ 已下载原版JAR ({totalRead / 1024 / 1024} MB)");
                 }
 
-                progress?.Report(100);
+                progress?.Report(new DownloadProgress { Status = "原版文件准备完成" });
                 System.Diagnostics.Debug.WriteLine($"[Forge] ✅ 原版文件准备完成");
             }
             catch (Exception ex)

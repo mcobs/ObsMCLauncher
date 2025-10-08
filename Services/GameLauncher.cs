@@ -219,6 +219,9 @@ namespace ObsMCLauncher.Services
                     onProgressUpdate?.Invoke("令牌刷新成功");
                 }
 
+                // 0.5. 确保旧版本所需的图标文件存在（1.5.x及更早版本）
+                EnsureOldVersionIconsExist(config.GameDirectory);
+
                 // 1. 验证Java路径
                 onProgressUpdate?.Invoke("正在验证Java环境...");
                 cancellationToken.ThrowIfCancellationRequested();
@@ -444,16 +447,16 @@ namespace ObsMCLauncher.Services
                 {
                     if (arg is string str)
                     {
-                        // 跳过需要动态替换的参数
-                        if (!str.StartsWith("${"))
-                        {
-                            args.Append($"{str} ");
-                        }
+                        // 跳过标准JVM参数
+                        if (ShouldSkipJvmArg(str))
+                            continue;
+                        
+                        args.Append($"{str} ");
                     }
                     else if (arg is System.Text.Json.JsonElement jsonElement && jsonElement.ValueKind == System.Text.Json.JsonValueKind.String)
                     {
                         var argStr = jsonElement.GetString();
-                        if (!string.IsNullOrEmpty(argStr) && !argStr.StartsWith("${"))
+                        if (!string.IsNullOrEmpty(argStr) && !ShouldSkipJvmArg(argStr))
                         {
                             args.Append($"{argStr} ");
                         }
@@ -476,35 +479,28 @@ namespace ObsMCLauncher.Services
             
             var classpathItems = new System.Collections.Generic.List<string>();
             
-            // 旧版本格式（使用minecraftArguments）需要在类路径中包含版本JAR（包含Minecraft核心类）
-            if (!string.IsNullOrEmpty(versionInfo.MinecraftArguments))
+            // 添加客户端JAR到classpath（所有版本都需要）
+            var versionJarPath = Path.Combine(versionDir, $"{versionId}.jar");
+            if (File.Exists(versionJarPath))
             {
-                var versionJarPath = Path.Combine(versionDir, $"{versionId}.jar");
-                if (File.Exists(versionJarPath))
+                classpathItems.Add(versionJarPath);
+                
+                if (!string.IsNullOrEmpty(versionInfo.MinecraftArguments))
                 {
-                    classpathItems.Add(versionJarPath);
                     Debug.WriteLine($"✅ 旧版本格式，已添加版本JAR到classpath: {versionId}.jar");
                 }
+                else if (!string.IsNullOrEmpty(versionInfo.InheritsFrom))
+                {
+                    Debug.WriteLine($"✅ Mod加载器版本，已添加Minecraft客户端到classpath: {versionId}.jar");
+                }
                 else
                 {
-                    Debug.WriteLine($"⚠️ 版本JAR不存在: {versionJarPath}");
+                    Debug.WriteLine($"✅ 新版本格式，已添加客户端JAR到classpath: {versionId}.jar");
                 }
             }
-            // 如果使用inheritsFrom（Fabric/Forge等Mod加载器），添加Minecraft客户端JAR
-            else if (!string.IsNullOrEmpty(versionInfo.InheritsFrom))
+            else
             {
-                // 直接从当前版本目录读取（Fabric/Forge安装时下载到这里的）
-                var versionJarInCurrentDir = Path.Combine(versionDir, $"{versionId}.jar");
-                
-                if (File.Exists(versionJarInCurrentDir))
-                {
-                    classpathItems.Add(versionJarInCurrentDir);
-                    Debug.WriteLine($"✅ 已添加Minecraft客户端到classpath: {versionJarInCurrentDir}");
-                }
-                else
-                {
-                    Debug.WriteLine($"❌ Minecraft客户端JAR不存在: {versionJarInCurrentDir}");
-                }
+                Debug.WriteLine($"⚠️ 客户端JAR不存在: {versionJarPath}");
             }
             
             // 遍历所有库，构建classpath
@@ -588,16 +584,16 @@ namespace ObsMCLauncher.Services
                 {
                     if (arg is string str)
                     {
-                        // 跳过需要动态替换的参数（这些参数我们会在后面手动添加）
-                        if (!str.StartsWith("${"))
-                        {
-                            args.Append($"{str} ");
-                        }
+                        // 跳过标准游戏参数（我们自己会添加）
+                        if (ShouldSkipGameArg(str))
+                            continue;
+                        
+                        args.Append($"{str} ");
                     }
                     else if (arg is System.Text.Json.JsonElement jsonElement && jsonElement.ValueKind == System.Text.Json.JsonValueKind.String)
                     {
                         var argStr = jsonElement.GetString();
-                        if (!string.IsNullOrEmpty(argStr) && !argStr.StartsWith("${"))
+                        if (!string.IsNullOrEmpty(argStr) && !ShouldSkipGameArg(argStr))
                         {
                             args.Append($"{argStr} ");
                         }
@@ -647,6 +643,56 @@ namespace ObsMCLauncher.Services
             // 检查是否为非常旧的版本（1.6.x, 1.7.x）
             // 这些版本的Forge有严格的JAR完整性检查
             if (versionId.Contains("1.6.") || versionId.Contains("1.7."))
+                return true;
+
+            return false;
+        }
+
+        /// <summary>
+        /// 判断是否应该跳过JSON中的JVM参数（避免重复或冲突）
+        /// </summary>
+        private static bool ShouldSkipJvmArg(string arg)
+        {
+            if (string.IsNullOrEmpty(arg))
+                return true;
+
+            // 跳过包含变量占位符的参数（如${natives_directory}）
+            if (arg.Contains("${"))
+                return true;
+
+            // 跳过标准JVM参数
+            if (arg.StartsWith("-Djava.library.path"))
+                return true;
+            if (arg.StartsWith("-Dminecraft.launcher.brand"))
+                return true;
+            if (arg.StartsWith("-Dminecraft.launcher.version"))
+                return true;
+            if (arg.Equals("-cp") || arg.Equals("--class-path"))
+                return true;
+
+            return false;
+        }
+
+        /// <summary>
+        /// 判断是否应该跳过JSON中的游戏参数（避免重复或冲突）
+        /// </summary>
+        private static bool ShouldSkipGameArg(string arg)
+        {
+            if (string.IsNullOrEmpty(arg))
+                return true;
+
+            // 跳过包含变量占位符的参数（如${auth_player_name}）
+            if (arg.Contains("${"))
+                return true;
+
+            // 跳过标准游戏参数
+            var standardArgs = new[] { 
+                "--username", "--version", "--gameDir", "--assetsDir", 
+                "--assetIndex", "--uuid", "--accessToken", "--userType", 
+                "--versionType", "--width", "--height" 
+            };
+            
+            if (standardArgs.Contains(arg))
                 return true;
 
             return false;
@@ -1192,6 +1238,76 @@ namespace ObsMCLauncher.Services
             {
                 Debug.WriteLine($"❌ 合并继承版本失败: {ex.Message}");
                 return childVersion;
+            }
+        }
+
+        /// <summary>
+        /// 确保旧版本Minecraft所需的图标文件存在（1.5.x及更早版本需要）
+        /// </summary>
+        private static void EnsureOldVersionIconsExist(string gameDirectory)
+        {
+            try
+            {
+                var iconsDir = Path.Combine(gameDirectory, "assets", "icons");
+                
+                // 检查是否已存在图标
+                var icon16Path = Path.Combine(iconsDir, "icon_16x16.png");
+                var icon32Path = Path.Combine(iconsDir, "icon_32x32.png");
+                
+                if (File.Exists(icon16Path) && File.Exists(icon32Path))
+                {
+                    return; // 图标已存在，无需创建
+                }
+                
+                Debug.WriteLine("[图标] 为旧版本创建默认窗口图标...");
+                
+                // 创建目录
+                Directory.CreateDirectory(iconsDir);
+                
+                // 创建16x16透明PNG（最小有效PNG）
+                if (!File.Exists(icon16Path))
+                {
+                    CreateMinimalPng(icon16Path, 16);
+                    Debug.WriteLine($"[图标] ✅ 已创建 icon_16x16.png");
+                }
+                
+                // 创建32x32透明PNG
+                if (!File.Exists(icon32Path))
+                {
+                    CreateMinimalPng(icon32Path, 32);
+                    Debug.WriteLine($"[图标] ✅ 已创建 icon_32x32.png");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[图标] ⚠️ 创建图标文件失败（不影响游戏启动）: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 创建一个最小的透明PNG文件
+        /// </summary>
+        private static void CreateMinimalPng(string filePath, int size)
+        {
+            // 创建一个透明的位图
+            using (var bitmap = new System.Drawing.Bitmap(size, size))
+            {
+                // 将整个位图设置为透明
+                using (var graphics = System.Drawing.Graphics.FromImage(bitmap))
+                {
+                    graphics.Clear(System.Drawing.Color.Transparent);
+                    
+                    // 可选：在中心绘制一个简单的Minecraft草方块颜色
+                    var grassGreen = System.Drawing.Color.FromArgb(127, 204, 25);
+                    var dirtBrown = System.Drawing.Color.FromArgb(150, 75, 0);
+                    
+                    var halfSize = size / 2;
+                    graphics.FillRectangle(new System.Drawing.SolidBrush(grassGreen), 0, 0, size, halfSize);
+                    graphics.FillRectangle(new System.Drawing.SolidBrush(dirtBrown), 0, halfSize, size, halfSize);
+                }
+                
+                // 保存为PNG
+                bitmap.Save(filePath, System.Drawing.Imaging.ImageFormat.Png);
             }
         }
     }
