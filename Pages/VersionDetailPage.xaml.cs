@@ -396,27 +396,131 @@ namespace ObsMCLauncher.Pages
                 if (NeoForgeRadio != null)
                 {
                     NeoForgeRadio.IsEnabled = false;
-                    NeoForgeRadio.ToolTip = "NeoForge支持即将推出";
+                    NeoForgeRadio.ToolTip = "正在加载NeoForge版本列表...";
                 }
                 if (NeoForgeVersionComboBox != null)
                 {
                     NeoForgeVersionComboBox.Items.Clear();
-                    var item = new ComboBoxItem 
+                    var loadingItem = new ComboBoxItem 
                     { 
-                        Content = "即将支持", 
+                        Content = "正在加载中...", 
                         IsEnabled = false,
-                        FontStyle = FontStyles.Italic,
-                        Foreground = new SolidColorBrush(Colors.Gray)
+                        FontStyle = FontStyles.Italic
                     };
-                    NeoForgeVersionComboBox.Items.Add(item);
+                    NeoForgeVersionComboBox.Items.Add(loadingItem);
                     NeoForgeVersionComboBox.SelectedIndex = 0;
                 }
             }));
-
-            await Task.CompletedTask;
             
-            // TODO: 后续实现 NeoForge Service 来加载版本列表
-            // var neoforgeVersions = await NeoForgeService.GetNeoForgeVersionsAsync(currentVersion);
+            try
+            {
+                System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] 检查NeoForge支持: {currentVersion}");
+
+                // 检查NeoForge是否支持当前MC版本
+                var supportedVersions = await NeoForgeService.GetSupportedMinecraftVersionsAsync();
+                
+                if (!supportedVersions.Contains(currentVersion))
+                {
+                    System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] NeoForge不支持版本 {currentVersion}");
+                    
+                    _ = Dispatcher.BeginInvoke(new Action(() =>
+                    {
+                        if (NeoForgeRadio != null)
+                        {
+                            NeoForgeRadio.IsEnabled = false;
+                            NeoForgeRadio.ToolTip = $"NeoForge暂不支持 Minecraft {currentVersion}";
+                        }
+                        if (NeoForgeVersionComboBox != null)
+                        {
+                            NeoForgeVersionComboBox.Items.Clear();
+                            var item = new ComboBoxItem { Content = "不支持此版本", IsEnabled = false };
+                            NeoForgeVersionComboBox.Items.Add(item);
+                            NeoForgeVersionComboBox.SelectedIndex = 0;
+                        }
+                    }));
+                    return;
+                }
+
+                // 获取NeoForge版本列表
+                System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] 获取NeoForge版本列表...");
+                var neoforgeVersions = await NeoForgeService.GetNeoForgeVersionsAsync(currentVersion);
+
+                _ = Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    if (NeoForgeVersionComboBox != null)
+                    {
+                        NeoForgeVersionComboBox.Items.Clear();
+
+                        if (neoforgeVersions.Count == 0)
+                        {
+                            var noVersionItem = new ComboBoxItem 
+                            { 
+                                Content = "无可用版本", 
+                                IsEnabled = false,
+                                FontStyle = FontStyles.Italic,
+                                Foreground = new SolidColorBrush(Colors.Gray)
+                            };
+                            NeoForgeVersionComboBox.Items.Add(noVersionItem);
+                            NeoForgeVersionComboBox.SelectedIndex = 0;
+                            
+                            if (NeoForgeRadio != null)
+                            {
+                                NeoForgeRadio.IsEnabled = false;
+                                NeoForgeRadio.ToolTip = "暂无可用的NeoForge版本";
+                            }
+                        }
+                        else
+                        {
+                            foreach (var nfVersion in neoforgeVersions)
+                            {
+                                var item = new ComboBoxItem
+                                {
+                                    Content = nfVersion.DisplayName,
+                                    Tag = nfVersion
+                                };
+                                NeoForgeVersionComboBox.Items.Add(item);
+                            }
+
+                            // 默认选择第一个版本（推荐版本）
+                            NeoForgeVersionComboBox.SelectedIndex = 0;
+
+                            if (NeoForgeRadio != null)
+                            {
+                                NeoForgeRadio.IsEnabled = true;
+                                NeoForgeRadio.ToolTip = $"安装NeoForge Mod加载器（共 {neoforgeVersions.Count} 个版本）";
+                            }
+
+                            System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] NeoForge版本列表加载完成，共 {neoforgeVersions.Count} 个版本");
+                        }
+                    }
+                }));
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] 加载NeoForge版本列表失败: {ex.Message}");
+                
+                _ = Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    if (NeoForgeRadio != null)
+                    {
+                        NeoForgeRadio.IsEnabled = false;
+                        NeoForgeRadio.ToolTip = "加载NeoForge版本失败";
+                    }
+                    if (NeoForgeVersionComboBox != null)
+                    {
+                        NeoForgeVersionComboBox.Items.Clear();
+                        var errorItem = new ComboBoxItem 
+                        { 
+                            Content = "加载失败", 
+                            IsEnabled = false,
+                            FontStyle = FontStyles.Italic,
+                            Foreground = new SolidColorBrush(Colors.Red)
+                        };
+                        NeoForgeVersionComboBox.Items.Add(errorItem);
+                        NeoForgeVersionComboBox.SelectedIndex = 0;
+                    }
+                }));
+            }
         }
 
         /// <summary>
