@@ -55,6 +55,9 @@ namespace ObsMCLauncher.Pages
             // 异步加载Forge版本列表
             _ = LoadForgeVersionsAsync();
             
+            // 异步加载NeoForge版本列表
+            _ = LoadNeoForgeVersionsAsync();
+            
             // 异步加载Fabric版本列表
             _ = LoadFabricVersionsAsync();
         }
@@ -383,6 +386,40 @@ namespace ObsMCLauncher.Pages
         }
 
         /// <summary>
+        /// 加载NeoForge版本列表
+        /// </summary>
+        private async Task LoadNeoForgeVersionsAsync()
+        {
+            // 设置加载状态
+            _ = Dispatcher.BeginInvoke(new Action(() =>
+            {
+                if (NeoForgeRadio != null)
+                {
+                    NeoForgeRadio.IsEnabled = false;
+                    NeoForgeRadio.ToolTip = "NeoForge支持即将推出";
+                }
+                if (NeoForgeVersionComboBox != null)
+                {
+                    NeoForgeVersionComboBox.Items.Clear();
+                    var item = new ComboBoxItem 
+                    { 
+                        Content = "即将支持", 
+                        IsEnabled = false,
+                        FontStyle = FontStyles.Italic,
+                        Foreground = new SolidColorBrush(Colors.Gray)
+                    };
+                    NeoForgeVersionComboBox.Items.Add(item);
+                    NeoForgeVersionComboBox.SelectedIndex = 0;
+                }
+            }));
+
+            await Task.CompletedTask;
+            
+            // TODO: 后续实现 NeoForge Service 来加载版本列表
+            // var neoforgeVersions = await NeoForgeService.GetNeoForgeVersionsAsync(currentVersion);
+        }
+
+        /// <summary>
         /// 加载Fabric版本列表
         /// </summary>
         private async Task LoadFabricVersionsAsync()
@@ -530,6 +567,7 @@ namespace ObsMCLauncher.Pages
         {
             // 禁用所有版本选择框
             if (ForgeVersionComboBox != null) ForgeVersionComboBox.IsEnabled = false;
+            if (NeoForgeVersionComboBox != null) NeoForgeVersionComboBox.IsEnabled = false;
             if (FabricVersionComboBox != null) FabricVersionComboBox.IsEnabled = false;
             if (OptiFineVersionComboBox != null) OptiFineVersionComboBox.IsEnabled = false;
             if (QuiltVersionComboBox != null) QuiltVersionComboBox.IsEnabled = false;
@@ -538,6 +576,10 @@ namespace ObsMCLauncher.Pages
             if (sender == ForgeRadio && ForgeVersionComboBox != null)
             {
                 ForgeVersionComboBox.IsEnabled = true;
+            }
+            else if (sender == NeoForgeRadio && NeoForgeVersionComboBox != null)
+            {
+                NeoForgeVersionComboBox.IsEnabled = true;
             }
             else if (sender == FabricRadio && FabricVersionComboBox != null)
             {
@@ -583,6 +625,11 @@ namespace ObsMCLauncher.Pages
             {
                 var version = (ForgeVersionComboBox?.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "默认";
                 SelectedLoaderText.Text = $"已选择：Forge {version}";
+            }
+            else if (NeoForgeRadio?.IsChecked == true)
+            {
+                var version = (NeoForgeVersionComboBox?.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "默认";
+                SelectedLoaderText.Text = $"已选择：NeoForge {version}";
             }
             else if (FabricRadio?.IsChecked == true)
             {

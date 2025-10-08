@@ -256,6 +256,54 @@
                         </Border>
                     </RadioButton>
 
+                    <!-- NeoForge -->
+                    <RadioButton x:Name="NeoForgeRadio"
+                               GroupName="LoaderGroup"
+                               Style="{StaticResource MaterialDesignRadioButton}"
+                               Margin="0,0,0,10"
+                               Checked="LoaderRadio_Checked">
+                        <Border Background="{StaticResource SurfaceElevatedBrush}"
+                              CornerRadius="6"
+                              Padding="12">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <materialDesign:PackIcon Grid.Column="0"
+                                                       Kind="Fire"
+                                                       Width="24"
+                                                       Height="24"
+                                                       Foreground="#FF6B35"
+                                                       VerticalAlignment="Center"
+                                                       Margin="0,0,12,0"/>
+
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                    <TextBlock Text="NeoForge" 
+                                             FontSize="14" 
+                                             FontWeight="SemiBold"
+                                             Margin="0,0,0,2"/>
+                                    <TextBlock Text="Forge 的现代化分支，兼容性更好，性能更优" 
+                                             FontSize="12" 
+                                             Foreground="{StaticResource TextSecondaryBrush}"/>
+                                </StackPanel>
+
+                                <ComboBox x:Name="NeoForgeVersionComboBox"
+                                        Grid.Column="2"
+                                        Width="160"
+                                        IsEnabled="False"
+                                        FontSize="12"
+                                        Margin="10,0,0,0"
+                                        SelectionChanged="LoaderVersionComboBox_SelectionChanged"
+                                        materialDesign:HintAssist.Hint="选择版本"
+                                        Style="{StaticResource MaterialDesignOutlinedComboBox}">
+                                </ComboBox>
+                            </Grid>
+                        </Border>
+                    </RadioButton>
+
                     <!-- Fabric -->
                     <RadioButton x:Name="FabricRadio"
                                GroupName="LoaderGroup"
