@@ -139,7 +139,9 @@
                                    Style="{StaticResource MaterialDesignOutlinedTextBox}"
                                    Foreground="#FFFFFF"
                                    CaretBrush="#FFFFFF"
-                                   Margin="0,0,10,0"/>
+                                   Margin="0,0,10,0"
+                                   LostFocus="GameDirectoryTextBox_LostFocus"
+                                   TextChanged="GameDirectoryTextBox_TextChanged"/>
                             <Button Grid.Column="1"
                                   Content="浏览"
                                   Style="{StaticResource MaterialDesignOutlinedButton}"
@@ -315,7 +317,9 @@
                                         Grid.Column="1"
                                         IsChecked="True"
                                         Style="{StaticResource MaterialDesignSwitchToggleButton}"
-                                        VerticalAlignment="Center"/>
+                                        VerticalAlignment="Center"
+                                        Checked="ToggleButton_Changed"
+                                        Unchecked="ToggleButton_Changed"/>
                         </Grid>
 
                         <Separator Margin="0,10,0,15" Background="#3F3F46"/>
@@ -338,7 +342,9 @@
                                         Grid.Column="1"
                                         IsChecked="False"
                                         Style="{StaticResource MaterialDesignSwitchToggleButton}"
-                                        VerticalAlignment="Center"/>
+                                        VerticalAlignment="Center"
+                                        Checked="ToggleButton_Changed"
+                                        Unchecked="ToggleButton_Changed"/>
                         </Grid>
                     </StackPanel>
                 </Border>
@@ -375,7 +381,9 @@
                                    Grid.Column="0"
                                    materialDesign:HintAssist.Hint="自定义配置文件路径"
                                    Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                   Margin="0,0,10,0"/>
+                                   Margin="0,0,10,0"
+                                   LostFocus="ConfigFileTextBox_LostFocus"
+                                   TextChanged="ConfigFileTextBox_TextChanged"/>
                             <Button Grid.Column="1"
                                   Content="浏览"
                                   Style="{StaticResource MaterialDesignOutlinedButton}"

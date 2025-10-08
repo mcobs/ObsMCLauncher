@@ -342,8 +342,28 @@ namespace ObsMCLauncher.Pages
                 if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
                 {
                     GameDirectoryTextBox.Text = dialog.SelectedPath;
+                    UpdateGameDirectoryDisplay();
+                    // 浏览选择目录后自动保存
+                    AutoSaveSettingsImmediately("游戏目录");
                 }
             }
+        }
+
+        /// <summary>
+        /// 游戏目录文本框失去焦点时自动保存
+        /// </summary>
+        private void GameDirectoryTextBox_LostFocus(object sender, RoutedEventArgs e)
+        {
+            UpdateGameDirectoryDisplay();
+            AutoSaveSettingsImmediately("游戏目录");
+        }
+
+        /// <summary>
+        /// 游戏目录文本框内容改变时更新显示
+        /// </summary>
+        private void GameDirectoryTextBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            UpdateGameDirectoryDisplay();
         }
 
         /// <summary>
@@ -360,6 +380,8 @@ namespace ObsMCLauncher.Pages
             if (dialog.ShowDialog() == true)
             {
                 JavaPathTextBox.Text = dialog.FileName;
+                // 浏览选择Java后自动保存
+                AutoSaveSettingsImmediately("Java路径");
             }
         }
 
@@ -655,6 +677,8 @@ namespace ObsMCLauncher.Pages
             {
                 ConfigFileTextBox.Text = dialog.FileName;
                 UpdateConfigFileDisplay();
+                // 浏览选择配置文件后自动保存
+                AutoSaveSettingsImmediately("配置文件位置");
             }
         }
 
@@ -664,6 +688,23 @@ namespace ObsMCLauncher.Pages
         private void DownloadAssetsToggle_Changed(object sender, RoutedEventArgs e)
         {
             AutoSaveSettingsImmediately("下载资源文件设置");
+        }
+
+        /// <summary>
+        /// 配置文件文本框失去焦点时自动保存
+        /// </summary>
+        private void ConfigFileTextBox_LostFocus(object sender, RoutedEventArgs e)
+        {
+            UpdateConfigFileDisplay();
+            AutoSaveSettingsImmediately("配置文件位置");
+        }
+
+        /// <summary>
+        /// 配置文件文本框内容改变时更新显示
+        /// </summary>
+        private void ConfigFileTextBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            UpdateConfigFileDisplay();
         }
     }
 }
