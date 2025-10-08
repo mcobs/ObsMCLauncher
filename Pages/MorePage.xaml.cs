@@ -4,6 +4,7 @@ using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Navigation;
+using ObsMCLauncher.Utils;
 
 namespace ObsMCLauncher.Pages
 {
@@ -27,13 +28,13 @@ namespace ObsMCLauncher.Pages
         {
             try
             {
-                var assembly = Assembly.GetExecutingAssembly();
-                var version = assembly.GetName().Version;
+                // 使用全局版本信息
+                VersionText.Text = $"版本 {VersionInfo.DisplayVersion}";
                 
-                if (version != null)
-                {
-                    VersionText.Text = $"版本 {version.Major}.{version.Minor}.{version.Build}";
-                }
+                // 在调试模式下输出详细版本信息
+                Debug.WriteLine("========== 版本信息 ==========");
+                Debug.WriteLine(VersionInfo.GetDetailedVersionInfo());
+                Debug.WriteLine("=============================");
             }
             catch (Exception ex)
             {

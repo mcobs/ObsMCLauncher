@@ -10,6 +10,19 @@
     
     <!-- 应用程序图标 -->
     <ApplicationIcon>Assets\app_icon.ico</ApplicationIcon>
+    
+    <!-- 版本信息 -->
+    <Version>1.0.0</Version>
+    <FileVersion>1.0.0.20251028</FileVersion>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <InformationalVersion>1.0.0-alpha.1+20251008</InformationalVersion>
+    
+    <!-- 产品信息 -->
+    <Product>ObsMCLauncher</Product>
+    <Description>黑曜石 Minecraft 启动器</Description>
+    <Company>MCOBS</Company>
+    <Authors>MCOBS</Authors>
+    <Copyright>© 2025 ObsMCLauncher</Copyright>
   </PropertyGroup>
 
   <ItemGroup>

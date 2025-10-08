@@ -28,6 +28,9 @@ namespace ObsMCLauncher
         {
             InitializeComponent();
             
+            // 初始化版本信息显示
+            InitializeVersionInfo();
+            
             // 初始化通知管理器
             NotificationManager.Instance.Initialize(GlobalNotificationContainer);
             
@@ -47,6 +50,28 @@ namespace ObsMCLauncher
             
             // 初始化下载管理器
             InitializeDownloadManager();
+        }
+
+        /// <summary>
+        /// 初始化版本信息显示
+        /// </summary>
+        private void InitializeVersionInfo()
+        {
+            try
+            {
+                // 设置导航栏版本号
+                NavVersionText.Text = $"v{VersionInfo.ShortVersion}";
+                
+                // 设置窗口标题（可选）
+                Title = $"{VersionInfo.FullProductName} - {VersionInfo.DisplayVersion}";
+                
+                // 输出版本信息到调试控制台
+                System.Diagnostics.Debug.WriteLine($"[启动器] {VersionInfo.FullProductName} {VersionInfo.DisplayVersion} (Build {VersionInfo.BuildVersion})");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[错误] 初始化版本信息失败: {ex.Message}");
+            }
         }
         
         /// <summary>

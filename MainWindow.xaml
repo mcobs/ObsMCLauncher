@@ -172,7 +172,8 @@
                              HorizontalAlignment="Center"
                              Margin="0,10,0,0"
                              Foreground="{StaticResource TextBrush}"/>
-                    <TextBlock Text="v1.0.0" 
+                    <TextBlock x:Name="NavVersionText"
+                             Text="v1.0.0" 
                              FontSize="11" 
                              HorizontalAlignment="Center"
                              Foreground="{StaticResource TextSecondaryBrush}"
