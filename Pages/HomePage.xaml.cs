@@ -313,16 +313,29 @@ namespace ObsMCLauncher.Pages
                 // 7. 检查并补全Assets资源（必须的，在启动游戏前完成）
                 if (!hasIntegrityIssue)
                 {
-                    // 更新启动通知
-                    NotificationManager.Instance.UpdateNotification(
-                        launchNotificationId,
-                        "正在检查游戏资源文件..."
-                    );
-                    LaunchButton.Content = "检查资源中...";
-
-                    Debug.WriteLine("========== 开始检查Assets资源 ==========");
+                    // 检查是否是极旧版本（1.5.2等），这些版本不需要现代资源系统
+                    bool isVeryOldVersion = versionId.StartsWith("1.5") || versionId.StartsWith("1.4") || 
+                                           versionId.StartsWith("1.3") || versionId.StartsWith("1.2") || 
+                                           versionId.StartsWith("1.1") || versionId.StartsWith("1.0");
                     
-                    var assetsResult = await AssetsDownloadService.DownloadAndCheckAssetsAsync(
+                    if (isVeryOldVersion)
+                    {
+                        Debug.WriteLine($"========== 跳过Assets资源检查 ==========");
+                        Debug.WriteLine($"版本 {versionId} 不使用现代资源系统，跳过资源检查");
+                        Console.WriteLine($"[{versionId}] 使用传统资源系统，跳过现代资源检查");
+                    }
+                    else
+                    {
+                        // 更新启动通知
+                        NotificationManager.Instance.UpdateNotification(
+                            launchNotificationId,
+                            "正在检查游戏资源文件..."
+                        );
+                        LaunchButton.Content = "检查资源中...";
+
+                        Debug.WriteLine("========== 开始检查Assets资源 ==========");
+                        
+                        var assetsResult = await AssetsDownloadService.DownloadAndCheckAssetsAsync(
                         config.GameDirectory,
                         versionId,
                         (current, total, message, speed) =>
@@ -371,6 +384,7 @@ namespace ObsMCLauncher.Pages
                     {
                         Debug.WriteLine("✅ Assets资源检查完成");
                     }
+                    } // ⭐ 结束 else (!isVeryOldVersion) 块
                     
                     // 8. Assets检查完成后，正式启动游戏
                     NotificationManager.Instance.UpdateNotification(

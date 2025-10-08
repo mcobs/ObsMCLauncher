@@ -141,6 +141,14 @@ namespace ObsMCLauncher.Services
                 if (missingAssets.Count == 0)
                 {
                     Debug.WriteLine($"✅ 所有Assets资源完整");
+                    
+                    // ⭐ 即使Assets完整，也要检查并创建Legacy虚拟目录
+                    if (assetIndexId == "legacy" || assetIndexId == "pre-1.6")
+                    {
+                        Debug.WriteLine($"[Legacy Assets] 检测到旧版本资源索引: {assetIndexId}，检查虚拟目录...");
+                        await CreateLegacyVirtualAssetsAsync(gameDir, assetIndex, objectsDir, cancellationToken);
+                    }
+                    
                     onProgress?.Invoke(100, 100, "资源检查完成", 0);
                     return new AssetsDownloadResult 
                     { 
@@ -335,6 +343,13 @@ namespace ObsMCLauncher.Services
                 
                 onProgress?.Invoke(100, 100, $"资源下载完成 ({downloaded}成功, {failed}失败)", 0);
                 
+                // 6. 为旧版本（legacy）创建虚拟资源目录
+                if (assetIndexId == "legacy" || assetIndexId == "pre-1.6")
+                {
+                    Debug.WriteLine($"[Legacy Assets] 检测到旧版本资源索引: {assetIndexId}，开始创建虚拟目录...");
+                    await CreateLegacyVirtualAssetsAsync(gameDir, assetIndex, objectsDir, cancellationToken);
+                }
+                
                 // 返回下载结果
                 return new AssetsDownloadResult
                 {
@@ -376,6 +391,106 @@ namespace ObsMCLauncher.Services
         {
             public string? Id { get; set; }
             public string? Url { get; set; }
+        }
+
+        /// <summary>
+        /// 为旧版本Minecraft创建虚拟资源目录（1.5.x及更早版本需要）
+        /// </summary>
+        private static Task CreateLegacyVirtualAssetsAsync(
+            string gameDir, 
+            AssetIndex assetIndex, 
+            string objectsDir, 
+            System.Threading.CancellationToken cancellationToken)
+        {
+            return Task.Run(() =>
+            {
+                try
+                {
+                    if (assetIndex.Objects == null || assetIndex.Objects.Count == 0)
+                    {
+                        Debug.WriteLine($"[Legacy Assets] ⚠️ 资源索引为空，跳过虚拟目录创建");
+                        return;
+                    }
+                    
+                    var virtualDir = Path.Combine(gameDir, "assets", "virtual", "legacy");
+                    Directory.CreateDirectory(virtualDir);
+                    
+                    Debug.WriteLine($"[Legacy Assets] 虚拟目录: {virtualDir}");
+                    Debug.WriteLine($"[Legacy Assets] 开始创建 {assetIndex.Objects.Count} 个资源文件映射...");
+                    
+                    int created = 0;
+                    int skipped = 0;
+                    
+                    foreach (var asset in assetIndex.Objects)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        
+                        // asset.Key 是原始路径，如 "sounds/ambient/cave/cave1.ogg"
+                        var assetName = asset.Key;
+                        var hash = asset.Value.Hash;
+                        var hashPrefix = hash.Substring(0, 2);
+                        
+                        // Hash文件的源路径（objects目录）
+                        var sourceFile = Path.Combine(objectsDir, hashPrefix, hash);
+                        
+                        // 目标文件的虚拟路径（virtual/legacy目录，保持原始路径）
+                        var targetFile = Path.Combine(virtualDir, assetName);
+                        
+                        // 如果目标文件已存在且大小正确，跳过
+                        if (File.Exists(targetFile))
+                        {
+                            var targetInfo = new FileInfo(targetFile);
+                            if (targetInfo.Length == asset.Value.Size)
+                            {
+                                skipped++;
+                                continue;
+                            }
+                        }
+                        
+                        // 确保目标目录存在
+                        var targetDir = Path.GetDirectoryName(targetFile);
+                        if (!string.IsNullOrEmpty(targetDir))
+                        {
+                            Directory.CreateDirectory(targetDir);
+                        }
+                        
+                        // 复制文件（Windows上使用硬链接可以节省空间，但为了兼容性直接复制）
+                        if (File.Exists(sourceFile))
+                        {
+                            try
+                            {
+                                File.Copy(sourceFile, targetFile, true);
+                                created++;
+                                
+                                if (created % 100 == 0)
+                                {
+                                    Debug.WriteLine($"[Legacy Assets] 已创建 {created} 个文件...");
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                Debug.WriteLine($"[Legacy Assets] ⚠️ 复制失败: {assetName} - {ex.Message}");
+                            }
+                        }
+                        else
+                        {
+                            Debug.WriteLine($"[Legacy Assets] ⚠️ 源文件不存在: {hash}");
+                        }
+                    }
+                    
+                    Debug.WriteLine($"[Legacy Assets] ✅ 虚拟目录创建完成");
+                    Debug.WriteLine($"[Legacy Assets] 新建: {created}，跳过: {skipped}，总计: {assetIndex.Objects.Count}");
+                }
+                catch (OperationCanceledException)
+                {
+                    Debug.WriteLine($"[Legacy Assets] 虚拟目录创建被取消");
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[Legacy Assets] ⚠️ 创建虚拟目录失败（不影响现代版本）: {ex.Message}");
+                }
+            }, cancellationToken);
         }
 
         /// <summary>

@@ -222,6 +222,10 @@ namespace ObsMCLauncher.Services
                 // 0.5. 确保旧版本所需的图标文件存在（1.5.x及更早版本）
                 EnsureOldVersionIconsExist(config.GameDirectory);
 
+                // 注意：1.5.2不需要现代资源系统（虚拟目录、resources目录等）
+                // 它期望资源文件在JAR内部或游戏目录的根级别
+                // 因此，对于1.5.2，跳过所有现代资源处理可以加快启动速度
+
                 // 1. 验证Java路径
                 onProgressUpdate?.Invoke("正在验证Java环境...");
                 cancellationToken.ThrowIfCancellationRequested();
@@ -451,7 +455,7 @@ namespace ObsMCLauncher.Services
                         if (ShouldSkipJvmArg(str))
                             continue;
                         
-                        args.Append($"{str} ");
+                            args.Append($"{str} ");
                     }
                     else if (arg is System.Text.Json.JsonElement jsonElement && jsonElement.ValueKind == System.Text.Json.JsonValueKind.String)
                     {
@@ -480,17 +484,17 @@ namespace ObsMCLauncher.Services
             var classpathItems = new System.Collections.Generic.List<string>();
             
             // 添加客户端JAR到classpath（所有版本都需要）
-            var versionJarPath = Path.Combine(versionDir, $"{versionId}.jar");
-            if (File.Exists(versionJarPath))
-            {
-                classpathItems.Add(versionJarPath);
+                var versionJarPath = Path.Combine(versionDir, $"{versionId}.jar");
+                if (File.Exists(versionJarPath))
+                {
+                    classpathItems.Add(versionJarPath);
                 
                 if (!string.IsNullOrEmpty(versionInfo.MinecraftArguments))
                 {
                     Debug.WriteLine($"✅ 旧版本格式，已添加版本JAR到classpath: {versionId}.jar");
                 }
-                else if (!string.IsNullOrEmpty(versionInfo.InheritsFrom))
-                {
+            else if (!string.IsNullOrEmpty(versionInfo.InheritsFrom))
+            {
                     Debug.WriteLine($"✅ Mod加载器版本，已添加Minecraft客户端到classpath: {versionId}.jar");
                 }
                 else
@@ -559,18 +563,35 @@ namespace ObsMCLauncher.Services
                 Debug.WriteLine($"使用旧版本参数格式: minecraftArguments");
                 
                 // 替换旧版本参数中的占位符
+                // ⭐ 为极旧版本（1.6之前）使用简化的session token，避免认证问题
+                var sessionToken = account.Type == AccountType.Microsoft ? (account.MinecraftAccessToken ?? "0") : "0";
+                
+                // 检测是否是极旧版本（使用legacy或pre-1.6资源索引）
+                bool isVeryOldVersion = assetIndex == "legacy" || assetIndex == "pre-1.6";
+                
+                if (isVeryOldVersion)
+                {
+                    // 1.5.2等极旧版本使用简化的token，避免JWT token导致的问题
+                    sessionToken = "legacy";
+                    Debug.WriteLine($"[旧版本] 检测到极旧版本（{assetIndex}），使用简化认证模式");
+                }
+                
+                // 折磨我！    1.5.2的${game_assets}应该指向gameDir本身，而不是gameDir/assets！
+                var gameAssetsPath = isVeryOldVersion ? gameDir : assetsDir;
+                
                 var minecraftArgs = versionInfo.MinecraftArguments
                     .Replace("${auth_player_name}", account.Username)
                     .Replace("${version_name}", versionId)
                     .Replace("${game_directory}", $"\"{gameDir}\"")
                     .Replace("${assets_root}", $"\"{assetsDir}\"")
                     .Replace("${assets_index_name}", assetIndex)
-                    .Replace("${auth_uuid}", account.Type == AccountType.Microsoft ? (account.MinecraftUUID ?? account.UUID) : account.UUID)
-                    .Replace("${auth_access_token}", account.Type == AccountType.Microsoft ? (account.MinecraftAccessToken ?? "0") : "0")
+                    .Replace("${auth_uuid}", isVeryOldVersion ? "00000000-0000-0000-0000-000000000000" : (account.Type == AccountType.Microsoft ? (account.MinecraftUUID ?? account.UUID) : account.UUID))
+                    .Replace("${auth_access_token}", sessionToken)
+                    .Replace("${auth_session}", sessionToken) // ⭐ 1.5.2等旧版本使用 auth_session
                     .Replace("${user_properties}", "{}") // 用户属性，离线模式使用空对象
-                    .Replace("${user_type}", account.Type == AccountType.Microsoft ? "msa" : "legacy")
+                    .Replace("${user_type}", isVeryOldVersion ? "legacy" : (account.Type == AccountType.Microsoft ? "msa" : "legacy"))
                     .Replace("${version_type}", "ObsMCLauncher")
-                    .Replace("${game_assets}", $"\"{assetsDir}\""); // 旧版本可能使用这个
+                    .Replace("${game_assets}", $"\"{gameAssetsPath}\""); // ⭐ 1.5.2使用gameDir，现代版本使用assetsDir
                 
                 args.Append(minecraftArgs);
                 return args.ToString();
@@ -588,7 +609,7 @@ namespace ObsMCLauncher.Services
                         if (ShouldSkipGameArg(str))
                             continue;
                         
-                        args.Append($"{str} ");
+                            args.Append($"{str} ");
                     }
                     else if (arg is System.Text.Json.JsonElement jsonElement && jsonElement.ValueKind == System.Text.Json.JsonValueKind.String)
                     {
@@ -1161,9 +1182,9 @@ namespace ObsMCLauncher.Services
                         Debug.WriteLine($"✅ 从子版本目录找到父版本JSON: {parentJsonInChildDir}");
                     }
                     else
-                    {
-                        Debug.WriteLine($"⚠️ 父版本JSON不存在: {parentJsonPath}，跳过合并");
-                        return childVersion;
+                {
+                    Debug.WriteLine($"⚠️ 父版本JSON不存在: {parentJsonPath}，跳过合并");
+                    return childVersion;
                     }
                 }
 
@@ -1248,7 +1269,8 @@ namespace ObsMCLauncher.Services
         {
             try
             {
-                var iconsDir = Path.Combine(gameDirectory, "assets", "icons");
+                //1.5.2期望图标在 .minecraft/icons/ 而不是 .minecraft/assets/icons/
+                var iconsDir = Path.Combine(gameDirectory, "icons");
                 
                 // 检查是否已存在图标
                 var icon16Path = Path.Combine(iconsDir, "icon_16x16.png");
@@ -1309,6 +1331,211 @@ namespace ObsMCLauncher.Services
                 // 保存为PNG
                 bitmap.Save(filePath, System.Drawing.Imaging.ImageFormat.Png);
             }
+        }
+
+        /// <summary>
+        /// 确保旧版本Minecraft的Legacy虚拟资源目录存在（1.5.x及更早版本需要）
+        /// </summary>
+        private static async System.Threading.Tasks.Task EnsureLegacyAssetsVirtualDirExist(
+            string gameDirectory, 
+            string versionId, 
+            System.Threading.CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                // 读取版本JSON获取AssetIndex信息
+                var versionJsonPath = Path.Combine(gameDirectory, "versions", versionId, $"{versionId}.json");
+                if (!File.Exists(versionJsonPath))
+                {
+                    return; // 版本JSON不存在，跳过
+                }
+
+                var versionJson = await File.ReadAllTextAsync(versionJsonPath, cancellationToken);
+                var versionInfo = System.Text.Json.JsonSerializer.Deserialize<VersionInfo>(versionJson);
+
+                if (versionInfo?.AssetIndex == null)
+                {
+                    return; // 没有AssetIndex信息，跳过
+                }
+
+                var assetIndexId = versionInfo.AssetIndex.Id ?? versionInfo.Assets ?? "legacy";
+
+                // 只处理legacy和pre-1.6版本
+                if (assetIndexId != "legacy" && assetIndexId != "pre-1.6")
+                {
+                    return; // 不是旧版本，跳过
+                }
+
+                Debug.WriteLine($"[Legacy Assets] 检测到旧版本资源索引: {assetIndexId}");
+
+                // 检查虚拟目录是否已存在且有内容
+                var virtualDir = Path.Combine(gameDirectory, "assets", "virtual", "legacy");
+                if (Directory.Exists(virtualDir) && Directory.GetFiles(virtualDir, "*", SearchOption.AllDirectories).Length > 0)
+                {
+                    Debug.WriteLine($"[Legacy Assets] 虚拟目录已存在，跳过创建");
+                    return; // 虚拟目录已存在，跳过
+                }
+
+                Debug.WriteLine($"[Legacy Assets] 虚拟目录不存在或为空，调用AssetsDownloadService创建...");
+
+                // 调用AssetsDownloadService创建虚拟目录
+                await AssetsDownloadService.DownloadAndCheckAssetsAsync(
+                    gameDirectory,
+                    versionId,
+                    (progress, total, message, speed) =>
+                    {
+                        if (progress % 10 == 0 || progress == 100)
+                        {
+                            Debug.WriteLine($"[Legacy Assets] 进度: {progress}% - {message}");
+                        }
+                    },
+                    cancellationToken
+                );
+
+                Debug.WriteLine($"[Legacy Assets] ✅ 虚拟目录检查/创建完成");
+            }
+            catch (OperationCanceledException)
+            {
+                Debug.WriteLine($"[Legacy Assets] 虚拟目录创建被取消");
+                throw;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[Legacy Assets] ⚠️ 创建虚拟目录失败（不影响现代版本）: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 为极旧版本（1.5.2等）创建传统resources目录结构
+        /// </summary>
+        private static async System.Threading.Tasks.Task EnsureLegacyResourcesDirectory(
+            string gameDirectory, 
+            string versionId, 
+            System.Threading.CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                // 读取版本JSON获取AssetIndex信息
+                var versionJsonPath = Path.Combine(gameDirectory, "versions", versionId, $"{versionId}.json");
+                if (!File.Exists(versionJsonPath))
+                {
+                    return;
+                }
+
+                var versionJson = await File.ReadAllTextAsync(versionJsonPath, cancellationToken);
+                var versionInfo = System.Text.Json.JsonSerializer.Deserialize<VersionInfo>(versionJson);
+
+                if (versionInfo?.AssetIndex == null)
+                {
+                    return;
+                }
+
+                var assetIndexId = versionInfo.AssetIndex.Id ?? versionInfo.Assets ?? "legacy";
+
+                // 只为1.5.2及更早版本创建resources目录
+                if (assetIndexId != "pre-1.6")
+                {
+                    return;
+                }
+
+                Debug.WriteLine($"[Legacy Resources] 检测到1.5.2或更早版本，创建传统resources目录...");
+
+                var resourcesDir = Path.Combine(gameDirectory, "resources");
+                var virtualDir = Path.Combine(gameDirectory, "assets", "virtual", "legacy");
+
+                // 如果resources目录已存在且有内容，跳过
+                if (Directory.Exists(resourcesDir) && Directory.GetFiles(resourcesDir, "*", SearchOption.AllDirectories).Length > 100)
+                {
+                    Debug.WriteLine($"[Legacy Resources] resources目录已存在，跳过创建");
+                    return;
+                }
+
+                // 创建resources目录结构
+                Directory.CreateDirectory(resourcesDir);
+                Debug.WriteLine($"[Legacy Resources] 创建目录: {resourcesDir}");
+
+                // 创建子目录结构（1.5.2期望的结构）
+                var subDirs = new[] { "newsound", "music", "sound", "sound3", "streaming", "title", "mob", "random", "step" };
+                foreach (var subDir in subDirs)
+                {
+                    Directory.CreateDirectory(Path.Combine(resourcesDir, subDir));
+                }
+
+                // 如果虚拟目录存在，从中复制关键文件
+                if (Directory.Exists(virtualDir))
+                {
+                    await CopyLegacyResourcesFromVirtualDir(virtualDir, resourcesDir, cancellationToken);
+                }
+
+                Debug.WriteLine($"[Legacy Resources] ✅ 传统resources目录创建完成");
+            }
+            catch (OperationCanceledException)
+            {
+                Debug.WriteLine($"[Legacy Resources] 创建被取消");
+                throw;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[Legacy Resources] ⚠️ 创建传统resources目录失败（尝试继续）: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 从虚拟目录复制资源文件到传统resources目录
+        /// </summary>
+        private static async System.Threading.Tasks.Task CopyLegacyResourcesFromVirtualDir(
+            string virtualDir, 
+            string resourcesDir, 
+            System.Threading.CancellationToken cancellationToken)
+        {
+            await System.Threading.Tasks.Task.Run(() =>
+            {
+                try
+                {
+                    int copied = 0;
+                    var allFiles = Directory.GetFiles(virtualDir, "*.*", SearchOption.AllDirectories);
+
+                    Debug.WriteLine($"[Legacy Resources] 虚拟目录中有 {allFiles.Length} 个文件");
+
+                    foreach (var sourceFile in allFiles)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+
+                        var relativePath = Path.GetRelativePath(virtualDir, sourceFile);
+                        var targetFile = Path.Combine(resourcesDir, relativePath);
+
+                        // 确保目标目录存在
+                        var targetDir = Path.GetDirectoryName(targetFile);
+                        if (!string.IsNullOrEmpty(targetDir) && !Directory.Exists(targetDir))
+                        {
+                            Directory.CreateDirectory(targetDir);
+                        }
+
+                        // 复制文件
+                        if (!File.Exists(targetFile))
+                        {
+                            File.Copy(sourceFile, targetFile, false);
+                            copied++;
+
+                            if (copied % 50 == 0)
+                            {
+                                Debug.WriteLine($"[Legacy Resources] 已复制 {copied} 个文件...");
+                            }
+                        }
+                    }
+
+                    Debug.WriteLine($"[Legacy Resources] ✅ 从虚拟目录复制了 {copied} 个文件");
+                }
+                catch (OperationCanceledException)
+                {
+                    Debug.WriteLine($"[Legacy Resources] 复制被取消");
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[Legacy Resources] ⚠️ 复制文件失败: {ex.Message}");
+                }
+            }, cancellationToken);
         }
     }
 }
