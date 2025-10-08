@@ -22,6 +22,7 @@ namespace ObsMCLauncher
         private readonly VersionDownloadPage _versionPage;
         private readonly ResourcesPage _resourcesPage;
         private readonly SettingsPage _settingsPage;
+        private readonly MorePage _morePage;
 
         public MainWindow()
         {
@@ -39,6 +40,7 @@ namespace ObsMCLauncher
             _versionPage = new VersionDownloadPage();
             _resourcesPage = new ResourcesPage();
             _settingsPage = new SettingsPage();
+            _morePage = new MorePage();
             
             // 默认导航到主页
             MainFrame.Navigate(_homePage);
@@ -290,6 +292,9 @@ namespace ObsMCLauncher
                         break;
                     case "Settings":
                         MainFrame.Navigate(_settingsPage);
+                        break;
+                    case "More":
+                        MainFrame.Navigate(_morePage);
                         break;
                 }
             }
