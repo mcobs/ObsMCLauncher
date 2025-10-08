@@ -25,9 +25,9 @@ namespace ObsMCLauncher.Services
         public string FullVersion => Version;
 
         /// <summary>
-        /// 显示名称
+        /// 显示名称（只显示版本号，不含"NeoForge"前缀）
         /// </summary>
-        public string DisplayName => $"NeoForge {Version}";
+        public string DisplayName => Version;
         
         /// <summary>
         /// Minecraft版本（从NeoForge版本号推断）

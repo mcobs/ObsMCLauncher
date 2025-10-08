@@ -804,6 +804,27 @@ namespace ObsMCLauncher.Pages
                     versionName += "-forge";
                 }
             }
+            else if (NeoForgeRadio?.IsChecked == true)
+            {
+                var selectedItem = NeoForgeVersionComboBox?.SelectedItem as ComboBoxItem;
+                var neoforgeVersion = selectedItem?.Content?.ToString();
+                
+                // 只有在选择了有效版本时才添加后缀
+                if (!string.IsNullOrEmpty(neoforgeVersion) && 
+                    !neoforgeVersion.Contains("请选择") && 
+                    !neoforgeVersion.Contains("加载") &&
+                    !neoforgeVersion.Contains("不支持") &&
+                    selectedItem?.IsEnabled == true)
+                {
+                    // 移除 "(推荐)" 等标记
+                    neoforgeVersion = neoforgeVersion.Replace(" (推荐)", "").Trim();
+                    versionName += $"-neoforge-{neoforgeVersion}";
+                }
+                else
+                {
+                    versionName += "-neoforge";
+                }
+            }
             else if (FabricRadio?.IsChecked == true)
             {
                 var selectedItem = FabricVersionComboBox?.SelectedItem as ComboBoxItem;
@@ -902,6 +923,25 @@ namespace ObsMCLauncher.Pages
                 if (string.IsNullOrEmpty(loaderVersion))
                 {
                     await DialogManager.Instance.ShowWarning("提示", "请先选择一个Forge版本！");
+                    return;
+                }
+                
+                // 移除 "(推荐)" 等标记
+                loaderVersion = loaderVersion.Replace(" (推荐)", "").Replace(" (最新)", "").Replace(" (Latest)", "").Replace(" (Recommended)", "").Trim();
+            }
+            else if (NeoForgeRadio?.IsChecked == true)
+            {
+                loaderType = "NeoForge";
+                var selectedItem = NeoForgeVersionComboBox?.SelectedItem as ComboBoxItem;
+                loaderVersion = selectedItem?.Content?.ToString() ?? "";
+                
+                // 检查是否有选择版本
+                if (string.IsNullOrEmpty(loaderVersion) || 
+                    loaderVersion.Contains("加载") || 
+                    loaderVersion.Contains("不支持") ||
+                    selectedItem?.IsEnabled == false)
+                {
+                    await DialogManager.Instance.ShowWarning("提示", "请先选择一个NeoForge版本！");
                     return;
                 }
                 
