@@ -4,6 +4,7 @@
       xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
       xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
       xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+      xmlns:svgc="http://sharpvectors.codeplex.com/svgc/"
       mc:Ignorable="d" 
       d:DesignHeight="700" d:DesignWidth="900"
       KeepAlive="True"
@@ -76,12 +77,12 @@
                         <StackPanel Orientation="Horizontal" 
                                   HorizontalAlignment="Center"
                                   Margin="0,0,0,12">
-                            <materialDesign:PackIcon Kind="Minecraft" 
-                                                   Width="50" 
-                                                   Height="50"
-                                                   Foreground="White"
-                                                   VerticalAlignment="Center"
-                                                   Margin="0,0,12,0"/>
+                            <svgc:SvgViewbox Source="/Assets/logo.svg" 
+                                             Width="60" 
+                                             Height="60"
+                                             Stretch="Uniform"
+                                             VerticalAlignment="Center"
+                                             Margin="0,0,16,0"/>
                             <TextBlock Text="Obs MC Launcher" 
                                      FontSize="38" 
                                      FontWeight="Bold"

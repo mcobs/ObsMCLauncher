@@ -7,11 +7,20 @@
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
     <StartupObject>ObsMCLauncher.App</StartupObject>
+    
+    <!-- 应用程序图标 -->
+    <ApplicationIcon>Assets\app_icon.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="MaterialDesignThemes" Version="4.9.0" />
     <PackageReference Include="MaterialDesignColors" Version="2.1.4" />
+    <PackageReference Include="SharpVectors" Version="1.8.4.0" />
+  </ItemGroup>
+
+  <!-- 包含资源文件 -->
+  <ItemGroup>
+    <Resource Include="Assets\**\*" />
   </ItemGroup>
 
 </Project>

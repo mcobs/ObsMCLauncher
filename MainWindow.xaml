@@ -4,8 +4,10 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        xmlns:svgc="http://sharpvectors.codeplex.com/svgc/"
         mc:Ignorable="d"
         Title="Obs Minecraft 启动器" 
+        Icon="/Assets/app_icon.ico"
         Height="700" 
         Width="1100"
         MinHeight="600"
@@ -58,11 +60,11 @@
                           Orientation="Horizontal" 
                           Margin="15,0,0,0"
                           VerticalAlignment="Center">
-                    <materialDesign:PackIcon Kind="Minecraft" 
-                                           Width="20" 
-                                           Height="20" 
-                                           Foreground="{StaticResource PrimaryBrush}"
-                                           VerticalAlignment="Center"/>
+                    <svgc:SvgViewbox Source="/Assets/logo.svg" 
+                                     Width="24" 
+                                     Height="24" 
+                                     Stretch="Uniform"
+                                     VerticalAlignment="Center"/>
                     <TextBlock Text="黑曜石MC启动器" 
                              FontSize="13" 
                              FontWeight="SemiBold"
@@ -143,13 +145,13 @@
 
                 <!-- Logo 区域 - 带呼吸动画 -->
                 <StackPanel Grid.Row="0" Margin="20,30,20,30">
-                    <materialDesign:PackIcon x:Name="LogoIcon"
-                                           Kind="Minecraft" 
-                                           Width="50" 
-                                           Height="50" 
-                                           Foreground="{StaticResource PrimaryBrush}"
-                                           HorizontalAlignment="Center">
-                        <materialDesign:PackIcon.Triggers>
+                    <svgc:SvgViewbox x:Name="LogoIcon"
+                                     Source="/Assets/logo.svg" 
+                                     Width="60" 
+                                     Height="60" 
+                                     Stretch="Uniform"
+                                     HorizontalAlignment="Center">
+                        <svgc:SvgViewbox.Triggers>
                             <EventTrigger RoutedEvent="Loaded">
                                 <BeginStoryboard>
                                     <Storyboard RepeatBehavior="Forever" AutoReverse="True">
@@ -162,8 +164,8 @@
                                     </Storyboard>
                                 </BeginStoryboard>
                             </EventTrigger>
-                        </materialDesign:PackIcon.Triggers>
-                    </materialDesign:PackIcon>
+                        </svgc:SvgViewbox.Triggers>
+                    </svgc:SvgViewbox>
                     <TextBlock Text="Obs MC启动器" 
                              FontSize="16" 
                              FontWeight="SemiBold"

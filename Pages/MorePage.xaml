@@ -3,6 +3,7 @@
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
       xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+      xmlns:svgc="http://sharpvectors.codeplex.com/svgc/"
       mc:Ignorable="d" 
       d:DesignHeight="600" d:DesignWidth="800"
       Title="更多"
@@ -67,39 +68,12 @@
             <!-- Logo和标题 -->
             <Border Style="{StaticResource CardBorder}">
                 <StackPanel HorizontalAlignment="Center">
-                    <!-- Logo -->
-                    <Viewbox Width="120" Height="120" Margin="0,0,0,24">
-                        <Grid>
-                            <!-- 外圈渐变边框 -->
-                            <Ellipse Width="120" Height="120">
-                                <Ellipse.Fill>
-                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                        <GradientStop Color="#00A8FF" Offset="0"/>
-                                        <GradientStop Color="#0078D4" Offset="1"/>
-                                    </LinearGradientBrush>
-                                </Ellipse.Fill>
-                            </Ellipse>
-                            
-                            <!-- 内圈背景 -->
-                            <Ellipse Width="110" Height="110">
-                                <Ellipse.Fill>
-                                    <RadialGradientBrush>
-                                        <GradientStop Color="#2D2D30" Offset="0"/>
-                                        <GradientStop Color="#1E1E1E" Offset="1"/>
-                                    </RadialGradientBrush>
-                                </Ellipse.Fill>
-                            </Ellipse>
-                            
-                            <!-- Logo文字 -->
-                            <TextBlock Text="Obs" 
-                                     FontSize="42" 
-                                     FontWeight="Bold"
-                                     Foreground="White"
-                                     HorizontalAlignment="Center"
-                                     VerticalAlignment="Center"
-                                     Margin="0,-5,0,0"/>
-                        </Grid>
-                    </Viewbox>
+                    <!-- Logo SVG -->
+                    <svgc:SvgViewbox Source="/Assets/logo.svg" 
+                                     Width="140" 
+                                     Height="140" 
+                                     Margin="0,0,0,24"
+                                     Stretch="Uniform"/>
 
                     <!-- 启动器名称 -->
                     <TextBlock Text="ObsMCLauncher" 
