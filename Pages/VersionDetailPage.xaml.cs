@@ -60,6 +60,9 @@ namespace ObsMCLauncher.Pages
             
             // 异步加载Fabric版本列表
             _ = LoadFabricVersionsAsync();
+            
+            // 异步加载OptiFine版本列表
+            _ = LoadOptiFineVersionsAsync();
         }
         
         /// <summary>
@@ -643,6 +646,130 @@ namespace ObsMCLauncher.Pages
             }
         }
 
+        /// <summary>
+        /// 加载OptiFine版本列表
+        /// </summary>
+        private async Task LoadOptiFineVersionsAsync()
+        {
+            // 设置加载状态
+            _ = Dispatcher.BeginInvoke(new Action(() =>
+            {
+                if (OptiFineRadio != null)
+                {
+                    OptiFineRadio.IsEnabled = false;
+                    OptiFineRadio.ToolTip = "正在加载OptiFine版本列表...";
+                }
+                if (OptiFineVersionComboBox != null)
+                {
+                    OptiFineVersionComboBox.Items.Clear();
+                    var loadingItem = new ComboBoxItem 
+                    { 
+                        Content = "正在加载中...", 
+                        IsEnabled = false,
+                        FontStyle = FontStyles.Italic
+                    };
+                    OptiFineVersionComboBox.Items.Add(loadingItem);
+                    OptiFineVersionComboBox.SelectedIndex = 0;
+                }
+            }));
+            
+            try
+            {
+                System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] 正在获取OptiFine版本列表: {currentVersion}");
+
+                // 创建 OptiFineService 实例
+                var optifineService = new OptiFineService(DownloadSourceManager.Instance);
+                
+                // 获取OptiFine版本列表
+                var optifineVersions = await optifineService.GetOptifineVersionsAsync(currentVersion);
+                
+                _ = Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    if (optifineVersions != null && optifineVersions.Count > 0)
+                    {
+                        if (OptiFineVersionComboBox != null)
+                        {
+                            OptiFineVersionComboBox.Items.Clear();
+                            
+                            foreach (var version in optifineVersions)
+                            {
+                                var displayText = version.FullVersion; // 例如: HD_U_H9
+                                
+                                // 标记推荐版本（第一个版本通常是最新/推荐版本）
+                                if (version == optifineVersions.First())
+                                {
+                                    displayText += " (推荐)";
+                                }
+                                
+                                var item = new ComboBoxItem 
+                                { 
+                                    Content = displayText,
+                                    Tag = version, // 存储完整的版本对象
+                                    ToolTip = $"{version.DisplayName}\n文件名: {version.Filename}"
+                                };
+                                OptiFineVersionComboBox.Items.Add(item);
+                            }
+                            
+                            // 自动选择第一个（最新）版本
+                            OptiFineVersionComboBox.SelectedIndex = 0;
+                        }
+
+                        // 启用OptiFine选项
+                        if (OptiFineRadio != null)
+                        {
+                            OptiFineRadio.IsEnabled = true;
+                            OptiFineRadio.ToolTip = $"OptiFine for Minecraft {currentVersion} ({optifineVersions.Count} 个版本可用)";
+                        }
+
+                        System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] 加载了 {optifineVersions.Count} 个OptiFine版本，自动选择: {optifineVersions[0].FullVersion}");
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] 未找到 Minecraft {currentVersion} 的OptiFine版本");
+                        
+                        if (OptiFineRadio != null)
+                        {
+                            OptiFineRadio.IsEnabled = false;
+                            OptiFineRadio.ToolTip = $"OptiFine暂不支持 Minecraft {currentVersion}";
+                        }
+                        if (OptiFineVersionComboBox != null)
+                        {
+                            OptiFineVersionComboBox.Items.Clear();
+                            var item = new ComboBoxItem 
+                            { 
+                                Content = "不支持此版本", 
+                                IsEnabled = false,
+                                FontStyle = FontStyles.Italic,
+                                Foreground = new SolidColorBrush(Colors.Gray)
+                            };
+                            OptiFineVersionComboBox.Items.Add(item);
+                            OptiFineVersionComboBox.SelectedIndex = 0;
+                        }
+                    }
+                }));
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] 加载OptiFine版本失败: {ex.Message}");
+                
+                _ = Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    if (OptiFineRadio != null)
+                    {
+                        OptiFineRadio.IsEnabled = false;
+                        OptiFineRadio.ToolTip = "加载OptiFine版本列表失败";
+                    }
+                    if (OptiFineVersionComboBox != null)
+                    {
+                        OptiFineVersionComboBox.Items.Clear();
+                        var item = new ComboBoxItem { Content = "加载失败", IsEnabled = false };
+                        OptiFineVersionComboBox.Items.Add(item);
+                        OptiFineVersionComboBox.SelectedIndex = 0;
+                    }
+                }));
+            }
+        }
+
         private void LoaderRadio_Checked(object sender, RoutedEventArgs e)
         {
             // 禁用所有版本选择框
@@ -1198,6 +1325,11 @@ namespace ObsMCLauncher.Pages
                 {
                     // Fabric安装流程
                     await InstallFabricAsync(loaderVersion, customVersionName, gameDirectory, config, progress);
+                }
+                else if (loaderType == "OptiFine")
+                {
+                    // OptiFine安装流程
+                    await InstallOptiFineAsync(loaderVersion, customVersionName, gameDirectory, config, progress);
                 }
                 else
                 {
@@ -2323,6 +2455,417 @@ namespace ObsMCLauncher.Pages
                 await DialogManager.Instance.ShowError(
                     "安装失败",
                     $"Fabric安装失败：\n\n{ex.Message}\n\n请检查网络连接或尝试切换下载源。"
+                );
+
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// 安装OptiFine
+        /// </summary>
+        private async Task InstallOptiFineAsync(
+            string optifineVersion,
+            string customVersionName,
+            string gameDirectory,
+            LauncherConfig config,
+            IProgress<DownloadProgress> progress)
+        {
+            // 用于清理的临时变量（在外层作用域声明）
+            string? tempVanillaDir = null;
+            bool needsCleanup = false;
+            
+            try
+            {
+                System.Diagnostics.Debug.WriteLine($"[OptiFine] 开始安装 OptiFine {optifineVersion} for MC {currentVersion}");
+
+                // 1. 更新UI - 开始准备
+                _ = Dispatcher.BeginInvoke(() =>
+                {
+                    DownloadStatusText.Text = "正在准备安装OptiFine...";
+                    CurrentFileText.Text = $"OptiFine {optifineVersion}";
+                    DownloadOverallProgressBar.Value = 5;
+                    DownloadOverallPercentageText.Text = "5%";
+                    DownloadSpeedText.Text = "准备中...";
+                    DownloadSizeText.Text = "";
+                });
+
+                // 2. 从ComboBox获取选中的OptiFine版本对象
+                OptifineVersionModel? selectedOptifineVersion = null;
+                await Dispatcher.InvokeAsync(() =>
+                {
+                    var selectedItem = OptiFineVersionComboBox?.SelectedItem as ComboBoxItem;
+                    selectedOptifineVersion = selectedItem?.Tag as OptifineVersionModel;
+                });
+
+                if (selectedOptifineVersion == null)
+                {
+                    throw new Exception("未能获取OptiFine版本信息");
+                }
+
+                System.Diagnostics.Debug.WriteLine($"[OptiFine] 选中的版本: {selectedOptifineVersion.DisplayName}");
+
+                // 3. 检查并下载基础 Minecraft 版本
+                // 策略：不在 versions/ 下创建原版文件夹（避免与用户手动安装的原版冲突）
+                // 而是在 OptiFine 版本文件夹内创建临时目录来存放原版文件
+                var optiFineVersionDir = Path.Combine(gameDirectory, "versions", customVersionName);
+                tempVanillaDir = Path.Combine(optiFineVersionDir, ".temp-vanilla");
+                
+                // 重要：DownloadService 会在 gameDirectory/versions/{versionName}/ 下创建文件
+                // 所以实际路径是 tempVanillaDir/versions/currentVersion/
+                var tempVanillaVersionDir = Path.Combine(tempVanillaDir, "versions", currentVersion);
+                
+                // 先检查用户是否已经手动安装了原版（在标准位置）
+                var standardBaseVersionDir = Path.Combine(gameDirectory, "versions", currentVersion);
+                var standardBaseVersionJar = Path.Combine(standardBaseVersionDir, $"{currentVersion}.jar");
+                var standardBaseVersionJson = Path.Combine(standardBaseVersionDir, $"{currentVersion}.json");
+                
+                string actualBaseVersionDir;
+                
+                if (File.Exists(standardBaseVersionJar) && File.Exists(standardBaseVersionJson))
+                {
+                    // 用户已有原版，直接使用
+                    System.Diagnostics.Debug.WriteLine($"[OptiFine] ✅ 检测到已安装的原版 Minecraft {currentVersion}，直接使用");
+                    actualBaseVersionDir = standardBaseVersionDir;
+                }
+                else
+                {
+                    // 需要下载原版到临时目录
+                    System.Diagnostics.Debug.WriteLine($"[OptiFine] 原版不存在，开始下载");
+                    System.Diagnostics.Debug.WriteLine($"[OptiFine] - 临时游戏目录: {tempVanillaDir}");
+                    System.Diagnostics.Debug.WriteLine($"[OptiFine] - 预期版本路径: {tempVanillaVersionDir}");
+                    needsCleanup = true;
+                    
+                    _ = Dispatcher.BeginInvoke(() =>
+                    {
+                        DownloadStatusText.Text = $"正在下载原版 Minecraft {currentVersion}...";
+                        DownloadOverallProgressBar.Value = 5;
+                        DownloadOverallPercentageText.Text = "5%";
+                    });
+
+                    // 创建临时目录
+                    if (!Directory.Exists(tempVanillaDir))
+                    {
+                        Directory.CreateDirectory(tempVanillaDir);
+                    }
+
+                    // 使用 DownloadService 下载原版 Minecraft 到临时目录
+                    var vanillaProgress = new Progress<DownloadProgress>(p =>
+                    {
+                        // 下载进度映射到 5-25%
+                        var overallProgress = 5 + (p.OverallPercentage / 100.0 * 20);
+                        
+                        _ = Dispatcher.BeginInvoke(() =>
+                        {
+                            DownloadStatusText.Text = p.Status;
+                            DownloadOverallProgressBar.Value = overallProgress;
+                            DownloadOverallPercentageText.Text = $"{overallProgress:F0}%";
+                            DownloadCurrentProgressBar.Value = p.CurrentFilePercentage;
+                            DownloadCurrentPercentageText.Text = $"{p.CurrentFilePercentage:F0}%";
+                            
+                            if (p.CurrentFileTotalBytes > 0)
+                            {
+                                DownloadSizeText.Text = $"{FormatFileSize(p.CurrentFileBytes)} / {FormatFileSize(p.CurrentFileTotalBytes)}";
+                            }
+                            
+                            // 更新下载任务管理器
+                            if (_currentDownloadTaskId != null)
+                            {
+                                DownloadTaskManager.Instance.UpdateTaskProgress(
+                                    _currentDownloadTaskId,
+                                    overallProgress,
+                                    p.Status,
+                                    (long)p.DownloadSpeed
+                                );
+                            }
+                        });
+                    });
+                    
+                    // 临时修改 gameDirectory，让下载到临时目录
+                    bool downloadSuccess = await DownloadService.DownloadMinecraftVersion(
+                        currentVersion,
+                        tempVanillaDir, // 下载到临时目录
+                        currentVersion, // 版本名称与版本ID相同
+                        vanillaProgress,
+                        _downloadCancellationToken!.Token
+                    );
+
+                    if (!downloadSuccess)
+                    {
+                        throw new Exception($"下载原版 Minecraft {currentVersion} 失败");
+                    }
+
+                    System.Diagnostics.Debug.WriteLine($"[OptiFine] ✅ 原版 Minecraft {currentVersion} 下载到临时目录完成");
+                    
+                    // 设置实际的基础版本路径
+                    actualBaseVersionDir = tempVanillaVersionDir;
+                    
+                    // 验证文件是否存在
+                    var downloadedJar = Path.Combine(actualBaseVersionDir, $"{currentVersion}.jar");
+                    var downloadedJson = Path.Combine(actualBaseVersionDir, $"{currentVersion}.json");
+                    System.Diagnostics.Debug.WriteLine($"[OptiFine] - 检查 JAR: {downloadedJar} -> {File.Exists(downloadedJar)}");
+                    System.Diagnostics.Debug.WriteLine($"[OptiFine] - 检查 JSON: {downloadedJson} -> {File.Exists(downloadedJson)}");
+                }
+
+                // 4. 下载OptiFine安装包
+                var tempDir = Path.Combine(Path.GetTempPath(), "ObsMCLauncher", "OptiFine");
+                if (!Directory.Exists(tempDir))
+                {
+                    Directory.CreateDirectory(tempDir);
+                }
+
+                var installerPath = Path.Combine(tempDir, selectedOptifineVersion.Filename);
+                
+                _ = Dispatcher.BeginInvoke(() =>
+                {
+                    DownloadStatusText.Text = "正在下载OptiFine安装包...";
+                    DownloadOverallProgressBar.Value = 25;
+                    DownloadOverallPercentageText.Text = "25%";
+                });
+
+                var optifineService = new OptiFineService(DownloadSourceManager.Instance);
+                await optifineService.DownloadOptifineInstallerAsync(
+                    selectedOptifineVersion,
+                    installerPath,
+                    (status, currentProg, totalProg, bytes, totalBytes) =>
+                    {
+                        // 下载进度映射到 25-35%
+                        var overallProgress = 25 + (currentProg / 100.0 * 10);
+                        
+                        _ = Dispatcher.BeginInvoke(() =>
+                        {
+                            DownloadStatusText.Text = status;
+                            DownloadOverallProgressBar.Value = overallProgress;
+                            DownloadOverallPercentageText.Text = $"{overallProgress:F0}%";
+                            DownloadCurrentProgressBar.Value = currentProg;
+                            DownloadCurrentPercentageText.Text = $"{currentProg:F0}%";
+                            
+                            if (totalBytes > 0)
+                            {
+                                DownloadSizeText.Text = $"{FormatFileSize(bytes)} / {FormatFileSize(totalBytes)}";
+                                var speed = bytes / (DateTime.Now - DateTime.Now.AddSeconds(-1)).TotalSeconds;
+                                DownloadSpeedText.Text = FormatSpeed((long)speed);
+                            }
+                            
+                            // 更新下载任务管理器
+                            if (_currentDownloadTaskId != null)
+                            {
+                                DownloadTaskManager.Instance.UpdateTaskProgress(
+                                    _currentDownloadTaskId,
+                                    overallProgress,
+                                    status,
+                                    (long)(bytes / (DateTime.Now - DateTime.Now.AddSeconds(-1)).TotalSeconds)
+                                );
+                            }
+                        });
+                    },
+                    _downloadCancellationToken!.Token
+                );
+
+                System.Diagnostics.Debug.WriteLine($"[OptiFine] ✅ 安装包下载完成: {installerPath}");
+
+                // 5. 获取Java路径
+                var javaPath = config.JavaPath;
+                
+                if (string.IsNullOrEmpty(javaPath) || !File.Exists(javaPath))
+                {
+                    var detectedJavas = JavaDetector.DetectAllJava();
+                    var java = detectedJavas.FirstOrDefault(j => j.MajorVersion >= 8);
+                    
+                    if (java == null)
+                    {
+                        throw new Exception("未找到可用的Java运行时，请在设置中配置Java路径");
+                    }
+                    
+                    javaPath = java.Path;
+                    System.Diagnostics.Debug.WriteLine($"[OptiFine] 使用自动检测的Java: {javaPath}");
+                }
+
+                // 6. 执行OptiFine安装
+                _ = Dispatcher.BeginInvoke(() =>
+                {
+                    DownloadStatusText.Text = "正在安装OptiFine...";
+                    DownloadOverallProgressBar.Value = 35;
+                    DownloadOverallPercentageText.Text = "35%";
+                    CurrentFileText.Text = "执行OptiFine安装程序";
+                });
+
+                var installSuccess = await optifineService.InstallOptifineAsync(
+                    selectedOptifineVersion,
+                    installerPath,
+                    gameDirectory,
+                    currentVersion, // 基础 Minecraft 版本
+                    javaPath,
+                    customVersionName,
+                    actualBaseVersionDir, // 传递实际的基础版本路径（可能是标准路径或临时路径）
+                    (status, currentProg, totalProg, bytes, totalBytes) =>
+                    {
+                        // 安装进度映射到 35-100%
+                        var overallProgress = 35 + (currentProg / 100.0 * 65);
+                        
+                        _ = Dispatcher.BeginInvoke(() =>
+                        {
+                            DownloadStatusText.Text = status;
+                            DownloadOverallProgressBar.Value = overallProgress;
+                            DownloadOverallPercentageText.Text = $"{overallProgress:F0}%";
+                            DownloadCurrentProgressBar.Value = currentProg;
+                            DownloadCurrentPercentageText.Text = $"{currentProg:F0}%";
+                            
+                            // 更新下载任务管理器
+                            if (_currentDownloadTaskId != null)
+                            {
+                                DownloadTaskManager.Instance.UpdateTaskProgress(
+                                    _currentDownloadTaskId,
+                                    overallProgress,
+                                    status,
+                                    0
+                                );
+                            }
+                        });
+                    },
+                    _downloadCancellationToken!.Token
+                );
+
+                if (!installSuccess)
+                {
+                    throw new Exception("OptiFine安装失败");
+                }
+
+                // 7. 复制必要文件到正确位置（清理前）
+                try
+                {
+                    // 7.1 复制原版 client.jar 作为 OptiFine 版本的主 JAR
+                    var sourceJar = Path.Combine(actualBaseVersionDir, $"{currentVersion}.jar");
+                    var targetJar = Path.Combine(optiFineVersionDir, $"{customVersionName}.jar");
+                    
+                    if (File.Exists(sourceJar) && !File.Exists(targetJar))
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[OptiFine] 复制主 JAR: {sourceJar} -> {targetJar}");
+                        File.Copy(sourceJar, targetJar, true);
+                        System.Diagnostics.Debug.WriteLine($"[OptiFine] ✅ 主 JAR 已复制");
+                    }
+                    
+                    // 7.2 如果是临时下载的，复制父版本 JSON 到标准位置（供 inheritsFrom 使用）
+                    if (needsCleanup)
+                    {
+                        var sourceJson = Path.Combine(actualBaseVersionDir, $"{currentVersion}.json");
+                        var standardVersionDir = Path.Combine(gameDirectory, "versions", currentVersion);
+                        var targetJson = Path.Combine(standardVersionDir, $"{currentVersion}.json");
+                        
+                        if (File.Exists(sourceJson) && !File.Exists(targetJson))
+                        {
+                            if (!Directory.Exists(standardVersionDir))
+                            {
+                                Directory.CreateDirectory(standardVersionDir);
+                            }
+                            
+                            System.Diagnostics.Debug.WriteLine($"[OptiFine] 复制父版本 JSON: {sourceJson} -> {targetJson}");
+                            File.Copy(sourceJson, targetJson, true);
+                            System.Diagnostics.Debug.WriteLine($"[OptiFine] ✅ 父版本 JSON 已复制到标准位置");
+                        }
+                    }
+                }
+                catch (Exception copyEx)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[OptiFine] 复制必要文件失败: {copyEx.Message}");
+                    // 复制失败可能影响启动，但不阻止安装完成
+                }
+
+                // 8. 清理临时文件
+                try
+                {
+                    // 清理 OptiFine 安装包
+                    if (File.Exists(installerPath))
+                    {
+                        File.Delete(installerPath);
+                        System.Diagnostics.Debug.WriteLine($"[OptiFine] ✅ 已删除临时 OptiFine 安装包");
+                    }
+                    
+                    // 清理临时的原版文件夹（如果是我们自己下载的）
+                    if (needsCleanup && Directory.Exists(tempVanillaDir))
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[OptiFine] 正在清理临时原版文件夹: {tempVanillaDir}");
+                        Directory.Delete(tempVanillaDir, true);
+                        System.Diagnostics.Debug.WriteLine($"[OptiFine] ✅ 临时原版文件夹已清理");
+                    }
+                }
+                catch (Exception cleanupEx)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[OptiFine] 清理临时文件失败: {cleanupEx.Message}");
+                    // 清理失败不影响安装结果，只记录日志
+                }
+
+                // 9. 安装成功
+                System.Diagnostics.Debug.WriteLine($"[OptiFine] ✅ OptiFine安装成功: {customVersionName}");
+                
+                _ = Dispatcher.BeginInvoke(() =>
+                {
+                    DownloadStatusText.Text = "OptiFine安装完成！";
+                    DownloadOverallProgressBar.Value = 100;
+                    DownloadOverallPercentageText.Text = "100%";
+                    DownloadCurrentProgressBar.Value = 100;
+                    DownloadCurrentPercentageText.Text = "100%";
+                    DownloadSpeedText.Text = "完成";
+                });
+
+                // 标记任务完成
+                if (_currentDownloadTaskId != null)
+                {
+                    DownloadTaskManager.Instance.CompleteTask(_currentDownloadTaskId);
+                    _currentDownloadTaskId = null;
+                }
+
+                // 10. 显示成功消息
+                await Task.Delay(500); // 短暂延迟，让用户看到100%
+                await DialogManager.Instance.ShowSuccess(
+                    "安装完成",
+                    $"OptiFine {selectedOptifineVersion.FullVersion} for Minecraft {currentVersion}\n\n已成功安装到版本 {customVersionName}！"
+                );
+
+                // 返回列表页面
+                BackButton_Click(null!, null!);
+            }
+            catch (OperationCanceledException)
+            {
+                System.Diagnostics.Debug.WriteLine($"[OptiFine] 安装已取消");
+                throw; // 重新抛出，让上层处理
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[OptiFine] 安装失败: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[OptiFine] 堆栈跟踪: {ex.StackTrace}");
+                
+                // 清理临时文件（即使安装失败）
+                try
+                {
+                    if (needsCleanup && !string.IsNullOrEmpty(tempVanillaDir) && Directory.Exists(tempVanillaDir))
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[OptiFine] 安装失败，清理临时原版文件夹: {tempVanillaDir}");
+                        Directory.Delete(tempVanillaDir, true);
+                        System.Diagnostics.Debug.WriteLine($"[OptiFine] ✅ 临时原版文件夹已清理");
+                    }
+                }
+                catch (Exception cleanupEx)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[OptiFine] 清理临时文件失败: {cleanupEx.Message}");
+                }
+                
+                // 标记任务失败
+                if (_currentDownloadTaskId != null)
+                {
+                    DownloadTaskManager.Instance.FailTask(_currentDownloadTaskId, ex.Message);
+                    _currentDownloadTaskId = null;
+                }
+
+                _ = Dispatcher.BeginInvoke(() =>
+                {
+                    DownloadStatusText.Text = "安装失败";
+                    DownloadOverallProgressBar.Value = 0;
+                });
+
+                await DialogManager.Instance.ShowError(
+                    "安装失败",
+                    $"OptiFine安装失败：\n\n{ex.Message}\n\n请检查网络连接或尝试切换下载源。"
                 );
 
                 throw;

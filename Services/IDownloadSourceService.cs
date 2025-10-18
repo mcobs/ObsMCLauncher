@@ -36,6 +36,11 @@ namespace ObsMCLauncher.Services
         /// 获取Forge版本列表
         /// </summary>
         Task<string?> GetForgeVersionList(string mcVersion);
+
+        /// <summary>
+        /// 获取 BMCLAPI 基础 URL（用于 OptiFine 等扩展功能）
+        /// </summary>
+        string GetBMCLApiUrl();
     }
 }
 

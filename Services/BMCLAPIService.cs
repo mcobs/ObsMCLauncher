@@ -143,6 +143,14 @@ namespace ObsMCLauncher.Services
         {
             return $"{BaseUrl}/maven/{path}";
         }
+
+        /// <summary>
+        /// 获取 BMCLAPI 基础 URL（用于 OptiFine 等扩展功能）
+        /// </summary>
+        public string GetBMCLApiUrl()
+        {
+            return BaseUrl;
+        }
     }
 }
 

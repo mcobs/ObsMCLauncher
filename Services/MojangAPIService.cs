@@ -110,6 +110,16 @@ namespace ObsMCLauncher.Services
                 return Task.FromResult<string?>(null);
             }
         }
+
+        /// <summary>
+        /// 获取 BMCLAPI 基础 URL（用于 OptiFine 等扩展功能）
+        /// 注意：官方源不使用 BMCLAPI，此处返回默认的 BMCLAPI 地址
+        /// </summary>
+        public string GetBMCLApiUrl()
+        {
+            // 即使使用 Mojang 官方源，OptiFine 等功能仍然使用 BMCLAPI
+            return "https://bmclapi2.bangbang93.com";
+        }
     }
 }
 

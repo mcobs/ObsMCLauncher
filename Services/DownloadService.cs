@@ -576,6 +576,16 @@ namespace ObsMCLauncher.Services
             var librariesPath = Path.Combine(gameDirectory, "libraries");
             Directory.CreateDirectory(librariesPath);
 
+            // 获取最大并发下载数
+            var config = LauncherConfig.Load();
+            var maxConcurrent = Math.Max(1, config.MaxDownloadThreads);
+            System.Diagnostics.Debug.WriteLine($"[DownloadService] 使用 {maxConcurrent} 个并发线程下载库文件");
+
+            // 准备下载任务列表
+            var downloadTasks = new List<Task>();
+            var semaphore = new System.Threading.SemaphoreSlim(maxConcurrent, maxConcurrent);
+            var lockObject = new object();
+
             foreach (var library in libraries)
             {
                 if (cancellationToken.IsCancellationRequested) break;
@@ -594,56 +604,83 @@ namespace ObsMCLauncher.Services
                     var fileInfo = new FileInfo(libraryPath);
                     if (fileInfo.Length == artifact.Size)
                     {
-                        state.CompletedFiles++;
-                        state.TotalDownloadedBytes += artifact.Size;
+                        lock (lockObject)
+                        {
+                            state.CompletedFiles++;
+                            state.TotalDownloadedBytes += artifact.Size;
+                        }
                         continue;
                     }
                 }
 
-                Directory.CreateDirectory(Path.GetDirectoryName(libraryPath)!);
-
-                try
+                // 创建并发下载任务
+                var downloadTask = Task.Run(async () =>
                 {
-                    var url = artifact.Url;
-                    if (string.IsNullOrEmpty(url))
+                    await semaphore.WaitAsync(cancellationToken);
+                    try
                     {
-                        url = downloadSource.GetLibraryUrl(artifact.Path);
-                    }
+                        Directory.CreateDirectory(Path.GetDirectoryName(libraryPath)!);
 
-                    var libSize = artifact.Size;
-                    var baseDownloadedBytes = state.TotalDownloadedBytes;
-
-                    await DownloadFileWithProgressAsync(
-                        url, 
-                        libraryPath,
-                        (currentBytes, speed, actualTotalBytes) =>
+                        var url = artifact.Url;
+                        if (string.IsNullOrEmpty(url))
                         {
-                            // 如果预先知道的大小为0，使用实际下载时获取的大小
-                            var effectiveLibSize = libSize > 0 ? libSize : actualTotalBytes;
-                            
-                            progress?.Report(new DownloadProgress
-                            {
-                                Status = $"正在下载库文件 ({state.CompletedFiles + 1}/{totalFiles})...",
-                                CurrentFile = Path.GetFileName(libraryPath),
-                                CurrentFileTotalBytes = effectiveLibSize,
-                                CurrentFileBytes = currentBytes,
-                                TotalBytes = totalBytes,
-                                TotalDownloadedBytes = baseDownloadedBytes + currentBytes,
-                                CompletedFiles = state.CompletedFiles,
-                                TotalFiles = totalFiles,
-                                DownloadSpeed = speed
-                            });
-                        },
-                        cancellationToken);
+                            url = downloadSource.GetLibraryUrl(artifact.Path);
+                        }
 
-                    state.CompletedFiles++;
-                    state.TotalDownloadedBytes += libSize;
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"下载库文件失败 {artifact.Path}: {ex.Message}");
-                }
+                        var libSize = artifact.Size;
+
+                        await DownloadFileWithProgressAsync(
+                            url, 
+                            libraryPath,
+                            (currentBytes, speed, actualTotalBytes) =>
+                            {
+                                // 如果预先知道的大小为0，使用实际下载时获取的大小
+                                var effectiveLibSize = libSize > 0 ? libSize : actualTotalBytes;
+                                
+                                long currentTotalDownloaded;
+                                int currentCompletedFiles;
+                                lock (lockObject)
+                                {
+                                    currentTotalDownloaded = state.TotalDownloadedBytes;
+                                    currentCompletedFiles = state.CompletedFiles;
+                                }
+                                
+                                progress?.Report(new DownloadProgress
+                                {
+                                    Status = $"正在下载库文件 ({currentCompletedFiles + 1}/{totalFiles})...",
+                                    CurrentFile = Path.GetFileName(libraryPath),
+                                    CurrentFileTotalBytes = effectiveLibSize,
+                                    CurrentFileBytes = currentBytes,
+                                    TotalBytes = totalBytes,
+                                    TotalDownloadedBytes = currentTotalDownloaded + currentBytes,
+                                    CompletedFiles = currentCompletedFiles,
+                                    TotalFiles = totalFiles,
+                                    DownloadSpeed = speed
+                                });
+                            },
+                            cancellationToken);
+
+                        lock (lockObject)
+                        {
+                            state.CompletedFiles++;
+                            state.TotalDownloadedBytes += libSize;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"下载库文件失败 {artifact.Path}: {ex.Message}");
+                    }
+                    finally
+                    {
+                        semaphore.Release();
+                    }
+                }, cancellationToken);
+
+                downloadTasks.Add(downloadTask);
             }
+
+            // 等待所有下载任务完成
+            await Task.WhenAll(downloadTasks);
         }
 
         /// <summary>
