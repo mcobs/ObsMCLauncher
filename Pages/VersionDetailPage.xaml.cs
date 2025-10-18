@@ -2061,144 +2061,55 @@ namespace ObsMCLauncher.Pages
             LauncherConfig config,
             IProgress<DownloadProgress> progress)
         {
-            var installerPath = Path.Combine(Path.GetTempPath(), $"neoforge-installer-{neoforgeVersion}.jar");
-            
             try
             {
                 System.Diagnostics.Debug.WriteLine($"[NeoForge] 开始安装 NeoForge {neoforgeVersion} for MC {currentVersion}");
 
-                // 1. 下载 NeoForge 安装器
-                progress?.Report(new DownloadProgress
-                {
-                    Status = "正在下载NeoForge安装器...",
-                    CurrentFile = $"neoforge-{neoforgeVersion}-installer.jar",
-                    TotalBytes = 0,
-                    TotalDownloadedBytes = 0,
-                    DownloadSpeed = 0
-                });
-                
-                // 使用带详细进度信息的下载方法
-                if (!await NeoForgeService.DownloadNeoForgeInstallerWithDetailsAsync(
-                    neoforgeVersion, 
-                    installerPath, 
-                    (currentBytes, speed, totalBytes) =>
+                // 使用新的手动安装方法
+                var success = await NeoForgeService.InstallNeoForgeAsync(
+                    neoforgeVersion,
+                    gameDirectory,
+                    (status, currentProgress, totalProgress, currentBytes, totalBytes) =>
                     {
-                        // 计算百分比
-                        double percentage = totalBytes > 0 ? (double)currentBytes / totalBytes * 100 : 0;
-                        double overallProgress = 10 + (percentage * 0.2); // 10%-30%
-                        
-                        // 通过progress报告
+                        // 转换进度回调格式
                         progress?.Report(new DownloadProgress
                         {
-                            Status = "正在下载NeoForge安装器",
-                            CurrentFile = $"neoforge-installer.jar",
+                            Status = status,
+                            CurrentFile = Path.GetFileName(status),
                             CurrentFileBytes = currentBytes,
                             CurrentFileTotalBytes = totalBytes,
                             TotalDownloadedBytes = currentBytes,
                             TotalBytes = totalBytes,
-                            DownloadSpeed = speed,
-                            CompletedFiles = 0,
-                            TotalFiles = 3 // 安装器、原版、库文件
+                            DownloadSpeed = 0
                         });
+
+                        // 更新下载管理器任务进度
+                        if (_currentDownloadTaskId != null && totalProgress > 0)
+                        {
+                            var percentage = currentProgress / totalProgress * 100;
+                            DownloadTaskManager.Instance.UpdateTaskProgress(
+                                _currentDownloadTaskId,
+                                percentage,
+                                status,
+                                0 // 速度设为0
+                            );
+                        }
                     },
-                    _downloadCancellationToken!.Token))
+                    _downloadCancellationToken!.Token
+                );
+
+                if (!success)
                 {
-                    throw new Exception("NeoForge安装器下载失败");
+                    throw new Exception("NeoForge安装失败");
                 }
 
-                System.Diagnostics.Debug.WriteLine($"[NeoForge] 安装器下载完成: {installerPath}");
-
-                // 2. 下载原版文件到标准位置
-                string standardVanillaDir = Path.Combine(gameDirectory, "versions", currentVersion);
-                
-                // 创建进度回调，将原版下载进度映射到30%-50%
-                var vanillaProgress = new Progress<DownloadProgress>(p => {
-                    // 计算文件进度百分比
-                    double fileProgress = p.CurrentFileTotalBytes > 0 
-                        ? (double)p.CurrentFileBytes / p.CurrentFileTotalBytes * 100 
-                        : 0;
-                    
-                    // 映射到30%-50%的范围
-                    var overallProgress = 30 + (fileProgress / 100.0 * 20);
-                    
-                    // 通过progress报告
-                    progress?.Report(new DownloadProgress
-                    {
-                        Status = p.Status,
-                        CurrentFile = p.CurrentFile ?? $"{currentVersion}.jar",
-                        CurrentFileBytes = p.CurrentFileBytes,
-                        CurrentFileTotalBytes = p.CurrentFileTotalBytes,
-                        TotalDownloadedBytes = p.TotalDownloadedBytes,
-                        TotalBytes = p.TotalBytes,
-                        DownloadSpeed = p.DownloadSpeed,
-                        CompletedFiles = 1,
-                        TotalFiles = 3
-                    });
-                });
-                
-                await DownloadVanillaForForge(gameDirectory, currentVersion, standardVanillaDir, vanillaProgress);
-
-                // 3. 运行 NeoForge 安装器
-                progress?.Report(new DownloadProgress
-                {
-                    Status = "执行NeoForge安装...",
-                    CurrentFile = "正在处理Minecraft文件（请稍候）",
-                    CurrentFileBytes = 50,
-                    CurrentFileTotalBytes = 100,
-                    CompletedFiles = 2,
-                    TotalFiles = 3
-                });
-
-                System.Diagnostics.Debug.WriteLine($"[NeoForge] 开始执行安装器...");
-                
-                // NeoForge 安装器使用与 Forge 相同的方式
-                bool installSuccess = await RunNeoForgeInstallerAsync(installerPath, gameDirectory, currentVersion, neoforgeVersion, config);
-                
-                if (!installSuccess)
-                {
-                    throw new Exception("NeoForge安装器执行失败");
-                }
-
-                // 4. 重命名版本文件夹
-                var neoforgeVersionDir = Path.Combine(gameDirectory, "versions", $"neoforge-{neoforgeVersion}");
-                var targetVersionDir = Path.Combine(gameDirectory, "versions", customVersionName);
-
-                if (Directory.Exists(neoforgeVersionDir) && !Directory.Exists(targetVersionDir))
-                {
-                    Directory.Move(neoforgeVersionDir, targetVersionDir);
-                    System.Diagnostics.Debug.WriteLine($"[NeoForge] 版本文件夹已重命名: {neoforgeVersionDir} -> {targetVersionDir}");
-                }
-
-                // 重命名json文件
-                var neoforgeJsonFile = Path.Combine(targetVersionDir, $"neoforge-{neoforgeVersion}.json");
-                var targetJsonFile = Path.Combine(targetVersionDir, $"{customVersionName}.json");
-                
-                if (File.Exists(neoforgeJsonFile))
-                {
-                    if (File.Exists(targetJsonFile))
-                    {
-                        File.Delete(targetJsonFile);
-                    }
-                    File.Move(neoforgeJsonFile, targetJsonFile);
-                    
-                    // 更新json文件中的id字段
-                    var jsonContent = File.ReadAllText(targetJsonFile);
-                    jsonContent = jsonContent.Replace($"\"id\": \"neoforge-{neoforgeVersion}\"", $"\"id\": \"{customVersionName}\"");
-                    File.WriteAllText(targetJsonFile, jsonContent);
-                    
-                    System.Diagnostics.Debug.WriteLine($"[NeoForge] JSON文件已更新: {targetJsonFile}");
-                }
-
-                // 5. 库文件已由安装器自动下载
-                System.Diagnostics.Debug.WriteLine($"[NeoForge] 库文件已由安装器处理");
-
-                // 6. 完成安装
+                // 完成安装
                 progress?.Report(new DownloadProgress
                 {
                     Status = "NeoForge安装完成",
                     CurrentFile = "",
-                    CompletedFiles = 3,
-                    TotalFiles = 3
+                    CurrentFileBytes = 100,
+                    CurrentFileTotalBytes = 100
                 });
 
                 _ = Dispatcher.BeginInvoke(() =>
@@ -2242,22 +2153,6 @@ namespace ObsMCLauncher.Pages
                     "NeoForge安装失败",
                     $"安装过程中发生错误：\n{ex.Message}"
                 );
-            }
-            finally
-            {
-                // 清理安装器文件
-                try
-                {
-                    if (File.Exists(installerPath))
-                    {
-                        File.Delete(installerPath);
-                        System.Diagnostics.Debug.WriteLine($"[NeoForge] 已清理安装器文件: {installerPath}");
-                    }
-                }
-                catch (Exception cleanupEx)
-                {
-                    System.Diagnostics.Debug.WriteLine($"[NeoForge] 清理安装器文件失败: {cleanupEx.Message}");
-                }
             }
         }
 

@@ -16,11 +16,58 @@ namespace ObsMCLauncher
             AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
         }
 
+        /// <summary>
+        /// 配置全局 SSL/TLS 设置，确保能够连接到 Mojang 和其他服务器
+        /// </summary>
+        private static void ConfigureGlobalSslSettings()
+        {
+            try
+            {
+                // 强制使用 TLS 1.2 和 TLS 1.3（推荐的安全协议）
+                System.Net.ServicePointManager.SecurityProtocol = 
+                    System.Net.SecurityProtocolType.Tls12 | 
+                    System.Net.SecurityProtocolType.Tls13;
+                
+                // 配置连接限制
+                System.Net.ServicePointManager.DefaultConnectionLimit = 10;
+                System.Net.ServicePointManager.Expect100Continue = false;
+                
+                // 配置证书验证（生产环境应该启用严格验证）
+                // 注意：在开发/测试环境中，如果遇到证书问题，可以临时放宽验证
+#if DEBUG
+                System.Net.ServicePointManager.ServerCertificateValidationCallback = 
+                    (sender, certificate, chain, sslPolicyErrors) => 
+                    {
+                        // 在调试模式下，记录证书问题但仍然允许连接
+                        if (sslPolicyErrors != System.Net.Security.SslPolicyErrors.None)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[SSL] 证书验证警告: {sslPolicyErrors}");
+                        }
+                        return true; // 开发环境：忽略证书错误
+                    };
+#else
+                // 生产环境：使用默认的严格证书验证
+                System.Net.ServicePointManager.ServerCertificateValidationCallback = null;
+#endif
+                
+                System.Diagnostics.Debug.WriteLine("[App] ✅ 全局 SSL/TLS 设置已配置");
+                System.Diagnostics.Debug.WriteLine($"[App] 支持的协议: {System.Net.ServicePointManager.SecurityProtocol}");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[App] ⚠️ SSL/TLS 配置失败: {ex.Message}");
+                // 不抛出异常，让应用继续运行
+            }
+        }
+
         protected override void OnStartup(StartupEventArgs e)
         {
             try
             {
                 base.OnStartup(e);
+
+                // ========== 配置全局 SSL/TLS 设置 ==========
+                ConfigureGlobalSslSettings();
 
                 // 尝试设置控制台编码为UTF-8（仅在有控制台窗口时）
                 try

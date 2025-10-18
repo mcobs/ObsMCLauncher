@@ -57,7 +57,30 @@ namespace ObsMCLauncher.Services
         {
             var handler = new HttpClientHandler
             {
-                AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate
+                AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate,
+                
+                // 配置 SSL/TLS 设置
+                SslProtocols = System.Security.Authentication.SslProtocols.Tls12 | System.Security.Authentication.SslProtocols.Tls13,
+                
+                // 证书验证设置
+#if DEBUG
+                ServerCertificateCustomValidationCallback = (message, cert, chain, errors) =>
+                {
+                    // 调试模式：记录但忽略证书错误
+                    if (errors != System.Net.Security.SslPolicyErrors.None)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[DownloadService] SSL证书警告: {errors}");
+                    }
+                    return true;
+                },
+#endif
+                
+                // 其他网络优化
+                MaxConnectionsPerServer = 10,
+                UseProxy = true,
+                UseCookies = false,
+                AllowAutoRedirect = true,
+                MaxAutomaticRedirections = 10
             };
 
             _httpClient = new HttpClient(handler)
@@ -66,6 +89,9 @@ namespace ObsMCLauncher.Services
             };
 
             _httpClient.DefaultRequestHeaders.Add("User-Agent", "ObsMCLauncher/1.0");
+            _httpClient.DefaultRequestHeaders.ConnectionClose = false; // 保持连接以提高性能
+            
+            System.Diagnostics.Debug.WriteLine("[DownloadService] ✅ HttpClient 已配置 (TLS 1.2/1.3)");
         }
 
         /// <summary>

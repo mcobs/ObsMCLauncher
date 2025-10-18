@@ -325,9 +325,42 @@ namespace ObsMCLauncher.Services
                 
                 if (missingRequired.Count > 0)
                 {
-                    LastError = $"检测到 {missingRequired.Count} 个缺失的必需库文件\n请在主页点击启动按钮，系统将自动下载";
-                    Debug.WriteLine($"❌ 缺失 {missingRequired.Count} 个必需库文件，需要下载");
+                    Debug.WriteLine($"检测到 {missingRequired.Count} 个缺失的必需依赖库，开始自动补全...");
+                    Console.WriteLine($"检测到 {missingRequired.Count} 个缺失的必需依赖库，开始自动补全...");
+                    onProgressUpdate?.Invoke($"正在下载 {missingRequired.Count} 个缺失的库文件...");
+                    
+                    // 自动下载缺失的库
+                    var (successCount, failedCount) = await LibraryDownloader.DownloadMissingLibrariesAsync(
+                        config.GameDirectory,
+                        versionId,
+                        missingRequired,
+                        (progress, current, total) => 
+                        {
+                            onProgressUpdate?.Invoke(progress);
+                        },
+                        cancellationToken
+                    );
+                    
+                    Debug.WriteLine($"========== 库文件下载结果 ==========");
+                    Debug.WriteLine($"总计: {missingRequired.Count} 个");
+                    Debug.WriteLine($"成功: {successCount} 个");
+                    Debug.WriteLine($"跳过: 0 个（无下载URL或不适用）");
+                    Debug.WriteLine($"失败: {failedCount} 个");
+                    Console.WriteLine($"========== 库文件下载结果 ==========");
+                    Console.WriteLine($"总计: {missingRequired.Count} 个");
+                    Console.WriteLine($"成功: {successCount} 个");
+                    Console.WriteLine($"跳过: 0 个（无下载URL或不适用）");
+                    Console.WriteLine($"失败: {failedCount} 个");
+                    
+                    if (failedCount > 0)
+                    {
+                        LastError = $"❌ 必需依赖库下载失败！";
+                        Debug.WriteLine($"❌ 必需依赖库下载失败！");
+                        Console.WriteLine($"❌ 必需依赖库下载失败！");
                     return false;
+                    }
+                    
+                    Debug.WriteLine($"✅ 所有缺失的库文件已成功下载");
                 }
                 
                 if (missingOptional.Count > 0)
@@ -444,68 +477,345 @@ namespace ObsMCLauncher.Services
                 args.Append($"{config.JvmArguments} ");
             }
 
-            // 2.5. version.json中定义的JVM参数（如Forge的额外JVM参数）
-            if (versionInfo.Arguments?.Jvm != null)
-            {
-                foreach (var arg in versionInfo.Arguments.Jvm)
-                {
-                    if (arg is string str)
-                    {
-                        // 跳过标准JVM参数
-                        if (ShouldSkipJvmArg(str))
-                            continue;
-                        
-                            args.Append($"{str} ");
-                    }
-                    else if (arg is System.Text.Json.JsonElement jsonElement && jsonElement.ValueKind == System.Text.Json.JsonValueKind.String)
-                    {
-                        var argStr = jsonElement.GetString();
-                        if (!string.IsNullOrEmpty(argStr) && !ShouldSkipJvmArg(argStr))
-                        {
-                            args.Append($"{argStr} ");
-                        }
-                    }
-                }
-            }
+            // 2.3. 检测是否为模块化NeoForge（在处理JVM参数之前）
+            bool isModularNeoForge = versionInfo.MainClass?.Contains("bootstraplauncher", StringComparison.OrdinalIgnoreCase) == true;
 
-            // 3. 游戏目录相关
+            // 2.4. 游戏目录相关（移到前面，因为变量替换需要这些信息）
             var gameDir = config.GameDirectory;
             var versionDir = Path.Combine(gameDir, "versions", versionId);
             var nativesDir = Path.Combine(versionDir, "natives");
             var librariesDir = Path.Combine(gameDir, "libraries");
             var assetsDir = Path.Combine(gameDir, "assets");
 
+            // 2.45. 模块路径JAR集合（用于跟踪哪些JAR在模块路径中，避免重复添加到classpath）
+            var modulePathJars = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            // 2.5. version.json中定义的JVM参数（如Forge/NeoForge的额外JVM参数）
+            bool hasModulePathInJson = false;
+            if (versionInfo.Arguments?.Jvm != null)
+            {
+                for (int i = 0; i < versionInfo.Arguments.Jvm.Count; i++)
+                {
+                    var arg = versionInfo.Arguments.Jvm[i];
+                    string argStr = null;
+                    
+                    if (arg is string str)
+                        argStr = str;
+                    else if (arg is System.Text.Json.JsonElement jsonElement && jsonElement.ValueKind == System.Text.Json.JsonValueKind.String)
+                        argStr = jsonElement.GetString();
+                    
+                    if (string.IsNullOrEmpty(argStr))
+                            continue;
+                        
+                    // 先进行变量替换
+                    var replacedArg = ReplaceArgVariables(argStr, versionId, gameDir, librariesDir, nativesDir, assetsDir);
+                    
+                    // 特殊处理 -p/--module-path 参数（需要连续读取下一个参数作为路径）
+                    if (replacedArg == "-p" || replacedArg == "--module-path")
+                    {
+                        hasModulePathInJson = true;
+                        // 读取下一个参数作为模块路径
+                        if (i + 1 < versionInfo.Arguments.Jvm.Count)
+                        {
+                            var nextArg = versionInfo.Arguments.Jvm[i + 1];
+                            string nextArgStr = null;
+                            
+                            if (nextArg is string nextStr)
+                                nextArgStr = nextStr;
+                            else if (nextArg is System.Text.Json.JsonElement nextJsonElement && nextJsonElement.ValueKind == System.Text.Json.JsonValueKind.String)
+                                nextArgStr = nextJsonElement.GetString();
+                            
+                            if (!string.IsNullOrEmpty(nextArgStr))
+                            {
+                                var replacedModulePath = ReplaceArgVariables(nextArgStr, versionId, gameDir, librariesDir, nativesDir, assetsDir);
+                                
+                                // 保存初始的模块路径字符串，稍后可能需要添加 ASM 库
+                                var modulePathList = new List<string>();
+                                
+                                // 修复：NeoForge 21.x 启动失败问题
+                                // 
+                                // 问题根源：
+                                // NeoForge 21.x 的 version.json 中的 -p (module-path) 参数错误地包含了 earlydisplay.jar 和 loader.jar
+                                // 
+                                // 失败机制：
+                                // 1. 当这两个 JAR 被放在 module-path 中时，Java 模块系统会将它们作为模块加载
+                                // 2. 模块化加载改变了 ServiceLoader 的服务发现机制和类加载顺序
+                                // 3. loader.jar 中的 ILaunchHandlerService 实现无法被正确注册
+                                // 4. 导致 ModLauncher 无法找到 "forgeclient" 启动目标
+                                // 5. 最终抛出 "Cannot find launch target forgeclient" 错误
+                                // 
+                                // 解决方案：
+                                // 主动过滤掉 version.json 中 module-path 里的 earlydisplay 和 loader
+                                // 让它们只存在于 classpath 中，这样 ServiceLoader 才能正确扫描和加载服务
+                                // 
+                                // 正确的 module-path 应该只包含：
+                                // - bootstraplauncher.jar
+                                // - securejarhandler.jar  
+                                // - ASM 库（asm.jar, asm-tree.jar, asm-commons.jar, asm-util.jar, asm-analysis.jar）
+                                // - JarJarFileSystems.jar
+                                // 
+                                // 将模块路径中的JAR添加到集合和列表（规范化路径避免重复）
+                                var moduleJars = replacedModulePath.Split(new[] { Path.PathSeparator }, StringSplitOptions.RemoveEmptyEntries);
+                                foreach (var jar in moduleJars)
+                                {
+                                    var jarPath = jar.Trim().Trim('"');
+                                    if (!string.IsNullOrEmpty(jarPath) && File.Exists(jarPath))
+                                    {
+                                        var fileName = Path.GetFileName(jarPath);
+                                        
+                                        if (fileName.Contains("earlydisplay", StringComparison.OrdinalIgnoreCase) ||
+                                            fileName.Contains("loader", StringComparison.OrdinalIgnoreCase))
+                                        {
+                                            Debug.WriteLine($"🚫 过滤掉模块路径中的 {fileName}（必须只在classpath中）");
+                                            continue;
+                                        }
+                                        
+                                        // 规范化路径（统一路径分隔符并转换为绝对路径）
+                                        var normalizedPath = Path.GetFullPath(jarPath);
+                                        
+                                        if (!modulePathJars.Contains(normalizedPath))
+                                        {
+                                            modulePathJars.Add(normalizedPath);
+                                            modulePathList.Add(normalizedPath);
+                                            Debug.WriteLine($"📦 JSON模块路径JAR: {Path.GetFileName(normalizedPath)}");
+                                        }
+                                        else
+                                        {
+                                            Debug.WriteLine($"⏭️ 跳过重复模块: {Path.GetFileName(normalizedPath)}");
+                                        }
+                                    }
+                                }
+                                
+                                if (versionInfo.Libraries != null)
+                                {
+                                    var criticalModulePatterns = new[]
+                                    {
+                                        // 核心：bootstraplauncher 和 securejarhandler（已在JSON中）
+                                        "cpw.mods:bootstraplauncher:",
+                                        "cpw.mods:securejarhandler:",
+                                        // ASM 库（securejarhandler 的依赖）
+                                        "org.ow2.asm:asm:",
+                                        "org.ow2.asm:asm-tree:",
+                                        "org.ow2.asm:asm-commons:",
+                                        "org.ow2.asm:asm-util:",
+                                        "org.ow2.asm:asm-analysis:",
+                                        // JarJarFileSystems - 必须在模块路径中
+                                        "net.neoforged:JarJarFileSystems:"
+                                    };
+                                    
+                                    int addedCount = 0;
+                                    foreach (var lib in versionInfo.Libraries)
+                                    {
+                                        if (lib.Name != null && IsLibraryAllowed(lib))
+                                        {
+                                            foreach (var pattern in criticalModulePatterns)
+                                            {
+                                                if (lib.Name.StartsWith(pattern, StringComparison.OrdinalIgnoreCase))
+                                                {
+                                                    var libPath = GetLibraryPath(librariesDir, lib);
+                                                    if (!string.IsNullOrEmpty(libPath) && File.Exists(libPath))
+                                                    {
+                                                        // 规范化路径避免重复
+                                                        var normalizedPath = Path.GetFullPath(libPath);
+                                                        
+                                                        if (!modulePathJars.Contains(normalizedPath))
+                                                        {
+                                                            modulePathList.Add(normalizedPath);
+                                                            modulePathJars.Add(normalizedPath);
+                                                            addedCount++;
+                                                            Debug.WriteLine($"📦 补全关键模块: {Path.GetFileName(normalizedPath)}");
+                                                        }
+                                                        else
+                                                        {
+                                                            Debug.WriteLine($"⏭️ 模块已存在: {Path.GetFileName(normalizedPath)}");
+                                                        }
+                                                        break;
+                                                    }
+                                                    else
+                                                    {
+                                                        Debug.WriteLine($"❌ 关键模块文件不存在: {lib.Name}");
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                    
+                                    if (addedCount > 0)
+                                    {
+                                        Debug.WriteLine($"✅ 已补全 {addedCount} 个关键模块到 module-path");
+                                    }
+                                }
+                                
+                                // 构建完整的模块路径
+                                // loader.jar 必须在 module-path 中，因为它包含 ILaunchHandlerService 的实现
+                                // 重要：将所有路径转换为短路径（8.3格式），避免 NeoForge/Forge 在某些情况下无法正确解析长路径
+                                var shortPathList = new List<string>();
+                                foreach (var longPath in modulePathList)
+                                {
+                                    try
+                                    {
+                                        var shortPath = GetShortPath(longPath);
+                                        shortPathList.Add(shortPath);
+                                        if (shortPath != longPath)
+                                        {
+                                            Debug.WriteLine($"[路径转换] {Path.GetFileName(longPath)}");
+                                            Debug.WriteLine($"  长: {longPath}");
+                                            Debug.WriteLine($"  短: {shortPath}");
+                                        }
+                                    }
+                                    catch
+                                    {
+                                        // 如果转换失败，使用原路径
+                                        shortPathList.Add(longPath);
+                                    }
+                                }
+                                
+                                var finalModulePath = string.Join(Path.PathSeparator, shortPathList);
+                                args.Append($"--module-path \"{finalModulePath}\" ");
+                                Debug.WriteLine($"✅ 使用JSON中的模块路径（已转换为短路径）: {shortPathList.Count} 个模块");
+                                
+                                i++; // 跳过下一个参数
+                                continue;
+                            }
+                        }
+                    }
+                    
+                    // 跳过标准JVM参数
+                    if (ShouldSkipJvmArg(replacedArg))
+                        continue;
+                    
+                    // 修正模块参数：根据是否为模块化NeoForge决定处理方式
+                    var fixedArg = FixModuleArgument(replacedArg, isModularNeoForge);
+                    args.Append($"{fixedArg} ");
+                }
+            }
+
+            // 3.5. 添加参数（NeoForge BootstrapLauncher需要）
+            if (versionInfo.MainClass?.Contains("bootstraplauncher", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                args.Append("--add-exports cpw.mods.bootstraplauncher/cpw.mods.bootstraplauncher=ALL-UNNAMED ");
+                Debug.WriteLine("✅ 已添加参数: --add-exports cpw.mods.bootstraplauncher/cpw.mods.bootstraplauncher=ALL-UNNAMED");
+            }
+
             // 4. 原生库路径
             args.Append($"-Djava.library.path=\"{nativesDir}\" ");
 
-            // 5. 类路径
+            // 5. NeoForge/Forge需要的系统属性
+            // 检测：1) 主类包含 neoforge/forge 关键字，或 2) 主类是 bootstraplauncher（NeoForge 1.21+）
+            bool isNeoForge = versionInfo.MainClass?.Contains("neoforge", StringComparison.OrdinalIgnoreCase) == true ||
+                              versionInfo.MainClass?.Contains("forge", StringComparison.OrdinalIgnoreCase) == true ||
+                              versionInfo.MainClass?.Contains("bootstraplauncher", StringComparison.OrdinalIgnoreCase) == true;
+            
+            if (isNeoForge)
+            {
+                // 必需：库目录路径
+                args.Append($"-DlibraryDirectory=\"{librariesDir}\" ");
+                Debug.WriteLine($"✅ 已添加库目录参数: -DlibraryDirectory={librariesDir}");
+                
+                // NeoForge 1.21+ 特定系统属性
+                if (versionInfo.MainClass?.Contains("bootstraplauncher", StringComparison.OrdinalIgnoreCase) == true)
+                {
+                    // Minecraft 客户端JAR路径
+                    var clientJarPath = Path.Combine(versionDir, $"{versionId}.jar");
+                    if (File.Exists(clientJarPath))
+                    {
+                        args.Append($"-Dminecraft.client.jar=\"{clientJarPath}\" ");
+                        Debug.WriteLine($"✅ 已添加客户端JAR参数: -Dminecraft.client.jar={clientJarPath}");
+                    }
+                    
+                    // 合并模块（某些非模块化JAR需要合并到模块中）
+                    args.Append("-DmergeModules=jna-5.15.0.jar,jna-platform-5.15.0.jar ");
+                    Debug.WriteLine("✅ 已添加合并模块参数");
+                    
+                    // 插件层和游戏层库（暂时为空，将来可能需要）
+                    args.Append("-Dfml.pluginLayerLibraries= ");
+                    args.Append("-Dfml.gameLayerLibraries= ");
+                    Debug.WriteLine("✅ 已添加FML层库参数");
+                }
+            }
+
+            // 5.5. NeoForge 1.21+ 模块路径支持（仅在JSON中未指定时使用）
+            // 注意：modulePathJars 已在前面声明，此处不再重复声明
+            
+            // 检测是否为使用BootstrapLauncher的模块化NeoForge
+            if (versionInfo.MainClass?.Contains("bootstraplauncher", StringComparison.OrdinalIgnoreCase) == true && !hasModulePathInJson)
+            {
+                // JSON 中没有指定模块路径，使用启动器的备用逻辑
+                Debug.WriteLine("ℹ️ JSON中未指定模块路径，使用启动器的备用模块路径构建逻辑");
+                
+                // 从Libraries列表中精确查找模块化JAR
+                var modulePaths = new List<string>();
+                
+                // 注意：Minecraft 客户端 JAR 不是真正的 Java 模块（包含未命名包），
+                // 必须保留在 classpath 中，不能添加到 module-path！
+                // 只有真正的模块化 JAR（NeoForge 核心组件和 ASM 库）才能放在 module-path
+                
+                // 需要添加到模块路径的库模式（只包含真正的模块化JAR）
+                var modularLibraryPatterns = new[]
+                {
+                    // NeoForge核心模块（仅基础设施层）
+                    "cpw.mods:bootstraplauncher",
+                    "cpw.mods:securejarhandler",
+                    "net.neoforged:JarJarFileSystems",
+                    // ASM库（securejarhandler的依赖）
+                    "org.ow2.asm:asm",
+                    "org.ow2.asm:asm-tree",
+                    "org.ow2.asm:asm-commons",
+                    "org.ow2.asm:asm-util",
+                    "org.ow2.asm:asm-analysis"
+                };
+                
+                // 从version.json的libraries列表中查找
+                if (versionInfo.Libraries != null)
+                {
+                    foreach (var lib in versionInfo.Libraries)
+                    {
+                        if (lib.Name != null && IsLibraryAllowed(lib))
+                        {
+                            // 检查是否匹配模块化库模式
+                            foreach (var pattern in modularLibraryPatterns)
+                            {
+                                if (lib.Name.StartsWith(pattern, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    var libPath = GetLibraryPath(librariesDir, lib);
+                                    if (!string.IsNullOrEmpty(libPath) && File.Exists(libPath) && !modulePathJars.Contains(libPath))
+                                    {
+                                        modulePaths.Add(libPath);
+                                        modulePathJars.Add(libPath);
+                                        Debug.WriteLine($"📦 模块路径: {Path.GetFileName(libPath)}");
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                if (modulePaths.Count > 0)
+                {
+                    args.Append("--module-path \"");
+                    args.Append(string.Join(Path.PathSeparator, modulePaths));
+                    args.Append("\" ");
+                    Debug.WriteLine($"✅ NeoForge 1.21+ 模块路径: {modulePaths.Count} 个模块化JAR");
+                    Debug.WriteLine("ℹ️ 客户端JAR保留在classpath中（非模块化JAR）");
+                }
+                else
+                {
+                    Debug.WriteLine("⚠️ 未找到NeoForge模块化JAR，使用传统classpath模式");
+                }
+            }
+            else if (hasModulePathInJson)
+            {
+                // JSON 中已指定模块路径，但不添加 --add-modules ALL-MODULE-PATH
+                // 原因：这会破坏 classpath 上的 ServiceLoader 机制
+                Debug.WriteLine("✅ 使用JSON中的模块路径配置（不使用 --add-modules 以保持 ServiceLoader）");
+            }
+
+            // 6. 类路径
             args.Append("-cp \"");
             
             var classpathItems = new System.Collections.Generic.List<string>();
             
-            // 添加客户端JAR到classpath（所有版本都需要）
-                var versionJarPath = Path.Combine(versionDir, $"{versionId}.jar");
-                if (File.Exists(versionJarPath))
-                {
-                    classpathItems.Add(versionJarPath);
-                
-                if (!string.IsNullOrEmpty(versionInfo.MinecraftArguments))
-                {
-                    Debug.WriteLine($"✅ 旧版本格式，已添加版本JAR到classpath: {versionId}.jar");
-                }
-            else if (!string.IsNullOrEmpty(versionInfo.InheritsFrom))
-            {
-                    Debug.WriteLine($"✅ Mod加载器版本，已添加Minecraft客户端到classpath: {versionId}.jar");
-                }
-                else
-                {
-                    Debug.WriteLine($"✅ 新版本格式，已添加客户端JAR到classpath: {versionId}.jar");
-                }
-            }
-            else
-            {
-                Debug.WriteLine($"⚠️ 客户端JAR不存在: {versionJarPath}");
-            }
             
             // 遍历所有库，构建classpath
             if (versionInfo.Libraries != null)
@@ -533,18 +843,59 @@ namespace ObsMCLauncher.Services
                 }
             }
             
+            // 版本jar必须在classpath的最后，这样ServiceLoader才能优先从库中加载服务
+            var versionJarPath = Path.Combine(versionDir, $"{versionId}.jar");
+            if (File.Exists(versionJarPath))
+            {
+                classpathItems.Add(versionJarPath);
+                Debug.WriteLine($"✅ 版本JAR添加到classpath末尾: {versionId}.jar");
+            }
+            else
+            {
+                Debug.WriteLine($"⚠️ 客户端JAR不存在: {versionJarPath}");
+            }
+            
             // 使用系统路径分隔符连接
             args.Append(string.Join(Path.PathSeparator, classpathItems));
             args.Append("\" ");
 
             // 6. 主类
+            // version.json 中已包含所有必需的模块参数（--module-path, --add-modules 等）
             args.Append($"{versionInfo.MainClass} ");
+            Debug.WriteLine($"✅ 主类: {versionInfo.MainClass}");
 
             // 7. 游戏参数
             var gameArgs = BuildGameArguments(versionId, account, config, versionInfo, gameDir, assetsDir);
             args.Append(gameArgs);
 
-            return args.ToString();
+            var finalArgs = args.ToString();
+            
+            // -- 兼容性补丁: 处理启动目标名称问题 --
+            // NeoForge 不同版本使用不同的启动目标名称:
+            // - 老版本: forgeclient
+            // - 新版本: neoforgeclient (NeoForge 21+)
+            // 但某些过渡版本可能只支持其中一个
+            
+            // 策略: 同时尝试修复可能的错误名称
+            if (versionId.Contains("neoforge", StringComparison.OrdinalIgnoreCase))
+            {
+                // 对于NeoForge版本，尝试多个可能的启动目标名称
+                // 首先检查是否使用了错误的启动目标名称
+                if (finalArgs.Contains("--launchTarget"))
+                {
+                    var targetMatch = System.Text.RegularExpressions.Regex.Match(finalArgs, @"--launchTarget\s+(\S+)");
+                    if (targetMatch.Success)
+                    {
+                        var currentTarget = targetMatch.Groups[1].Value;
+                        Debug.WriteLine($"[GameLauncher] 检测到启动目标: {currentTarget}");
+                        
+                        // 不进行任何修改,直接使用version.json中的值
+                        // 如果ModLauncher无法找到这个启动目标,那就是loader JAR本身的问题
+                    }
+                }
+            }
+            
+            return finalArgs.Trim();
         }
 
         /// <summary>
@@ -603,22 +954,21 @@ namespace ObsMCLauncher.Services
             {
                 foreach (var arg in versionInfo.Arguments.Game)
                 {
+                    string? argStr = null;
+                    
                     if (arg is string str)
-                    {
-                        // 跳过标准游戏参数（我们自己会添加）
-                        if (ShouldSkipGameArg(str))
-                            continue;
-                        
-                            args.Append($"{str} ");
-                    }
+                        argStr = str;
                     else if (arg is System.Text.Json.JsonElement jsonElement && jsonElement.ValueKind == System.Text.Json.JsonValueKind.String)
-                    {
-                        var argStr = jsonElement.GetString();
-                        if (!string.IsNullOrEmpty(argStr) && !ShouldSkipGameArg(argStr))
-                        {
-                            args.Append($"{argStr} ");
-                        }
-                    }
+                        argStr = jsonElement.GetString();
+                    
+                    if (string.IsNullOrEmpty(argStr))
+                        continue;
+                    
+                    // 跳过标准游戏参数（我们自己会添加）
+                    if (ShouldSkipGameArg(argStr))
+                        continue;
+                    
+                    args.Append($"{argStr} ");
                 }
             }
 
@@ -657,13 +1007,21 @@ namespace ObsMCLauncher.Services
         /// </summary>
         private static bool IsVeryOldForgeVersion(string versionId)
         {
+            // NeoForge 版本不需要安全绕过参数
+            if (versionId.Contains("neoforge", StringComparison.OrdinalIgnoreCase))
+                return false;
+
             // 检查是否包含forge标识
             if (!versionId.Contains("forge", StringComparison.OrdinalIgnoreCase))
                 return false;
 
-            // 检查是否为非常旧的版本（1.6.x, 1.7.x）
+            // 只有非常旧的版本（1.6.x, 1.7.x, 1.8.x, 1.9.x, 1.10.x, 1.11.x, 1.12.x）需要安全绕过
             // 这些版本的Forge有严格的JAR完整性检查
-            if (versionId.Contains("1.6.") || versionId.Contains("1.7."))
+            // 1.13+ 的Forge（如果有）通常不需要这些参数
+            if (versionId.Contains("1.6.") || versionId.Contains("1.7.") ||
+                versionId.Contains("1.8.") || versionId.Contains("1.9.") ||
+                versionId.Contains("1.10.") || versionId.Contains("1.11.") ||
+                versionId.Contains("1.12."))
                 return true;
 
             return false;
@@ -672,14 +1030,47 @@ namespace ObsMCLauncher.Services
         /// <summary>
         /// 判断是否应该跳过JSON中的JVM参数（避免重复或冲突）
         /// </summary>
+        /// <parameter>
+        /// 替换参数中的变量占位符
+        /// </summary>
+        private static string ReplaceArgVariables(string arg, string versionId, string gameDir, string librariesDir, string nativesDir, string assetsDir)
+        {
+            if (string.IsNullOrEmpty(arg))
+                return arg;
+
+            var versionDir = Path.Combine(gameDir, "versions", versionId);
+            var clientJar = Path.Combine(versionDir, $"{versionId}.jar");
+            
+            return arg
+                .Replace("${version_name}", versionId)
+                .Replace("${game_directory}", gameDir)
+                .Replace("${assets_root}", assetsDir)
+                .Replace("${assets_index_name}", "26") // 可以从 versionInfo 获取
+                .Replace("${auth_player_name}", "Player") // 这个会在后面替换
+                .Replace("${version_type}", "release")
+                .Replace("${auth_uuid}", Guid.Empty.ToString())
+                .Replace("${auth_access_token}", "")
+                .Replace("${user_type}", "msa")
+                .Replace("${user_properties}", "{}")
+                .Replace("${library_directory}", librariesDir)
+                .Replace("${classpath_separator}", Path.PathSeparator.ToString())
+                .Replace("${natives_directory}", nativesDir)
+                .Replace("${launcher_name}", "ObsMCLauncher")
+                .Replace("${launcher_version}", "1.0")
+                .Replace("${clientid}", Guid.Empty.ToString())
+                .Replace("${auth_xuid}", "")
+                .Replace("${clientJar}", clientJar)
+                .Replace("${primary_jar}", clientJar);
+        }
+
         private static bool ShouldSkipJvmArg(string arg)
         {
             if (string.IsNullOrEmpty(arg))
                 return true;
 
-            // 跳过包含变量占位符的参数（如${natives_directory}）
-            if (arg.Contains("${"))
-                return true;
+            // 不再跳过包含 ${ 的参数，因为现在会进行变量替换
+            // if (arg.Contains("${"))
+            //     return true;
 
             // 跳过标准JVM参数
             if (arg.StartsWith("-Djava.library.path"))
@@ -690,8 +1081,83 @@ namespace ObsMCLauncher.Services
                 return true;
             if (arg.Equals("-cp") || arg.Equals("--class-path"))
                 return true;
+            
+            // 跳过 -p 和 --module-path（我们已经在前面手动构建了完整的 --module-path）
+            if (arg.Equals("-p") || arg.Equals("--module-path"))
+                return true;
+            
+            // ⚠️ 不要跳过 --add-modules！version.json 中的参数是正确的
+            // 参考 HMCL: 完全信任 version.json 中的所有参数
 
             return false;
+        }
+
+        /// <summary>
+        /// 修正模块相关参数：根据是否使用模块路径决定目标模块名
+        /// - 模块化NeoForge：保留原始模块名（如 cpw.mods.securejarhandler）
+        /// - 非模块化版本：替换为 ALL-UNNAMED
+        /// </summary>
+        private static string FixModuleArgument(string arg, bool isModularNeoForge)
+        {
+            if (string.IsNullOrEmpty(arg))
+                return arg;
+
+            // 情况1: 完整参数格式 (--add-opens java.base/java.lang.invoke=cpw.mods.securejarhandler)
+            if ((arg.StartsWith("--add-opens") || arg.StartsWith("--add-exports")) && arg.Contains("="))
+            {
+                var parts = arg.Split('=');
+                if (parts.Length == 2)
+                {
+                    var targetModule = parts[1];
+                    // 如果目标模块不是 ALL-UNNAMED 或系统模块
+                    if (!targetModule.Equals("ALL-UNNAMED", StringComparison.OrdinalIgnoreCase) &&
+                        !targetModule.StartsWith("java.", StringComparison.OrdinalIgnoreCase) &&
+                        !targetModule.StartsWith("jdk.", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (isModularNeoForge)
+                        {
+                            // 模块化NeoForge：保留原始模块名
+                            Debug.WriteLine($"✅ 保留模块参数: {arg}");
+                            return arg;
+                        }
+                        else
+                        {
+                            // 非模块化：替换为 ALL-UNNAMED
+                            Debug.WriteLine($"🔧 修正模块参数: {arg} -> {parts[0]}=ALL-UNNAMED");
+                            return $"{parts[0]}=ALL-UNNAMED";
+                        }
+                    }
+                }
+            }
+            
+            // 情况2: 分离的参数格式 (java.base/java.lang.invoke=cpw.mods.securejarhandler)
+            if (arg.Contains("=") && arg.Contains("/"))
+            {
+                var parts = arg.Split('=');
+                if (parts.Length == 2 && parts[0].Contains("/"))
+                {
+                    var targetModule = parts[1];
+                    if (!targetModule.Equals("ALL-UNNAMED", StringComparison.OrdinalIgnoreCase) &&
+                        !targetModule.StartsWith("java.", StringComparison.OrdinalIgnoreCase) &&
+                        !targetModule.StartsWith("jdk.", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (isModularNeoForge)
+                        {
+                            // 模块化NeoForge：保留原始模块名
+                            Debug.WriteLine($"✅ 保留分离的模块参数: {arg}");
+                            return arg;
+                        }
+                        else
+                        {
+                            // 非模块化：替换为 ALL-UNNAMED
+                            Debug.WriteLine($"🔧 修正分离的模块参数: {arg} -> {parts[0]}=ALL-UNNAMED");
+                            return $"{parts[0]}=ALL-UNNAMED";
+                        }
+                    }
+                }
+            }
+
+            return arg;
         }
 
         /// <summary>
@@ -931,6 +1397,7 @@ namespace ObsMCLauncher.Services
             public GameArguments? Arguments { get; set; }
             public string? MinecraftArguments { get; set; }  // 旧版本格式（1.12.2及之前）
             public string? InheritsFrom { get; set; }
+            public string? VersionName { get; set; }
         }
 
         private class GameArguments
@@ -1536,6 +2003,75 @@ namespace ObsMCLauncher.Services
                     Debug.WriteLine($"[Legacy Resources] ⚠️ 复制文件失败: {ex.Message}");
                 }
             }, cancellationToken);
+        }
+
+        /// <summary>
+        /// 判断是否为 NeoForge 21.x 或更高版本
+        /// NeoForge 21.x+ 使用 neoforgeclient 作为启动目标
+        /// </summary>
+        private static bool IsNeoForge21OrHigher(string versionId)
+        {
+            // 从版本ID中提取 NeoForge 版本号
+            // 格式: Minecraft-1.21.1-neoforge-21.1.211
+            var match = System.Text.RegularExpressions.Regex.Match(versionId, @"neoforge[-_](\d+)\.(\d+)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            if (match.Success && int.TryParse(match.Groups[1].Value, out int majorVersion))
+            {
+                return majorVersion >= 21;
+            }
+            
+            // 如果无法解析版本号，根据 Minecraft 版本判断
+            // Minecraft 1.21+ 通常使用 NeoForge 21+
+            var mcMatch = System.Text.RegularExpressions.Regex.Match(versionId, @"Minecraft-(\d+)\.(\d+)");
+            if (mcMatch.Success && 
+                int.TryParse(mcMatch.Groups[1].Value, out int mcMajor) &&
+                int.TryParse(mcMatch.Groups[2].Value, out int mcMinor))
+            {
+                // Minecraft 1.21+
+                if (mcMajor == 1 && mcMinor >= 21)
+                    return true;
+                if (mcMajor > 1)
+                    return true;
+            }
+            
+            return false;
+        }
+
+        /// <summary>
+        /// 将长路径转换为 Windows 8.3 短路径格式
+        /// </summary>
+        [System.Runtime.InteropServices.DllImport("kernel32.dll", CharSet = System.Runtime.InteropServices.CharSet.Auto, SetLastError = true)]
+        private static extern uint GetShortPathName(
+            string lpszLongPath,
+            System.Text.StringBuilder lpszShortPath,
+            int cchBuffer);
+
+        private static string GetShortPath(string longPath)
+        {
+            if (string.IsNullOrEmpty(longPath))
+                return longPath;
+
+            // 如果不是Windows或路径不存在，直接返回
+            if (!OperatingSystem.IsWindows() || !File.Exists(longPath))
+                return longPath;
+
+            try
+            {
+                var shortPath = new System.Text.StringBuilder(1024);
+                uint result = GetShortPathName(longPath, shortPath, shortPath.Capacity);
+                
+                if (result == 0 || result > shortPath.Capacity)
+                {
+                    // 转换失败，返回原路径
+                    return longPath;
+                }
+
+                return shortPath.ToString();
+            }
+            catch
+            {
+                // 出错时返回原路径
+                return longPath;
+            }
         }
     }
 }
