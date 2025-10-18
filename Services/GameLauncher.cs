@@ -492,6 +492,8 @@ namespace ObsMCLauncher.Services
 
             // 2.5. version.json中定义的JVM参数（如Forge/NeoForge的额外JVM参数）
             bool hasModulePathInJson = false;
+            bool hasPluginLayerLibrariesInJson = false;  // NeoForge 1.20.x 特定参数
+            bool hasGameLayerLibrariesInJson = false;    // NeoForge 1.20.x 特定参数
             if (versionInfo.Arguments?.Jvm != null)
             {
                 for (int i = 0; i < versionInfo.Arguments.Jvm.Count; i++)
@@ -509,6 +511,18 @@ namespace ObsMCLauncher.Services
                         
                     // 先进行变量替换
                     var replacedArg = ReplaceArgVariables(argStr, versionId, gameDir, librariesDir, nativesDir, assetsDir);
+                    
+                    // 检测 NeoForge 1.20.x 特定参数
+                    if (replacedArg.Contains("-Dfml.pluginLayerLibraries"))
+                    {
+                        hasPluginLayerLibrariesInJson = true;
+                        Debug.WriteLine("ℹ️ 检测到 version.json 中已定义 -Dfml.pluginLayerLibraries");
+                    }
+                    if (replacedArg.Contains("-Dfml.gameLayerLibraries"))
+                    {
+                        hasGameLayerLibrariesInJson = true;
+                        Debug.WriteLine("ℹ️ 检测到 version.json 中已定义 -Dfml.gameLayerLibraries");
+                    }
                     
                     // 特殊处理 -p/--module-path 参数（需要连续读取下一个参数作为路径）
                     if (replacedArg == "-p" || replacedArg == "--module-path")
@@ -727,10 +741,27 @@ namespace ObsMCLauncher.Services
                     args.Append("-DmergeModules=jna-5.15.0.jar,jna-platform-5.15.0.jar ");
                     Debug.WriteLine("✅ 已添加合并模块参数");
                     
-                    // 插件层和游戏层库（暂时为空，将来可能需要）
-                    args.Append("-Dfml.pluginLayerLibraries= ");
-                    args.Append("-Dfml.gameLayerLibraries= ");
-                    Debug.WriteLine("✅ 已添加FML层库参数");
+                    // 插件层和游戏层库（仅在JSON中未指定时添加空值）
+                    // 不要覆盖已有的值！
+                    if (!hasPluginLayerLibrariesInJson)
+                    {
+                        args.Append("-Dfml.pluginLayerLibraries= ");
+                        Debug.WriteLine("✅ 已添加空的FML插件层库参数（JSON中未指定）");
+                    }
+                    else
+                    {
+                        Debug.WriteLine("ℹ️ 跳过添加 -Dfml.pluginLayerLibraries（已在JSON中指定）");
+                    }
+                    
+                    if (!hasGameLayerLibrariesInJson)
+                    {
+                        args.Append("-Dfml.gameLayerLibraries= ");
+                        Debug.WriteLine("✅ 已添加空的FML游戏层库参数（JSON中未指定）");
+                    }
+                    else
+                    {
+                        Debug.WriteLine("ℹ️ 跳过添加 -Dfml.gameLayerLibraries（已在JSON中指定）");
+                    }
                 }
             }
 
