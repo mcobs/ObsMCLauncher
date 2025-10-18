@@ -337,6 +337,23 @@ namespace ObsMCLauncher.Services
                 {
                 Debug.WriteLine($"[NeoForgeService] ========== 开始安装 NeoForge {neoforgeVersion} ==========");
                 
+                // 进度阶段划分（统一的下载流程）：
+                // 阶段1: 下载NeoForge安装器 (0-5%)
+                // 阶段2: 下载原版Minecraft (5-35%)
+                //        - version.json: 5-8%
+                //        - client.jar: 8-35%
+                // 阶段3: 处理install_profile (35-75%)
+                //        - 复制库文件: 35-40%
+                //        - 下载缺失库: 40-55%
+                //        - 执行处理器: 55-75%
+                // 阶段4: 下载Assets资源补全 (75-100%)
+                
+                // 统一的进度包装器
+                Action<string, double> UpdateProgress = (status, progressPercent) =>
+                {
+                    progressCallback?.Invoke(status, progressPercent, 100, 0, 0);
+                };
+                
                 // 1. 推断Minecraft版本
                 var neoForgeVersionObj = new NeoForgeVersion { Version = neoforgeVersion };
                 var mcVersion = neoForgeVersionObj.MinecraftVersion;
@@ -348,27 +365,52 @@ namespace ObsMCLauncher.Services
                 
                 Debug.WriteLine($"[NeoForgeService] Minecraft版本: {mcVersion}");
                 
-                // 2. 下载NeoForge安装器
+                // ============================================================
+                // 阶段1: 下载NeoForge安装器 (0-5%)
+                // ============================================================
+                UpdateProgress("正在下载NeoForge安装器...", 0);
+                
                 var tempDir = Path.Combine(Path.GetTempPath(), "ObsMCLauncher", "NeoForge");
                 Directory.CreateDirectory(tempDir);
                 
                 var installerPath = Path.Combine(tempDir, $"neoforge-{neoforgeVersion}-installer.jar");
                 
-                await DownloadNeoForgeInstallerAsync(neoforgeVersion, installerPath, progressCallback, cancellationToken);
+                await DownloadNeoForgeInstallerAsync(neoforgeVersion, installerPath, 
+                    (status, current, total, bytes, totalBytes) =>
+                    {
+                        var progress = total > 0 ? (current / total) : 0;
+                        var overallProg = 0 + (progress * 5); // 0-5%
+                        progressCallback?.Invoke(status, overallProg, 100, bytes, totalBytes);
+                    }, 
+                    cancellationToken);
                 
-                // 3. 清理旧的最终输出文件（但保留中间文件）
+                UpdateProgress("安装器下载完成", 5);
+                
+                // 清理旧的最终输出文件
                 CleanFinalOutputs(gameDirectory, mcVersion, neoforgeVersion);
                 
-                // 4. 创建版本目录
+                // 创建版本目录
                 var customVersionName = $"Minecraft-{mcVersion}-neoforge-{neoforgeVersion}";
                 var versionDir = Path.Combine(gameDirectory, "versions", customVersionName);
                 Directory.CreateDirectory(versionDir);
                 
-                // 5. 下载基础Minecraft版本
-                progressCallback?.Invoke("正在下载Minecraft原版...", 0, 0, 0, 0);
-                await DownloadVanillaMinecraftAsync(mcVersion, versionDir, customVersionName, progressCallback, cancellationToken);
+                // ============================================================
+                // 阶段2: 下载原版Minecraft (5-35%)
+                // ============================================================
+                await DownloadVanillaMinecraftAsync(mcVersion, versionDir, customVersionName, 
+                    (status, current, total, bytes, totalBytes) =>
+                    {
+                        var progress = total > 0 ? (current / total) : 0;
+                        var overallProg = 5 + (progress * 30); // 5-35%
+                        progressCallback?.Invoke(status, overallProg, 100, bytes, totalBytes);
+                    }, 
+                    cancellationToken);
                 
-                // 6. 识别安装类型并执行安装
+                UpdateProgress("原版Minecraft下载完成", 35);
+                
+                // ============================================================
+                // 阶段3: 处理install_profile (35-75%)
+                // ============================================================
                 var installType = DetectInstallType(installerPath);
                 Debug.WriteLine($"[NeoForgeService] 检测到安装类型: {installType}");
                 
@@ -382,7 +424,12 @@ namespace ObsMCLauncher.Services
                         customVersionName,
                         mcVersion,
                         neoforgeVersion,
-                        progressCallback, 
+                        (status, current, total, bytes, totalBytes) =>
+                        {
+                            var progress = total > 0 ? (current / total) : 0;
+                            var overallProg = 35 + (progress * 40); // 35-75%
+                            progressCallback?.Invoke(status, overallProg, 100, bytes, totalBytes);
+                        }, 
                         cancellationToken);
                 }
                 else
@@ -390,12 +437,60 @@ namespace ObsMCLauncher.Services
                     throw new Exception("不支持的NeoForge安装器类型");
                 }
                 
-                if (success)
+                if (!success)
                 {
-                    Debug.WriteLine($"[NeoForgeService] ========== NeoForge {neoforgeVersion} 安装成功 ==========");
+                    return false;
                 }
                 
-                return success;
+                UpdateProgress("NeoForge安装完成", 75);
+                
+                // ============================================================
+                // 阶段4: 下载Assets资源补全 (75-100%)
+                // ============================================================
+                var config = LauncherConfig.Load();
+                if (config.DownloadAssetsWithGame)
+                {
+                    Debug.WriteLine($"[NeoForgeService] 开始下载Assets资源补全...");
+                    UpdateProgress("正在下载游戏资源文件...", 75);
+                    
+                    var assetsResult = await AssetsDownloadService.DownloadAndCheckAssetsAsync(
+                        gameDirectory,
+                        customVersionName,
+                        (current, total, message, speed) =>
+                        {
+                            // 转换Assets下载进度 (75-100%)
+                            var assetsProgress = total > 0 ? ((double)current / total) : 0;
+                            var overallProg = 75 + (assetsProgress * 25);
+                            progressCallback?.Invoke(message, overallProg, 100, 0, 0);
+                        },
+                        cancellationToken
+                    );
+                    
+                    if (!assetsResult.Success)
+                    {
+                        Debug.WriteLine($"[NeoForgeService] ⚠️ Assets下载失败，但NeoForge已成功安装");
+                    }
+                    else
+                    {
+                        Debug.WriteLine($"[NeoForgeService] ✅ Assets资源补全完成");
+                        Debug.WriteLine($"[NeoForgeService]    总资源: {assetsResult.TotalAssets}");
+                        Debug.WriteLine($"[NeoForgeService]    已下载: {assetsResult.DownloadedAssets}");
+                        if (assetsResult.FailedAssets > 0)
+                        {
+                            Debug.WriteLine($"[NeoForgeService]    失败: {assetsResult.FailedAssets}");
+                        }
+                    }
+                }
+                else
+                {
+                    Debug.WriteLine($"[NeoForgeService] 跳过Assets下载（设置中未启用）");
+                }
+                
+                // 最终完成
+                UpdateProgress("安装完成", 100);
+                
+                Debug.WriteLine($"[NeoForgeService] ========== NeoForge {neoforgeVersion} 安装成功 ==========");
+                return true;
                 }
                 catch (Exception ex)
                 {
@@ -510,7 +605,9 @@ namespace ObsMCLauncher.Services
                         await fileStream.WriteAsync(buffer, 0, bytesRead, cancellationToken);
                         downloadedBytes += bytesRead;
                         
-                        progressCallback?.Invoke($"正在下载安装器...", 0, 0, downloadedBytes, totalBytes);
+                        // 报告下载进度（0-100的比例）
+                        var progress = totalBytes > 0 ? (double)downloadedBytes / totalBytes * 100 : 0;
+                        progressCallback?.Invoke($"正在下载安装器... ({downloadedBytes}/{totalBytes} 字节)", progress, 100, downloadedBytes, totalBytes);
                     }
                     
                     Debug.WriteLine($"[NeoForgeService] 安装器下载完成: {outputPath}");
@@ -536,6 +633,10 @@ namespace ObsMCLauncher.Services
             Action<string, double, double, long, long>? progressCallback,
             CancellationToken cancellationToken)
         {
+            // 分两个步骤：下载version.json (0-10%)，下载client.jar (10-100%)
+            
+            progressCallback?.Invoke("正在获取Minecraft版本信息...", 0, 100, 0, 0);
+            
             var versionManifest = await MinecraftVersionService.GetVersionListAsync();
             if (versionManifest == null)
             {
@@ -554,6 +655,7 @@ namespace ObsMCLauncher.Services
             var clientJarPath = Path.Combine(versionDir, $"{customVersionName}.jar");
             
             // 下载version.json
+            progressCallback?.Invoke("正在下载版本配置文件...", 5, 100, 0, 0);
             var versionJsonUrl = vanillaVersion.Url;
             string jsonContent;
             using (var response = await _httpClient.GetAsync(versionJsonUrl, cancellationToken))
@@ -570,6 +672,8 @@ namespace ObsMCLauncher.Services
             await File.WriteAllTextAsync(vanillaJsonPath, jsonContent, cancellationToken);
             Debug.WriteLine($"[NeoForgeService] 已备份原版JSON到: {vanillaJsonPath}");
             
+            progressCallback?.Invoke("版本配置文件下载完成", 10, 100, 0, 0);
+            
             // 解析JSON获取client下载信息
             var jsonDoc = JsonDocument.Parse(await File.ReadAllTextAsync(versionJsonPath, cancellationToken));
             var clientUrl = jsonDoc.RootElement.GetProperty("downloads").GetProperty("client").GetProperty("url").GetString();
@@ -579,15 +683,45 @@ namespace ObsMCLauncher.Services
                 throw new Exception("无法获取客户端下载地址");
             }
             
-            // 下载client.jar
-            progressCallback?.Invoke("正在下载Minecraft客户端...", 0, 0, 0, 0);
+            // 下载client.jar (10-100%)
+            progressCallback?.Invoke("正在下载Minecraft客户端...", 10, 100, 0, 0);
             
             var bmclUrl = clientUrl.Replace("https://piston-data.mojang.com", "https://bmclapi2.bangbang93.com");
             var finalUrl = DownloadSourceManager.Instance.CurrentSource == DownloadSource.BMCLAPI ? bmclUrl : clientUrl;
             
-            await DownloadFileSimpleAsync(finalUrl, clientJarPath, cancellationToken);
+            // 获取文件大小并下载
+            var clientResponse = await _httpClient.GetAsync(finalUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+            clientResponse.EnsureSuccessStatusCode();
             
-            Debug.WriteLine($"[NeoForgeService] 原版Minecraft下载完成");
+            var totalBytes = clientResponse.Content.Headers.ContentLength ?? 0;
+            using var stream = await clientResponse.Content.ReadAsStreamAsync(cancellationToken);
+            using var fileStream = new FileStream(clientJarPath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true);
+            
+            var buffer = new byte[8192];
+            long downloadedBytes = 0;
+            int bytesRead;
+            
+            var lastReportTime = DateTime.Now;
+            while ((bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length, cancellationToken)) > 0)
+            {
+                await fileStream.WriteAsync(buffer, 0, bytesRead, cancellationToken);
+                downloadedBytes += bytesRead;
+                
+                // 限制进度更新频率，避免UI卡顿
+                var now = DateTime.Now;
+                if ((now - lastReportTime).TotalMilliseconds >= 100 || downloadedBytes == totalBytes)
+                {
+                    // 10-100% 的进度
+                    var downloadProgress = totalBytes > 0 ? (double)downloadedBytes / totalBytes : 0;
+                    var overallProgress = 10 + (downloadProgress * 90);
+                    var progressMB = $"{downloadedBytes / 1024.0 / 1024.0:F2}MB / {totalBytes / 1024.0 / 1024.0:F2}MB";
+                    progressCallback?.Invoke($"正在下载Minecraft客户端... ({progressMB})", overallProgress, 100, downloadedBytes, totalBytes);
+                    lastReportTime = now;
+                }
+            }
+            
+            progressCallback?.Invoke("Minecraft客户端下载完成", 100, 100, totalBytes, totalBytes);
+            Debug.WriteLine($"[NeoForgeService] 原版Minecraft下载完成: {totalBytes / 1024.0 / 1024.0:F2}MB");
         }
 
         #endregion
@@ -611,7 +745,14 @@ namespace ObsMCLauncher.Services
             {
                 Debug.WriteLine($"[NeoForgeService] ========== 处理 install_profile.json ==========");
                 
+                // 进度分配（内部使用0-100%，外部会映射到实际范围）：
+                // 复制库文件: 0-10%
+                // 下载缺失库: 10-40%
+                // 配置version.json: 40-45%
+                // 执行处理器: 45-100%
+                
                 // 1. 读取install_profile.json
+                progressCallback?.Invoke("正在读取安装配置...", 0, 100, 0, 0);
                 NeoForgeInstallProfile? profile;
                 using (var archive = ZipFile.OpenRead(installerPath))
                 {
@@ -639,27 +780,45 @@ namespace ObsMCLauncher.Services
                 }
                 
                 // 2. 从安装器复制maven库文件（提高安装速度）
-                progressCallback?.Invoke("正在复制库文件...", 0, 0, 0, 0);
+                progressCallback?.Invoke("正在从安装器复制库文件...", 0, 100, 0, 0);
                 await CopyLibrariesFromInstallerAsync(installerPath, gameDirectory, profile);
                 
                 // 3. 从安装器复制主JAR文件（如果指定了path属性）
                 await CopyMainJarFromInstallerAsync(installerPath, gameDirectory, versionDir, customVersionName, profile);
+                progressCallback?.Invoke("库文件复制完成", 10, 100, 0, 0);
                 
-                // 4. 下载缺失的库文件
-                progressCallback?.Invoke("正在下载缺失的库文件...", 0, 0, 0, 0);
-                await DownloadMissingLibrariesAsync(gameDirectory, mcVersion, profile, progressCallback, cancellationToken);
+                // 4. 下载缺失的库文件 (10-40%)
+                progressCallback?.Invoke("正在检查并下载缺失的库文件...", 10, 100, 0, 0);
+                await DownloadMissingLibrariesAsync(gameDirectory, mcVersion, profile, 
+                    (status, current, total, bytes, totalBytes) =>
+                    {
+                        // 10-40% 的进度
+                        var subProgress = total > 0 ? current / total : 0;
+                        var overallProgress = 10 + (subProgress * 30);
+                        progressCallback?.Invoke(status, overallProgress, 100, bytes, totalBytes);
+                    }, 
+                    cancellationToken);
                 
-                // 5. 提取并修改version.json
-                progressCallback?.Invoke("正在配置版本文件...", 0, 0, 0, 0);
+                // 5. 提取并修改version.json (40-45%)
+                progressCallback?.Invoke("正在配置版本文件...", 40, 100, 0, 0);
                 await ExtractAndModifyVersionJsonAsync(installerPath, versionDir, customVersionName, mcVersion, profile);
+                progressCallback?.Invoke("版本文件配置完成", 45, 100, 0, 0);
                 
                 // 6. 构建变量映射
                 var variables = await BuildVariablesAsync(installerPath, gameDirectory, versionDir, customVersionName, mcVersion, profile);
                 
-                // 7. 执行处理器
-                progressCallback?.Invoke("正在执行安装处理器...", 0, 0, 0, 0);
-                await ExecuteProcessorsAsync(gameDirectory, mcVersion, profile, variables, progressCallback, cancellationToken);
+                // 7. 执行处理器 (45-100%)
+                await ExecuteProcessorsAsync(gameDirectory, mcVersion, profile, variables, 
+                    (status, current, total, bytes, totalBytes) =>
+                    {
+                        // 45-100% 的进度
+                        var subProgress = total > 0 ? current / total : 0;
+                        var overallProgress = 45 + (subProgress * 55);
+                        progressCallback?.Invoke(status, overallProgress, 100, bytes, totalBytes);
+                    }, 
+                    cancellationToken);
                 
+                progressCallback?.Invoke("install_profile处理完成", 100, 100, 0, 0);
                 Debug.WriteLine($"[NeoForgeService] ========== install_profile.json 处理完成 ==========");
                 return true;
             }
