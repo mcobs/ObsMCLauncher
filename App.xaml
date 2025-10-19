@@ -151,6 +151,36 @@
                 <Setter Property="Cursor" Value="Hand"/>
             </Style>
             
+            <!-- 💬 ToolTip 样式 - 暗色主题 -->
+            <Style TargetType="ToolTip">
+                <Setter Property="Background" Value="#1E1E1E"/>
+                <Setter Property="Foreground" Value="#FFFFFF"/>
+                <Setter Property="BorderBrush" Value="#414141"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="Padding" Value="8,6"/>
+                <Setter Property="FontSize" Value="12"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ToolTip">
+                            <Border Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="4"
+                                    Padding="{TemplateBinding Padding}">
+                                <Border.Effect>
+                                    <DropShadowEffect Color="#000000" 
+                                                    BlurRadius="12" 
+                                                    Opacity="0.4" 
+                                                    ShadowDepth="2"
+                                                    Direction="270"/>
+                                </Border.Effect>
+                                <ContentPresenter TextBlock.Foreground="{TemplateBinding Foreground}"/>
+                            </Border>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+            
             <!-- 🎯 页面过渡动画 -->
             <Style TargetType="Page">
                 <Style.Triggers>
