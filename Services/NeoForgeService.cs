@@ -1475,22 +1475,18 @@ namespace ObsMCLauncher.Services
             
             Debug.WriteLine($"[NeoForgeService] 参数: {string.Join(" ", args.Select(a => $"\"{a}\""))}");
             
-            // 获取Java路径 - 优先使用配置中的Java
+            // 获取Java路径 - 根据Minecraft版本自动选择
             string javaPath;
             try
             {
                 var config = LauncherConfig.Load();
+                javaPath = config.GetActualJavaPath(mcVersion);
+                Debug.WriteLine($"[NeoForgeService] 使用Java: {javaPath} (Minecraft {mcVersion})");
                 
-                // 优先使用配置中的Java路径（如果存在且有效）
-                if (!string.IsNullOrEmpty(config.JavaPath) && File.Exists(config.JavaPath))
+                if (!File.Exists(javaPath))
                 {
-                    javaPath = config.JavaPath;
-                    Debug.WriteLine($"[NeoForgeService] 使用配置的Java: {javaPath}");
-                }
-                else
-                {
-                    // 配置的Java不可用，进行全局检测
-                    Debug.WriteLine($"[NeoForgeService] 配置的Java不可用，开始自动检测...");
+                    // 如果配置的Java不存在，降级到自动检测
+                    Debug.WriteLine($"[NeoForgeService] 配置的Java不存在，开始自动检测...");
                     var javaInfo = JavaDetector.SelectBestJava();
                     javaPath = javaInfo?.Path ?? "java";
                     Debug.WriteLine($"[NeoForgeService] 检测到Java: {javaPath}");

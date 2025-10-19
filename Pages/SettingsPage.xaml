@@ -187,35 +187,36 @@
                                    TextChanged="MaxMemoryTextBox_TextChanged"/>
                         </Grid>
 
-                        <!-- Java 路径 -->
+                        <!-- Java 选择 -->
                         <TextBlock Text="Java 路径" 
                                  FontSize="14" 
                                  Margin="0,0,0,6"/>
-                        <Grid Margin="0,0,0,12">
+                        <ComboBox x:Name="JavaPathComboBox"
+                                Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                                SelectionChanged="JavaPathComboBox_SelectionChanged"
+                                Margin="0,0,0,8">
+                        </ComboBox>
+                        
+                        <!-- 自定义Java路径面板 -->
+                        <Grid x:Name="CustomJavaPanel" Margin="0,0,0,12" Visibility="Collapsed">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <TextBox x:Name="JavaPathTextBox"
+                            <TextBox x:Name="CustomJavaTextBox"
                                    Grid.Column="0"
-                                   Text="C:\Program Files\Java\jdk-17\bin\javaw.exe"
+                                   materialDesign:HintAssist.Hint="自定义Java路径"
                                    Style="{StaticResource MaterialDesignOutlinedTextBox}"
                                    Foreground="#FFFFFF"
                                    CaretBrush="#FFFFFF"
                                    Margin="0,0,10,0"
-                                   LostFocus="JavaPathTextBox_LostFocus"/>
+                                   LostFocus="CustomJavaTextBox_LostFocus"
+                                   TextChanged="CustomJavaTextBox_TextChanged"/>
                             <Button Grid.Column="1"
                                   Content="浏览"
                                   Style="{StaticResource MaterialDesignOutlinedButton}"
                                   Width="100"
-                                  Margin="0,0,10,0"
-                                  Click="BrowseJavaPath_Click"/>
-                            <Button Grid.Column="2"
-                                  Content="自动检测"
-                                  Style="{StaticResource MaterialDesignOutlinedButton}"
-                                  Width="100"
-                                  Click="AutoDetectJava_Click"/>
+                                  Click="BrowseCustomJavaPath_Click"/>
                         </Grid>
 
                         <!-- 高级设置 - JVM 参数 -->

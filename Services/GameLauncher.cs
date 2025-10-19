@@ -50,12 +50,14 @@ namespace ObsMCLauncher.Services
                 // 1. 验证Java路径
                 onProgressUpdate?.Invoke("正在验证Java环境...");
                 cancellationToken.ThrowIfCancellationRequested();
-                if (!File.Exists(config.JavaPath))
+                var actualJavaPath = config.GetActualJavaPath(versionId);
+                if (!File.Exists(actualJavaPath))
                 {
-                    LastError = $"Java路径不存在: {config.JavaPath}";
+                    LastError = $"Java路径不存在: {actualJavaPath}";
                     Debug.WriteLine($"❌ {LastError}");
                     return false;
                 }
+                Debug.WriteLine($"使用Java: {actualJavaPath}");
 
                 // 2. 读取版本JSON
                 onProgressUpdate?.Invoke("正在读取版本信息...");
@@ -181,7 +183,6 @@ namespace ObsMCLauncher.Services
                 Debug.WriteLine($"版本: {versionId}");
                 Debug.WriteLine($"账号: {account.Username} ({account.Type})");
                 Debug.WriteLine($"游戏目录: {config.GameDirectory}");
-                Debug.WriteLine($"Java路径: {config.JavaPath}");
 
                 // 0. 如果是微软账号且令牌过期，尝试刷新
                 cancellationToken.ThrowIfCancellationRequested();
@@ -229,9 +230,11 @@ namespace ObsMCLauncher.Services
                 // 1. 验证Java路径
                 onProgressUpdate?.Invoke("正在验证Java环境...");
                 cancellationToken.ThrowIfCancellationRequested();
-                if (!File.Exists(config.JavaPath))
+                var actualJavaPath = config.GetActualJavaPath(versionId);
+                Debug.WriteLine($"Java路径: {actualJavaPath}");
+                if (!File.Exists(actualJavaPath))
                 {
-                    LastError = $"Java可执行文件不存在\n路径: {config.JavaPath}";
+                    LastError = $"Java可执行文件不存在\n路径: {actualJavaPath}";
                     throw new FileNotFoundException(LastError);
                 }
 
@@ -376,14 +379,14 @@ namespace ObsMCLauncher.Services
                 onProgressUpdate?.Invoke("正在准备启动参数...");
                 cancellationToken.ThrowIfCancellationRequested();
                 var arguments = BuildLaunchArguments(versionId, account, config, versionInfo);
-                Debug.WriteLine($"完整启动命令: \"{config.JavaPath}\" {arguments}");
+                Debug.WriteLine($"完整启动命令: \"{actualJavaPath}\" {arguments}");
 
                 // 7. 启动游戏进程
                 onProgressUpdate?.Invoke("正在启动游戏进程...");
                 cancellationToken.ThrowIfCancellationRequested();
                 var processInfo = new ProcessStartInfo
                 {
-                    FileName = config.JavaPath,
+                    FileName = actualJavaPath,
                     Arguments = arguments,
                     WorkingDirectory = config.GameDirectory,
                     UseShellExecute = false,

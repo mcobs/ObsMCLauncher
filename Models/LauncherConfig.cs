@@ -79,9 +79,19 @@ namespace ObsMCLauncher.Models
         public DirectoryLocation AccountFileLocation { get; set; } = DirectoryLocation.AppData;
 
         /// <summary>
-        /// Java路径
+        /// Java选择模式：0=自动选择，1=指定路径，2=自定义路径
+        /// </summary>
+        public int JavaSelectionMode { get; set; } = 0;
+
+        /// <summary>
+        /// Java路径（当JavaSelectionMode为1或2时使用）
         /// </summary>
         public string JavaPath { get; set; } = "javaw.exe";
+
+        /// <summary>
+        /// 自定义Java路径（当JavaSelectionMode为2时由用户输入）
+        /// </summary>
+        public string CustomJavaPath { get; set; } = "";
 
         /// <summary>
         /// JVM参数
@@ -327,6 +337,39 @@ namespace ObsMCLauncher.Models
                     "accounts.json"),
                 _ => Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "accounts.json")
             };
+        }
+
+        /// <summary>
+        /// 获取实际应该使用的Java路径
+        /// </summary>
+        /// <param name="minecraftVersion">Minecraft版本号，用于自动选择模式</param>
+        /// <returns>Java可执行文件路径</returns>
+        public string GetActualJavaPath(string? minecraftVersion = null)
+        {
+            switch (JavaSelectionMode)
+            {
+                case 0: // 自动选择
+                    if (!string.IsNullOrEmpty(minecraftVersion))
+                    {
+                        var autoPath = Services.JavaDetector.SelectJavaForMinecraftVersion(minecraftVersion);
+                        if (!string.IsNullOrEmpty(autoPath))
+                        {
+                            return autoPath;
+                        }
+                    }
+                    // 如果自动选择失败，降级使用最佳Java
+                    var bestJava = Services.JavaDetector.SelectBestJava();
+                    return bestJava?.Path ?? "javaw.exe";
+
+                case 1: // 指定路径（从检测列表选择）
+                    return string.IsNullOrEmpty(JavaPath) ? "javaw.exe" : JavaPath;
+
+                case 2: // 自定义路径
+                    return string.IsNullOrEmpty(CustomJavaPath) ? JavaPath : CustomJavaPath;
+
+                default:
+                    return JavaPath;
+            }
         }
     }
 }

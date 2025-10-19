@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -21,6 +22,8 @@ namespace ObsMCLauncher.Pages
         private System.Windows.Threading.DispatcherTimer? _saveDebounceTimer; // 防抖定时器
         private string _pendingSaveSettingName = ""; // 待保存的设置名称
         private bool _isUpdatingMemory = false; // 防止TextBox和Slider相互触发
+        private List<JavaInfo> _detectedJavaList = new List<JavaInfo>(); // 检测到的Java列表
+        private bool _isLoadingJava = false; // 标记是否正在加载Java
 
         public SettingsPage()
         {
@@ -31,6 +34,7 @@ namespace ObsMCLauncher.Pages
             MaxMemorySlider.Maximum = totalMemoryMB;
             
             LoadSettings();
+            LoadJavaOptions(); // 加载Java选项
             _isInitialized = true; // 初始化完成后才允许自动保存
         }
 
@@ -49,7 +53,6 @@ namespace ObsMCLauncher.Pages
             // 加载其他游戏设置
             MaxMemorySlider.Value = _config.MaxMemory;
             MaxMemoryTextBox.Text = _config.MaxMemory.ToString();
-            JavaPathTextBox.Text = _config.JavaPath;
             JvmArgumentsTextBox.Text = _config.JvmArguments;
 
             // 加载文件存储设置
@@ -73,6 +76,194 @@ namespace ObsMCLauncher.Pages
 
             // 设置当前下载源
             DownloadSourceManager.Instance.SetDownloadSource(_config.DownloadSource);
+        }
+
+        /// <summary>
+        /// 加载Java选项到下拉框
+        /// </summary>
+        private void LoadJavaOptions()
+        {
+            _isLoadingJava = true;
+            try
+            {
+                JavaPathComboBox.Items.Clear();
+
+                // 1. 添加"自动选择"选项
+                var autoItem = new ComboBoxItem
+                {
+                    Content = "自动选择（根据游戏版本自动匹配）",
+                    Tag = "AUTO"
+                };
+                JavaPathComboBox.Items.Add(autoItem);
+
+                // 2. 检测并添加所有Java
+                _detectedJavaList = JavaDetector.DetectAllJava();
+                System.Diagnostics.Debug.WriteLine($"[SettingsPage] 检测到 {_detectedJavaList.Count} 个Java");
+
+                foreach (var java in _detectedJavaList)
+                {
+                    var item = new ComboBoxItem
+                    {
+                        Content = $"☕ Java {java.MajorVersion} ({java.Architecture}) - {java.Source}",
+                        Tag = java.Path,
+                        ToolTip = $"版本: {java.Version}\n路径: {java.Path}"
+                    };
+                    JavaPathComboBox.Items.Add(item);
+                }
+
+                // 3. 添加"自定义"选项
+                var customItem = new ComboBoxItem
+                {
+                    Content = "自定义路径...",
+                    Tag = "CUSTOM"
+                };
+                JavaPathComboBox.Items.Add(customItem);
+
+                // 4. 根据配置选中对应项
+                SelectJavaByConfig();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"加载Java选项失败: {ex.Message}");
+            }
+            finally
+            {
+                _isLoadingJava = false;
+            }
+        }
+
+        /// <summary>
+        /// 根据配置选中Java
+        /// </summary>
+        private void SelectJavaByConfig()
+        {
+            _isLoadingJava = true;
+            try
+            {
+                switch (_config.JavaSelectionMode)
+                {
+                    case 0: // 自动选择
+                        JavaPathComboBox.SelectedIndex = 0;
+                        CustomJavaPanel.Visibility = Visibility.Collapsed;
+                        break;
+
+                    case 1: // 指定路径
+                        // 尝试找到匹配的Java路径
+                        bool found = false;
+                        for (int i = 1; i < JavaPathComboBox.Items.Count - 1; i++) // 跳过"自动选择"和"自定义"
+                        {
+                            var item = JavaPathComboBox.Items[i] as ComboBoxItem;
+                            if (item?.Tag?.ToString() == _config.JavaPath)
+                            {
+                                JavaPathComboBox.SelectedIndex = i;
+                                found = true;
+                                break;
+                            }
+                        }
+                        if (!found)
+                        {
+                            // 如果找不到，选择第一个检测到的Java
+                            if (JavaPathComboBox.Items.Count > 1)
+                            {
+                                JavaPathComboBox.SelectedIndex = 1;
+                            }
+                        }
+                        CustomJavaPanel.Visibility = Visibility.Collapsed;
+                        break;
+
+                    case 2: // 自定义
+                        JavaPathComboBox.SelectedIndex = JavaPathComboBox.Items.Count - 1;
+                        CustomJavaPanel.Visibility = Visibility.Visible;
+                        CustomJavaTextBox.Text = _config.CustomJavaPath;
+                        break;
+
+                    default:
+                        JavaPathComboBox.SelectedIndex = 0;
+                        CustomJavaPanel.Visibility = Visibility.Collapsed;
+                        break;
+                }
+            }
+            finally
+            {
+                _isLoadingJava = false;
+            }
+        }
+
+        /// <summary>
+        /// Java路径下拉框选择变更
+        /// </summary>
+        private void JavaPathComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_isLoadingJava || !_isInitialized) return;
+
+            if (JavaPathComboBox.SelectedItem is ComboBoxItem item)
+            {
+                var tag = item.Tag?.ToString();
+
+                if (tag == "AUTO")
+                {
+                    // 自动选择
+                    _config.JavaSelectionMode = 0;
+                    _config.JavaPath = "";
+                    CustomJavaPanel.Visibility = Visibility.Collapsed;
+                    AutoSaveSettingsImmediately("Java选择");
+                }
+                else if (tag == "CUSTOM")
+                {
+                    // 自定义
+                    _config.JavaSelectionMode = 2;
+                    CustomJavaPanel.Visibility = Visibility.Visible;
+                    // 保存在CustomJavaTextBox_LostFocus中
+                }
+                else
+                {
+                    // 指定路径
+                    _config.JavaSelectionMode = 1;
+                    _config.JavaPath = tag ?? "";
+                    CustomJavaPanel.Visibility = Visibility.Collapsed;
+                    AutoSaveSettingsImmediately("Java路径");
+                }
+            }
+        }
+
+        /// <summary>
+        /// 自定义Java路径文本框失去焦点
+        /// </summary>
+        private void CustomJavaTextBox_LostFocus(object sender, RoutedEventArgs e)
+        {
+            _config.CustomJavaPath = CustomJavaTextBox.Text;
+            AutoSaveSettingsImmediately("自定义Java路径");
+        }
+
+        /// <summary>
+        /// 自定义Java路径文本框内容改变
+        /// </summary>
+        private void CustomJavaTextBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            // 实时更新配置
+            if (_isInitialized && CustomJavaPanel.Visibility == Visibility.Visible)
+            {
+                _config.CustomJavaPath = CustomJavaTextBox.Text;
+            }
+        }
+
+        /// <summary>
+        /// 浏览自定义Java路径
+        /// </summary>
+        private void BrowseCustomJavaPath_Click(object sender, RoutedEventArgs e)
+        {
+            var dialog = new Microsoft.Win32.OpenFileDialog
+            {
+                Filter = "Java可执行文件|javaw.exe;java.exe|所有文件|*.*",
+                Title = "选择Java路径"
+            };
+
+            if (dialog.ShowDialog() == true)
+            {
+                CustomJavaTextBox.Text = dialog.FileName;
+                _config.CustomJavaPath = dialog.FileName;
+                AutoSaveSettingsImmediately("自定义Java路径");
+            }
         }
 
         /// <summary>
@@ -127,7 +318,7 @@ namespace ObsMCLauncher.Pages
                 // 保存其他游戏设置
                 _config.MaxMemory = (int)MaxMemorySlider.Value;
                 _config.MinMemory = 512; // 固定为512MB
-                _config.JavaPath = JavaPathTextBox.Text;
+                // Java配置已在选择时保存
                 _config.JvmArguments = JvmArgumentsTextBox.Text;
 
                 // 保存文件存储设置
@@ -367,99 +558,6 @@ namespace ObsMCLauncher.Pages
         }
 
         /// <summary>
-        /// 浏览Java路径
-        /// </summary>
-        private void BrowseJavaPath_Click(object sender, RoutedEventArgs e)
-        {
-            var dialog = new Microsoft.Win32.OpenFileDialog
-            {
-                Filter = "Java可执行文件|javaw.exe;java.exe|所有文件|*.*",
-                Title = "选择Java路径"
-            };
-
-            if (dialog.ShowDialog() == true)
-            {
-                JavaPathTextBox.Text = dialog.FileName;
-                // 浏览选择Java后自动保存
-                AutoSaveSettingsImmediately("Java路径");
-            }
-        }
-
-        /// <summary>
-        /// 自动检测Java
-        /// </summary>
-        private async void AutoDetectJava_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                System.Diagnostics.Debug.WriteLine("开始自动检测Java...");
-                
-                var javaList = JavaDetector.DetectAllJava();
-
-                if (javaList.Count == 0)
-                {
-                    await DialogManager.Instance.ShowWarning(
-                        "未检测到Java",
-                        "未检测到任何Java安装！\n\n请手动安装Java后重试，或手动指定Java路径。\n\n推荐Java版本：\n• Minecraft 1.17+: Java 17或更高\n• Minecraft 1.13-1.16: Java 8或更高\n• Minecraft 1.12及以下: Java 8"
-                    );
-                    return;
-                }
-
-                // 构建选择对话框内容
-                var sb = new StringBuilder();
-                sb.AppendLine($"检测到 {javaList.Count} 个Java安装：");
-                sb.AppendLine();
-
-                for (int i = 0; i < javaList.Count; i++)
-                {
-                    var java = javaList[i];
-                    sb.AppendLine($"[{i + 1}] Java {java.MajorVersion} ({java.Architecture})");
-                    sb.AppendLine($"    版本: {java.Version}");
-                    sb.AppendLine($"    来源: {java.Source}");
-                    sb.AppendLine($"    路径: {java.Path}");
-                    sb.AppendLine();
-                }
-
-                sb.AppendLine("推荐使用第 [1] 个Java（版本最高）");
-                sb.AppendLine();
-                sb.AppendLine("是否使用推荐的Java？");
-
-                var result = await DialogManager.Instance.ShowInfo(
-                    "Java自动检测",
-                    sb.ToString(),
-                    DialogButtons.YesNo
-                );
-
-                if (result == DialogResult.Yes)
-                {
-                    // 使用推荐的Java（第一个，版本最高）
-                    var bestJava = javaList[0];
-                    JavaPathTextBox.Text = bestJava.Path;
-                    
-                    // ✅ 自动保存设置
-                    AutoSaveSettingsImmediately("Java路径");
-                    
-                    NotificationManager.Instance.ShowNotification(
-                        "设置成功",
-                        $"已选择 Java {bestJava.MajorVersion} ({bestJava.Version})",
-                        NotificationType.Success,
-                        5
-                    );
-
-                    System.Diagnostics.Debug.WriteLine($"已选择Java: {bestJava.Path}");
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"❌ 自动检测Java失败: {ex.Message}");
-                await DialogManager.Instance.ShowError(
-                    "错误",
-                    $"自动检测Java时出现错误：\n\n{ex.Message}"
-                );
-            }
-        }
-
-        /// <summary>
         /// 测试下载源
         /// </summary>
         private async void TestDownloadSource_Click(object sender, RoutedEventArgs e)
@@ -544,14 +642,6 @@ namespace ObsMCLauncher.Pages
                 3 => 32,
                 _ => 8
             };
-        }
-
-        /// <summary>
-        /// Java路径失去焦点时自动保存
-        /// </summary>
-        private void JavaPathTextBox_LostFocus(object sender, RoutedEventArgs e)
-        {
-            AutoSaveSettingsImmediately("Java路径");
         }
 
         /// <summary>

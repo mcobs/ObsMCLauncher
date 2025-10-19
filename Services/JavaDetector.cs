@@ -82,6 +82,92 @@ namespace ObsMCLauncher.Services
         }
 
         /// <summary>
+        /// 根据Minecraft版本自动选择合适的Java
+        /// </summary>
+        /// <param name="minecraftVersion">Minecraft版本号，例如 "1.20.1", "1.12.2"</param>
+        /// <returns>合适的Java路径，如果找不到则返回null</returns>
+        public static string? SelectJavaForMinecraftVersion(string minecraftVersion)
+        {
+            var javaList = DetectAllJava();
+            if (javaList.Count == 0)
+            {
+                Debug.WriteLine("❌ 未检测到任何Java安装");
+                return null;
+            }
+
+            // 解析Minecraft版本号
+            var versionParts = minecraftVersion.Split('.');
+            if (versionParts.Length < 2)
+            {
+                Debug.WriteLine($"⚠️ 无法解析Minecraft版本号: {minecraftVersion}，使用最高版本Java");
+                return javaList.First().Path;
+            }
+
+            int majorVersion = 0, minorVersion = 0;
+            if (!int.TryParse(versionParts[0], out majorVersion) || 
+                !int.TryParse(versionParts[1], out minorVersion))
+            {
+                Debug.WriteLine($"⚠️ 无法解析Minecraft版本号: {minecraftVersion}，使用最高版本Java");
+                return javaList.First().Path;
+            }
+
+            JavaInfo? selectedJava = null;
+
+            // Minecraft 1.17+ 需要 Java 17+
+            if (majorVersion >= 1 && minorVersion >= 17)
+            {
+                selectedJava = javaList.FirstOrDefault(j => j.MajorVersion >= 17);
+                if (selectedJava != null)
+                {
+                    Debug.WriteLine($"✅ Minecraft {minecraftVersion} (1.17+) -> 使用 Java {selectedJava.MajorVersion}");
+                    return selectedJava.Path;
+                }
+            }
+
+            // Minecraft 1.13-1.16 推荐 Java 8-16
+            if (majorVersion >= 1 && minorVersion >= 13 && minorVersion < 17)
+            {
+                selectedJava = javaList.FirstOrDefault(j => j.MajorVersion >= 8 && j.MajorVersion < 17);
+                if (selectedJava != null)
+                {
+                    Debug.WriteLine($"✅ Minecraft {minecraftVersion} (1.13-1.16) -> 使用 Java {selectedJava.MajorVersion}");
+                    return selectedJava.Path;
+                }
+                
+                // 如果没有Java 8-16，尝试使用Java 17+
+                selectedJava = javaList.FirstOrDefault(j => j.MajorVersion >= 17);
+                if (selectedJava != null)
+                {
+                    Debug.WriteLine($"⚠️ Minecraft {minecraftVersion} 推荐Java 8-16，但只找到Java {selectedJava.MajorVersion}");
+                    return selectedJava.Path;
+                }
+            }
+
+            // Minecraft 1.12及以下 推荐 Java 8
+            if (majorVersion >= 1 && minorVersion <= 12)
+            {
+                selectedJava = javaList.FirstOrDefault(j => j.MajorVersion == 8);
+                if (selectedJava != null)
+                {
+                    Debug.WriteLine($"✅ Minecraft {minecraftVersion} (≤1.12) -> 使用 Java {selectedJava.MajorVersion}");
+                    return selectedJava.Path;
+                }
+                
+                // 如果没有Java 8，尝试使用更高版本
+                selectedJava = javaList.FirstOrDefault(j => j.MajorVersion >= 8);
+                if (selectedJava != null)
+                {
+                    Debug.WriteLine($"⚠️ Minecraft {minecraftVersion} 推荐Java 8，但只找到Java {selectedJava.MajorVersion}");
+                    return selectedJava.Path;
+                }
+            }
+
+            // 如果以上都不匹配，使用最高版本的Java
+            Debug.WriteLine($"⚠️ 无法为Minecraft {minecraftVersion} 找到最佳Java，使用最高版本");
+            return javaList.First().Path;
+        }
+
+        /// <summary>
         /// 从PATH环境变量检测
         /// </summary>
         private static void DetectFromPath(List<JavaInfo> javaList, HashSet<string> foundPaths)
