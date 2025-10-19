@@ -77,12 +77,15 @@
                                      Stretch="Uniform"/>
 
                     <!-- 启动器名称 -->
-                    <TextBlock Text="ObsMCLauncher" 
+                    <TextBlock x:Name="AppTitleText"
+                             Text="ObsMCLauncher" 
                              FontSize="32" 
                              FontWeight="Bold" 
                              Foreground="{DynamicResource TextBrush}"
                              HorizontalAlignment="Center"
-                             Margin="0,0,0,8"/>
+                             Margin="0,0,0,8"
+                             Cursor="Hand"
+                             MouseLeftButtonDown="AppTitleText_MouseLeftButtonDown"/>
                     
                     <!-- 副标题 -->
                     <TextBlock Text="黑曜石 Minecraft 启动器" 

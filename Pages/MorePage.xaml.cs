@@ -15,6 +15,11 @@ namespace ObsMCLauncher.Pages
     /// </summary>
     public partial class MorePage : Page
     {
+        // 调试控制台激活逻辑
+        private int _appTitleClickCount = 0;
+        private DateTime _lastAppTitleClickTime = DateTime.MinValue;
+        private const int APP_TITLE_CLICK_RESET_MS = 2000; // 2秒内有效
+        
         public MorePage()
         {
             InitializeComponent();
@@ -192,6 +197,259 @@ namespace ObsMCLauncher.Pages
                     button.Content = stackPanel;
                     button.IsEnabled = true;
                 }
+            }
+        }
+
+        /// <summary>
+        /// 应用标题点击事件（隐藏调试控制台激活）
+        /// </summary>
+        private void AppTitleText_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            var now = DateTime.Now;
+            var timeSinceLastClick = (now - _lastAppTitleClickTime).TotalMilliseconds;
+            
+            // 如果超过2秒，重置计数
+            if (timeSinceLastClick > APP_TITLE_CLICK_RESET_MS)
+            {
+                _appTitleClickCount = 0;
+            }
+            
+            _appTitleClickCount++;
+            _lastAppTitleClickTime = now;
+            
+            Debug.WriteLine($"[MorePage] 标题点击次数: {_appTitleClickCount}");
+            
+            // 点击5次后弹出确认对话框
+            if (_appTitleClickCount >= 5)
+            {
+                _appTitleClickCount = 0; // 重置计数
+                ShowDebugConsoleConfirmationAsync();
+            }
+        }
+
+        /// <summary>
+        /// 显示调试控制台确认对话框
+        /// </summary>
+        private async void ShowDebugConsoleConfirmationAsync()
+        {
+            try
+            {
+                var result = await DialogManager.Instance.ShowConfirmDialogAsync(
+                    "开发者模式",
+                    "是否打开调试控制台？\n\n⚠️ 调试控制台仅供开发和测试使用",
+                    "打开",
+                    "取消"
+                );
+                
+                if (result)
+                {
+                    ShowDebugConsole();
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[MorePage] 显示调试控制台确认对话框失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 显示调试控制台
+        /// </summary>
+        private void ShowDebugConsole()
+        {
+            try
+            {
+                // 创建调试控制台对话框
+                var consoleDialog = new Border
+                {
+                    Width = 500,
+                    Background = (System.Windows.Media.Brush)Application.Current.Resources["SurfaceBrush"],
+                    CornerRadius = new CornerRadius(12),
+                    Padding = new Thickness(24, 24, 24, 24),
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center
+                };
+
+                var mainPanel = new StackPanel();
+
+                // 标题
+                var titlePanel = new StackPanel
+                {
+                    Orientation = Orientation.Horizontal,
+                    Margin = new Thickness(0, 0, 0, 16)
+                };
+
+                var titleIcon = new MaterialDesignThemes.Wpf.PackIcon
+                {
+                    Kind = MaterialDesignThemes.Wpf.PackIconKind.Console,
+                    Width = 28,
+                    Height = 28,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Margin = new Thickness(0, 0, 10, 0)
+                };
+                titleIcon.SetResourceReference(MaterialDesignThemes.Wpf.PackIcon.ForegroundProperty, "PrimaryBrush");
+
+                var titleText = new TextBlock
+                {
+                    Text = "调试控制台",
+                    FontSize = 18,
+                    FontWeight = FontWeights.Bold,
+                    VerticalAlignment = VerticalAlignment.Center
+                };
+                titleText.SetResourceReference(TextBlock.ForegroundProperty, "TextBrush");
+
+                titlePanel.Children.Add(titleIcon);
+                titlePanel.Children.Add(titleText);
+                mainPanel.Children.Add(titlePanel);
+
+                // 说明
+                var descText = new TextBlock
+                {
+                    Text = "输入命令并按回车执行：",
+                    FontSize = 13,
+                    Margin = new Thickness(0, 0, 0, 12)
+                };
+                descText.SetResourceReference(TextBlock.ForegroundProperty, "TextSecondaryBrush");
+                mainPanel.Children.Add(descText);
+
+                // 命令输入框
+                var commandBox = new TextBox
+                {
+                    FontSize = 14,
+                    Padding = new Thickness(12, 10, 12, 10),
+                    Margin = new Thickness(0, 0, 0, 12)
+                };
+                commandBox.SetResourceReference(TextBox.StyleProperty, typeof(TextBox));
+                mainPanel.Children.Add(commandBox);
+
+                // 可用命令列表
+                var commandsListText = new TextBlock
+                {
+                    Text = "可用命令：\n" +
+                           "• update - 测试更新对话框\n" +
+                           "• version - 显示版本信息\n" +
+                           "• help - 显示帮助",
+                    FontSize = 12,
+                    Margin = new Thickness(0, 0, 0, 16),
+                    TextWrapping = TextWrapping.Wrap
+                };
+                commandsListText.SetResourceReference(TextBlock.ForegroundProperty, "TextTertiaryBrush");
+                mainPanel.Children.Add(commandsListText);
+
+                // 按钮区域
+                var buttonPanel = new StackPanel
+                {
+                    Orientation = Orientation.Horizontal,
+                    HorizontalAlignment = HorizontalAlignment.Right
+                };
+
+                var closeButton = new Button
+                {
+                    Content = "关闭",
+                    Width = 80,
+                    Height = 36,
+                    FontSize = 13
+                };
+                closeButton.SetResourceReference(Button.StyleProperty, "MaterialDesignOutlinedButton");
+
+                buttonPanel.Children.Add(closeButton);
+                mainPanel.Children.Add(buttonPanel);
+
+                consoleDialog.Child = mainPanel;
+
+                // 添加到对话框容器
+                var dialogContainer = Application.Current.MainWindow.FindName("GlobalDialogContainer") as Panel;
+                if (dialogContainer != null)
+                {
+                    // 添加遮罩
+                    var overlay = new Border
+                    {
+                        Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(128, 0, 0, 0))
+                    };
+
+                    dialogContainer.Children.Add(overlay);
+                    dialogContainer.Children.Add(consoleDialog);
+
+                    // 关闭按钮事件
+                    closeButton.Click += (s, e) =>
+                    {
+                        dialogContainer.Children.Remove(consoleDialog);
+                        dialogContainer.Children.Remove(overlay);
+                    };
+
+                    // 遮罩点击关闭
+                    overlay.MouseLeftButtonDown += (s, e) =>
+                    {
+                        dialogContainer.Children.Remove(consoleDialog);
+                        dialogContainer.Children.Remove(overlay);
+                    };
+
+                    // 命令输入回车事件
+                    commandBox.KeyDown += async (s, e) =>
+                    {
+                        if (e.Key == System.Windows.Input.Key.Enter)
+                        {
+                            var command = commandBox.Text.Trim().ToLower();
+                            Debug.WriteLine($"[DebugConsole] 执行命令: {command}");
+
+                            switch (command)
+                            {
+                                case "update":
+                                    // 关闭控制台
+                                    dialogContainer.Children.Remove(consoleDialog);
+                                    dialogContainer.Children.Remove(overlay);
+                                    // 显示测试更新对话框
+                                    await UpdateService.ShowTestUpdateDialogAsync();
+                                    break;
+
+                                case "version":
+                                    NotificationManager.Instance.ShowNotification(
+                                        "版本信息",
+                                        VersionInfo.GetDetailedVersionInfo(),
+                                        NotificationType.Info,
+                                        5
+                                    );
+                                    break;
+
+                                case "help":
+                                    NotificationManager.Instance.ShowNotification(
+                                        "帮助",
+                                        "可用命令：\n• update - 测试更新对话框\n• version - 显示版本信息\n• help - 显示帮助",
+                                        NotificationType.Info,
+                                        5
+                                    );
+                                    break;
+
+                                case "":
+                                    break;
+
+                                default:
+                                    NotificationManager.Instance.ShowNotification(
+                                        "未知命令",
+                                        $"命令 '{command}' 不存在，输入 'help' 查看可用命令",
+                                        NotificationType.Warning,
+                                        3
+                                    );
+                                    break;
+                            }
+
+                            commandBox.Text = "";
+                        }
+                    };
+
+                    // 自动聚焦到输入框
+                    commandBox.Focus();
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[MorePage] 显示调试控制台失败: {ex.Message}");
+                NotificationManager.Instance.ShowNotification(
+                    "错误",
+                    "无法打开调试控制台",
+                    NotificationType.Error,
+                    3
+                );
             }
         }
     }

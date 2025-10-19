@@ -117,6 +117,17 @@ namespace ObsMCLauncher.Utils
         }
 
         /// <summary>
+        /// 显示确认对话框（支持自定义按钮文本）
+        /// </summary>
+        public async Task<bool> ShowConfirmDialogAsync(string title, string message, string confirmText = "确定", string cancelText = "取消")
+        {
+            // 目前使用默认的确认对话框，忽略自定义按钮文本
+            // 未来可以扩展 ShowDialog 方法以支持自定义按钮文本
+            var result = await ShowQuestion(title, message, DialogButtons.YesNo);
+            return result == DialogResult.Yes;
+        }
+
+        /// <summary>
         /// 显示对话框
         /// </summary>
         private Task<DialogResult> ShowDialog(string title, string message, DialogType type, DialogButtons buttons)
