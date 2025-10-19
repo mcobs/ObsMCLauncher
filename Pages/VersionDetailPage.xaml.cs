@@ -686,6 +686,14 @@ namespace ObsMCLauncher.Pages
                 // 获取OptiFine版本列表
                 var optifineVersions = await optifineService.GetOptifineVersionsAsync(currentVersion);
                 
+                // 使用自然排序，正确处理 pre10, pre11 等版本号
+                if (optifineVersions != null && optifineVersions.Count > 0)
+                {
+                    optifineVersions = optifineVersions
+                        .OrderByDescending(v => v.FullVersion, new NaturalStringComparer())
+                        .ToList();
+                }
+                
                 _ = Dispatcher.BeginInvoke(new Action(() =>
                 {
                     if (optifineVersions != null && optifineVersions.Count > 0)
@@ -698,7 +706,7 @@ namespace ObsMCLauncher.Pages
                             {
                                 var displayText = version.FullVersion; // 例如: HD_U_H9
                                 
-                                // 标记推荐版本（第一个版本通常是最新/推荐版本）
+                                // 标记推荐版本（反转后第一个版本是最新版本）
                                 if (version == optifineVersions.First())
                                 {
                                     displayText += " (推荐)";
@@ -3082,23 +3090,27 @@ namespace ObsMCLauncher.Pages
                         System.Diagnostics.Debug.WriteLine($"[OptiFine] ✅ 主 JAR 已复制");
                     }
                     
-                    // 7.2 如果是临时下载的，复制父版本 JSON 到标准位置（供 inheritsFrom 使用）
-                    if (needsCleanup)
+                    // 7.2 复制父版本 JSON 到 OptiFine 文件夹内（供 inheritsFrom 使用，避免创建额外的版本文件夹）
+                    var sourceJson = Path.Combine(actualBaseVersionDir, $"{currentVersion}.json");
+                    var targetJsonInOptiFineDir = Path.Combine(optiFineVersionDir, $"{currentVersion}.json");
+                    
+                    if (File.Exists(sourceJson) && !File.Exists(targetJsonInOptiFineDir))
                     {
-                        var sourceJson = Path.Combine(actualBaseVersionDir, $"{currentVersion}.json");
-                        var standardVersionDir = Path.Combine(gameDirectory, "versions", currentVersion);
-                        var targetJson = Path.Combine(standardVersionDir, $"{currentVersion}.json");
-                        
-                        if (File.Exists(sourceJson) && !File.Exists(targetJson))
+                        System.Diagnostics.Debug.WriteLine($"[OptiFine] 复制父版本 JSON 到 OptiFine 文件夹: {sourceJson} -> {targetJsonInOptiFineDir}");
+                        File.Copy(sourceJson, targetJsonInOptiFineDir, true);
+                        System.Diagnostics.Debug.WriteLine($"[OptiFine] ✅ 父版本 JSON 已复制到 OptiFine 文件夹");
+                    }
+                    
+                    // 7.3 如果父版本JAR也不存在于标准位置，也复制到OptiFine文件夹
+                    var standardVersionJar = Path.Combine(gameDirectory, "versions", currentVersion, $"{currentVersion}.jar");
+                    if (!File.Exists(standardVersionJar))
+                    {
+                        var targetJarInOptiFineDir = Path.Combine(optiFineVersionDir, $"{currentVersion}.jar");
+                        if (File.Exists(sourceJar) && !File.Exists(targetJarInOptiFineDir))
                         {
-                            if (!Directory.Exists(standardVersionDir))
-                            {
-                                Directory.CreateDirectory(standardVersionDir);
-                            }
-                            
-                            System.Diagnostics.Debug.WriteLine($"[OptiFine] 复制父版本 JSON: {sourceJson} -> {targetJson}");
-                            File.Copy(sourceJson, targetJson, true);
-                            System.Diagnostics.Debug.WriteLine($"[OptiFine] ✅ 父版本 JSON 已复制到标准位置");
+                            System.Diagnostics.Debug.WriteLine($"[OptiFine] 复制父版本 JAR 到 OptiFine 文件夹: {sourceJar} -> {targetJarInOptiFineDir}");
+                            File.Copy(sourceJar, targetJarInOptiFineDir, true);
+                            System.Diagnostics.Debug.WriteLine($"[OptiFine] ✅ 父版本 JAR 已复制到 OptiFine 文件夹");
                         }
                     }
                 }
@@ -4656,6 +4668,62 @@ namespace ObsMCLauncher.Pages
                     NavigationService.GoBack();
                 }
             });
+        }
+    }
+
+    /// <summary>
+    /// 自然字符串比较器 - 正确处理字符串中的数字
+    /// 例如: pre2 < pre10 < pre11
+    /// </summary>
+    public class NaturalStringComparer : IComparer<string>
+    {
+        public int Compare(string? x, string? y)
+        {
+            if (x == null && y == null) return 0;
+            if (x == null) return -1;
+            if (y == null) return 1;
+            
+            int x1 = 0, y1 = 0;
+            
+            while (x1 < x.Length && y1 < y.Length)
+            {
+                // 检查当前字符是否是数字
+                bool xIsDigit = char.IsDigit(x[x1]);
+                bool yIsDigit = char.IsDigit(y[y1]);
+                
+                if (xIsDigit && yIsDigit)
+                {
+                    // 两者都是数字，提取完整的数字并比较
+                    int xNum = 0, yNum = 0;
+                    
+                    while (x1 < x.Length && char.IsDigit(x[x1]))
+                    {
+                        xNum = xNum * 10 + (x[x1] - '0');
+                        x1++;
+                    }
+                    
+                    while (y1 < y.Length && char.IsDigit(y[y1]))
+                    {
+                        yNum = yNum * 10 + (y[y1] - '0');
+                        y1++;
+                    }
+                    
+                    if (xNum != yNum)
+                        return xNum.CompareTo(yNum);
+                }
+                else
+                {
+                    // 至少有一个不是数字，按字符比较
+                    if (x[x1] != y[y1])
+                        return x[x1].CompareTo(y[y1]);
+                    
+                    x1++;
+                    y1++;
+                }
+            }
+            
+            // 如果一个字符串是另一个的前缀
+            return x.Length.CompareTo(y.Length);
         }
     }
 }

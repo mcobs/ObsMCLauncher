@@ -103,19 +103,12 @@ namespace ObsMCLauncher.Services
                         response.EnsureSuccessStatusCode();
 
                         var json = await response.Content.ReadAsStringAsync();
-                        Debug.WriteLine($"[QuiltService] 收到的JSON数据长度: {json.Length}");
-                        Debug.WriteLine($"[QuiltService] JSON前200字符: {(json.Length > 200 ? json.Substring(0, 200) : json)}");
-                        
                         var versions = JsonSerializer.Deserialize<List<QuiltGameVersion>>(json);
 
                         if (versions != null)
                         {
                             var versionList = versions.Select(v => v.Version).ToList();
                             Debug.WriteLine($"[QuiltService] ✅ 获取到 {versionList.Count} 个支持的MC版本");
-                            if (versionList.Count > 0)
-                            {
-                                Debug.WriteLine($"[QuiltService] 前5个版本: {string.Join(", ", versionList.Take(5))}");
-                            }
                             return versionList;
                         }
                         else
@@ -211,9 +204,6 @@ namespace ObsMCLauncher.Services
                         response.EnsureSuccessStatusCode();
 
                         var json = await response.Content.ReadAsStringAsync();
-                        Debug.WriteLine($"[QuiltService] 收到的JSON数据长度: {json.Length}");
-                        Debug.WriteLine($"[QuiltService] JSON前200字符: {(json.Length > 200 ? json.Substring(0, 200) : json)}");
-                        
                         var quiltVersions = JsonSerializer.Deserialize<List<QuiltVersion>>(json);
 
                         if (quiltVersions != null)
@@ -224,10 +214,6 @@ namespace ObsMCLauncher.Services
                                 .ToList();
                             
                             Debug.WriteLine($"[QuiltService] ✅ 获取到 {quiltVersions.Count} 个Quilt Loader版本");
-                            if (quiltVersions.Count > 0)
-                            {
-                                Debug.WriteLine($"[QuiltService] 前3个版本: {string.Join(", ", quiltVersions.Take(3).Select(v => v.Version))}");
-                            }
                             return quiltVersions;
                         }
                         else
