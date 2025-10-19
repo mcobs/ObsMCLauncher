@@ -108,27 +108,27 @@
                 <!-- 游戏设置 -->
                 <Border Background="{StaticResource SurfaceBrush}"
                         CornerRadius="10"
-                        Padding="25"
-                        Margin="0,0,0,20">
+                        Padding="20"
+                        Margin="0,0,0,15">
                     <StackPanel>
                         <TextBlock Text="游戏设置" 
                                  FontSize="20" 
                                  FontWeight="SemiBold"
-                                 Margin="0,0,0,20"/>
+                                 Margin="0,0,0,15"/>
 
                         <!-- 游戏目录 -->
                         <TextBlock Text="游戏目录" 
                                  FontSize="14" 
-                                 Margin="0,0,0,8"/>
+                                 Margin="0,0,0,6"/>
                         <ComboBox x:Name="GameDirectoryLocationComboBox"
                                 Style="{StaticResource MaterialDesignOutlinedComboBox}"
                                 SelectionChanged="GameDirectoryLocation_Changed_AutoSave"
-                                Margin="0,0,0,10">
+                                Margin="0,0,0,8">
                             <ComboBoxItem Content="%APPDATA%\.minecraft（默认）" Tag="AppData"/>
                             <ComboBoxItem Content="运行目录\.minecraft" Tag="RunningDirectory"/>
                             <ComboBoxItem Content="自定义" Tag="Custom"/>
                         </ComboBox>
-                        <Grid x:Name="CustomGameDirectoryPanel" Margin="0,0,0,20" Visibility="Collapsed">
+                        <Grid x:Name="CustomGameDirectoryPanel" Margin="0,0,0,12" Visibility="Collapsed">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
@@ -152,13 +152,13 @@
                                  FontSize="12"
                                  Foreground="{StaticResource TextSecondaryBrush}"
                                  TextWrapping="Wrap"
-                                 Margin="0,0,0,20"/>
+                                 Margin="0,0,0,12"/>
 
                         <!-- 内存分配 -->
                         <TextBlock Text="最大内存分配 (最小内存固定为512MB)" 
                                  FontSize="14" 
-                                 Margin="0,0,0,8"/>
-                        <Grid Margin="0,0,0,20">
+                                 Margin="0,0,0,6"/>
+                        <Grid Margin="0,0,0,12">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="100"/>
@@ -190,8 +190,8 @@
                         <!-- Java 路径 -->
                         <TextBlock Text="Java 路径" 
                                  FontSize="14" 
-                                 Margin="0,0,0,8"/>
-                        <Grid Margin="0,0,0,15">
+                                 Margin="0,0,0,6"/>
+                        <Grid Margin="0,0,0,12">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
@@ -218,36 +218,42 @@
                                   Click="AutoDetectJava_Click"/>
                         </Grid>
 
-                        <!-- JVM 参数 -->
-                        <TextBlock Text="JVM 参数" 
-                                 FontSize="14" 
-                                 Margin="0,10,0,8"/>
-                        <TextBox x:Name="JvmArgumentsTextBox"
-                               Text="-XX:+UseG1GC -XX:+UnlockExperimentalVMOptions"
-                               Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                               Foreground="#FFFFFF"
-                               CaretBrush="#FFFFFF"
-                               AcceptsReturn="True"
-                               TextWrapping="Wrap"
-                               MinHeight="60"
-                               VerticalScrollBarVisibility="Auto"
-                               LostFocus="JvmArgumentsTextBox_LostFocus"/>
+                        <!-- 高级设置 - JVM 参数 -->
+                        <Expander Header="高级设置"
+                                  Foreground="{StaticResource TextBrush}"
+                                  Margin="0,0,0,0">
+                            <StackPanel Margin="0,10,0,0">
+                                <TextBlock Text="JVM 参数" 
+                                         FontSize="14" 
+                                         Margin="0,0,0,6"/>
+                                <TextBox x:Name="JvmArgumentsTextBox"
+                                       Text="-XX:+UseG1GC -XX:+UnlockExperimentalVMOptions"
+                                       Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                       Foreground="#FFFFFF"
+                                       CaretBrush="#FFFFFF"
+                                       AcceptsReturn="True"
+                                       TextWrapping="Wrap"
+                                       MinHeight="60"
+                                       VerticalScrollBarVisibility="Auto"
+                                       LostFocus="JvmArgumentsTextBox_LostFocus"/>
+                            </StackPanel>
+                        </Expander>
                     </StackPanel>
                 </Border>
 
                 <!-- 启动器设置 -->
                 <Border Background="{StaticResource SurfaceBrush}"
                         CornerRadius="10"
-                        Padding="25"
-                        Margin="0,0,0,20">
+                        Padding="20"
+                        Margin="0,0,0,15">
                     <StackPanel>
                         <TextBlock Text="启动器设置" 
                                  FontSize="20" 
                                  FontWeight="SemiBold"
-                                 Margin="0,0,0,20"/>
+                                 Margin="0,0,0,15"/>
 
                         <!-- 主题设置 -->
-                        <Grid Margin="0,0,0,15">
+                        <Grid Margin="0,0,0,12">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
@@ -255,7 +261,7 @@
                             <StackPanel Grid.Column="0">
                                 <TextBlock Text="主题模式" 
                                          FontSize="14" 
-                                         Margin="0,0,0,5"/>
+                                         Margin="0,0,0,4"/>
                                 <TextBlock Text="选择启动器的外观主题" 
                                          FontSize="12" 
                                          Foreground="#AAAAAA"/>
@@ -270,37 +276,10 @@
                             </ComboBox>
                         </Grid>
 
-                        <Separator Margin="0,10,0,15" Background="#3F3F46"/>
-
-                        <!-- 语言设置 -->
-                        <Grid Margin="0,0,0,15">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <StackPanel Grid.Column="0">
-                                <TextBlock Text="语言" 
-                                         FontSize="14" 
-                                         Margin="0,0,0,5"/>
-                                <TextBlock Text="设置启动器显示语言" 
-                                         FontSize="12" 
-                                         Foreground="#AAAAAA"/>
-                            </StackPanel>
-                            <ComboBox Grid.Column="1"
-                                    Width="150"
-                                    Style="{StaticResource MaterialDesignOutlinedComboBox}"
-                                    VerticalAlignment="Center">
-                                <ComboBoxItem Content="简体中文" IsSelected="True"/>
-                                <ComboBoxItem Content="繁體中文"/>
-                                <ComboBoxItem Content="English"/>
-                                <ComboBoxItem Content="日本語"/>
-                            </ComboBox>
-                        </Grid>
-
-                        <Separator Margin="0,10,0,15" Background="#3F3F46"/>
+                        <Separator Margin="0,8,0,12" Background="#3F3F46"/>
 
                         <!-- 自动检查更新 -->
-                        <Grid Margin="0,0,0,15">
+                        <Grid Margin="0,0,0,12">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
@@ -308,7 +287,7 @@
                             <StackPanel Grid.Column="0">
                                 <TextBlock Text="自动检查更新" 
                                          FontSize="14" 
-                                         Margin="0,0,0,5"/>
+                                         Margin="0,0,0,4"/>
                                 <TextBlock Text="启动时检查启动器更新" 
                                          FontSize="12" 
                                          Foreground="#AAAAAA"/>
@@ -322,7 +301,7 @@
                                         Unchecked="ToggleButton_Changed"/>
                         </Grid>
 
-                        <Separator Margin="0,10,0,15" Background="#3F3F46"/>
+                        <Separator Margin="0,8,0,12" Background="#3F3F46"/>
 
                         <!-- 启动后关闭启动器 -->
                         <Grid Margin="0,0,0,0">
@@ -333,7 +312,7 @@
                             <StackPanel Grid.Column="0">
                                 <TextBlock Text="游戏启动后关闭启动器" 
                                          FontSize="14" 
-                                         Margin="0,0,0,5"/>
+                                         Margin="0,0,0,4"/>
                                 <TextBlock Text="减少内存占用" 
                                          FontSize="12" 
                                          Foreground="#AAAAAA"/>
@@ -352,27 +331,27 @@
                 <!-- 文件存储设置 -->
                 <Border Background="{StaticResource SurfaceBrush}"
                         CornerRadius="10"
-                        Padding="25"
-                        Margin="0,0,0,20">
+                        Padding="20"
+                        Margin="0,0,0,15">
                     <StackPanel>
                         <TextBlock Text="文件存储" 
                                  FontSize="20" 
                                  FontWeight="SemiBold"
-                                 Margin="0,0,0,20"/>
+                                 Margin="0,0,0,15"/>
 
                         <!-- 配置文件位置 -->
                         <TextBlock Text="配置文件存储位置" 
                                  FontSize="14" 
-                                 Margin="0,0,0,8"/>
+                                 Margin="0,0,0,6"/>
                         <ComboBox x:Name="ConfigFileLocationComboBox"
                                 Style="{StaticResource MaterialDesignOutlinedComboBox}"
                                 SelectionChanged="ConfigFileLocation_Changed_AutoSave"
-                                Margin="0,0,0,10">
+                                Margin="0,0,0,8">
                             <ComboBoxItem Content="%APPDATA%\ObsMCLauncher\config.json（默认）" Tag="AppData"/>
                             <ComboBoxItem Content="运行目录\config.json" Tag="RunningDirectory"/>
                             <ComboBoxItem Content="自定义" Tag="Custom"/>
                         </ComboBox>
-                        <Grid x:Name="CustomConfigFilePanel" Margin="0,0,0,20" Visibility="Collapsed">
+                        <Grid x:Name="CustomConfigFilePanel" Margin="0,0,0,12" Visibility="Collapsed">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
@@ -394,16 +373,16 @@
                                  FontSize="12"
                                  Foreground="{StaticResource TextSecondaryBrush}"
                                  TextWrapping="Wrap"
-                                 Margin="0,0,0,20"/>
+                                 Margin="0,0,0,12"/>
 
                         <!-- 账号文件位置 -->
                         <TextBlock Text="账号文件存储位置" 
                                  FontSize="14" 
-                                 Margin="0,0,0,8"/>
+                                 Margin="0,0,0,6"/>
                         <ComboBox x:Name="AccountFileLocationComboBox"
                                 Style="{StaticResource MaterialDesignOutlinedComboBox}"
                                 SelectionChanged="AccountFileLocation_Changed_AutoSave"
-                                Margin="0,0,0,10">
+                                Margin="0,0,0,8">
                             <ComboBoxItem Content="%APPDATA%\ObsMCLauncher\accounts.json（默认）" Tag="AppData"/>
                             <ComboBoxItem Content="运行目录\accounts.json" Tag="RunningDirectory"/>
                         </ComboBox>
@@ -418,22 +397,22 @@
                 <!-- 下载设置 -->
                 <Border Background="{StaticResource SurfaceBrush}"
                         CornerRadius="10"
-                        Padding="25"
-                        Margin="0,0,0,20">
+                        Padding="20"
+                        Margin="0,0,0,15">
                     <StackPanel>
                         <TextBlock Text="下载设置" 
                                  FontSize="20" 
                                  FontWeight="SemiBold"
-                                 Margin="0,0,0,20"/>
+                                 Margin="0,0,0,15"/>
 
                         <!-- 下载源 -->
-                        <Grid Margin="0,0,0,15">
+                        <Grid Margin="0,0,0,12">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
                             <StackPanel Grid.Column="0">
-                                <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                                     <TextBlock Text="下载源" 
                                              FontSize="14"/>
                                     <TextBlock Text=" (优先使用)" 
@@ -458,10 +437,10 @@
                             </ComboBox>
                         </Grid>
 
-                        <Separator Margin="0,10,0,15" Background="#3F3F46"/>
+                        <Separator Margin="0,8,0,12" Background="#3F3F46"/>
 
                         <!-- 最大下载线程 -->
-                        <Grid Margin="0,0,0,15">
+                        <Grid Margin="0,0,0,12">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
@@ -469,7 +448,7 @@
                             <StackPanel Grid.Column="0">
                                 <TextBlock Text="最大下载线程" 
                                          FontSize="14" 
-                                         Margin="0,0,0,5"/>
+                                         Margin="0,0,0,4"/>
                                 <TextBlock Text="同时下载的文件数量" 
                                          FontSize="12" 
                                          Foreground="#AAAAAA"/>
@@ -487,7 +466,7 @@
                             </ComboBox>
                         </Grid>
 
-                        <Separator Margin="0,10,0,15" Background="#3F3F46"/>
+                        <Separator Margin="0,8,0,12" Background="#3F3F46"/>
 
                         <!-- 完整下载游戏资源文件 -->
                         <Grid Margin="0,0,0,0">
@@ -498,7 +477,7 @@
                             <StackPanel Grid.Column="0">
                                 <TextBlock Text="下载游戏时完整下载所有资源文件" 
                                          FontSize="14" 
-                                         Margin="0,0,0,5"/>
+                                         Margin="0,0,0,4"/>
                                 <TextBlock Text="下载游戏依赖库、声音、语言、纹理等全部资源文件" 
                                          FontSize="12" 
                                          Foreground="#AAAAAA"
@@ -518,7 +497,7 @@
                 <!-- 底部按钮 -->
                 <StackPanel Orientation="Horizontal" 
                           HorizontalAlignment="Right"
-                          Margin="0,10,0,20">
+                          Margin="0,5,0,15">
                     <Button Content="测试下载源"
                           Style="{StaticResource MaterialDesignOutlinedButton}"
                           Margin="0,0,15,0"
