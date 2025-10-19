@@ -1,9 +1,11 @@
 using System;
 using System.Diagnostics;
 using System.Reflection;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Navigation;
+using ObsMCLauncher.Services;
 using ObsMCLauncher.Utils;
 
 namespace ObsMCLauncher.Pages
@@ -91,6 +93,105 @@ namespace ObsMCLauncher.Pages
                     MessageBoxButton.OK,
                     MessageBoxImage.Error
                 );
+            }
+        }
+
+        /// <summary>
+        /// 检查更新按钮点击
+        /// </summary>
+        private async void CheckUpdateButton_Click(object sender, RoutedEventArgs e)
+        {
+            var button = sender as Button;
+            if (button != null)
+            {
+                button.IsEnabled = false;
+                
+                // 显示检查中状态
+                var stackPanel = new StackPanel { Orientation = Orientation.Horizontal };
+                var progressRing = new MaterialDesignThemes.Wpf.PackIcon
+                {
+                    Kind = MaterialDesignThemes.Wpf.PackIconKind.Loading,
+                    Width = 16,
+                    Height = 16,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Margin = new Thickness(0, 0, 8, 0)
+                };
+                // 使用DynamicResource绑定前景色
+                progressRing.SetResourceReference(MaterialDesignThemes.Wpf.PackIcon.ForegroundProperty, "TextBrush");
+                
+                var textBlock = new TextBlock
+                {
+                    Text = "检查中...",
+                    VerticalAlignment = VerticalAlignment.Center,
+                    FontSize = 13
+                };
+                // 使用DynamicResource绑定前景色
+                textBlock.SetResourceReference(TextBlock.ForegroundProperty, "TextBrush");
+                
+                stackPanel.Children.Add(progressRing);
+                stackPanel.Children.Add(textBlock);
+                button.Content = stackPanel;
+            }
+
+            try
+            {
+                var newRelease = await UpdateService.CheckForUpdatesAsync();
+                
+                if (newRelease != null)
+                {
+                    await UpdateService.ShowUpdateDialogAsync(newRelease);
+                }
+                else
+                {
+                    NotificationManager.Instance.ShowNotification(
+                        "已是最新版本",
+                        $"当前版本 {VersionInfo.DisplayVersion} 已是最新版本",
+                        NotificationType.Success,
+                        3
+                    );
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[MorePage] 检查更新失败: {ex.Message}");
+                NotificationManager.Instance.ShowNotification(
+                    "检查更新失败",
+                    "无法连接到更新服务器，请检查网络连接",
+                    NotificationType.Error,
+                    5
+                );
+            }
+            finally
+            {
+                // 恢复按钮状态
+                if (button != null)
+                {
+                    var stackPanel = new StackPanel { Orientation = Orientation.Horizontal };
+                    var icon = new MaterialDesignThemes.Wpf.PackIcon
+                    {
+                        Kind = MaterialDesignThemes.Wpf.PackIconKind.Update,
+                        Width = 16,
+                        Height = 16,
+                        VerticalAlignment = VerticalAlignment.Center,
+                        Margin = new Thickness(0, 0, 8, 0)
+                    };
+                    // 使用DynamicResource绑定前景色
+                    icon.SetResourceReference(MaterialDesignThemes.Wpf.PackIcon.ForegroundProperty, "TextBrush");
+                    
+                    var textBlock = new TextBlock
+                    {
+                        Text = "检查更新",
+                        VerticalAlignment = VerticalAlignment.Center,
+                        FontSize = 13
+                    };
+                    // 使用DynamicResource绑定前景色
+                    textBlock.SetResourceReference(TextBlock.ForegroundProperty, "TextBrush");
+                    
+                    stackPanel.Children.Add(icon);
+                    stackPanel.Children.Add(textBlock);
+                    button.Content = stackPanel;
+                    button.IsEnabled = true;
+                }
             }
         }
     }

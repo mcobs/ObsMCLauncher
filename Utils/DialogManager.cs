@@ -414,6 +414,140 @@ namespace ObsMCLauncher.Utils
                 _ => PackIconKind.InformationOutline
             };
         }
+
+        /// <summary>
+        /// 显示更新对话框（支持Markdown格式的更新日志）
+        /// </summary>
+        public async Task<bool> ShowUpdateDialogAsync(string title, string markdownContent, string confirmText = "确定", string cancelText = "取消")
+        {
+            var tcs = new TaskCompletionSource<bool>();
+
+            await Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                if (_container == null)
+                {
+                    throw new InvalidOperationException("DialogManager未初始化");
+                }
+
+                var overlay = new Border
+                {
+                    Background = new SolidColorBrush(Color.FromArgb(200, 0, 0, 0)),
+                    HorizontalAlignment = HorizontalAlignment.Stretch,
+                    VerticalAlignment = VerticalAlignment.Stretch,
+                    Opacity = 0
+                };
+
+                var dialogBorder = new Border
+                {
+                    Background = (SolidColorBrush)Application.Current.Resources["SurfaceBrush"],
+                    BorderBrush = (SolidColorBrush)Application.Current.Resources["BorderBrush"],
+                    BorderThickness = new Thickness(1, 1, 1, 1),
+                    CornerRadius = new CornerRadius(12),
+                    MaxWidth = 600,
+                    MaxHeight = 700,
+                    Padding = new Thickness(30, 25, 30, 25),
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Effect = new DropShadowEffect
+                    {
+                        Color = Colors.Black,
+                        BlurRadius = 40,
+                        Opacity = 0.5,
+                        ShadowDepth = 4
+                    }
+                };
+
+                var stackPanel = new StackPanel();
+
+                // 标题
+                var titleBlock = new TextBlock
+                {
+                    Text = title,
+                    FontSize = 22,
+                    FontWeight = FontWeights.Bold,
+                    Foreground = (SolidColorBrush)Application.Current.Resources["TextBrush"],
+                    Margin = new Thickness(0, 0, 0, 20),
+                    TextWrapping = TextWrapping.Wrap
+                };
+                stackPanel.Children.Add(titleBlock);
+
+                // 更新日志滚动区域
+                var scrollViewer = new ScrollViewer
+                {
+                    MaxHeight = 400,
+                    VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                    Margin = new Thickness(0, 0, 0, 25)
+                };
+
+                var contentBlock = new TextBlock
+                {
+                    Text = markdownContent,
+                    FontSize = 14,
+                    Foreground = (SolidColorBrush)Application.Current.Resources["TextSecondaryBrush"],
+                    TextWrapping = TextWrapping.Wrap,
+                    LineHeight = 24
+                };
+
+                scrollViewer.Content = contentBlock;
+                stackPanel.Children.Add(scrollViewer);
+
+                // 按钮区域
+                var buttonPanel = new StackPanel
+                {
+                    Orientation = Orientation.Horizontal,
+                    HorizontalAlignment = HorizontalAlignment.Right
+                };
+
+                var cancelButton = new Button
+                {
+                    Content = cancelText,
+                    Width = 100,
+                    Height = 36,
+                    Margin = new Thickness(0, 0, 10, 0),
+                    Style = (Style)Application.Current.Resources["MaterialDesignOutlinedButton"]
+                };
+
+                var confirmButton = new Button
+                {
+                    Content = confirmText,
+                    Width = 120,
+                    Height = 36,
+                    Background = (SolidColorBrush)Application.Current.Resources["PrimaryBrush"],
+                    Foreground = Brushes.White,
+                    Style = (Style)Application.Current.Resources["MaterialDesignRaisedButton"]
+                };
+
+                buttonPanel.Children.Add(cancelButton);
+                buttonPanel.Children.Add(confirmButton);
+                stackPanel.Children.Add(buttonPanel);
+
+                dialogBorder.Child = stackPanel;
+                overlay.Child = dialogBorder;
+
+                _container!.Children.Add(overlay);
+
+                // 动画
+                var fadeIn = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(250));
+                overlay.BeginAnimation(UIElement.OpacityProperty, fadeIn);
+
+                // 关闭对话框的方法
+                void CloseDialog(bool result)
+                {
+                    var fadeOut = new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(200));
+                    fadeOut.Completed += (s, e) =>
+                    {
+                        _container.Children.Remove(overlay);
+                        tcs.TrySetResult(result);
+                    };
+                    overlay.BeginAnimation(UIElement.OpacityProperty, fadeOut);
+                }
+
+                confirmButton.Click += (s, e) => CloseDialog(true);
+                cancelButton.Click += (s, e) => CloseDialog(false);
+            });
+
+            return await tcs.Task;
+        }
     }
 }
 

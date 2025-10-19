@@ -97,6 +97,9 @@ namespace ObsMCLauncher
                 catch { }
                 
                 System.Diagnostics.Debug.WriteLine($"启动器已启动，当前下载源: {config.DownloadSource}");
+                
+                // 启动时检查更新（异步，不阻塞启动）
+                _ = UpdateService.CheckUpdateOnStartupAsync();
             }
             catch (Exception ex)
             {
