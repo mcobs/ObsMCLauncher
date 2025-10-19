@@ -66,6 +66,99 @@ namespace ObsMCLauncher.Pages
             
             // 异步加载Quilt版本列表
             _ = LoadQuiltVersionsAsync();
+            
+            // 根据版本类型设置 Vanilla 图标
+            UpdateVanillaIcon();
+        }
+        
+        /// <summary>
+        /// 根据版本类型更新 Vanilla 图标
+        /// </summary>
+        private void UpdateVanillaIcon()
+        {
+            if (versionInfo == null) return;
+            
+            string iconPath = "/Assets/LoaderIcons/vanilla.png"; // 默认图标
+            
+            try
+            {
+                // 判断是否为快照版
+                if (versionInfo.Type == "snapshot")
+                {
+                    iconPath = "/Assets/LoaderIcons/vanilia_snapshot.png";
+                    System.Diagnostics.Debug.WriteLine($"[VanillaIcon] 快照版本 {currentVersion}，使用 vanilla_snapshot.png");
+                }
+                // 判断是否为正式版
+                else if (versionInfo.Type == "release")
+                {
+                    // 判断版本是否 <= 1.12.2
+                    if (IsVersionLessThanOrEqual(currentVersion, "1.12.2"))
+                    {
+                        iconPath = "/Assets/LoaderIcons/vanilla_old.png";
+                        System.Diagnostics.Debug.WriteLine($"[VanillaIcon] 旧版本 {currentVersion} (<=1.12.2)，使用 vanilla_old.png");
+                    }
+                    else
+                    {
+                        iconPath = "/Assets/LoaderIcons/vanilla.png";
+                        System.Diagnostics.Debug.WriteLine($"[VanillaIcon] 新版本 {currentVersion} (>1.12.2)，使用 vanilla.png");
+                    }
+                }
+                // 其他版本类型（old_alpha, old_beta 等）
+                else
+                {
+                    iconPath = "/Assets/LoaderIcons/vanilla_old.png";
+                    System.Diagnostics.Debug.WriteLine($"[VanillaIcon] 远古版本 {currentVersion} (类型: {versionInfo.Type})，使用 vanilla_old.png");
+                }
+                
+                // 设置图标
+                VanillaIcon.Source = new System.Windows.Media.Imaging.BitmapImage(
+                    new Uri(iconPath, UriKind.Relative)
+                );
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[VanillaIcon] 设置图标失败: {ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// 比较版本号是否小于或等于目标版本
+        /// </summary>
+        private bool IsVersionLessThanOrEqual(string version, string targetVersion)
+        {
+            try
+            {
+                // 提取主版本号部分（例如 "1.12.2" 或 "1.20.1"）
+                var versionParts = version.Split('.');
+                var targetParts = targetVersion.Split('.');
+                
+                // 比较主版本号
+                for (int i = 0; i < Math.Min(versionParts.Length, targetParts.Length); i++)
+                {
+                    if (int.TryParse(versionParts[i], out int vNum) && 
+                        int.TryParse(targetParts[i], out int tNum))
+                    {
+                        if (vNum < tNum) return true;
+                        if (vNum > tNum) return false;
+                        // 相等则继续比较下一位
+                    }
+                    else
+                    {
+                        // 如果包含非数字字符，按字符串比较
+                        int cmp = string.Compare(versionParts[i], targetParts[i], StringComparison.Ordinal);
+                        if (cmp < 0) return true;
+                        if (cmp > 0) return false;
+                    }
+                }
+                
+                // 如果所有部分都相等，则判断长度
+                return versionParts.Length <= targetParts.Length;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[VanillaIcon] 版本比较失败: {ex.Message}");
+                return false;
+            }
         }
         
         /// <summary>

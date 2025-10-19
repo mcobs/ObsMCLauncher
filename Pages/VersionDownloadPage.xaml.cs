@@ -315,16 +315,15 @@ namespace ObsMCLauncher.Pages
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
-            // 图标
-            var icon = new PackIcon
+            // 图标 - 根据版本类型动态选择
+            var iconPath = GetVersionIconPath(version);
+            var icon = new Image
             {
-                Kind = PackIconKind.Cube,
                 Width = 28,
                 Height = 28,
-                Foreground = (Brush)Application.Current.TryFindResource("PrimaryBrush")
-                    ?? new SolidColorBrush(Color.FromRgb(34, 197, 94)),
                 VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(0, 0, 12, 0)
+                Margin = new Thickness(0, 0, 12, 0),
+                Source = new System.Windows.Media.Imaging.BitmapImage(new Uri(iconPath, UriKind.Relative))
             };
             Grid.SetColumn(icon, 0);
             grid.Children.Add(icon);
@@ -393,6 +392,87 @@ namespace ObsMCLauncher.Pages
             button.Content = border;
 
             return button;
+        }
+
+        /// <summary>
+        /// 根据版本类型获取图标路径
+        /// </summary>
+        private string GetVersionIconPath(MinecraftVersion version)
+        {
+            string iconPath = "/Assets/LoaderIcons/vanilla.png"; // 默认图标
+            
+            try
+            {
+                // 判断是否为快照版
+                if (version.Type == "snapshot")
+                {
+                    iconPath = "/Assets/LoaderIcons/vanilia_snapshot.png";
+                }
+                // 判断是否为正式版
+                else if (version.Type == "release")
+                {
+                    // 判断版本是否 <= 1.12.2
+                    if (IsVersionLessThanOrEqual(version.Id, "1.12.2"))
+                    {
+                        iconPath = "/Assets/LoaderIcons/vanilla_old.png";
+                    }
+                    else
+                    {
+                        iconPath = "/Assets/LoaderIcons/vanilla.png";
+                    }
+                }
+                // 其他版本类型（old_alpha, old_beta 等）
+                else
+                {
+                    iconPath = "/Assets/LoaderIcons/vanilla_old.png";
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[VersionIcon] 获取图标路径失败: {ex.Message}");
+            }
+            
+            return iconPath;
+        }
+
+        /// <summary>
+        /// 比较版本号是否小于或等于目标版本
+        /// </summary>
+        private bool IsVersionLessThanOrEqual(string version, string targetVersion)
+        {
+            try
+            {
+                // 提取主版本号部分（例如 "1.12.2" 或 "1.20.1"）
+                var versionParts = version.Split('.');
+                var targetParts = targetVersion.Split('.');
+                
+                // 比较主版本号
+                for (int i = 0; i < Math.Min(versionParts.Length, targetParts.Length); i++)
+                {
+                    if (int.TryParse(versionParts[i], out int vNum) && 
+                        int.TryParse(targetParts[i], out int tNum))
+                    {
+                        if (vNum < tNum) return true;
+                        if (vNum > tNum) return false;
+                        // 相等则继续比较下一位
+                    }
+                    else
+                    {
+                        // 如果包含非数字字符，按字符串比较
+                        int cmp = string.Compare(versionParts[i], targetParts[i], StringComparison.Ordinal);
+                        if (cmp < 0) return true;
+                        if (cmp > 0) return false;
+                    }
+                }
+                
+                // 如果所有部分都相等，则判断长度
+                return versionParts.Length <= targetParts.Length;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[VersionIcon] 版本比较失败: {ex.Message}");
+                return false;
+            }
         }
 
         /// <summary>

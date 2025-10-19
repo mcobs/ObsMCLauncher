@@ -187,13 +187,13 @@
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
 
-                                <materialDesign:PackIcon Grid.Column="0"
-                                                       Kind="Cube"
-                                                       Width="24"
-                                                       Height="24"
-                                                       Foreground="{StaticResource PrimaryBrush}"
-                                                       VerticalAlignment="Center"
-                                                       Margin="0,0,12,0"/>
+                                <Image x:Name="VanillaIcon"
+                                       Grid.Column="0"
+                                       Width="24"
+                                       Height="24"
+                                       VerticalAlignment="Center"
+                                       Margin="0,0,12,0"
+                                       Source="/Assets/LoaderIcons/vanilla.png"/>
 
                                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                     <TextBlock Text="原版（Vanilla）" 
@@ -224,13 +224,12 @@
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
 
-                                <materialDesign:PackIcon Grid.Column="0"
-                                                       Kind="Hammer"
-                                                       Width="24"
-                                                       Height="24"
-                                                       Foreground="#E67E22"
-                                                       VerticalAlignment="Center"
-                                                       Margin="0,0,12,0"/>
+                                <Image Grid.Column="0"
+                                       Width="24"
+                                       Height="24"
+                                       VerticalAlignment="Center"
+                                       Margin="0,0,12,0"
+                                       Source="/Assets/LoaderIcons/forge.png"/>
 
                                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                     <TextBlock Text="Forge" 
@@ -272,13 +271,12 @@
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
 
-                                <materialDesign:PackIcon Grid.Column="0"
-                                                       Kind="Fire"
-                                                       Width="24"
-                                                       Height="24"
-                                                       Foreground="#FF6B35"
-                                                       VerticalAlignment="Center"
-                                                       Margin="0,0,12,0"/>
+                                <Image Grid.Column="0"
+                                       Width="24"
+                                       Height="24"
+                                       VerticalAlignment="Center"
+                                       Margin="0,0,12,0"
+                                       Source="/Assets/LoaderIcons/neoforged.png"/>
 
                                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                     <TextBlock Text="NeoForge" 
@@ -320,13 +318,12 @@
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
 
-                                <materialDesign:PackIcon Grid.Column="0"
-                                                       Kind="Creation"
-                                                       Width="24"
-                                                       Height="24"
-                                                       Foreground="#9B59B6"
-                                                       VerticalAlignment="Center"
-                                                       Margin="0,0,12,0"/>
+                                <Image Grid.Column="0"
+                                       Width="24"
+                                       Height="24"
+                                       VerticalAlignment="Center"
+                                       Margin="0,0,12,0"
+                                       Source="/Assets/LoaderIcons/fabric.png"/>
 
                                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                     <TextBlock Text="Fabric" 
@@ -368,13 +365,12 @@
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
 
-                                <materialDesign:PackIcon Grid.Column="0"
-                                                       Kind="Speedometer"
-                                                       Width="24"
-                                                       Height="24"
-                                                       Foreground="#3498DB"
-                                                       VerticalAlignment="Center"
-                                                       Margin="0,0,12,0"/>
+                                <Image Grid.Column="0"
+                                       Width="24"
+                                       Height="24"
+                                       VerticalAlignment="Center"
+                                       Margin="0,0,12,0"
+                                       Source="/Assets/LoaderIcons/optifine.png"/>
 
                                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                     <TextBlock Text="OptiFine" 
@@ -416,13 +412,12 @@
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
 
-                                <materialDesign:PackIcon Grid.Column="0"
-                                                       Kind="ViewQuilt"
-                                                       Width="24"
-                                                       Height="24"
-                                                       Foreground="#E91E63"
-                                                       VerticalAlignment="Center"
-                                                       Margin="0,0,12,0"/>
+                                <Image Grid.Column="0"
+                                       Width="24"
+                                       Height="24"
+                                       VerticalAlignment="Center"
+                                       Margin="0,0,12,0"
+                                       Source="/Assets/LoaderIcons/quilt.png"/>
 
                                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                     <TextBlock Text="Quilt" 
