@@ -87,343 +87,121 @@
                 <!-- 搜索和筛选区域 -->
                 <Grid Grid.Row="0" Margin="20,20,20,10">
                     <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
-                    <TextBox Grid.Column="0"
+                    <!-- 下载源选择 -->
+                    <ComboBox x:Name="SourceComboBox"
+                            Grid.Column="0"
+                            Width="140"
+                            materialDesign:HintAssist.Hint="下载源"
+                            Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                            Margin="0,0,15,0"
+                            SelectionChanged="SourceComboBox_SelectionChanged">
+                        <ComboBoxItem Content="CurseForge" IsSelected="True" Tag="CurseForge"/>
+                        <ComboBoxItem Content="Modrinth" Tag="Modrinth" IsEnabled="False"/>
+                    </ComboBox>
+
+                    <!-- 搜索框 -->
+                    <TextBox x:Name="SearchBox"
+                           Grid.Column="1"
                            materialDesign:HintAssist.Hint="搜索资源..."
                            Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                           Margin="0,0,15,0"/>
+                           Margin="0,0,15,0"
+                           KeyDown="SearchBox_KeyDown"/>
 
-                    <ComboBox Grid.Column="1"
-                            Width="150"
+                    <!-- 游戏版本筛选 -->
+                    <ComboBox x:Name="VersionFilterComboBox"
+                            Grid.Column="2"
+                            Width="140"
                             materialDesign:HintAssist.Hint="适用版本"
                             Style="{StaticResource MaterialDesignOutlinedComboBox}"
-                            Margin="0,0,15,0">
-                        <ComboBoxItem Content="全部版本" IsSelected="True"/>
-                        <ComboBoxItem Content="1.20.x"/>
-                        <ComboBoxItem Content="1.19.x"/>
-                        <ComboBoxItem Content="1.18.x"/>
-                        <ComboBoxItem Content="1.16.x"/>
-                        <ComboBoxItem Content="1.12.x"/>
+                            Margin="0,0,15,0"
+                            SelectionChanged="FilterChanged">
+                        <ComboBoxItem Content="全部版本" IsSelected="True" Tag=""/>
+                        <ComboBoxItem Content="1.21.x" Tag="1.21"/>
+                        <ComboBoxItem Content="1.20.x" Tag="1.20"/>
+                        <ComboBoxItem Content="1.19.x" Tag="1.19"/>
+                        <ComboBoxItem Content="1.18.x" Tag="1.18"/>
+                        <ComboBoxItem Content="1.16.x" Tag="1.16"/>
+                        <ComboBoxItem Content="1.12.x" Tag="1.12"/>
                     </ComboBox>
 
-                    <ComboBox Grid.Column="2"
-                            Width="150"
+                    <!-- 排序方式 -->
+                    <ComboBox x:Name="SortComboBox"
+                            Grid.Column="3"
+                            Width="140"
                             materialDesign:HintAssist.Hint="排序方式"
-                            Style="{StaticResource MaterialDesignOutlinedComboBox}">
-                        <ComboBoxItem Content="最热门" IsSelected="True"/>
-                        <ComboBoxItem Content="最新"/>
-                        <ComboBoxItem Content="下载量"/>
-                        <ComboBoxItem Content="评分"/>
+                            Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                            Margin="0,0,15,0"
+                            SelectionChanged="FilterChanged">
+                        <ComboBoxItem Content="最热门" IsSelected="True" Tag="2"/>
+                        <ComboBoxItem Content="下载量" Tag="6"/>
+                        <ComboBoxItem Content="最新更新" Tag="3"/>
+                        <ComboBoxItem Content="名称" Tag="4"/>
                     </ComboBox>
+
+                    <!-- 搜索按钮 -->
+                    <Button x:Name="SearchButton"
+                          Grid.Column="4"
+                          Style="{StaticResource MaterialDesignRaisedButton}"
+                          Height="40"
+                          Width="90"
+                          Content="搜索"
+                          Click="SearchButton_Click"
+                          Background="{StaticResource PrimaryBrush}"/>
                 </Grid>
 
                 <!-- 资源列表 -->
-                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                    <StackPanel x:Name="ResourceListPanel" Margin="20,10,20,20">
-                        
-                        <!-- MOD 项示例 1 -->
-                        <Border Background="#2D2D30"
-                                Margin="0,0,0,15"
-                                CornerRadius="8"
-                                Padding="20">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="80"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-
-                                <!-- 图标 -->
-                                <Border Grid.Column="0"
-                                        Width="60"
-                                        Height="60"
-                                        CornerRadius="8"
-                                        Background="#3F3F46"
-                                        VerticalAlignment="Top">
-                                    <materialDesign:PackIcon Kind="Cube"
-                                                           Width="35"
-                                                           Height="35"
-                                                           Foreground="{StaticResource PrimaryBrush}"
-                                                           HorizontalAlignment="Center"
-                                                           VerticalAlignment="Center"/>
-                                </Border>
-
-                                <!-- 信息 -->
-                                <StackPanel Grid.Column="1" Margin="15,0,15,0">
-                                    <TextBlock Text="OptiFine HD" 
-                                             FontSize="18" 
-                                             FontWeight="SemiBold"/>
-                                    <TextBlock Text="优化游戏性能，提升帧率，支持光影" 
-                                             FontSize="13" 
-                                             Foreground="#AAAAAA"
-                                             TextWrapping="Wrap"
-                                             Margin="0,5,0,8"/>
-                                    <StackPanel Orientation="Horizontal">
-                                        <Border Background="#4CAF50"
-                                                CornerRadius="3"
-                                                Padding="6,2"
-                                                Margin="0,0,8,0">
-                                            <TextBlock Text="1.20.1" FontSize="11"/>
-                                        </Border>
-                                        <Border Background="#2196F3"
-                                                CornerRadius="3"
-                                                Padding="6,2"
-                                                Margin="0,0,8,0">
-                                            <TextBlock Text="性能优化" FontSize="11"/>
-                                        </Border>
-                                        <materialDesign:PackIcon Kind="Download" 
-                                                               Width="14" 
-                                                               Height="14"
-                                                               VerticalAlignment="Center"
-                                                               Margin="5,0,3,0"/>
-                                        <TextBlock Text="1.2M" 
-                                                 FontSize="12" 
-                                                 Foreground="#AAAAAA"
-                                                 VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                </StackPanel>
-
-                                <!-- 操作按钮 -->
-                                <StackPanel Grid.Column="2" VerticalAlignment="Center">
-                                    <Button Content="下载"
-                                          Style="{StaticResource MaterialDesignRaisedButton}"
-                                          Width="100"
-                                          Background="{StaticResource PrimaryBrush}"
-                                          Margin="0,0,0,8"/>
-                                    <Button Content="详情"
-                                          Style="{StaticResource MaterialDesignOutlinedButton}"
-                                          Width="100"/>
-                                </StackPanel>
-                            </Grid>
-                        </Border>
-
-                        <!-- MOD 项示例 2 -->
-                        <Border Background="#2D2D30"
-                                Margin="0,0,0,15"
-                                CornerRadius="8"
-                                Padding="20">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="80"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-
-                                <Border Grid.Column="0"
-                                        Width="60"
-                                        Height="60"
-                                        CornerRadius="8"
-                                        Background="#3F3F46"
-                                        VerticalAlignment="Top">
-                                    <materialDesign:PackIcon Kind="Fire"
-                                                           Width="35"
-                                                           Height="35"
-                                                           Foreground="#FF5722"
-                                                           HorizontalAlignment="Center"
-                                                           VerticalAlignment="Center"/>
-                                </Border>
-
-                                <StackPanel Grid.Column="1" Margin="15,0,15,0">
-                                    <TextBlock Text="Just Enough Items (JEI)" 
-                                             FontSize="18" 
-                                             FontWeight="SemiBold"/>
-                                    <TextBlock Text="查看所有物品和合成配方的必备工具" 
-                                             FontSize="13" 
-                                             Foreground="#AAAAAA"
-                                             TextWrapping="Wrap"
-                                             Margin="0,5,0,8"/>
-                                    <StackPanel Orientation="Horizontal">
-                                        <Border Background="#4CAF50"
-                                                CornerRadius="3"
-                                                Padding="6,2"
-                                                Margin="0,0,8,0">
-                                            <TextBlock Text="1.20.1" FontSize="11"/>
-                                        </Border>
-                                        <Border Background="#FF9800"
-                                                CornerRadius="3"
-                                                Padding="6,2"
-                                                Margin="0,0,8,0">
-                                            <TextBlock Text="实用工具" FontSize="11"/>
-                                        </Border>
-                                        <materialDesign:PackIcon Kind="Download" 
-                                                               Width="14" 
-                                                               Height="14"
-                                                               VerticalAlignment="Center"
-                                                               Margin="5,0,3,0"/>
-                                        <TextBlock Text="850K" 
-                                                 FontSize="12" 
-                                                 Foreground="#AAAAAA"
-                                                 VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                </StackPanel>
-
-                                <StackPanel Grid.Column="2" VerticalAlignment="Center">
-                                    <Button Content="下载"
-                                          Style="{StaticResource MaterialDesignRaisedButton}"
-                                          Width="100"
-                                          Background="{StaticResource PrimaryBrush}"
-                                          Margin="0,0,0,8"/>
-                                    <Button Content="详情"
-                                          Style="{StaticResource MaterialDesignOutlinedButton}"
-                                          Width="100"/>
-                                </StackPanel>
-                            </Grid>
-                        </Border>
-
-                        <!-- MOD 项示例 3 -->
-                        <Border Background="#2D2D30"
-                                Margin="0,0,0,15"
-                                CornerRadius="8"
-                                Padding="20">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="80"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-
-                                <Border Grid.Column="0"
-                                        Width="60"
-                                        Height="60"
-                                        CornerRadius="8"
-                                        Background="#3F3F46"
-                                        VerticalAlignment="Top">
-                                    <materialDesign:PackIcon Kind="Pickaxe"
-                                                           Width="35"
-                                                           Height="35"
-                                                           Foreground="#9C27B0"
-                                                           HorizontalAlignment="Center"
-                                                           VerticalAlignment="Center"/>
-                                </Border>
-
-                                <StackPanel Grid.Column="1" Margin="15,0,15,0">
-                                    <TextBlock Text="Applied Energistics 2" 
-                                             FontSize="18" 
-                                             FontWeight="SemiBold"/>
-                                    <TextBlock Text="强大的存储和自动化系统" 
-                                             FontSize="13" 
-                                             Foreground="#AAAAAA"
-                                             TextWrapping="Wrap"
-                                             Margin="0,5,0,8"/>
-                                    <StackPanel Orientation="Horizontal">
-                                        <Border Background="#4CAF50"
-                                                CornerRadius="3"
-                                                Padding="6,2"
-                                                Margin="0,0,8,0">
-                                            <TextBlock Text="1.19.4" FontSize="11"/>
-                                        </Border>
-                                        <Border Background="#673AB7"
-                                                CornerRadius="3"
-                                                Padding="6,2"
-                                                Margin="0,0,8,0">
-                                            <TextBlock Text="科技" FontSize="11"/>
-                                        </Border>
-                                        <materialDesign:PackIcon Kind="Download" 
-                                                               Width="14" 
-                                                               Height="14"
-                                                               VerticalAlignment="Center"
-                                                               Margin="5,0,3,0"/>
-                                        <TextBlock Text="620K" 
-                                                 FontSize="12" 
-                                                 Foreground="#AAAAAA"
-                                                 VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                </StackPanel>
-
-                                <StackPanel Grid.Column="2" VerticalAlignment="Center">
-                                    <Button Content="下载"
-                                          Style="{StaticResource MaterialDesignRaisedButton}"
-                                          Width="100"
-                                          Background="{StaticResource PrimaryBrush}"
-                                          Margin="0,0,0,8"/>
-                                    <Button Content="详情"
-                                          Style="{StaticResource MaterialDesignOutlinedButton}"
-                                          Width="100"/>
-                                </StackPanel>
-                            </Grid>
-                        </Border>
-
-                        <!-- MOD 项示例 4 -->
-                        <Border Background="#2D2D30"
-                                Margin="0,0,0,15"
-                                CornerRadius="8"
-                                Padding="20">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="80"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-
-                                <Border Grid.Column="0"
-                                        Width="60"
-                                        Height="60"
-                                        CornerRadius="8"
-                                        Background="#3F3F46"
-                                        VerticalAlignment="Top">
-                                    <materialDesign:PackIcon Kind="Nature"
-                                                           Width="35"
-                                                           Height="35"
-                                                           Foreground="#8BC34A"
-                                                           HorizontalAlignment="Center"
-                                                           VerticalAlignment="Center"/>
-                                </Border>
-
-                                <StackPanel Grid.Column="1" Margin="15,0,15,0">
-                                    <TextBlock Text="Biomes O' Plenty" 
-                                             FontSize="18" 
-                                             FontWeight="SemiBold"/>
-                                    <TextBlock Text="添加超过80个全新生物群系" 
-                                             FontSize="13" 
-                                             Foreground="#AAAAAA"
-                                             TextWrapping="Wrap"
-                                             Margin="0,5,0,8"/>
-                                    <StackPanel Orientation="Horizontal">
-                                        <Border Background="#4CAF50"
-                                                CornerRadius="3"
-                                                Padding="6,2"
-                                                Margin="0,0,8,0">
-                                            <TextBlock Text="1.20.1" FontSize="11"/>
-                                        </Border>
-                                        <Border Background="#4CAF50"
-                                                CornerRadius="3"
-                                                Padding="6,2"
-                                                Margin="0,0,8,0">
-                                            <TextBlock Text="世界生成" FontSize="11"/>
-                                        </Border>
-                                        <materialDesign:PackIcon Kind="Download" 
-                                                               Width="14" 
-                                                               Height="14"
-                                                               VerticalAlignment="Center"
-                                                               Margin="5,0,3,0"/>
-                                        <TextBlock Text="780K" 
-                                                 FontSize="12" 
-                                                 Foreground="#AAAAAA"
-                                                 VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                </StackPanel>
-
-                                <StackPanel Grid.Column="2" VerticalAlignment="Center">
-                                    <Button Content="下载"
-                                          Style="{StaticResource MaterialDesignRaisedButton}"
-                                          Width="100"
-                                          Background="{StaticResource PrimaryBrush}"
-                                          Margin="0,0,0,8"/>
-                                    <Button Content="详情"
-                                          Style="{StaticResource MaterialDesignOutlinedButton}"
-                                          Width="100"/>
-                                </StackPanel>
-                            </Grid>
-                        </Border>
-
+                <Grid Grid.Row="1">
+                    <!-- 加载提示 -->
+                    <StackPanel x:Name="LoadingIndicator"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               Visibility="Collapsed">
+                        <ProgressBar Style="{StaticResource MaterialDesignCircularProgressBar}"
+                                   Value="0"
+                                   IsIndeterminate="True"
+                                   Width="64"
+                                   Height="64"
+                                   HorizontalAlignment="Center"/>
+                        <TextBlock Text="加载中..."
+                                 FontSize="16"
+                                 Margin="0,20,0,0"
+                                 HorizontalAlignment="Center"
+                                 Foreground="{StaticResource TextBrush}"/>
                     </StackPanel>
-                </ScrollViewer>
+
+                    <!-- 空状态提示 -->
+                    <StackPanel x:Name="EmptyStatePanel"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               Visibility="Collapsed">
+                        <materialDesign:PackIcon Kind="Magnify"
+                                               Width="80"
+                                               Height="80"
+                                               Foreground="#666666"
+                                               HorizontalAlignment="Center"/>
+                        <TextBlock Text="输入关键词开始搜索"
+                                 FontSize="18"
+                                 Margin="0,20,0,0"
+                                 HorizontalAlignment="Center"
+                                 Foreground="#AAAAAA"/>
+                    </StackPanel>
+
+                    <ScrollViewer x:Name="ResourceScrollViewer"
+                                 VerticalScrollBarVisibility="Auto"
+                                 Visibility="Visible">
+                        <StackPanel x:Name="ResourceListPanel" Margin="20,10,20,20">
+                        <!-- 动态加载MOD列表 -->
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
             </Grid>
         </Border>
     </Grid>
 </Page>
-
