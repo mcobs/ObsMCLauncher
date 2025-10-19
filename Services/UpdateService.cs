@@ -462,10 +462,11 @@ namespace ObsMCLauncher.Services
             {
                 TagName = "v1.1.0",
                 Name = "ObsMCLauncher v1.1.0 - 重大更新",
-                Body = @"## 🎉 新增功能
+                Body = @"## 新增功能
+# 测试
+### 测试
 
-
-
+6666
 ---
 
 **完整更新日志：** https://github.com/mcobs/ObsMCLauncher/releases/tag/v1.1.0

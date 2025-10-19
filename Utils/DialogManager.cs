@@ -2,6 +2,7 @@ using System;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Effects;
@@ -490,16 +491,10 @@ namespace ObsMCLauncher.Utils
                     Margin = new Thickness(0, 0, 0, 25)
                 };
 
-                var contentBlock = new TextBlock
-                {
-                    Text = markdownContent,
-                    FontSize = 14,
-                    Foreground = (SolidColorBrush)Application.Current.Resources["TextSecondaryBrush"],
-                    TextWrapping = TextWrapping.Wrap,
-                    LineHeight = 24
-                };
+                // 解析 Markdown 并创建 UI
+                var contentPanel = ParseMarkdownToPanel(markdownContent);
 
-                scrollViewer.Content = contentBlock;
+                scrollViewer.Content = contentPanel;
                 stackPanel.Children.Add(scrollViewer);
 
                 // 按钮区域
@@ -558,6 +553,246 @@ namespace ObsMCLauncher.Utils
             });
 
             return await tcs.Task;
+        }
+
+        /// <summary>
+        /// 简单的 Markdown 解析器，将 Markdown 文本转换为 WPF 控件
+        /// </summary>
+        private StackPanel ParseMarkdownToPanel(string markdown)
+        {
+            var panel = new StackPanel();
+            
+            if (string.IsNullOrWhiteSpace(markdown))
+            {
+                return panel;
+            }
+
+            var lines = markdown.Split('\n');
+            var inCodeBlock = false;
+
+            foreach (var line in lines)
+            {
+                var trimmedLine = line.TrimEnd();
+                
+                // 处理代码块标记
+                if (trimmedLine.StartsWith("```"))
+                {
+                    inCodeBlock = !inCodeBlock;
+                    continue;
+                }
+
+                // 代码块内容
+                if (inCodeBlock)
+                {
+                    var codeBlock = new TextBlock
+                    {
+                        Text = line,
+                        FontFamily = new System.Windows.Media.FontFamily("Consolas"),
+                        FontSize = 12,
+                        Foreground = (SolidColorBrush)Application.Current.Resources["TextSecondaryBrush"],
+                        Background = (SolidColorBrush)Application.Current.Resources["SurfaceBrush"],
+                        Padding = new Thickness(8, 4, 8, 4),
+                        Margin = new Thickness(0, 2, 0, 2)
+                    };
+                    panel.Children.Add(codeBlock);
+                    continue;
+                }
+
+                // 分隔线
+                if (trimmedLine == "---" || trimmedLine == "***" || trimmedLine == "___")
+                {
+                    var separator = new Border
+                    {
+                        Height = 1,
+                        Background = (SolidColorBrush)Application.Current.Resources["BorderBrush"],
+                        Margin = new Thickness(0, 12, 0, 12)
+                    };
+                    panel.Children.Add(separator);
+                    continue;
+                }
+
+                // 标题
+                if (trimmedLine.StartsWith("#"))
+                {
+                    int level = 0;
+                    while (level < trimmedLine.Length && trimmedLine[level] == '#')
+                    {
+                        level++;
+                    }
+
+                    var headerText = trimmedLine.Substring(level).TrimStart();
+                    var fontSize = level switch
+                    {
+                        1 => 20.0,
+                        2 => 18.0,
+                        3 => 16.0,
+                        _ => 14.0
+                    };
+
+                    var headerBlock = new TextBlock
+                    {
+                        Text = headerText,
+                        FontSize = fontSize,
+                        FontWeight = FontWeights.Bold,
+                        Foreground = (SolidColorBrush)Application.Current.Resources["TextBrush"],
+                        Margin = new Thickness(0, level == 1 ? 16 : 12, 0, 8),
+                        TextWrapping = TextWrapping.Wrap
+                    };
+                    panel.Children.Add(headerBlock);
+                    continue;
+                }
+
+                // 列表项
+                if (trimmedLine.TrimStart().StartsWith("- ") || trimmedLine.TrimStart().StartsWith("* "))
+                {
+                    var indent = trimmedLine.Length - trimmedLine.TrimStart().Length;
+                    var listText = trimmedLine.TrimStart().Substring(2);
+                    
+                    var listPanel = new StackPanel
+                    {
+                        Orientation = Orientation.Horizontal,
+                        Margin = new Thickness(indent * 10, 2, 0, 2)
+                    };
+
+                    var bullet = new TextBlock
+                    {
+                        Text = "•",
+                        FontSize = 14,
+                        Foreground = (SolidColorBrush)Application.Current.Resources["PrimaryBrush"],
+                        Margin = new Thickness(0, 0, 8, 0),
+                        VerticalAlignment = VerticalAlignment.Top
+                    };
+
+                    var listContent = ParseInlineMarkdown(listText);
+                    
+                    listPanel.Children.Add(bullet);
+                    listPanel.Children.Add(listContent);
+                    panel.Children.Add(listPanel);
+                    continue;
+                }
+
+                // 空行
+                if (string.IsNullOrWhiteSpace(trimmedLine))
+                {
+                    var spacer = new Border
+                    {
+                        Height = 8
+                    };
+                    panel.Children.Add(spacer);
+                    continue;
+                }
+
+                // 普通文本
+                var textBlock = ParseInlineMarkdown(trimmedLine);
+                textBlock.Margin = new Thickness(0, 2, 0, 2);
+                panel.Children.Add(textBlock);
+            }
+
+            return panel;
+        }
+
+        /// <summary>
+        /// 解析行内 Markdown（粗体、链接、代码等）
+        /// </summary>
+        private TextBlock ParseInlineMarkdown(string text)
+        {
+            var textBlock = new TextBlock
+            {
+                FontSize = 14,
+                Foreground = (SolidColorBrush)Application.Current.Resources["TextSecondaryBrush"],
+                TextWrapping = TextWrapping.Wrap,
+                LineHeight = 20
+            };
+
+            var index = 0;
+            while (index < text.Length)
+            {
+                // 处理粗体 **text**
+                if (index < text.Length - 1 && text[index] == '*' && text[index + 1] == '*')
+                {
+                    var endIndex = text.IndexOf("**", index + 2);
+                    if (endIndex != -1)
+                    {
+                        var boldText = text.Substring(index + 2, endIndex - index - 2);
+                        var run = new Run(boldText)
+                        {
+                            FontWeight = FontWeights.Bold,
+                            Foreground = (SolidColorBrush)Application.Current.Resources["TextBrush"]
+                        };
+                        textBlock.Inlines.Add(run);
+                        index = endIndex + 2;
+                        continue;
+                    }
+                }
+
+                // 处理行内代码 `code`
+                if (text[index] == '`')
+                {
+                    var endIndex = text.IndexOf('`', index + 1);
+                    if (endIndex != -1)
+                    {
+                        var codeText = text.Substring(index + 1, endIndex - index - 1);
+                        var run = new Run(codeText)
+                        {
+                            FontFamily = new System.Windows.Media.FontFamily("Consolas"),
+                            Background = (SolidColorBrush)Application.Current.Resources["SurfaceBrush"],
+                            Foreground = (SolidColorBrush)Application.Current.Resources["PrimaryBrush"]
+                        };
+                        textBlock.Inlines.Add(run);
+                        index = endIndex + 1;
+                        continue;
+                    }
+                }
+
+                // 处理链接 [text](url)
+                if (text[index] == '[')
+                {
+                    var textEndIndex = text.IndexOf(']', index + 1);
+                    if (textEndIndex != -1 && textEndIndex + 1 < text.Length && text[textEndIndex + 1] == '(')
+                    {
+                        var urlEndIndex = text.IndexOf(')', textEndIndex + 2);
+                        if (urlEndIndex != -1)
+                        {
+                            var linkText = text.Substring(index + 1, textEndIndex - index - 1);
+                            var url = text.Substring(textEndIndex + 2, urlEndIndex - textEndIndex - 2);
+                            
+                            var hyperlink = new Hyperlink(new Run(linkText))
+                            {
+                                NavigateUri = new Uri(url, UriKind.RelativeOrAbsolute),
+                                Foreground = (SolidColorBrush)Application.Current.Resources["PrimaryBrush"],
+                                TextDecorations = null
+                            };
+                            
+                            hyperlink.RequestNavigate += (s, e) =>
+                            {
+                                try
+                                {
+                                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                                    {
+                                        FileName = e.Uri.ToString(),
+                                        UseShellExecute = true
+                                    });
+                                }
+                                catch (Exception ex)
+                                {
+                                    System.Diagnostics.Debug.WriteLine($"打开链接失败: {ex.Message}");
+                                }
+                            };
+                            
+                            textBlock.Inlines.Add(hyperlink);
+                            index = urlEndIndex + 1;
+                            continue;
+                        }
+                    }
+                }
+
+                // 普通字符
+                var normalText = new string(text[index], 1);
+                textBlock.Inlines.Add(new Run(normalText));
+                index++;
+            }
+
+            return textBlock;
         }
     }
 }
