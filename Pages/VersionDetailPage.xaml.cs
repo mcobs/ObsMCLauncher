@@ -63,6 +63,9 @@ namespace ObsMCLauncher.Pages
             
             // 异步加载OptiFine版本列表
             _ = LoadOptiFineVersionsAsync();
+            
+            // 异步加载Quilt版本列表
+            _ = LoadQuiltVersionsAsync();
         }
         
         /// <summary>
@@ -770,6 +773,159 @@ namespace ObsMCLauncher.Pages
             }
         }
 
+        /// <summary>
+        /// 加载Quilt版本列表
+        /// </summary>
+        private async Task LoadQuiltVersionsAsync()
+        {
+            // 设置加载状态
+            _ = Dispatcher.BeginInvoke(new Action(() =>
+            {
+                if (QuiltRadio != null)
+                {
+                    QuiltRadio.IsEnabled = false;
+                    QuiltRadio.ToolTip = "正在加载Quilt版本列表...";
+                }
+                if (QuiltVersionComboBox != null)
+                {
+                    QuiltVersionComboBox.Items.Clear();
+                    var loadingItem = new ComboBoxItem 
+                    { 
+                        Content = "正在加载中...", 
+                        IsEnabled = false,
+                        FontStyle = FontStyles.Italic
+                    };
+                    QuiltVersionComboBox.Items.Add(loadingItem);
+                    QuiltVersionComboBox.SelectedIndex = 0;
+                }
+            }));
+            
+            try
+            {
+                System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] 检查Quilt支持: {currentVersion}");
+
+                // 检查Quilt是否支持当前MC版本
+                var supportedVersions = await QuiltService.GetSupportedMinecraftVersionsAsync();
+                System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] 获取到的支持版本数量: {supportedVersions.Count}");
+                
+                if (supportedVersions.Count > 0)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] 支持的版本示例: {string.Join(", ", supportedVersions.Take(5))}");
+                    System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] 当前版本 '{currentVersion}' 是否在列表中: {supportedVersions.Contains(currentVersion)}");
+                }
+
+                // 直接尝试获取Quilt版本列表（如果能获取到说明支持）
+                System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] 尝试获取 MC {currentVersion} 的Quilt版本列表");
+                var quiltVersions = await QuiltService.GetQuiltVersionsAsync(currentVersion);
+                
+                // 如果没有获取到版本，说明不支持
+                if (quiltVersions == null || quiltVersions.Count == 0)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] Quilt不支持版本 {currentVersion} 或获取失败");
+                    
+                    _ = Dispatcher.BeginInvoke(new Action(() =>
+                    {
+                        if (QuiltRadio != null)
+                        {
+                            QuiltRadio.IsEnabled = false;
+                            QuiltRadio.ToolTip = $"Quilt暂不支持 Minecraft {currentVersion}";
+                        }
+                        if (QuiltVersionComboBox != null)
+                        {
+                            QuiltVersionComboBox.Items.Clear();
+                            var item = new ComboBoxItem 
+                            { 
+                                Content = "不支持此版本", 
+                                IsEnabled = false,
+                                FontStyle = FontStyles.Italic,
+                                Foreground = new SolidColorBrush(Colors.Gray)
+                            };
+                            QuiltVersionComboBox.Items.Add(item);
+                            QuiltVersionComboBox.SelectedIndex = 0;
+                        }
+                    }));
+                    return;
+                }
+                
+                _ = Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    if (quiltVersions != null && quiltVersions.Count > 0)
+                    {
+                        if (QuiltVersionComboBox != null)
+                        {
+                            QuiltVersionComboBox.Items.Clear();
+                            
+                            foreach (var version in quiltVersions)
+                            {
+                                var displayText = version.Version;
+                                
+                                // 标记最新版本
+                                if (version == quiltVersions.First())
+                                {
+                                    displayText += " (最新)";
+                                }
+                                
+                                var item = new ComboBoxItem 
+                                { 
+                                    Content = displayText,
+                                    Tag = version.Version,
+                                    ToolTip = $"Quilt Loader {version.Version}\n构建号: {version.Build}"
+                                };
+                                QuiltVersionComboBox.Items.Add(item);
+                            }
+                            
+                            // 自动选择第一个（最新）版本
+                            QuiltVersionComboBox.SelectedIndex = 0;
+                        }
+
+                        // 启用Quilt选项
+                        if (QuiltRadio != null)
+                        {
+                            QuiltRadio.IsEnabled = true;
+                            QuiltRadio.ToolTip = $"Quilt for Minecraft {currentVersion} ({quiltVersions.Count} 个版本可用)";
+                        }
+
+                        System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] 加载了 {quiltVersions.Count} 个Quilt版本，自动选择: {quiltVersions[0].Version}");
+                    }
+                    else
+                    {
+                        if (QuiltRadio != null)
+                        {
+                            QuiltRadio.IsEnabled = false;
+                            QuiltRadio.ToolTip = "未找到可用的Quilt版本";
+                        }
+                        if (QuiltVersionComboBox != null)
+                        {
+                            QuiltVersionComboBox.Items.Clear();
+                            var item = new ComboBoxItem { Content = "无可用版本", IsEnabled = false };
+                            QuiltVersionComboBox.Items.Add(item);
+                            QuiltVersionComboBox.SelectedIndex = 0;
+                        }
+                    }
+                }));
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] 加载Quilt版本失败: {ex.Message}");
+                
+                _ = Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    if (QuiltRadio != null)
+                    {
+                        QuiltRadio.IsEnabled = false;
+                        QuiltRadio.ToolTip = "加载Quilt版本列表失败";
+                    }
+                    if (QuiltVersionComboBox != null)
+                    {
+                        QuiltVersionComboBox.Items.Clear();
+                        var item = new ComboBoxItem { Content = "加载失败", IsEnabled = false };
+                        QuiltVersionComboBox.Items.Add(item);
+                        QuiltVersionComboBox.SelectedIndex = 0;
+                    }
+                }));
+            }
+        }
+
         private void LoaderRadio_Checked(object sender, RoutedEventArgs e)
         {
             // 禁用所有版本选择框
@@ -966,14 +1122,13 @@ namespace ObsMCLauncher.Pages
             else if (QuiltRadio?.IsChecked == true)
             {
                 var selectedItem = QuiltVersionComboBox?.SelectedItem as ComboBoxItem;
-                var quiltVersion = selectedItem?.Content?.ToString();
+                // 从Tag获取实际版本号
+                var quiltVersion = selectedItem?.Tag?.ToString();
                 
                 // 只有在选择了有效版本时才添加后缀
                 if (!string.IsNullOrEmpty(quiltVersion) && 
-                    !quiltVersion.Contains("请选择") && 
                     selectedItem?.IsEnabled == true)
                 {
-                    quiltVersion = quiltVersion.Replace(" (推荐)", "").Trim();
                     versionName += $"-quilt-{quiltVersion}";
                 }
                 else
@@ -1082,7 +1237,8 @@ namespace ObsMCLauncher.Pages
             {
                 loaderType = "Quilt";
                 var selectedItem = QuiltVersionComboBox?.SelectedItem as ComboBoxItem;
-                loaderVersion = selectedItem?.Content?.ToString() ?? "";
+                // 从Tag获取实际版本号（显示文本可能包含"(最新)"等标签）
+                loaderVersion = selectedItem?.Tag?.ToString() ?? "";
                 
                 // 检查是否有选择版本
                 if (string.IsNullOrEmpty(loaderVersion))
@@ -1330,6 +1486,11 @@ namespace ObsMCLauncher.Pages
                 {
                     // OptiFine安装流程
                     await InstallOptiFineAsync(loaderVersion, customVersionName, gameDirectory, config, progress);
+                }
+                else if (loaderType == "Quilt")
+                {
+                    // Quilt安装流程
+                    await InstallQuiltAsync(loaderVersion, customVersionName, gameDirectory, config, progress);
                 }
                 else
                 {
@@ -2455,6 +2616,182 @@ namespace ObsMCLauncher.Pages
                 await DialogManager.Instance.ShowError(
                     "安装失败",
                     $"Fabric安装失败：\n\n{ex.Message}\n\n请检查网络连接或尝试切换下载源。"
+                );
+
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// 安装Quilt
+        /// </summary>
+        private async Task InstallQuiltAsync(
+            string quiltLoaderVersion,
+            string customVersionName,
+            string gameDirectory,
+            LauncherConfig config,
+            IProgress<DownloadProgress> progress)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine($"[Quilt] 开始安装 Quilt Loader {quiltLoaderVersion} for MC {currentVersion}");
+
+                // 移除显示文本中的标记（如 "(最新)"）
+                var actualLoaderVersion = quiltLoaderVersion.Replace(" (最新)", "").Replace(" (推荐)", "").Trim();
+
+                // 1. 更新UI - 开始安装
+                _ = Dispatcher.BeginInvoke(() =>
+                {
+                    DownloadStatusText.Text = "正在准备安装Quilt...";
+                    CurrentFileText.Text = $"Quilt Loader {actualLoaderVersion}";
+                    DownloadOverallProgressBar.Value = 10;
+                    DownloadOverallPercentageText.Text = "10%";
+                    DownloadSpeedText.Text = "准备中...";
+                    DownloadSizeText.Text = "";
+                });
+
+                // 2. 使用QuiltService安装Quilt
+                var installSuccess = await QuiltService.InstallQuiltAsync(
+                    currentVersion,
+                    actualLoaderVersion,
+                    gameDirectory,
+                    customVersionName,
+                    (status, currentBytes, speed, totalBytes) =>
+                    {
+                        // 更新UI进度
+                        _ = Dispatcher.BeginInvoke(() =>
+                        {
+                            DownloadStatusText.Text = status;
+                            
+                            // 根据状态计算总体进度
+                            double overallProgress = 10;
+                            if (status.Contains("获取Quilt配置"))
+                                overallProgress = 20;
+                            else if (status.Contains("下载基础版本"))
+                            {
+                                // 基础版本下载占40%（20-60）
+                                if (totalBytes > 0 && currentBytes > 0)
+                                {
+                                    overallProgress = 20 + (currentBytes * 40.0 / totalBytes);
+                                }
+                                else
+                                {
+                                    overallProgress = 40;
+                                }
+                            }
+                            else if (status.Contains("安装Quilt配置"))
+                                overallProgress = 65;
+                            else if (status.Contains("下载Quilt库"))
+                            {
+                                // 库文件下载占25%（65-90）
+                                if (totalBytes > 0 && currentBytes > 0)
+                                {
+                                    overallProgress = 65 + (currentBytes * 25.0 / totalBytes);
+                                }
+                                else
+                                {
+                                    overallProgress = 80;
+                                }
+                            }
+                            else if (status.Contains("完成"))
+                                overallProgress = 100;
+
+                            DownloadOverallProgressBar.Value = overallProgress;
+                            DownloadOverallPercentageText.Text = $"{overallProgress:F0}%";
+                            
+                            // 更新当前文件进度（如果有）
+                            if (totalBytes > 0)
+                            {
+                                var currentProgress = (currentBytes * 100.0 / totalBytes);
+                                DownloadCurrentProgressBar.Value = currentProgress;
+                                DownloadCurrentPercentageText.Text = $"{currentProgress:F0}%";
+                                
+                                // 格式化大小显示
+                                DownloadSizeText.Text = $"{FormatFileSize(currentBytes)} / {FormatFileSize(totalBytes)}";
+                            }
+                            
+                            // 更新速度显示
+                            if (speed > 0)
+                            {
+                                DownloadSpeedText.Text = FormatSpeed(speed);
+                            }
+                            
+                            // 更新下载任务管理器
+                            if (_currentDownloadTaskId != null)
+                            {
+                                DownloadTaskManager.Instance.UpdateTaskProgress(
+                                    _currentDownloadTaskId,
+                                    overallProgress,
+                                    status,
+                                    speed
+                                );
+                            }
+                        });
+                    },
+                    _downloadCancellationToken!.Token
+                );
+
+                if (!installSuccess)
+                {
+                    throw new Exception("Quilt安装失败");
+                }
+
+                // 3. 安装成功
+                System.Diagnostics.Debug.WriteLine($"[Quilt] ✅ Quilt安装成功: {customVersionName}");
+                
+                _ = Dispatcher.BeginInvoke(() =>
+                {
+                    DownloadStatusText.Text = "Quilt安装完成！";
+                    DownloadOverallProgressBar.Value = 100;
+                    DownloadOverallPercentageText.Text = "100%";
+                    DownloadCurrentProgressBar.Value = 100;
+                    DownloadCurrentPercentageText.Text = "100%";
+                    DownloadSpeedText.Text = "完成";
+                });
+
+                // 标记任务完成
+                if (_currentDownloadTaskId != null)
+                {
+                    DownloadTaskManager.Instance.CompleteTask(_currentDownloadTaskId);
+                    _currentDownloadTaskId = null;
+                }
+
+                // 4. 显示成功消息
+                await Task.Delay(500); // 短暂延迟，让用户看到100%
+                await DialogManager.Instance.ShowSuccess(
+                    "安装完成",
+                    $"Quilt Loader {actualLoaderVersion} for Minecraft {currentVersion}\n\n已成功安装到版本 {customVersionName}！"
+                );
+
+                // 返回列表页面
+                BackButton_Click(null!, null!);
+            }
+            catch (OperationCanceledException)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Quilt] 安装已取消");
+                throw; // 重新抛出，让上层处理
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Quilt] 安装失败: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[Quilt] 堆栈跟踪: {ex.StackTrace}");
+                
+                // 标记任务失败
+                if (_currentDownloadTaskId != null)
+                {
+                    DownloadTaskManager.Instance.FailTask(_currentDownloadTaskId, ex.Message);
+                    _currentDownloadTaskId = null;
+                }
+
+                _ = Dispatcher.BeginInvoke(() =>
+                {
+                    DownloadStatusText.Text = "安装失败";
+                    DownloadOverallProgressBar.Value = 0;
+                });
+
+                await DialogManager.Instance.ShowError(
+                    "安装失败",
+                    $"Quilt安装失败：\n\n{ex.Message}\n\n请检查网络连接或尝试切换下载源。"
                 );
 
                 throw;
