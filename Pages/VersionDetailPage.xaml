@@ -7,7 +7,7 @@
       mc:Ignorable="d" 
       d:DesignHeight="700" d:DesignWidth="900"
       KeepAlive="True"
-      Background="{StaticResource BackgroundBrush}">
+      Background="{DynamicResource BackgroundBrush}">
 
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <Grid Margin="30">
@@ -45,12 +45,12 @@
                          Margin="0,0,0,10"/>
                 <TextBlock Text="配置版本信息和加载器选项" 
                          FontSize="14" 
-                         Foreground="{StaticResource TextSecondaryBrush}"/>
+                         Foreground="{DynamicResource TextSecondaryBrush}"/>
             </StackPanel>
 
             <!-- 版本信息卡片 -->
             <Border Grid.Row="1"
-                    Background="{StaticResource SurfaceBrush}"
+                    Background="{DynamicResource SurfaceBrush}"
                     CornerRadius="10"
                     Padding="25"
                     Margin="0,0,0,20">
@@ -75,7 +75,7 @@
                         <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,10,15">
                             <TextBlock Text="版本号" 
                                      FontSize="13" 
-                                     Foreground="{StaticResource TextSecondaryBrush}"
+                                     Foreground="{DynamicResource TextSecondaryBrush}"
                                      Margin="0,0,0,5"/>
                             <TextBlock x:Name="VersionNumber"
                                      Text="1.20.4" 
@@ -87,7 +87,7 @@
                         <StackPanel Grid.Row="0" Grid.Column="1" Margin="10,0,0,15">
                             <TextBlock Text="发布日期" 
                                      FontSize="13" 
-                                     Foreground="{StaticResource TextSecondaryBrush}"
+                                     Foreground="{DynamicResource TextSecondaryBrush}"
                                      Margin="0,0,0,5"/>
                             <TextBlock x:Name="ReleaseDate"
                                      Text="2023-12-07" 
@@ -99,7 +99,7 @@
                         <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,10,15">
                             <TextBlock Text="版本类型" 
                                      FontSize="13" 
-                                     Foreground="{StaticResource TextSecondaryBrush}"
+                                     Foreground="{DynamicResource TextSecondaryBrush}"
                                      Margin="0,0,0,5"/>
                             <Border x:Name="VersionTypeBorder"
                                   Background="{StaticResource PrimaryBrush}"
@@ -117,7 +117,7 @@
                         <StackPanel Grid.Row="1" Grid.Column="1" Margin="10,0,0,15">
                             <TextBlock Text="下载大小" 
                                      FontSize="13" 
-                                     Foreground="{StaticResource TextSecondaryBrush}"
+                                     Foreground="{DynamicResource TextSecondaryBrush}"
                                      Margin="0,0,0,5"/>
                             <TextBlock x:Name="DownloadSize"
                                      Text="计算中..." 
@@ -129,7 +129,7 @@
                         <StackPanel Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,5,0,0">
                             <TextBlock Text="安装名称" 
                                      FontSize="13" 
-                                     Foreground="{StaticResource TextSecondaryBrush}"
+                                     Foreground="{DynamicResource TextSecondaryBrush}"
                                      Margin="0,0,0,5"/>
                             <TextBox x:Name="VersionNameTextBox"
                                    materialDesign:HintAssist.Hint="自定义版本名称"
@@ -143,11 +143,11 @@
                                 </TextBox.Resources>
                             </TextBox>
                             <TextBlock FontSize="11" 
-                                     Foreground="{StaticResource TextSecondaryBrush}"
+                                     Foreground="{DynamicResource TextSecondaryBrush}"
                                      Margin="0,5,0,0">
                                 <Run Text="提示：版本将安装到 "/>
                                 <Run Text=".minecraft/versions/" FontWeight="SemiBold"/>
-                                <Run x:Name="VersionNamePreview" Text="Minecraft-1.20.4" FontWeight="SemiBold" Foreground="{StaticResource PrimaryBrush}"/>
+                                <Run x:Name="VersionNamePreview" Text="Minecraft-1.20.4" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryBrush}"/>
                             </TextBlock>
                         </StackPanel>
                     </Grid>
@@ -157,7 +157,7 @@
             <!-- 加载器选择 -->
             <Border x:Name="LoaderSelectionPanel"
                     Grid.Row="2"
-                    Background="{StaticResource SurfaceBrush}"
+                    Background="{DynamicResource SurfaceBrush}"
                     CornerRadius="10"
                     Padding="25"
                     Margin="0,0,0,20">
@@ -168,7 +168,7 @@
                              Margin="0,0,0,10"/>
                     <TextBlock Text="选择要安装的加载器（仅能选择一个，不选则安装原版）" 
                              FontSize="13" 
-                             Foreground="{StaticResource TextSecondaryBrush}"
+                             Foreground="{DynamicResource TextSecondaryBrush}"
                              Margin="0,0,0,20"/>
 
                     <!-- 原版 -->
@@ -202,7 +202,7 @@
                                              Margin="0,0,0,2"/>
                                     <TextBlock Text="Mojang 官方版本，不包含任何修改" 
                                              FontSize="12" 
-                                             Foreground="{StaticResource TextSecondaryBrush}"/>
+                                             Foreground="{DynamicResource TextSecondaryBrush}"/>
                                 </StackPanel>
                             </Grid>
                         </Border>
@@ -238,7 +238,7 @@
                                              Margin="0,0,0,2"/>
                                     <TextBlock Text="最流行的 MOD 加载器，支持大量经典 MOD" 
                                              FontSize="12" 
-                                             Foreground="{StaticResource TextSecondaryBrush}"/>
+                                             Foreground="{DynamicResource TextSecondaryBrush}"/>
                                 </StackPanel>
 
                                 <ComboBox x:Name="ForgeVersionComboBox"
@@ -285,7 +285,7 @@
                                              Margin="0,0,0,2"/>
                                     <TextBlock Text="Forge 的现代化分支，兼容性更好，性能更优" 
                                              FontSize="12" 
-                                             Foreground="{StaticResource TextSecondaryBrush}"/>
+                                             Foreground="{DynamicResource TextSecondaryBrush}"/>
                                 </StackPanel>
 
                                 <ComboBox x:Name="NeoForgeVersionComboBox"
@@ -332,7 +332,7 @@
                                              Margin="0,0,0,2"/>
                                     <TextBlock Text="轻量级 MOD 加载器，更新快，性能优秀" 
                                              FontSize="12" 
-                                             Foreground="{StaticResource TextSecondaryBrush}"/>
+                                             Foreground="{DynamicResource TextSecondaryBrush}"/>
                                 </StackPanel>
 
                                 <ComboBox x:Name="FabricVersionComboBox"
@@ -379,7 +379,7 @@
                                              Margin="0,0,0,2"/>
                                     <TextBlock Text="性能优化 MOD，支持光影和高清材质" 
                                              FontSize="12" 
-                                             Foreground="{StaticResource TextSecondaryBrush}"/>
+                                             Foreground="{DynamicResource TextSecondaryBrush}"/>
                                 </StackPanel>
 
                                 <ComboBox x:Name="OptiFineVersionComboBox"
@@ -426,7 +426,7 @@
                                              Margin="0,0,0,2"/>
                                     <TextBlock Text="基于 Fabric 的下一代 MOD 加载器" 
                                              FontSize="12" 
-                                             Foreground="{StaticResource TextSecondaryBrush}"/>
+                                             Foreground="{DynamicResource TextSecondaryBrush}"/>
                                 </StackPanel>
 
                                 <ComboBox x:Name="QuiltVersionComboBox"
@@ -461,7 +461,7 @@
                     <TextBlock x:Name="InstallHintText"
                              Text="点击「开始安装」将下载并安装该版本" 
                              FontSize="12" 
-                             Foreground="{StaticResource TextSecondaryBrush}"
+                             Foreground="{DynamicResource TextSecondaryBrush}"
                              Margin="0,5,0,0"/>
                     <TextBlock x:Name="DownloadAssetsHintText"
                              FontSize="11" 
@@ -495,7 +495,7 @@
             <!-- 下载进度面板（覆盖加载器选择区域） -->
             <Border x:Name="DownloadProgressPanel"
                     Grid.Row="2"
-                    Background="{StaticResource SurfaceBrush}"
+                    Background="{DynamicResource SurfaceBrush}"
                     CornerRadius="10"
                     Padding="30"
                     Margin="0,0,0,20"
@@ -516,7 +516,7 @@
                             <TextBlock x:Name="DownloadVersionText"
                                      Text="Minecraft 1.20.4" 
                                      FontSize="14" 
-                                     Foreground="{StaticResource TextSecondaryBrush}"/>
+                                     Foreground="{DynamicResource TextSecondaryBrush}"/>
                         </StackPanel>
                         
                         <TextBlock x:Name="DownloadOverallPercentageText"
@@ -524,7 +524,7 @@
                                  Text="0%" 
                                  FontSize="32" 
                                  FontWeight="Bold"
-                                 Foreground="{StaticResource PrimaryBrush}"
+                                 Foreground="{DynamicResource PrimaryBrush}"
                                  VerticalAlignment="Center"/>
                     </Grid>
 
@@ -543,7 +543,7 @@
                                      Grid.Column="1"
                                      Text="0 / 0 个文件" 
                                      FontSize="13" 
-                                     Foreground="{StaticResource TextSecondaryBrush}"/>
+                                     Foreground="{DynamicResource TextSecondaryBrush}"/>
                         </Grid>
                         
                         <ProgressBar x:Name="DownloadOverallProgressBar"
@@ -568,7 +568,7 @@
                                      Grid.Column="1"
                                      Text="0%" 
                                      FontSize="13" 
-                                     Foreground="{StaticResource PrimaryBrush}"/>
+                                     Foreground="{DynamicResource PrimaryBrush}"/>
                         </Grid>
                         
                         <ProgressBar x:Name="DownloadCurrentProgressBar"
@@ -598,10 +598,10 @@
                                                        Height="18"
                                                        VerticalAlignment="Center"
                                                        Margin="0,0,10,0"
-                                                       Foreground="{StaticResource PrimaryBrush}"/>
+                                                       Foreground="{DynamicResource PrimaryBrush}"/>
                                 <TextBlock Text="状态：" 
                                          FontSize="13" 
-                                         Foreground="{StaticResource TextSecondaryBrush}"
+                                         Foreground="{DynamicResource TextSecondaryBrush}"
                                                VerticalAlignment="Center"
                                          Margin="0,0,5,0"/>
                         <TextBlock x:Name="DownloadStatusText"
@@ -618,10 +618,10 @@
                                                        Height="18"
                                                VerticalAlignment="Center"
                                                        Margin="0,0,10,0"
-                                               Foreground="{StaticResource TextSecondaryBrush}"/>
+                                               Foreground="{DynamicResource TextSecondaryBrush}"/>
                                 <TextBlock Text="文件：" 
                                          FontSize="13" 
-                                         Foreground="{StaticResource TextSecondaryBrush}"
+                                         Foreground="{DynamicResource TextSecondaryBrush}"
                                          VerticalAlignment="Center"
                                          Margin="0,0,5,0"/>
                         <TextBlock x:Name="CurrentFileText"
@@ -638,10 +638,10 @@
                                                        Height="18"
                                                        VerticalAlignment="Center"
                                                        Margin="0,0,10,0"
-                                                       Foreground="{StaticResource TextSecondaryBrush}"/>
+                                                       Foreground="{DynamicResource TextSecondaryBrush}"/>
                                 <TextBlock Text="速度：" 
                                          FontSize="13" 
-                                         Foreground="{StaticResource TextSecondaryBrush}"
+                                         Foreground="{DynamicResource TextSecondaryBrush}"
                                          VerticalAlignment="Center"
                                          Margin="0,0,5,0"/>
                                 <TextBlock x:Name="DownloadSpeedText"
@@ -657,10 +657,10 @@
                                                        Height="18"
                                                        VerticalAlignment="Center"
                                                        Margin="0,0,10,0"
-                                                       Foreground="{StaticResource TextSecondaryBrush}"/>
+                                                       Foreground="{DynamicResource TextSecondaryBrush}"/>
                                 <TextBlock Text="大小：" 
                                          FontSize="13" 
-                                         Foreground="{StaticResource TextSecondaryBrush}"
+                                         Foreground="{DynamicResource TextSecondaryBrush}"
                                          VerticalAlignment="Center"
                                          Margin="0,0,5,0"/>
                                 <TextBlock x:Name="DownloadSizeText"

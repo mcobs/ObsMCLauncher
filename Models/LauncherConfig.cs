@@ -119,6 +119,11 @@ namespace ObsMCLauncher.Models
         public bool AutoCheckUpdate { get; set; } = true;
 
         /// <summary>
+        /// 主题模式：0=深色，1=浅色，2=跟随系统
+        /// </summary>
+        public int ThemeMode { get; set; } = 0;
+
+        /// <summary>
         /// 当前选中的版本
         /// </summary>
         public string? SelectedVersion { get; set; }

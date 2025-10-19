@@ -71,6 +71,7 @@ namespace ObsMCLauncher.Pages
             // 加载启动器设置
             CloseAfterLaunchToggle.IsChecked = _config.CloseAfterLaunch;
             AutoCheckUpdateToggle.IsChecked = _config.AutoCheckUpdate;
+            ThemeModeComboBox.SelectedIndex = _config.ThemeMode;
 
             // MaxMemoryTextBox已在上面设置
 
@@ -334,6 +335,7 @@ namespace ObsMCLauncher.Pages
                 // 保存启动器设置
                 _config.CloseAfterLaunch = CloseAfterLaunchToggle.IsChecked ?? false;
                 _config.AutoCheckUpdate = AutoCheckUpdateToggle.IsChecked ?? false;
+                _config.ThemeMode = ThemeModeComboBox.SelectedIndex;
 
                 // 持久化配置
                 _config.Save();
@@ -658,6 +660,39 @@ namespace ObsMCLauncher.Pages
         private void ToggleButton_Changed(object sender, RoutedEventArgs e)
         {
             AutoSaveSettingsImmediately("启动器设置");
+        }
+
+        /// <summary>
+        /// 主题模式切换
+        /// </summary>
+        private void ThemeModeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (!_isInitialized) return;
+
+            var themeMode = ThemeModeComboBox.SelectedIndex;
+            _config.ThemeMode = themeMode;
+            
+            // 应用主题
+            App.ApplyTheme(themeMode);
+            
+            // 保存配置
+            AutoSaveSettingsImmediately("主题模式");
+            
+            // 显示提示
+            var themeName = themeMode switch
+            {
+                0 => "深色模式",
+                1 => "浅色模式",
+                2 => "跟随系统",
+                _ => "未知"
+            };
+            
+            NotificationManager.Instance.ShowNotification(
+                "主题已切换",
+                $"已切换到{themeName}",
+                NotificationType.Success,
+                3
+            );
         }
 
         /// <summary>

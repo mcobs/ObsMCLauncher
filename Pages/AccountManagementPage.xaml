@@ -7,7 +7,7 @@
       mc:Ignorable="d" 
       d:DesignHeight="700" d:DesignWidth="900"
       KeepAlive="True"
-      Background="{StaticResource BackgroundBrush}"
+      Background="{DynamicResource BackgroundBrush}"
       UseLayoutRounding="True"
       TextOptions.TextFormattingMode="Display"
       TextOptions.TextRenderingMode="ClearType">
@@ -29,7 +29,7 @@
                          Margin="0,0,0,10"/>
                 <TextBlock Text="管理您的 Minecraft 账号，支持微软账户和离线模式" 
                          FontSize="14" 
-                         Foreground="{StaticResource TextSecondaryBrush}"
+                         Foreground="{DynamicResource TextSecondaryBrush}"
                          Margin="0,0,0,25"/>
             </StackPanel>
 
@@ -37,7 +37,7 @@
             <StackPanel Grid.Row="1">
                 
                 <!-- 添加账号按钮 -->
-                <Border Background="{StaticResource SurfaceBrush}"
+                <Border Background="{DynamicResource SurfaceBrush}"
                         CornerRadius="10"
                         Padding="25"
                         Margin="0,0,0,20">
@@ -55,7 +55,7 @@
                                      Margin="0,0,0,5"/>
                             <TextBlock Text="登录微软账户或创建离线账号" 
                                      FontSize="13" 
-                                     Foreground="{StaticResource TextSecondaryBrush}"/>
+                                     Foreground="{DynamicResource TextSecondaryBrush}"/>
                         </StackPanel>
 
                         <Button Grid.Column="1"
@@ -103,7 +103,7 @@
                         
                         <TextBlock Text="用户名" 
                                  FontSize="14" 
-                                 Foreground="{StaticResource TextSecondaryBrush}"
+                                 Foreground="{DynamicResource TextSecondaryBrush}"
                                  Margin="0,0,0,8"/>
                         
                         <TextBox x:Name="UsernameTextBox"
@@ -139,7 +139,7 @@
                 </StackPanel>
 
                 <!-- 账号类型说明 -->
-                <Border Background="{StaticResource SurfaceBrush}"
+                <Border Background="{DynamicResource SurfaceBrush}"
                         CornerRadius="10"
                         Padding="25"
                         Margin="0,20,0,0">
@@ -157,14 +157,14 @@
 
                             <!-- 微软账户说明 -->
                             <StackPanel Grid.Column="0" Margin="0,0,15,0">
-                                <Border Background="#2D2D30"
+                                <Border Background="{DynamicResource SurfaceElevatedBrush}"
                                         CornerRadius="8"
                                         Padding="15">
                                     <StackPanel>
                                         <materialDesign:PackIcon Kind="Microsoft"
                                                                Width="30"
                                                                Height="30"
-                                                               Foreground="{StaticResource PrimaryBrush}"
+                                                               Foreground="{DynamicResource PrimaryBrush}"
                                                                Margin="0,0,0,10"/>
                                         <TextBlock Text="微软账户" 
                                                  FontSize="16" 
@@ -172,29 +172,29 @@
                                                  Margin="0,0,0,5"/>
                                         <TextBlock Text="• 支持正版皮肤和披风" 
                                                  FontSize="12" 
-                                                 Foreground="{StaticResource TextSecondaryBrush}"
+                                                 Foreground="{DynamicResource TextSecondaryBrush}"
                                                  Margin="0,0,0,3"/>
                                         <TextBlock Text="• 可进入正版服务器" 
                                                  FontSize="12" 
-                                                 Foreground="{StaticResource TextSecondaryBrush}"
+                                                 Foreground="{DynamicResource TextSecondaryBrush}"
                                                  Margin="0,0,0,3"/>
                                         <TextBlock Text="• 需要购买正版游戏" 
                                                  FontSize="12" 
-                                                 Foreground="{StaticResource TextSecondaryBrush}"/>
+                                                 Foreground="{DynamicResource TextSecondaryBrush}"/>
                                     </StackPanel>
                                 </Border>
                             </StackPanel>
 
                             <!-- 离线账户说明 -->
                             <StackPanel Grid.Column="1" Margin="15,0,0,0">
-                                <Border Background="#2D2D30"
+                                <Border Background="{DynamicResource SurfaceElevatedBrush}"
                                         CornerRadius="8"
                                         Padding="15">
                                     <StackPanel>
                                         <materialDesign:PackIcon Kind="AccountOff"
                                                                Width="30"
                                                                Height="30"
-                                                               Foreground="{StaticResource SecondaryBrush}"
+                                                               Foreground="{DynamicResource SecondaryBrush}"
                                                                Margin="0,0,0,10"/>
                                         <TextBlock Text="离线账户" 
                                                  FontSize="16" 
@@ -202,15 +202,15 @@
                                                  Margin="0,0,0,5"/>
                                         <TextBlock Text="• 无需购买即可使用" 
                                                  FontSize="12" 
-                                                 Foreground="{StaticResource TextSecondaryBrush}"
+                                                 Foreground="{DynamicResource TextSecondaryBrush}"
                                                  Margin="0,0,0,3"/>
                                         <TextBlock Text="• 仅可进入离线服务器" 
                                                  FontSize="12" 
-                                                 Foreground="{StaticResource TextSecondaryBrush}"
+                                                 Foreground="{DynamicResource TextSecondaryBrush}"
                                                  Margin="0,0,0,3"/>
                                         <TextBlock Text="• 自定义任意用户名" 
                                                  FontSize="12" 
-                                                 Foreground="{StaticResource TextSecondaryBrush}"/>
+                                                 Foreground="{DynamicResource TextSecondaryBrush}"/>
                                     </StackPanel>
                                 </Border>
                             </StackPanel>

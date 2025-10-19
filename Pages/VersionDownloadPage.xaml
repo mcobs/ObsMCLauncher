@@ -7,7 +7,7 @@
       mc:Ignorable="d" 
       d:DesignHeight="700" d:DesignWidth="900"
       KeepAlive="True"
-      Background="{StaticResource BackgroundBrush}"
+      Background="{DynamicResource BackgroundBrush}"
       UseLayoutRounding="True"
       TextOptions.TextFormattingMode="Display"
       TextOptions.TextRenderingMode="ClearType">
@@ -28,7 +28,7 @@
                          Margin="0,0,0,10"/>
                 <TextBlock Text="管理已安装的版本或下载新版本" 
                          FontSize="14" 
-                         Foreground="{StaticResource TextSecondaryBrush}"
+                         Foreground="{DynamicResource TextSecondaryBrush}"
                          Margin="0,0,0,25"/>
             </StackPanel>
 
@@ -62,7 +62,7 @@
 
                     <!-- 工具栏 -->
                     <Border Grid.Row="0"
-                            Background="{StaticResource SurfaceBrush}"
+                            Background="{DynamicResource SurfaceBrush}"
                             CornerRadius="8"
                             Padding="15,10,15,10"
                             Margin="0,0,0,15">
@@ -75,7 +75,7 @@
                             <TextBlock Grid.Column="0"
                                      VerticalAlignment="Center"
                                      FontSize="13"
-                                     Foreground="{StaticResource TextSecondaryBrush}">
+                                     Foreground="{DynamicResource TextSecondaryBrush}">
                                 <Run Text="共 "/>
                                 <Run x:Name="InstalledVersionCountText" Text="0" FontWeight="SemiBold"/>
                                 <Run Text=" 个已安装版本"/>
@@ -102,7 +102,7 @@
 
                     <!-- 已安装版本列表 -->
                     <Border Grid.Row="1"
-                            Background="{StaticResource SurfaceBrush}"
+                            Background="{DynamicResource SurfaceBrush}"
                             CornerRadius="10">
                         <ScrollViewer VerticalScrollBarVisibility="Auto">
                             <StackPanel x:Name="InstalledVersionsPanel" Margin="10">
@@ -138,7 +138,7 @@
 
                     <!-- 筛选和搜索区域 -->
                     <Border Grid.Row="0"
-                Background="{StaticResource SurfaceBrush}"
+                Background="{DynamicResource SurfaceBrush}"
                 CornerRadius="8"
                 Padding="15,10,15,10"
                 Margin="0,0,0,15">
@@ -195,7 +195,7 @@
 
                     <!-- 版本列表 -->
                     <Border Grid.Row="1"
-                Background="{StaticResource SurfaceBrush}"
+                Background="{DynamicResource SurfaceBrush}"
                 CornerRadius="10">
             <Grid>
                 <!-- 加载指示器 -->
@@ -220,14 +220,14 @@
                                      FontSize="16"
                                      Margin="0,20,0,0"
                                      HorizontalAlignment="Center"
-                                     Foreground="{StaticResource TextBrush}"/>
+                                     Foreground="{DynamicResource TextBrush}"/>
                             
                             <TextBlock x:Name="LoadingDetailText"
                                      Text="正在从服务器获取数据..."
                                      FontSize="12"
                                      Margin="0,8,0,0"
                                      HorizontalAlignment="Center"
-                                     Foreground="{StaticResource TextSecondaryBrush}"/>
+                                     Foreground="{DynamicResource TextSecondaryBrush}"/>
                                 </StackPanel>
                     </materialDesign:Card>
                                 </StackPanel>

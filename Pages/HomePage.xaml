@@ -8,7 +8,7 @@
       mc:Ignorable="d" 
       d:DesignHeight="700" d:DesignWidth="900"
       KeepAlive="True"
-      Background="{StaticResource BackgroundBrush}"
+      Background="{DynamicResource BackgroundBrush}"
       UseLayoutRounding="True"
       TextOptions.TextFormattingMode="Display"
       TextOptions.TextRenderingMode="ClearType">
@@ -108,7 +108,7 @@
 
             <!-- 快速启动区域 -->
             <Border Grid.Row="2"
-                    Background="{StaticResource SurfaceBrush}"
+                    Background="{DynamicResource SurfaceBrush}"
                     CornerRadius="8"
                     Padding="20,15"
                     Margin="0,15,0,0">

@@ -12,12 +12,12 @@
         Width="1100"
         MinHeight="600"
         MinWidth="900"
-        Background="{StaticResource BackgroundBrush}"
+        Background="{DynamicResource BackgroundBrush}"
         WindowStartupLocation="CenterScreen"
         WindowStyle="None"
         AllowsTransparency="False"
         ResizeMode="CanResize"
-        TextElement.Foreground="{StaticResource TextBrush}"
+        TextElement.Foreground="{DynamicResource TextBrush}"
         TextElement.FontWeight="Regular"
         TextElement.FontSize="13"
         TextOptions.TextFormattingMode="Display" 
@@ -45,8 +45,8 @@
         <!-- 自定义标题栏 -->
         <Border Grid.Row="0" 
                 Grid.ColumnSpan="2" 
-                Background="{StaticResource SurfaceBrush}"
-                BorderBrush="{StaticResource BorderBrush}"
+                Background="{DynamicResource SurfaceBrush}"
+                BorderBrush="{DynamicResource BorderBrush}"
                 BorderThickness="0,0,0,1">
             <Grid>
                 <Grid.ColumnDefinitions>
@@ -84,7 +84,7 @@
                           Width="46"
                           Height="40"
                           Style="{StaticResource MaterialDesignFlatButton}"
-                          Foreground="{StaticResource TextBrush}"
+                          Foreground="{DynamicResource TextBrush}"
                           ToolTip="最小化">
                         <materialDesign:PackIcon Kind="WindowMinimize" 
                                                Width="16" 
@@ -97,7 +97,7 @@
                           Width="46"
                           Height="40"
                           Style="{StaticResource MaterialDesignFlatButton}"
-                          Foreground="{StaticResource TextBrush}"
+                          Foreground="{DynamicResource TextBrush}"
                           ToolTip="最大化">
                         <materialDesign:PackIcon x:Name="MaximizeIcon"
                                                Kind="WindowMaximize" 
@@ -111,7 +111,7 @@
                           Width="46"
                           Height="40"
                           Style="{StaticResource MaterialDesignFlatButton}"
-                          Foreground="{StaticResource TextBrush}"
+                          Foreground="{DynamicResource TextBrush}"
                           ToolTip="关闭">
                         <Button.Resources>
                             <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignFlatButton}">
@@ -133,8 +133,8 @@
         <!-- 左侧导航栏 - WinUI 3 风格 -->
         <Border Grid.Row="1"
                 Grid.Column="0" 
-                Background="{StaticResource SurfaceBrush}"
-                BorderBrush="{StaticResource BorderBrush}"
+                Background="{DynamicResource SurfaceBrush}"
+                BorderBrush="{DynamicResource BorderBrush}"
                 BorderThickness="0,0,1,0">
             <Grid>
                 <Grid.RowDefinitions>
@@ -171,12 +171,12 @@
                              FontWeight="SemiBold"
                              HorizontalAlignment="Center"
                              Margin="0,10,0,0"
-                             Foreground="{StaticResource TextBrush}"/>
+                             Foreground="{DynamicResource TextBrush}"/>
                     <TextBlock x:Name="NavVersionText"
                              Text="v1.0.0" 
                              FontSize="11" 
                              HorizontalAlignment="Center"
-                             Foreground="{StaticResource TextSecondaryBrush}"
+                             Foreground="{DynamicResource TextSecondaryBrush}"
                              Margin="0,5,0,0"/>
                 </StackPanel>
 
@@ -344,7 +344,7 @@
                Grid.Column="1" 
                NavigationUIVisibility="Hidden"
                JournalOwnership="OwnsJournal"
-               Background="{StaticResource BackgroundBrush}"/>
+               Background="{DynamicResource BackgroundBrush}"/>
 
         <!-- 全局：通知容器 -->
         <Canvas x:Name="GlobalNotificationContainer"
@@ -411,7 +411,7 @@
                 Grid.Column="1"
                 Width="400"
                 MaxHeight="500"
-                Background="{StaticResource SurfaceBrush}"
+                Background="{DynamicResource SurfaceBrush}"
                 CornerRadius="12"
                 Padding="0"
                 VerticalAlignment="Bottom"
@@ -480,7 +480,7 @@
                                 Margin="15,15">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Border Background="{StaticResource BackgroundBrush}"
+                                <Border Background="{DynamicResource BackgroundBrush}"
                                       CornerRadius="8"
                                       Padding="15"
                                       Margin="0,0,0,10">
@@ -539,14 +539,14 @@
                                             <TextBlock Grid.Column="0"
                                                      Text="{Binding StatusText}"
                                                      FontSize="12"
-                                                     Foreground="{StaticResource TextSecondaryBrush}"/>
+                                                     Foreground="{DynamicResource TextSecondaryBrush}"/>
 
                                             <TextBlock Grid.Column="1"
                                                      Text="{Binding StatusMessage}"
                                                      FontSize="11"
                                                      Margin="10,0"
                                                      TextTrimming="CharacterEllipsis"
-                                                     Foreground="{StaticResource TextSecondaryBrush}"/>
+                                                     Foreground="{DynamicResource TextSecondaryBrush}"/>
 
                                             <StackPanel Grid.Column="2" Orientation="Horizontal">
                                                 <TextBlock Text="{Binding ProgressText}"
@@ -556,7 +556,7 @@
                                                 <TextBlock Text="{Binding SpeedText}"
                                                          FontSize="11"
                                                          Margin="8,0,0,0"
-                                                         Foreground="{StaticResource TextSecondaryBrush}"/>
+                                                         Foreground="{DynamicResource TextSecondaryBrush}"/>
                                             </StackPanel>
                                         </Grid>
                                     </Grid>
@@ -568,10 +568,10 @@
 
                 <!-- 底部操作栏 -->
                 <Border Grid.Row="2"
-                        BorderBrush="{StaticResource BorderBrush}"
+                        BorderBrush="{DynamicResource BorderBrush}"
                         BorderThickness="0,1,0,0"
                         Padding="15,12"
-                        Background="{StaticResource BackgroundBrush}"
+                        Background="{DynamicResource BackgroundBrush}"
                         CornerRadius="0,0,12,12">
                     <Button Content="清除已完成"
                           Style="{StaticResource MaterialDesignOutlinedButton}"
@@ -591,7 +591,7 @@
                 HorizontalAlignment="Center"
                 Margin="0,15,0,0"
                 Width="420"
-                Background="{StaticResource SurfaceBrush}"
+                Background="{DynamicResource SurfaceBrush}"
                 CornerRadius="8"
                 Padding="15,12"
                 Visibility="Collapsed"
@@ -625,7 +625,7 @@
                         <TextBlock x:Name="GlobalLoginProgressStatus"
                                    Text="准备登录..."
                                    FontSize="11"
-                                   Foreground="{StaticResource TextSecondaryBrush}"/>
+                                   Foreground="{DynamicResource TextSecondaryBrush}"/>
                     </StackPanel>
                 </Grid>
                 <ProgressBar x:Name="GlobalLoginProgressBar"
@@ -655,7 +655,7 @@
                 Grid.RowSpan="2"
                 Grid.ColumnSpan="2"
                 Width="480"
-                Background="{StaticResource SurfaceBrush}"
+                Background="{DynamicResource SurfaceBrush}"
                 CornerRadius="12"
                 Padding="24"
                 Visibility="Collapsed"
@@ -682,7 +682,7 @@
                     <materialDesign:PackIcon Kind="Close"
                                              Width="20"
                                              Height="20"
-                                             Foreground="{StaticResource TextSecondaryBrush}"/>
+                                             Foreground="{DynamicResource TextSecondaryBrush}"/>
                 </Button>
                 
             <StackPanel>
@@ -705,7 +705,7 @@
                 <!-- 说明 -->
                 <TextBlock Text="如果浏览器没有自动打开，请手动访问以下网址："
                            FontSize="13"
-                           Foreground="{StaticResource TextSecondaryBrush}"
+                           Foreground="{DynamicResource TextSecondaryBrush}"
                            Margin="0,0,0,12"
                            TextWrapping="Wrap"/>
 
@@ -723,7 +723,7 @@
                         <TextBlock Grid.Row="0"
                                    Text="授权链接"
                                    FontSize="10"
-                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"
                                    Margin="0,0,0,6"/>
                         
                         <ScrollViewer Grid.Row="1"
@@ -775,7 +775,7 @@
                 <!-- 提示信息 -->
                 <TextBlock Text="💡 授权完成后，此对话框将自动关闭"
                            FontSize="11"
-                           Foreground="{StaticResource TextSecondaryBrush}"
+                           Foreground="{DynamicResource TextSecondaryBrush}"
                            Margin="0,12,0,0"
                            HorizontalAlignment="Center"/>
             </StackPanel>

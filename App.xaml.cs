@@ -2,6 +2,8 @@ using System;
 using System.IO;
 using System.Text;
 using System.Windows;
+using System.Windows.Media;
+using MaterialDesignThemes.Wpf;
 using ObsMCLauncher.Models;
 using ObsMCLauncher.Services;
 
@@ -85,6 +87,9 @@ namespace ObsMCLauncher
                 var config = LauncherConfig.Load();
                 DownloadSourceManager.Instance.SetDownloadSource(config.DownloadSource);
                 
+                // 应用主题
+                ApplyTheme(config.ThemeMode);
+                
                 try
                 {
                     Console.WriteLine($"启动器已启动，当前下载源: {config.DownloadSource}");
@@ -155,6 +160,95 @@ namespace ObsMCLauncher
             catch { }
             
             MessageBox.Show(errorMsg, "致命错误", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+
+        /// <summary>
+        /// 应用主题
+        /// </summary>
+        /// <param name="themeMode">0=深色，1=浅色，2=跟随系统</param>
+        public static void ApplyTheme(int themeMode)
+        {
+            try
+            {
+                var app = Application.Current;
+                if (app == null) return;
+
+                bool isDark = themeMode switch
+                {
+                    0 => true,  // 深色
+                    1 => false, // 浅色
+                    2 => IsSystemDarkMode(), // 跟随系统
+                    _ => true
+                };
+
+                System.Diagnostics.Debug.WriteLine($"[App] 切换主题: {(isDark ? "深色" : "浅色")}模式 (设置值: {themeMode})");
+
+                // 更新 MaterialDesign 主题
+                var paletteHelper = new PaletteHelper();
+                var theme = paletteHelper.GetTheme();
+                theme.SetBaseTheme(isDark ? Theme.Dark : Theme.Light);
+                paletteHelper.SetTheme(theme);
+
+                // 更新动态资源
+                if (isDark)
+                {
+                    app.Resources["BackgroundBrush"] = app.Resources["DarkBackgroundBrush"];
+                    app.Resources["SurfaceBrush"] = app.Resources["DarkSurfaceBrush"];
+                    app.Resources["SurfaceElevatedBrush"] = app.Resources["DarkSurfaceElevatedBrush"];
+                    app.Resources["SurfaceHoverBrush"] = app.Resources["DarkSurfaceHoverBrush"];
+                    app.Resources["TextBrush"] = app.Resources["DarkTextBrush"];
+                    app.Resources["TextSecondaryBrush"] = app.Resources["DarkTextSecondaryBrush"];
+                    app.Resources["TextTertiaryBrush"] = app.Resources["DarkTextTertiaryBrush"];
+                    app.Resources["BorderBrush"] = app.Resources["DarkBorderBrush"];
+                    app.Resources["DividerBrush"] = app.Resources["DarkDividerBrush"];
+                    app.Resources["InputBackgroundBrush"] = app.Resources["DarkInputBackgroundBrush"];
+                    app.Resources["InputForegroundBrush"] = app.Resources["DarkInputForegroundBrush"];
+                    app.Resources["TooltipBackgroundBrush"] = app.Resources["DarkTooltipBackgroundBrush"];
+                    app.Resources["TooltipForegroundBrush"] = new SolidColorBrush(Colors.White);
+                    app.Resources["TooltipBorderBrush"] = app.Resources["DarkBorderBrush"];
+                }
+                else
+                {
+                    app.Resources["BackgroundBrush"] = app.Resources["LightBackgroundBrush"];
+                    app.Resources["SurfaceBrush"] = app.Resources["LightSurfaceBrush"];
+                    app.Resources["SurfaceElevatedBrush"] = app.Resources["LightSurfaceElevatedBrush"];
+                    app.Resources["SurfaceHoverBrush"] = app.Resources["LightSurfaceHoverBrush"];
+                    app.Resources["TextBrush"] = app.Resources["LightTextBrush"];
+                    app.Resources["TextSecondaryBrush"] = app.Resources["LightTextSecondaryBrush"];
+                    app.Resources["TextTertiaryBrush"] = app.Resources["LightTextTertiaryBrush"];
+                    app.Resources["BorderBrush"] = app.Resources["LightBorderBrush"];
+                    app.Resources["DividerBrush"] = app.Resources["LightDividerBrush"];
+                    app.Resources["InputBackgroundBrush"] = app.Resources["LightInputBackgroundBrush"];
+                    app.Resources["InputForegroundBrush"] = app.Resources["LightInputForegroundBrush"];
+                    app.Resources["TooltipBackgroundBrush"] = app.Resources["LightTooltipBackgroundBrush"];
+                    app.Resources["TooltipForegroundBrush"] = app.Resources["LightTextBrush"];
+                    app.Resources["TooltipBorderBrush"] = app.Resources["LightBorderBrush"];
+                }
+
+                System.Diagnostics.Debug.WriteLine("[App] ✅ 主题切换完成");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[App] ❌ 主题切换失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 检测系统是否为深色模式
+        /// </summary>
+        private static bool IsSystemDarkMode()
+        {
+            try
+            {
+                using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(
+                    @"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize");
+                var value = key?.GetValue("AppsUseLightTheme");
+                return value is int intValue && intValue == 0;
+            }
+            catch
+            {
+                return true; // 默认深色
+            }
         }
     }
 }

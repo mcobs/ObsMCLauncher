@@ -7,7 +7,7 @@
       mc:Ignorable="d" 
       d:DesignHeight="700" d:DesignWidth="900"
       KeepAlive="True"
-      Background="{StaticResource BackgroundBrush}">
+      Background="{DynamicResource BackgroundBrush}">
 
     <Grid Margin="30">
         <Grid.RowDefinitions>
@@ -24,13 +24,13 @@
                      Margin="0,0,0,10"/>
             <TextBlock Text="下载 MOD、材质包、光影、数据包和整合包" 
                      FontSize="14" 
-                     Foreground="#AAAAAA"
+                     Foreground="{DynamicResource TextSecondaryBrush}"
                      Margin="0,0,0,25"/>
         </StackPanel>
 
         <!-- 分类标签页 -->
         <Border Grid.Row="1"
-                Background="{StaticResource SurfaceBrush}"
+                Background="{DynamicResource SurfaceBrush}"
                 CornerRadius="10"
                 Padding="10"
                 Margin="0,0,0,20">
@@ -76,7 +76,7 @@
 
         <!-- 内容区域 -->
         <Border Grid.Row="2"
-                Background="{StaticResource SurfaceBrush}"
+                Background="{DynamicResource SurfaceBrush}"
                 CornerRadius="10">
             <Grid>
                 <Grid.RowDefinitions>
@@ -173,7 +173,7 @@
                                  FontSize="16"
                                  Margin="0,20,0,0"
                                  HorizontalAlignment="Center"
-                                 Foreground="{StaticResource TextBrush}"/>
+                                 Foreground="{DynamicResource TextBrush}"/>
                     </StackPanel>
 
                     <!-- 空状态提示 -->
@@ -184,13 +184,13 @@
                         <materialDesign:PackIcon Kind="Magnify"
                                                Width="80"
                                                Height="80"
-                                               Foreground="#666666"
+                                               Foreground="{DynamicResource TextTertiaryBrush}"
                                                HorizontalAlignment="Center"/>
                         <TextBlock Text="输入关键词开始搜索"
                                  FontSize="18"
                                  Margin="0,20,0,0"
                                  HorizontalAlignment="Center"
-                                 Foreground="#AAAAAA"/>
+                                 Foreground="{DynamicResource TextSecondaryBrush}"/>
                     </StackPanel>
 
                     <ScrollViewer x:Name="ResourceScrollViewer"

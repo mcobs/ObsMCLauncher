@@ -7,54 +7,68 @@
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <!-- Material Design - WinUI 3 风格翡翠绿主题 -->
-                <materialDesign:BundledTheme BaseTheme="Dark" PrimaryColor="Teal" SecondaryColor="Green" />
+                <materialDesign:BundledTheme x:Name="MaterialTheme" BaseTheme="Dark" PrimaryColor="Teal" SecondaryColor="Green" />
                 <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesignTheme.Defaults.xaml" />
             </ResourceDictionary.MergedDictionaries>
 
-            <!-- 🎨 WinUI 3 风格配色方案 - 深色模式 + 翡翠绿主题 -->
+            <!-- 🎨 WinUI 3 风格配色方案 - 动态主题 -->
             
-            <!-- 主题色 - 翡翠绿系（现代翡翠色） -->
+            <!-- 主题色 - 翡翠绿系（通用） -->
             <SolidColorBrush x:Key="PrimaryBrush" Color="#10B981"/>
-            <!-- 翡翠绿 - Accent -->
             <SolidColorBrush x:Key="PrimaryDarkBrush" Color="#059669"/>
-            <!-- 深翡翠绿 -->
             <SolidColorBrush x:Key="PrimaryLightBrush" Color="#34D399"/>
-            <!-- 浅翡翠绿 -->
             <SolidColorBrush x:Key="SecondaryBrush" Color="#6EE7B7"/>
-            <!-- 薄荷绿 -->
             <SolidColorBrush x:Key="AccentBrush" Color="#10B981"/>
-            <!-- 强调色 -->
             
-            <!-- 背景色系 - 纯正的暗色模式黑 -->
+            <!-- ===== 深色主题配色 ===== -->
+            <SolidColorBrush x:Key="DarkBackgroundBrush" Color="#202020"/>
+            <SolidColorBrush x:Key="DarkSurfaceBrush" Color="#2C2C2C"/>
+            <SolidColorBrush x:Key="DarkSurfaceElevatedBrush" Color="#333333"/>
+            <SolidColorBrush x:Key="DarkSurfaceHoverBrush" Color="#3A3A3A"/>
+            <SolidColorBrush x:Key="DarkTextBrush" Color="#FFFFFF"/>
+            <SolidColorBrush x:Key="DarkTextSecondaryBrush" Color="#ADADAD"/>
+            <SolidColorBrush x:Key="DarkTextTertiaryBrush" Color="#8A8A8A"/>
+            <SolidColorBrush x:Key="DarkBorderBrush" Color="#414141"/>
+            <SolidColorBrush x:Key="DarkDividerBrush" Color="#2C2C2C"/>
+            <SolidColorBrush x:Key="DarkInputBackgroundBrush" Color="#2C2C2C"/>
+            <SolidColorBrush x:Key="DarkInputForegroundBrush" Color="#FFFFFF"/>
+            <SolidColorBrush x:Key="DarkTooltipBackgroundBrush" Color="#1E1E1E"/>
+            
+            <!-- ===== 浅色主题配色 ===== -->
+            <SolidColorBrush x:Key="LightBackgroundBrush" Color="#F5F5F5"/>
+            <SolidColorBrush x:Key="LightSurfaceBrush" Color="#FFFFFF"/>
+            <SolidColorBrush x:Key="LightSurfaceElevatedBrush" Color="#FAFAFA"/>
+            <SolidColorBrush x:Key="LightSurfaceHoverBrush" Color="#F0F0F0"/>
+            <SolidColorBrush x:Key="LightTextBrush" Color="#1F1F1F"/>
+            <SolidColorBrush x:Key="LightTextSecondaryBrush" Color="#616161"/>
+            <SolidColorBrush x:Key="LightTextTertiaryBrush" Color="#9E9E9E"/>
+            <SolidColorBrush x:Key="LightBorderBrush" Color="#E0E0E0"/>
+            <SolidColorBrush x:Key="LightDividerBrush" Color="#E5E5E5"/>
+            <SolidColorBrush x:Key="LightInputBackgroundBrush" Color="#FFFFFF"/>
+            <SolidColorBrush x:Key="LightInputForegroundBrush" Color="#1F1F1F"/>
+            <SolidColorBrush x:Key="LightTooltipBackgroundBrush" Color="#FFFFFF"/>
+            
+            <!-- 动态主题颜色（默认深色） -->
             <SolidColorBrush x:Key="BackgroundBrush" Color="#202020"/>
-            <!-- WinUI 3 App Background -->
             <SolidColorBrush x:Key="SurfaceBrush" Color="#2C2C2C"/>
-            <!-- Card Background -->
             <SolidColorBrush x:Key="SurfaceElevatedBrush" Color="#333333"/>
-            <!-- Elevated Surface -->
             <SolidColorBrush x:Key="SurfaceHoverBrush" Color="#3A3A3A"/>
-            <!-- Hover State -->
+            <SolidColorBrush x:Key="TextBrush" Color="#FFFFFF"/>
+            <SolidColorBrush x:Key="TextSecondaryBrush" Color="#ADADAD"/>
+            <SolidColorBrush x:Key="TextTertiaryBrush" Color="#8A8A8A"/>
+            <SolidColorBrush x:Key="TextDisabledBrush" Color="#6D6D6D"/>
+            <SolidColorBrush x:Key="BorderBrush" Color="#414141"/>
+            <SolidColorBrush x:Key="DividerBrush" Color="#2C2C2C"/>
+            <SolidColorBrush x:Key="HoverBrush" Color="#3A3A3A"/>
+            <SolidColorBrush x:Key="InputBackgroundBrush" Color="#2C2C2C"/>
+            <SolidColorBrush x:Key="InputForegroundBrush" Color="#FFFFFF"/>
+            <SolidColorBrush x:Key="TooltipBackgroundBrush" Color="#1E1E1E"/>
+            <SolidColorBrush x:Key="TooltipForegroundBrush" Color="#FFFFFF"/>
+            <SolidColorBrush x:Key="TooltipBorderBrush" Color="#414141"/>
             
-            <!-- 层次色 - 用于Mica效果模拟 -->
+            <!-- 层次色 -->
             <SolidColorBrush x:Key="LayerFillColorDefaultBrush" Color="#2C2C2C" Opacity="0.5"/>
             <SolidColorBrush x:Key="LayerOnMicaBaseAltFillColorDefaultBrush" Color="#333333" Opacity="0.7"/>
-            
-            <!-- 文字色系 - WinUI 3 标准 -->
-            <SolidColorBrush x:Key="TextBrush" Color="#FFFFFF"/>
-            <!-- Primary Text -->
-            <SolidColorBrush x:Key="TextSecondaryBrush" Color="#ADADAD"/>
-            <!-- Secondary Text -->
-            <SolidColorBrush x:Key="TextTertiaryBrush" Color="#8A8A8A"/>
-            <!-- Tertiary Text -->
-            <SolidColorBrush x:Key="TextDisabledBrush" Color="#6D6D6D"/>
-            <!-- Disabled Text -->
-            
-            <!-- 边框和分隔线 -->
-            <SolidColorBrush x:Key="BorderBrush" Color="#414141"/>
-            <!-- Subtle Border -->
-            <SolidColorBrush x:Key="DividerBrush" Color="#2C2C2C"/>
-            <!-- Divider -->
-            <SolidColorBrush x:Key="HoverBrush" Color="#3A3A3A"/>
             
             <!-- WinUI 3 圆角半径 -->
             <CornerRadius x:Key="ControlCornerRadius">4</CornerRadius>
@@ -70,7 +84,7 @@
             
             <!-- 📝 全局文字样式 - 统一字体粗细 -->
             <Style TargetType="TextBlock">
-                <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+                <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
                 <Setter Property="FontWeight" Value="Normal"/>
                 <!-- 统一为正常粗细 -->
                 <Setter Property="TextOptions.TextRenderingMode" Value="ClearType"/>
@@ -79,7 +93,7 @@
             
             <!-- 🔘 按钮样式 - 添加悬停动画 -->
             <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-                <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+                <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
                 <Setter Property="Cursor" Value="Hand"/>
                 <Style.Triggers>
                     <Trigger Property="IsMouseOver" Value="True">
@@ -105,43 +119,44 @@
             
             <!-- 🔘 单选按钮样式 -->
             <Style TargetType="RadioButton" BasedOn="{StaticResource {x:Type RadioButton}}">
-                <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+                <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
                 <Setter Property="FontWeight" Value="Normal"/>
                 <Setter Property="Cursor" Value="Hand"/>
             </Style>
             
             <!-- ☑️ 复选框样式 -->
             <Style TargetType="CheckBox" BasedOn="{StaticResource {x:Type CheckBox}}">
-                <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+                <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
                 <Setter Property="FontWeight" Value="Normal"/>
                 <Setter Property="Cursor" Value="Hand"/>
             </Style>
             
-            <!-- 📋 下拉框样式 - 修复文字颜色 -->
+            <!-- 📋 下拉框样式 - 动态主题 -->
             <Style TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
-                <Setter Property="Foreground" Value="#FFFFFF"/>
+                <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
                 <Setter Property="FontWeight" Value="Normal"/>
                 <Setter Property="Cursor" Value="Hand"/>
             </Style>
             
-            <!-- 📋 下拉框项样式 - 确保下拉选项文字可见 -->
+            <!-- 📋 下拉框项样式 - 动态主题 -->
             <Style TargetType="ComboBoxItem" BasedOn="{StaticResource {x:Type ComboBoxItem}}">
-                <Setter Property="Foreground" Value="#FFFFFF"/>
+                <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
                 <Setter Property="FontWeight" Value="Normal"/>
-                <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
+                <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
                 <Setter Property="Cursor" Value="Hand"/>
                 <Style.Triggers>
                     <Trigger Property="IsMouseOver" Value="True">
-                        <Setter Property="Background" Value="{StaticResource SurfaceHoverBrush}"/>
+                        <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}"/>
                     </Trigger>
                 </Style.Triggers>
             </Style>
             
             <!-- ✍️ 文本框样式 -->
             <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
-                <Setter Property="Foreground" Value="#FFFFFF"/>
+                <Setter Property="Foreground" Value="{DynamicResource InputForegroundBrush}"/>
+                <Setter Property="Background" Value="{DynamicResource InputBackgroundBrush}"/>
                 <Setter Property="FontWeight" Value="Normal"/>
-                <Setter Property="CaretBrush" Value="#FFFFFF"/>
+                <Setter Property="CaretBrush" Value="{DynamicResource InputForegroundBrush}"/>
                 <Setter Property="SelectionBrush" Value="{StaticResource PrimaryBrush}"/>
                 <Setter Property="SelectionTextBrush" Value="White"/>
             </Style>
@@ -151,11 +166,11 @@
                 <Setter Property="Cursor" Value="Hand"/>
             </Style>
             
-            <!-- 💬 ToolTip 样式 - 暗色主题 -->
+            <!-- 💬 ToolTip 样式 - 动态主题 -->
             <Style TargetType="ToolTip">
-                <Setter Property="Background" Value="#1E1E1E"/>
-                <Setter Property="Foreground" Value="#FFFFFF"/>
-                <Setter Property="BorderBrush" Value="#414141"/>
+                <Setter Property="Background" Value="{DynamicResource TooltipBackgroundBrush}"/>
+                <Setter Property="Foreground" Value="{DynamicResource TooltipForegroundBrush}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource TooltipBorderBrush}"/>
                 <Setter Property="BorderThickness" Value="1"/>
                 <Setter Property="Padding" Value="8,6"/>
                 <Setter Property="FontSize" Value="12"/>

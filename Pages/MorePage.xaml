@@ -12,7 +12,7 @@
     <Page.Resources>
         <!-- 卡片样式 -->
         <Style x:Key="CardBorder" TargetType="Border">
-            <Setter Property="Background" Value="#2D2D30"/>
+            <Setter Property="Background" Value="{DynamicResource SurfaceElevatedBrush}"/>
             <Setter Property="CornerRadius" Value="8"/>
             <Setter Property="Padding" Value="24"/>
             <Setter Property="Margin" Value="0,0,0,16"/>
@@ -25,8 +25,8 @@
 
         <!-- 链接按钮样式 -->
         <Style x:Key="LinkButton" TargetType="Button">
-            <Setter Property="Background" Value="#3C3C3C"/>
-            <Setter Property="Foreground" Value="#00A8FF"/>
+            <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryBrush}"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Padding" Value="16,12"/>
             <Setter Property="Margin" Value="0,0,12,12"/>
@@ -47,7 +47,7 @@
             </Setter>
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#4C4C4C"/>
+                    <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}"/>
                 </Trigger>
             </Style.Triggers>
         </Style>
@@ -56,7 +56,7 @@
         <Style x:Key="SectionTitle" TargetType="TextBlock">
             <Setter Property="FontSize" Value="18"/>
             <Setter Property="FontWeight" Value="Bold"/>
-            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
             <Setter Property="Margin" Value="0,0,0,16"/>
         </Style>
     </Page.Resources>
@@ -79,14 +79,14 @@
                     <TextBlock Text="ObsMCLauncher" 
                              FontSize="32" 
                              FontWeight="Bold" 
-                             Foreground="White"
+                             Foreground="{DynamicResource TextBrush}"
                              HorizontalAlignment="Center"
                              Margin="0,0,0,8"/>
                     
                     <!-- 副标题 -->
                     <TextBlock Text="黑曜石 Minecraft 启动器" 
                              FontSize="16" 
-                             Foreground="#A0A0A0"
+                             Foreground="{DynamicResource TextSecondaryBrush}"
                              HorizontalAlignment="Center"
                              Margin="0,0,0,16"/>
                     
@@ -94,7 +94,7 @@
                     <TextBlock x:Name="VersionText"
                              Text="版本 1.0.0"
                              FontSize="14"
-                             Foreground="#808080"
+                             Foreground="{DynamicResource TextTertiaryBrush}"
                              HorizontalAlignment="Center"/>
                 </StackPanel>
             </Border>
@@ -112,7 +112,7 @@
                                 <TextBlock Text="GitHub 开源仓库" FontWeight="SemiBold"/>
                                 <TextBlock Text="https://github.com/mcobs/ObsMCLauncher" 
                                          FontSize="12" 
-                                         Foreground="#808080"
+                                         Foreground="{DynamicResource TextTertiaryBrush}"
                                          Margin="0,4,0,0"/>
                             </StackPanel>
                         </StackPanel>
@@ -126,7 +126,7 @@
                                 <TextBlock Text="黑曜石论坛" FontWeight="SemiBold"/>
                                 <TextBlock Text="https://mcobs.cn/" 
                                          FontSize="12" 
-                                         Foreground="#808080"
+                                         Foreground="{DynamicResource TextTertiaryBrush}"
                                          Margin="0,4,0,0"/>
                             </StackPanel>
                         </StackPanel>
@@ -140,7 +140,7 @@
                     <TextBlock Text="特别感谢" Style="{StaticResource SectionTitle}"/>
                     
                     <!-- bangbang93 -->
-                    <Border Background="#3C3C3C" 
+                    <Border Background="{DynamicResource SurfaceBrush}" 
                             CornerRadius="6" 
                             Padding="16" 
                             Margin="0,0,0,12">
@@ -150,13 +150,13 @@
                                 <TextBlock Text="bangbang93" 
                                          FontSize="16" 
                                          FontWeight="SemiBold"
-                                         Foreground="White"
+                                         Foreground="{DynamicResource TextBrush}"
                                          VerticalAlignment="Center"/>
                             </StackPanel>
                             
                             <TextBlock Text="感谢提供 BMCLAPI 镜像源服务" 
                                      FontSize="14" 
-                                     Foreground="#B0B0B0"
+                                     Foreground="{DynamicResource TextSecondaryBrush}"
                                      Margin="26,0,0,12"
                                      TextWrapping="Wrap"/>
                             
@@ -166,14 +166,14 @@
                                     Background="#FF4757">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="❤️" FontSize="14" Margin="0,0,8,0"/>
-                                    <TextBlock Text="爱发电赞助" Foreground="White"/>
+                                    <TextBlock Text="爱发电赞助" Foreground="{DynamicResource TextBrush}"/>
                                 </StackPanel>
                             </Button>
                         </StackPanel>
                     </Border>
 
                     <!-- 图标设计师 -->
-                    <Border Background="#3C3C3C" 
+                    <Border Background="{DynamicResource SurfaceBrush}" 
                             CornerRadius="6" 
                             Padding="16">
                         <StackPanel>
@@ -182,13 +182,13 @@
                                 <TextBlock Text="路过的京局DF7C" 
                                          FontSize="16" 
                                          FontWeight="SemiBold"
-                                         Foreground="White"
+                                         Foreground="{DynamicResource TextBrush}"
                                          VerticalAlignment="Center"/>
                             </StackPanel>
                             
                             <TextBlock Text="感谢设计本软件的精美图标" 
                                      FontSize="14" 
-                                     Foreground="#B0B0B0"
+                                     Foreground="{DynamicResource TextSecondaryBrush}"
                                      Margin="26,8,0,0"
                                      TextWrapping="Wrap"/>
                         </StackPanel>
@@ -203,7 +203,7 @@
                     
                     <TextBlock Text="ObsMCLauncher 是一款现代化的 Minecraft 启动器，采用 .NET 8.0 和 WPF 技术开发，提供流畅的游戏管理体验。" 
                              FontSize="14" 
-                             Foreground="#B0B0B0"
+                             Foreground="{DynamicResource TextSecondaryBrush}"
                              TextWrapping="Wrap"
                              LineHeight="22"
                              Margin="0,0,0,16"/>
@@ -211,21 +211,21 @@
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                         <TextBlock Text="开源协议：" 
                                  FontSize="14" 
-                                 Foreground="#808080"
+                                 Foreground="{DynamicResource TextTertiaryBrush}"
                                  Width="80"/>
                         <TextBlock Text="MIT License" 
                                  FontSize="14" 
-                                 Foreground="White"/>
+                                 Foreground="{DynamicResource TextBrush}"/>
                     </StackPanel>
 
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="技术栈：" 
                                  FontSize="14" 
-                                 Foreground="#808080"
+                                 Foreground="{DynamicResource TextTertiaryBrush}"
                                  Width="80"/>
                         <TextBlock Text=".NET 8.0 | WPF | C#" 
                                  FontSize="14" 
-                                 Foreground="White"/>
+                                 Foreground="{DynamicResource TextBrush}"/>
                     </StackPanel>
                 </StackPanel>
             </Border>
@@ -235,10 +235,11 @@
                 <StackPanel>
                     <TextBlock Text="⚠️ 免责声明" 
                              Style="{StaticResource SectionTitle}"
-                             Foreground="#FFB100"/>
+                             Foreground="{DynamicResource PrimaryBrush}"/>
+                        <!-- 保留黄色强调色 -->
                     
                     <TextBlock FontSize="13" 
-                             Foreground="#909090"
+                             Foreground="{DynamicResource TextSecondaryBrush}"
                              TextWrapping="Wrap"
                              LineHeight="20">
                         <Run Text="本启动器为第三方工具，与 Mojang Studios 和 Microsoft 无关。"/>
@@ -253,7 +254,7 @@
             <!-- 版权信息 -->
             <TextBlock Text="© 2025 ObsMCLauncher - 使用 ❤️ 和 C# 构建" 
                      FontSize="12" 
-                     Foreground="#606060"
+                     Foreground="{DynamicResource TextTertiaryBrush}"
                      HorizontalAlignment="Center"
                      Margin="0,8,0,20"/>
         </StackPanel>
