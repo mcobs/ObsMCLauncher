@@ -20,7 +20,7 @@ namespace ObsMCLauncher.Services
         
         // CurseForge API Key - 需要从 https://console.curseforge.com/ 获取
         // 临时使用公共API密钥（HMCL使用的），生产环境需要申请自己的密钥！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！
-        private const string API_KEY = "$2a$10$bL4bIL5pUWqfcO7KQtnMReakwtfHbNKh6v1uTpKlzhwoueEJQnPnm";
+        private const string API_KEY = "$2a$10$74bDUfowjVtBbxnOLhRJG.06YALKhqHDmALto8HCJGPQGgZkBpGZS";
         
         // Section IDs (分类ID)
         public const int SECTION_MODS = 6;
