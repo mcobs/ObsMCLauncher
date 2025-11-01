@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -617,22 +618,38 @@ namespace ObsMCLauncher.Pages
                     _ => "资源"
                 };
 
-                var message = $"确认下载以下{resourceTypeName}吗？\n\n" +
-                            $"名称: {resourceDisplayName}\n" +
-                            $"版本: {file.DisplayName}\n" +
-                            $"文件大小: {FormatFileSize(file.FileLength)}";
-                
-                // 整合包和数据包不显示安装位置
-                if (_resourceType != "Modpacks" && _resourceType != "Datapacks")
+                // 整合包需要先输入版本名称
+                if (_resourceType == "Modpacks")
                 {
-                    message += $"\n\n将安装到: {_selectedVersionId}";
+                    var versionName = await DialogManager.Instance.ShowInputDialogAsync(
+                        "安装整合包",
+                        $"请为整合包命名：\n\n整合包: {resourceDisplayName}\n版本: {file.DisplayName}\n文件大小: {FormatFileSize(file.FileLength)}",
+                        _curseForgeMod.Name);
+
+                    if (!string.IsNullOrEmpty(versionName))
+                    {
+                        await DownloadAndInstallModpackAsync(file, versionName);
+                    }
                 }
-
-                var result = await DialogManager.Instance.ShowConfirmDialogAsync("确认下载", message);
-
-                if (result)
+                else
                 {
-                    await DownloadModFileAsync(file);
+                    var message = $"确认下载以下{resourceTypeName}吗？\n\n" +
+                                $"名称: {resourceDisplayName}\n" +
+                                $"版本: {file.DisplayName}\n" +
+                                $"文件大小: {FormatFileSize(file.FileLength)}";
+                    
+                    // 数据包不显示安装位置
+                    if (_resourceType != "Datapacks")
+                    {
+                        message += $"\n\n将安装到: {_selectedVersionId}";
+                    }
+
+                    var result = await DialogManager.Instance.ShowConfirmDialogAsync("确认下载", message);
+
+                    if (result)
+                    {
+                        await DownloadModFileAsync(file);
+                    }
                 }
             }
         }
@@ -642,6 +659,9 @@ namespace ObsMCLauncher.Pages
         /// </summary>
         private async System.Threading.Tasks.Task DownloadModFileAsync(CurseForgeFile file)
         {
+            CancellationTokenSource? cts = null;
+            string? taskId = null;
+            
             try
             {
                 var config = LauncherConfig.Load();
@@ -691,36 +711,84 @@ namespace ObsMCLauncher.Pages
                 }
 
                 var resourceName = _curseForgeMod?.Name ?? "资源";
+                
+                // 创建取消令牌并添加到下载管理器
+                cts = new CancellationTokenSource();
+                var downloadTask = DownloadTaskManager.Instance.AddTask(resourceName, DownloadTaskType.Resource, cts);
+                taskId = downloadTask.Id;
+                
                 NotificationManager.Instance.ShowNotification("下载", $"开始下载: {resourceName}", NotificationType.Info);
 
                 // 优化进度报告，避免频繁更新导致卡顿
                 int lastReportedPercent = -1;
                 var progress = new Progress<int>(percent =>
                 {
-                    // 每5%或达到100%时才报告一次
+                    // 每5%或达到100%时才报告一次，并更新下载管理器
                     if (percent >= 100 || percent - lastReportedPercent >= 5)
                     {
-                        Debug.WriteLine($"[ModDetailPage] 下载进度: {percent}%");
+                        if (taskId != null)
+                        {
+                            DownloadTaskManager.Instance.UpdateTaskProgress(taskId, percent, file.FileName);
+                        }
                         lastReportedPercent = percent;
                     }
                 });
 
-                var success = await CurseForgeService.DownloadModFileAsync(file, savePath, progress);
+                var success = await CurseForgeService.DownloadModFileAsync(file, savePath, progress, cts.Token);
+
+                if (cts.Token.IsCancellationRequested)
+                {
+                    Debug.WriteLine($"[ModDetailPage] 下载已取消: {resourceName}");
+                    if (taskId != null)
+                    {
+                        DownloadTaskManager.Instance.UpdateTaskProgress(taskId, 0, "已取消");
+                    }
+                    // 删除未完成的文件
+                    if (File.Exists(savePath))
+                    {
+                        try { File.Delete(savePath); } catch { }
+                    }
+                    return;
+                }
 
                 if (success)
                 {
+                    if (taskId != null)
+                    {
+                        DownloadTaskManager.Instance.CompleteTask(taskId);
+                    }
                     NotificationManager.Instance.ShowNotification("完成", $"下载完成: {resourceName}", NotificationType.Success, 5);
                     Debug.WriteLine($"[ModDetailPage] 下载成功: {savePath}");
                 }
                 else
                 {
+                    if (taskId != null)
+                    {
+                        DownloadTaskManager.Instance.FailTask(taskId, "下载失败");
+                    }
                     NotificationManager.Instance.ShowNotification("错误", $"下载失败: {resourceName}", NotificationType.Error);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                Debug.WriteLine($"[ModDetailPage] 下载已取消");
+                if (taskId != null)
+                {
+                    DownloadTaskManager.Instance.UpdateTaskProgress(taskId, 0, "已取消");
                 }
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"[ModDetailPage] 下载失败: {ex.Message}");
+                if (taskId != null)
+                {
+                    DownloadTaskManager.Instance.FailTask(taskId, ex.Message);
+                }
                 NotificationManager.Instance.ShowNotification("错误", $"下载失败: {ex.Message}", NotificationType.Error);
+            }
+            finally
+            {
+                cts?.Dispose();
             }
         }
 
@@ -1031,22 +1099,38 @@ namespace ObsMCLauncher.Pages
                     _ => "资源"
                 };
 
-                var message = $"确认下载以下{resourceTypeName}吗？\n\n" +
-                            $"名称: {resourceDisplayName}\n" +
-                            $"版本: {version.Name}\n" +
-                            $"文件大小: {FormatFileSize(file.Size)}";
-                
-                // 整合包和数据包不显示安装位置
-                if (_resourceType != "Modpacks" && _resourceType != "Datapacks")
+                // 整合包需要先输入版本名称
+                if (_resourceType == "Modpacks")
                 {
-                    message += $"\n\n将安装到: {_selectedVersionId}";
+                    var versionName = await DialogManager.Instance.ShowInputDialogAsync(
+                        "安装整合包",
+                        $"请为整合包命名：\n\n整合包: {resourceDisplayName}\n版本: {version.Name}\n文件大小: {FormatFileSize(file.Size)}",
+                        _modrinthMod.Title);
+
+                    if (!string.IsNullOrEmpty(versionName))
+                    {
+                        await DownloadAndInstallModrinthModpackAsync(version, file, versionName);
+                    }
                 }
-
-                var result = await DialogManager.Instance.ShowConfirmDialogAsync("确认下载", message);
-
-                if (result)
+                else
                 {
-                    await DownloadModrinthFileAsync(version, file);
+                    var message = $"确认下载以下{resourceTypeName}吗？\n\n" +
+                                $"名称: {resourceDisplayName}\n" +
+                                $"版本: {version.Name}\n" +
+                                $"文件大小: {FormatFileSize(file.Size)}";
+                    
+                    // 数据包不显示安装位置
+                    if (_resourceType != "Datapacks")
+                    {
+                        message += $"\n\n将安装到: {_selectedVersionId}";
+                    }
+
+                    var result = await DialogManager.Instance.ShowConfirmDialogAsync("确认下载", message);
+
+                    if (result)
+                    {
+                        await DownloadModrinthFileAsync(version, file);
+                    }
                 }
             }
         }
@@ -1056,6 +1140,9 @@ namespace ObsMCLauncher.Pages
         /// </summary>
         private async System.Threading.Tasks.Task DownloadModrinthFileAsync(ModrinthVersion version, ModrinthVersionFile file)
         {
+            CancellationTokenSource? cts = null;
+            string? taskId = null;
+            
             try
             {
                 var config = LauncherConfig.Load();
@@ -1105,37 +1192,85 @@ namespace ObsMCLauncher.Pages
                 }
 
                 var resourceName = _modrinthMod?.Title ?? "资源";
+                
+                // 创建取消令牌并添加到下载管理器
+                cts = new CancellationTokenSource();
+                var downloadTask = DownloadTaskManager.Instance.AddTask(resourceName, DownloadTaskType.Resource, cts);
+                taskId = downloadTask.Id;
+                
                 NotificationManager.Instance.ShowNotification("下载", $"开始下载: {resourceName}", NotificationType.Info);
 
                 // 优化进度报告，避免频繁更新导致卡顿
                 int lastReportedPercent = -1;
                 var progress = new Progress<int>(percent =>
                 {
-                    // 每5%或达到100%时才报告一次
+                    // 每5%或达到100%时才报告一次，并更新下载管理器
                     if (percent >= 100 || percent - lastReportedPercent >= 5)
                     {
-                        Debug.WriteLine($"[ModDetailPage] 下载进度: {percent}%");
+                        if (taskId != null)
+                        {
+                            DownloadTaskManager.Instance.UpdateTaskProgress(taskId, percent, file.Filename);
+                        }
                         lastReportedPercent = percent;
                     }
                 });
 
                 var modrinthService = new ModrinthService(DownloadSourceManager.Instance);
-                var success = await modrinthService.DownloadModFileAsync(file, savePath, progress);
+                var success = await modrinthService.DownloadModFileAsync(file, savePath, progress, cts.Token);
+
+                if (cts.Token.IsCancellationRequested)
+                {
+                    Debug.WriteLine($"[ModDetailPage] 下载已取消: {resourceName}");
+                    if (taskId != null)
+                    {
+                        DownloadTaskManager.Instance.UpdateTaskProgress(taskId, 0, "已取消");
+                    }
+                    // 删除未完成的文件
+                    if (File.Exists(savePath))
+                    {
+                        try { File.Delete(savePath); } catch { }
+                    }
+                    return;
+                }
 
                 if (success)
                 {
+                    if (taskId != null)
+                    {
+                        DownloadTaskManager.Instance.CompleteTask(taskId);
+                    }
                     NotificationManager.Instance.ShowNotification("完成", $"下载完成: {resourceName}", NotificationType.Success, 5);
                     Debug.WriteLine($"[ModDetailPage] 下载成功: {savePath}");
                 }
                 else
                 {
+                    if (taskId != null)
+                    {
+                        DownloadTaskManager.Instance.FailTask(taskId, "下载失败");
+                    }
                     NotificationManager.Instance.ShowNotification("失败", $"下载失败: {resourceName}", NotificationType.Error);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                Debug.WriteLine($"[ModDetailPage] 下载已取消");
+                if (taskId != null)
+                {
+                    DownloadTaskManager.Instance.UpdateTaskProgress(taskId, 0, "已取消");
                 }
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"[ModDetailPage] 下载失败: {ex.Message}");
+                if (taskId != null)
+                {
+                    DownloadTaskManager.Instance.FailTask(taskId, ex.Message);
+                }
                 NotificationManager.Instance.ShowNotification("错误", $"下载失败: {ex.Message}", NotificationType.Error);
+            }
+            finally
+            {
+                cts?.Dispose();
             }
         }
 
@@ -1203,6 +1338,306 @@ namespace ObsMCLauncher.Pages
             if (NavigationService != null && NavigationService.CanGoBack)
             {
                 NavigationService.GoBack();
+            }
+        }
+
+        /// <summary>
+        /// 下载并安装CurseForge整合包
+        /// </summary>
+        private async System.Threading.Tasks.Task DownloadAndInstallModpackAsync(CurseForgeFile file, string versionName)
+        {
+            CancellationTokenSource? cts = null;
+            string? taskId = null;
+            
+            try
+            {
+                var config = LauncherConfig.Load();
+                
+                // 下载到 versions 目录
+                var versionsDir = Path.Combine(config.GameDirectory, "versions");
+                Directory.CreateDirectory(versionsDir);
+
+                var tempZipPath = Path.Combine(versionsDir, file.FileName);
+
+                // 创建取消令牌并添加到下载管理器
+                cts = new CancellationTokenSource();
+                var downloadTask = DownloadTaskManager.Instance.AddTask($"{_curseForgeMod?.Name} (整合包)", DownloadTaskType.Resource, cts);
+                taskId = downloadTask.Id;
+                
+                NotificationManager.Instance.ShowNotification("下载", $"正在下载整合包: {_curseForgeMod?.Name}", NotificationType.Info);
+
+                // 下载整合包文件 (0-50%)
+                Debug.WriteLine($"[ModDetailPage] 开始下载整合包: {file.FileName} 到 {tempZipPath}");
+
+                int lastReportedPercent = -1;
+                var progress = new Progress<int>(percent =>
+                {
+                    if (percent >= 100 || percent - lastReportedPercent >= 5)
+                    {
+                        // 下载占总进度的50%
+                        var totalPercent = percent / 2.0;
+                        if (taskId != null)
+                        {
+                            DownloadTaskManager.Instance.UpdateTaskProgress(taskId, totalPercent, "正在下载...");
+                        }
+                        lastReportedPercent = percent;
+                    }
+                });
+
+                var downloadSuccess = await CurseForgeService.DownloadModFileAsync(file, tempZipPath, progress, cts.Token);
+
+                if (cts.Token.IsCancellationRequested)
+                {
+                    Debug.WriteLine($"[ModDetailPage] 整合包下载已取消");
+                    if (taskId != null)
+                    {
+                        DownloadTaskManager.Instance.UpdateTaskProgress(taskId, 0, "已取消");
+                    }
+                    // 删除未完成的下载文件
+                    if (File.Exists(tempZipPath))
+                    {
+                        try 
+                        { 
+                            File.Delete(tempZipPath);
+                            Debug.WriteLine($"[ModDetailPage] 已删除未完成的下载文件: {tempZipPath}");
+                        } 
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine($"[ModDetailPage] 删除未完成文件失败: {ex.Message}");
+                        }
+                    }
+                    return;
+                }
+
+                if (!downloadSuccess)
+                {
+                    if (taskId != null)
+                    {
+                        DownloadTaskManager.Instance.FailTask(taskId, "下载失败");
+                    }
+                    NotificationManager.Instance.ShowNotification("错误", "整合包下载失败", NotificationType.Error);
+                    return;
+                }
+
+                Debug.WriteLine($"[ModDetailPage] 整合包下载完成，开始安装");
+
+                // 安装整合包 (50-100%)
+                NotificationManager.Instance.ShowNotification("安装", $"正在安装整合包: {versionName}", NotificationType.Info);
+
+                var installSuccess = await ModpackInstallService.InstallModpackAsync(
+                    tempZipPath,
+                    versionName,
+                    config.GameDirectory,
+                    (status, percent) =>
+                    {
+                        // 安装占总进度的50%，所以要加上前50%的下载进度
+                        var totalPercent = 50 + (percent / 2.0);
+                        if (taskId != null)
+                        {
+                            DownloadTaskManager.Instance.UpdateTaskProgress(taskId, totalPercent, status);
+                        }
+                    });
+
+                if (installSuccess)
+                {
+                    if (taskId != null)
+                    {
+                        DownloadTaskManager.Instance.CompleteTask(taskId);
+                    }
+                    NotificationManager.Instance.ShowNotification("完成", $"整合包安装成功: {versionName}", NotificationType.Success, 5);
+                    Debug.WriteLine($"[ModDetailPage] 整合包安装成功: {versionName}");
+
+                    // 清理整合包文件
+                    try
+                    {
+                        File.Delete(tempZipPath);
+                        Debug.WriteLine($"[ModDetailPage] 已删除整合包文件: {tempZipPath}");
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"[ModDetailPage] 删除整合包文件失败: {ex.Message}");
+                    }
+                }
+                else
+                {
+                    if (taskId != null)
+                    {
+                        DownloadTaskManager.Instance.FailTask(taskId, "安装失败");
+                    }
+                    NotificationManager.Instance.ShowNotification("错误", "整合包安装失败", NotificationType.Error);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                Debug.WriteLine($"[ModDetailPage] 整合包安装已取消");
+                if (taskId != null)
+                {
+                    DownloadTaskManager.Instance.UpdateTaskProgress(taskId, 0, "已取消");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[ModDetailPage] 整合包安装失败: {ex.Message}");
+                if (taskId != null)
+                {
+                    DownloadTaskManager.Instance.FailTask(taskId, ex.Message);
+                }
+                NotificationManager.Instance.ShowNotification("错误", $"整合包安装失败: {ex.Message}", NotificationType.Error);
+            }
+            finally
+            {
+                cts?.Dispose();
+            }
+        }
+
+        /// <summary>
+        /// 下载并安装Modrinth整合包
+        /// </summary>
+        private async System.Threading.Tasks.Task DownloadAndInstallModrinthModpackAsync(ModrinthVersion version, ModrinthVersionFile file, string versionName)
+        {
+            CancellationTokenSource? cts = null;
+            string? taskId = null;
+            
+            try
+            {
+                var config = LauncherConfig.Load();
+                
+                // 下载到 versions 目录
+                var versionsDir = Path.Combine(config.GameDirectory, "versions");
+                Directory.CreateDirectory(versionsDir);
+
+                var tempZipPath = Path.Combine(versionsDir, file.Filename);
+
+                // 创建取消令牌并添加到下载管理器
+                cts = new CancellationTokenSource();
+                var downloadTask = DownloadTaskManager.Instance.AddTask($"{_modrinthMod?.Title} (整合包)", DownloadTaskType.Resource, cts);
+                taskId = downloadTask.Id;
+                
+                NotificationManager.Instance.ShowNotification("下载", $"正在下载整合包: {_modrinthMod?.Title}", NotificationType.Info);
+
+                // 下载整合包文件 (0-50%)
+                Debug.WriteLine($"[ModDetailPage] 开始下载Modrinth整合包: {file.Filename} 到 {tempZipPath}");
+
+                var modrinthService = new ModrinthService(DownloadSourceManager.Instance);
+
+                int lastReportedPercent = -1;
+                var progress = new Progress<int>(percent =>
+                {
+                    if (percent >= 100 || percent - lastReportedPercent >= 5)
+                    {
+                        // 下载占总进度的50%
+                        var totalPercent = percent / 2.0;
+                        if (taskId != null)
+                        {
+                            DownloadTaskManager.Instance.UpdateTaskProgress(taskId, totalPercent, "正在下载...");
+                        }
+                        lastReportedPercent = percent;
+                    }
+                });
+
+                var downloadSuccess = await modrinthService.DownloadModFileAsync(file, tempZipPath, progress, cts.Token);
+
+                if (cts.Token.IsCancellationRequested)
+                {
+                    Debug.WriteLine($"[ModDetailPage] Modrinth整合包下载已取消");
+                    if (taskId != null)
+                    {
+                        DownloadTaskManager.Instance.UpdateTaskProgress(taskId, 0, "已取消");
+                    }
+                    // 删除未完成的下载文件
+                    if (File.Exists(tempZipPath))
+                    {
+                        try 
+                        { 
+                            File.Delete(tempZipPath);
+                            Debug.WriteLine($"[ModDetailPage] 已删除未完成的下载文件: {tempZipPath}");
+                        } 
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine($"[ModDetailPage] 删除未完成文件失败: {ex.Message}");
+                        }
+                    }
+                    return;
+                }
+
+                if (!downloadSuccess)
+                {
+                    if (taskId != null)
+                    {
+                        DownloadTaskManager.Instance.FailTask(taskId, "下载失败");
+                    }
+                    NotificationManager.Instance.ShowNotification("错误", "整合包下载失败", NotificationType.Error);
+                    return;
+                }
+
+                Debug.WriteLine($"[ModDetailPage] Modrinth整合包下载完成，开始安装");
+
+                // 安装整合包 (50-100%)
+                NotificationManager.Instance.ShowNotification("安装", $"正在安装整合包: {versionName}", NotificationType.Info);
+
+                var installSuccess = await ModpackInstallService.InstallModpackAsync(
+                    tempZipPath,
+                    versionName,
+                    config.GameDirectory,
+                    (status, percent) =>
+                    {
+                        // 安装占总进度的50%，所以要加上前50%的下载进度
+                        var totalPercent = 50 + (percent / 2.0);
+                        if (taskId != null)
+                        {
+                            DownloadTaskManager.Instance.UpdateTaskProgress(taskId, totalPercent, status);
+                        }
+                    });
+
+                if (installSuccess)
+                {
+                    if (taskId != null)
+                    {
+                        DownloadTaskManager.Instance.CompleteTask(taskId);
+                    }
+                    NotificationManager.Instance.ShowNotification("完成", $"整合包安装成功: {versionName}", NotificationType.Success, 5);
+                    Debug.WriteLine($"[ModDetailPage] Modrinth整合包安装成功: {versionName}");
+
+                    // 清理整合包文件
+                    try
+                    {
+                        File.Delete(tempZipPath);
+                        Debug.WriteLine($"[ModDetailPage] 已删除整合包文件: {tempZipPath}");
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"[ModDetailPage] 删除整合包文件失败: {ex.Message}");
+                    }
+                }
+                else
+                {
+                    if (taskId != null)
+                    {
+                        DownloadTaskManager.Instance.FailTask(taskId, "安装失败");
+                    }
+                    NotificationManager.Instance.ShowNotification("错误", "整合包安装失败", NotificationType.Error);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                Debug.WriteLine($"[ModDetailPage] Modrinth整合包安装已取消");
+                if (taskId != null)
+                {
+                    DownloadTaskManager.Instance.UpdateTaskProgress(taskId, 0, "已取消");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[ModDetailPage] Modrinth整合包安装失败: {ex.Message}");
+                if (taskId != null)
+                {
+                    DownloadTaskManager.Instance.FailTask(taskId, ex.Message);
+                }
+                NotificationManager.Instance.ShowNotification("错误", $"整合包安装失败: {ex.Message}", NotificationType.Error);
+            }
+            finally
+            {
+                cts?.Dispose();
             }
         }
     }

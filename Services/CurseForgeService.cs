@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using ObsMCLauncher.Models;
 
@@ -244,7 +245,8 @@ namespace ObsMCLauncher.Services
         public static async Task<bool> DownloadModFileAsync(
             CurseForgeFile file,
             string savePath,
-            IProgress<int>? progress = null)
+            IProgress<int>? progress = null,
+            CancellationToken cancellationToken = default)
         {
             try
             {
@@ -252,7 +254,7 @@ namespace ObsMCLauncher.Services
                 Debug.WriteLine($"[CurseForge] 下载文件: {file.FileName}");
                 Debug.WriteLine($"[CurseForge] 下载地址: {downloadUrl}");
 
-                var response = await _httpClient.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead);
+                var response = await _httpClient.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
                 response.EnsureSuccessStatusCode();
 
                 var totalBytes = response.Content.Headers.ContentLength ?? -1;
@@ -265,9 +267,9 @@ namespace ObsMCLauncher.Services
                 long totalRead = 0;
                 int bytesRead;
 
-                while ((bytesRead = await contentStream.ReadAsync(buffer, 0, buffer.Length)) != 0)
+                while ((bytesRead = await contentStream.ReadAsync(buffer, 0, buffer.Length, cancellationToken)) != 0)
                 {
-                    await fileStream.WriteAsync(buffer, 0, bytesRead);
+                    await fileStream.WriteAsync(buffer, 0, bytesRead, cancellationToken);
                     totalRead += bytesRead;
 
                     if (canReportProgress)
@@ -279,6 +281,11 @@ namespace ObsMCLauncher.Services
 
                 Debug.WriteLine($"[CurseForge] ✅ 文件下载完成: {savePath}");
                 return true;
+            }
+            catch (OperationCanceledException)
+            {
+                Debug.WriteLine($"[CurseForge] 下载已取消: {file.FileName}");
+                throw;
             }
             catch (Exception ex)
             {
