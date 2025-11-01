@@ -139,7 +139,7 @@ namespace ObsMCLauncher.Pages
         /// </summary>
         private void OpenPluginDocs_Click(object sender, RoutedEventArgs e)
         {
-            OpenUrl("https://github.com/mcobs/ObsMCLauncher/Plugin-Development.md");
+            OpenUrl("https://github.com/mcobs/ObsMCLauncher/blob/main/Plugin-Development.md");
         }
 
         /// <summary>
