@@ -55,10 +55,7 @@ namespace ObsMCLauncher.Services
     /// </summary>
     public class UpdateService
     {
-        private static readonly HttpClient _httpClient = new HttpClient
-        {
-            Timeout = TimeSpan.FromSeconds(30)
-        };
+        private static readonly HttpClient _httpClient;
 
         // GitHub仓库信息
         private const string GITHUB_OWNER = "mcobs"; // GitHub用户名
@@ -72,6 +69,17 @@ namespace ObsMCLauncher.Services
         
         static UpdateService()
         {
+            // 配置HttpClient以处理SSL证书问题
+            var handler = new HttpClientHandler
+            {
+                ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+            };
+            
+            _httpClient = new HttpClient(handler)
+            {
+                Timeout = TimeSpan.FromSeconds(30)
+            };
+            
             _httpClient.DefaultRequestHeaders.Add("User-Agent", $"ObsMCLauncher/{VersionInfo.ShortVersion}");
         }
 
