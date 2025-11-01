@@ -1,10 +1,14 @@
 using System;
 using System.Diagnostics;
+using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
+using ObsMCLauncher.Plugins;
 using ObsMCLauncher.Services;
 using ObsMCLauncher.Utils;
 
@@ -20,21 +24,168 @@ namespace ObsMCLauncher.Pages
         private DateTime _lastAppTitleClickTime = DateTime.MinValue;
         private const int APP_TITLE_CLICK_RESET_MS = 2000; // 2秒内有效
         
+        // 插件加载器
+        private static PluginLoader? _pluginLoader;
+        
+        // 插件市场数据
+        private System.Collections.Generic.List<MarketPlugin> _allMarketPlugins = new();
+        private System.Collections.Generic.List<MarketPlugin> _filteredMarketPlugins = new();
+        private System.Collections.Generic.List<PluginCategory> _categories = new();
+        
         // 页面状态保存
         private static class PageState
         {
-            public static string SelectedTab { get; set; } = "About"; // "About" or "Plugins"
+            public static string SelectedTab { get; set; } = "About"; // "About" or "Plugins" or plugin tab id
+        }
+        
+        // 插件标签页存储
+        private static readonly System.Collections.Generic.Dictionary<string, (RadioButton tab, ScrollViewer content)> _pluginTabs = new();
+        
+        // MorePage实例引用（用于插件注册标签页）
+        private static MorePage? _instance;
+        
+        /// <summary>
+        /// 设置插件加载器（由MainWindow调用）
+        /// </summary>
+        public static void SetPluginLoader(PluginLoader pluginLoader)
+        {
+            _pluginLoader = pluginLoader;
+        }
+        
+        /// <summary>
+        /// 注册插件标签页（由插件调用）
+        /// </summary>
+        public static void RegisterPluginTab(string pluginId, string title, object content, string? icon)
+        {
+            Debug.WriteLine($"[MorePage] 静态方法：注册插件标签页: {pluginId} - {title}");
+            
+            // 调用实例方法
+            _instance?.RegisterPluginTabInstance(pluginId, title, content, icon);
+        }
+        
+        /// <summary>
+        /// 实例方法：注册插件标签页
+        /// </summary>
+        private void RegisterPluginTabInstance(string pluginId, string title, object content, string? icon)
+        {
+            try
+            {
+                Debug.WriteLine($"[MorePage] 注册插件标签页: {pluginId} - {title}");
+                
+                // 检查是否已注册
+                if (_pluginTabs.ContainsKey(pluginId))
+                {
+                    Debug.WriteLine($"[MorePage] 插件标签页已存在: {pluginId}");
+                    return;
+                }
+                
+                // 创建RadioButton
+                var radioButton = new RadioButton
+                {
+                    Content = title,
+                    GroupName = "MoreTabs",
+                    Padding = new Thickness(20, 8, 20, 8),
+                    FontSize = 14,
+                    Margin = new Thickness(12, 0, 0, 0)
+                };
+                radioButton.SetResourceReference(StyleProperty, "MaterialDesignTabRadioButton");
+                radioButton.Checked += (s, e) =>
+                {
+                    SwitchToPluginTab(pluginId);
+                    PageState.SelectedTab = pluginId;
+                };
+                
+                // 创建内容容器
+                var scrollViewer = new ScrollViewer
+                {
+                    VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                    HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+                    Padding = new Thickness(20),
+                    Visibility = Visibility.Collapsed
+                };
+                
+                // 设置内容
+                if (content is Page page)
+                {
+                    var frame = new Frame
+                    {
+                        Content = page,
+                        NavigationUIVisibility = NavigationUIVisibility.Hidden
+                    };
+                    scrollViewer.Content = frame;
+                }
+                else if (content is UIElement uiElement)
+                {
+                    scrollViewer.Content = uiElement;
+                }
+                else
+                {
+                    Debug.WriteLine($"[MorePage] 不支持的内容类型: {content.GetType()}");
+                    return;
+                }
+                
+                // 添加到UI
+                // 获取导航栏的StackPanel
+                var navBar = (StackPanel)((Border)((Grid)this.Content).Children[0]).Child;
+                navBar.Children.Add(radioButton);
+                
+                // 添加内容到Grid
+                var mainGrid = (Grid)this.Content;
+                Grid.SetRow(scrollViewer, 1);
+                mainGrid.Children.Add(scrollViewer);
+                
+                // 保存引用
+                _pluginTabs[pluginId] = (radioButton, scrollViewer);
+                
+                Debug.WriteLine($"[MorePage] ✅ 插件标签页注册成功: {title}");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[MorePage] 注册插件标签页失败: {ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// 切换到插件标签页
+        /// </summary>
+        private void SwitchToPluginTab(string pluginId)
+        {
+            if (!_pluginTabs.TryGetValue(pluginId, out var tabInfo))
+                return;
+                
+            // 隐藏所有内置页面
+            if (AboutContent != null)
+                AboutContent.Visibility = Visibility.Collapsed;
+            if (PluginsContent != null)
+                PluginsContent.Visibility = Visibility.Collapsed;
+            
+            // 隐藏所有插件页面
+            foreach (var (_, content) in _pluginTabs.Values)
+            {
+                content.Visibility = Visibility.Collapsed;
+            }
+            
+            // 显示选中的插件页面
+            tabInfo.content.Visibility = Visibility.Visible;
+            
+            Debug.WriteLine($"[MorePage] 切换到插件标签页: {pluginId}");
         }
         
         public MorePage()
         {
             InitializeComponent();
             
+            // 保存实例引用
+            _instance = this;
+            
             // 加载版本信息
             LoadVersionInfo();
             
             // 恢复页面状态
             RestorePageState();
+            
+            // 加载插件市场（异步）
+            _ = LoadMarketPluginsAsync();
         }
         
         /// <summary>
@@ -109,15 +260,225 @@ namespace ObsMCLauncher.Pages
             {
                 Debug.WriteLine("[MorePage] 刷新插件列表");
                 
-                // TODO: 实现插件加载逻辑
-                // 目前暂时显示空状态
-                InstalledPluginCountText.Text = "0";
-                EmptyPluginsHint.Visibility = Visibility.Visible;
+                if (_pluginLoader == null)
+                {
+                    InstalledPluginCountText.Text = "0";
+                    EmptyPluginsHint.Visibility = Visibility.Visible;
+                    return;
+                }
+                
+                var plugins = _pluginLoader.LoadedPlugins;
+                InstalledPluginCountText.Text = plugins.Count(p => p.IsLoaded).ToString();
+                
+                if (plugins.Count == 0)
+                {
+                    EmptyPluginsHint.Visibility = Visibility.Visible;
+                }
+                else
+                {
+                    EmptyPluginsHint.Visibility = Visibility.Collapsed;
+                    DisplayPlugins(plugins);
+                }
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"[MorePage] 刷新插件列表失败: {ex.Message}");
             }
+        }
+        
+        /// <summary>
+        /// 显示插件列表
+        /// </summary>
+        private void DisplayPlugins(System.Collections.Generic.IReadOnlyList<LoadedPlugin> plugins)
+        {
+            if (PluginListPanel == null)
+                return;
+                
+            // 清空现有内容（保留EmptyPluginsHint）
+            for (int i = PluginListPanel.Children.Count - 1; i >= 0; i--)
+            {
+                if (PluginListPanel.Children[i] != EmptyPluginsHint)
+                {
+                    PluginListPanel.Children.RemoveAt(i);
+                }
+            }
+            
+            Debug.WriteLine($"[MorePage] 显示 {plugins.Count} 个插件");
+            
+            foreach (var plugin in plugins)
+            {
+                var pluginCard = CreatePluginCard(plugin);
+                // 插入到EmptyPluginsHint之前
+                PluginListPanel.Children.Insert(0, pluginCard);
+            }
+        }
+        
+        /// <summary>
+        /// 创建插件卡片
+        /// </summary>
+        private Border CreatePluginCard(LoadedPlugin plugin)
+        {
+            var card = new Border
+            {
+                Background = (Brush)Application.Current.Resources["SurfaceBrush"],
+                CornerRadius = new CornerRadius(8),
+                Padding = new Thickness(16),
+                Margin = new Thickness(0, 0, 0, 12)
+            };
+            
+            var grid = new Grid();
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(48, GridUnitType.Pixel) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            
+            // 插件图标
+            Border iconBorder;
+            if (!string.IsNullOrEmpty(plugin.IconPath) && System.IO.File.Exists(plugin.IconPath))
+            {
+                try
+                {
+                    var iconImage = new Image
+                    {
+                        Width = 48,
+                        Height = 48,
+                        Source = new BitmapImage(new Uri(plugin.IconPath))
+                    };
+                    iconBorder = new Border
+                    {
+                        Width = 48,
+                        Height = 48,
+                        CornerRadius = new CornerRadius(6),
+                        ClipToBounds = true,
+                        Child = iconImage
+                    };
+                }
+                catch
+                {
+                    iconBorder = CreateDefaultPluginIcon();
+                }
+            }
+            else
+            {
+                iconBorder = CreateDefaultPluginIcon();
+            }
+            
+            Grid.SetColumn(iconBorder, 0);
+            grid.Children.Add(iconBorder);
+            
+            // 插件信息
+            var infoPanel = new StackPanel
+            {
+                Margin = new Thickness(12, 0, 12, 0),
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            Grid.SetColumn(infoPanel, 1);
+            
+            // 插件名称
+            var nameText = new TextBlock
+            {
+                Text = plugin.Name,
+                FontSize = 15,
+                FontWeight = FontWeights.SemiBold
+            };
+            nameText.SetResourceReference(TextBlock.ForegroundProperty, "TextBrush");
+            infoPanel.Children.Add(nameText);
+            
+            // 插件版本和作者
+            var versionText = new TextBlock
+            {
+                Text = $"v{plugin.Version} by {plugin.Author}",
+                FontSize = 12,
+                Margin = new Thickness(0, 2, 0, 0)
+            };
+            versionText.SetResourceReference(TextBlock.ForegroundProperty, "TextSecondaryBrush");
+            infoPanel.Children.Add(versionText);
+            
+            // 插件描述
+            if (!string.IsNullOrEmpty(plugin.Description))
+            {
+                var descText = new TextBlock
+                {
+                    Text = plugin.Description,
+                    FontSize = 12,
+                    Margin = new Thickness(0, 4, 0, 0),
+                    TextWrapping = TextWrapping.Wrap,
+                    MaxWidth = 400
+                };
+                descText.SetResourceReference(TextBlock.ForegroundProperty, "TextTertiaryBrush");
+                infoPanel.Children.Add(descText);
+            }
+            
+            // 错误信息
+            if (!plugin.IsLoaded && !string.IsNullOrEmpty(plugin.ErrorMessage))
+            {
+                var errorText = new TextBlock
+                {
+                    Text = $"❌ {plugin.ErrorMessage}",
+                    FontSize = 12,
+                    Margin = new Thickness(0, 4, 0, 0),
+                    TextWrapping = TextWrapping.Wrap,
+                    MaxWidth = 400,
+                    Foreground = new SolidColorBrush(Color.FromRgb(255, 71, 87))
+                };
+                infoPanel.Children.Add(errorText);
+            }
+            
+            grid.Children.Add(infoPanel);
+            
+            // 状态标签
+            var statusBadge = new Border
+            {
+                Background = plugin.IsLoaded 
+                    ? new SolidColorBrush(Color.FromArgb(25, 102, 187, 106)) 
+                    : new SolidColorBrush(Color.FromArgb(25, 255, 71, 87)),
+                CornerRadius = new CornerRadius(12),
+                Padding = new Thickness(10, 4, 10, 4),
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            
+            var statusText = new TextBlock
+            {
+                Text = plugin.IsLoaded ? "已加载" : "加载失败",
+                FontSize = 12,
+                FontWeight = FontWeights.Medium,
+                Foreground = plugin.IsLoaded 
+                    ? new SolidColorBrush(Color.FromRgb(102, 187, 106)) 
+                    : new SolidColorBrush(Color.FromRgb(255, 71, 87))
+            };
+            
+            statusBadge.Child = statusText;
+            Grid.SetColumn(statusBadge, 2);
+            grid.Children.Add(statusBadge);
+            
+            card.Child = grid;
+            return card;
+        }
+        
+        /// <summary>
+        /// 创建默认插件图标
+        /// </summary>
+        private Border CreateDefaultPluginIcon()
+        {
+            var iconBorder = new Border
+            {
+                Width = 48,
+                Height = 48,
+                Background = (Brush)Application.Current.Resources["PrimaryBrush"],
+                CornerRadius = new CornerRadius(6)
+            };
+            
+            var icon = new MaterialDesignThemes.Wpf.PackIcon
+            {
+                Kind = MaterialDesignThemes.Wpf.PackIconKind.Puzzle,
+                Width = 28,
+                Height = 28,
+                Foreground = Brushes.White,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            
+            iconBorder.Child = icon;
+            return iconBorder;
         }
         
         /// <summary>
@@ -566,5 +927,470 @@ namespace ObsMCLauncher.Pages
                 );
             }
         }
+        
+        #region 插件市场功能
+        
+        /// <summary>
+        /// 刷新插件市场
+        /// </summary>
+        private async void RefreshMarket_Click(object sender, RoutedEventArgs e)
+        {
+            await LoadMarketPluginsAsync();
+        }
+        
+        /// <summary>
+        /// 加载插件市场数据
+        /// </summary>
+        private async Task LoadMarketPluginsAsync()
+        {
+            try
+            {
+                // 显示加载状态
+                MarketLoadingIndicator.Visibility = Visibility.Visible;
+                MarketErrorHint.Visibility = Visibility.Collapsed;
+                MarketEmptyHint.Visibility = Visibility.Collapsed;
+                MarketPluginsList.ItemsSource = null;
+                
+                Debug.WriteLine("[MorePage] 开始加载插件市场...");
+                
+                // 并行加载分类和插件数据
+                var categoriesTask = PluginMarketService.GetCategoriesAsync();
+                var marketIndexTask = PluginMarketService.GetMarketIndexAsync();
+                
+                await Task.WhenAll(categoriesTask, marketIndexTask);
+                
+                var categories = await categoriesTask;
+                var marketIndex = await marketIndexTask;
+                
+                // 加载分类
+                if (categories != null && categories.Count > 0)
+                {
+                    _categories = categories;
+                    LoadCategories();
+                }
+                
+                if (marketIndex == null || marketIndex.Plugins == null || marketIndex.Plugins.Count == 0)
+                {
+                    // 显示错误提示
+                    MarketLoadingIndicator.Visibility = Visibility.Collapsed;
+                    MarketErrorHint.Visibility = Visibility.Visible;
+                    MarketErrorText.Text = "无法连接到插件市场或市场暂无插件";
+                    Debug.WriteLine("[MorePage] 插件市场加载失败或为空");
+                    return;
+                }
+                
+                // 保存数据
+                _allMarketPlugins = marketIndex.Plugins;
+                _filteredMarketPlugins = new System.Collections.Generic.List<MarketPlugin>(_allMarketPlugins);
+                
+                // 隐藏加载状态
+                MarketLoadingIndicator.Visibility = Visibility.Collapsed;
+                
+                // 显示插件列表
+                DisplayMarketPlugins(_filteredMarketPlugins);
+                
+                Debug.WriteLine($"[MorePage] 成功加载 {_allMarketPlugins.Count} 个市场插件");
+                
+                NotificationManager.Instance.ShowNotification(
+                    "插件市场",
+                    $"成功加载 {_allMarketPlugins.Count} 个插件",
+                    NotificationType.Success,
+                    2
+                );
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[MorePage] 加载插件市场失败: {ex.Message}");
+                
+                // 显示错误提示
+                MarketLoadingIndicator.Visibility = Visibility.Collapsed;
+                MarketErrorHint.Visibility = Visibility.Visible;
+                MarketErrorText.Text = $"加载失败: {ex.Message}";
+                
+                NotificationManager.Instance.ShowNotification(
+                    "插件市场",
+                    "加载插件市场失败",
+                    NotificationType.Error,
+                    3
+                );
+            }
+        }
+        
+        /// <summary>
+        /// 加载分类到下拉框
+        /// </summary>
+        private void LoadCategories()
+        {
+            if (CategoryFilterCombo == null)
+                return;
+            
+            // 清空现有项
+            CategoryFilterCombo.Items.Clear();
+            
+            // 添加"全部"选项
+            var allCategory = new PluginCategory
+            {
+                Id = "all",
+                Name = "全部"
+            };
+            CategoryFilterCombo.Items.Add(allCategory);
+            
+            // 添加云端获取的分类
+            foreach (var category in _categories)
+            {
+                CategoryFilterCombo.Items.Add(category);
+            }
+            
+            // 选中第一项（全部）
+            CategoryFilterCombo.SelectedIndex = 0;
+            
+            Debug.WriteLine($"[MorePage] 已加载 {_categories.Count} 个分类");
+        }
+        
+        /// <summary>
+        /// 显示市场插件列表
+        /// </summary>
+        private void DisplayMarketPlugins(System.Collections.Generic.List<MarketPlugin> plugins)
+        {
+            if (plugins == null || plugins.Count == 0)
+            {
+                MarketEmptyHint.Visibility = Visibility.Visible;
+                MarketPluginsList.ItemsSource = null;
+                return;
+            }
+            
+            MarketEmptyHint.Visibility = Visibility.Collapsed;
+            
+            // 创建插件卡片
+            var pluginCards = new System.Collections.Generic.List<UIElement>();
+            
+            foreach (var plugin in plugins)
+            {
+                var card = CreateMarketPluginCard(plugin);
+                pluginCards.Add(card);
+            }
+            
+            MarketPluginsList.ItemsSource = pluginCards;
+        }
+        
+        /// <summary>
+        /// 创建市场插件卡片
+        /// </summary>
+        private Border CreateMarketPluginCard(MarketPlugin plugin)
+        {
+            var card = new Border
+            {
+                Background = (Brush)Application.Current.Resources["SurfaceBrush"],
+                CornerRadius = new CornerRadius(8),
+                Padding = new Thickness(16),
+                Margin = new Thickness(0, 0, 0, 12)
+            };
+            
+            var grid = new Grid();
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(48, GridUnitType.Pixel) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            
+            // 插件图标
+            Border iconBorder;
+            if (!string.IsNullOrEmpty(plugin.Icon))
+            {
+                try
+                {
+                    var iconImage = new Image
+                    {
+                        Width = 48,
+                        Height = 48,
+                        Source = new BitmapImage(new Uri(plugin.Icon))
+                    };
+                    iconBorder = new Border
+                    {
+                        Width = 48,
+                        Height = 48,
+                        CornerRadius = new CornerRadius(6),
+                        ClipToBounds = true,
+                        Child = iconImage
+                    };
+                }
+                catch
+                {
+                    iconBorder = CreateDefaultPluginIcon();
+                }
+            }
+            else
+            {
+                iconBorder = CreateDefaultPluginIcon();
+            }
+            
+            Grid.SetColumn(iconBorder, 0);
+            grid.Children.Add(iconBorder);
+            
+            // 插件信息
+            var infoPanel = new StackPanel
+            {
+                Margin = new Thickness(12, 0, 12, 0),
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            Grid.SetColumn(infoPanel, 1);
+            
+            // 插件名称
+            var nameText = new TextBlock
+            {
+                Text = plugin.Name,
+                FontSize = 15,
+                FontWeight = FontWeights.SemiBold
+            };
+            nameText.SetResourceReference(TextBlock.ForegroundProperty, "TextBrush");
+            infoPanel.Children.Add(nameText);
+            
+            // 插件版本和作者
+            var versionText = new TextBlock
+            {
+                Text = $"v{plugin.Version} by {plugin.Author}",
+                FontSize = 12,
+                Margin = new Thickness(0, 2, 0, 0)
+            };
+            versionText.SetResourceReference(TextBlock.ForegroundProperty, "TextSecondaryBrush");
+            infoPanel.Children.Add(versionText);
+            
+            // 插件描述
+            if (!string.IsNullOrEmpty(plugin.Description))
+            {
+                var descText = new TextBlock
+                {
+                    Text = plugin.Description,
+                    FontSize = 12,
+                    Margin = new Thickness(0, 4, 0, 0),
+                    TextWrapping = TextWrapping.Wrap,
+                    MaxWidth = 400
+                };
+                descText.SetResourceReference(TextBlock.ForegroundProperty, "TextTertiaryBrush");
+                infoPanel.Children.Add(descText);
+            }
+            
+            // 分类标签
+            if (!string.IsNullOrEmpty(plugin.Category))
+            {
+                var categoryBadge = new Border
+                {
+                    Background = new SolidColorBrush(Color.FromArgb(25, 98, 0, 234)),
+                    CornerRadius = new CornerRadius(4),
+                    Padding = new Thickness(8, 2, 8, 2),
+                    Margin = new Thickness(0, 6, 0, 0),
+                    HorizontalAlignment = HorizontalAlignment.Left
+                };
+                
+                var categoryText = new TextBlock
+                {
+                    Text = plugin.Category,
+                    FontSize = 11,
+                    Foreground = new SolidColorBrush(Color.FromRgb(98, 0, 234))
+                };
+                
+                categoryBadge.Child = categoryText;
+                infoPanel.Children.Add(categoryBadge);
+            }
+            
+            grid.Children.Add(infoPanel);
+            
+            // 检查是否已安装
+            var isInstalled = _pluginLoader?.LoadedPlugins.Any(p => p.Id == plugin.Id) ?? false;
+            
+            // 安装/已安装按钮
+            var installButton = new Button
+            {
+                Height = 32,
+                Padding = new Thickness(16, 0, 16, 0),
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            
+            if (isInstalled)
+            {
+                installButton.Content = "已安装";
+                installButton.IsEnabled = false;
+                installButton.SetResourceReference(Button.StyleProperty, "MaterialDesignOutlinedButton");
+            }
+            else
+            {
+                var buttonStack = new StackPanel { Orientation = Orientation.Horizontal };
+                
+                var icon = new MaterialDesignThemes.Wpf.PackIcon
+                {
+                    Kind = MaterialDesignThemes.Wpf.PackIconKind.Download,
+                    Width = 16,
+                    Height = 16,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Margin = new Thickness(0, 0, 6, 0)
+                };
+                
+                var text = new TextBlock
+                {
+                    Text = "安装",
+                    VerticalAlignment = VerticalAlignment.Center,
+                    FontSize = 13
+                };
+                
+                buttonStack.Children.Add(icon);
+                buttonStack.Children.Add(text);
+                installButton.Content = buttonStack;
+                installButton.SetResourceReference(Button.StyleProperty, "MaterialDesignRaisedButton");
+                installButton.Click += async (s, e) => await InstallMarketPluginAsync(plugin, installButton);
+            }
+            
+            Grid.SetColumn(installButton, 2);
+            grid.Children.Add(installButton);
+            
+            card.Child = grid;
+            return card;
+        }
+        
+        /// <summary>
+        /// 安装市场插件
+        /// </summary>
+        private async Task InstallMarketPluginAsync(MarketPlugin plugin, Button button)
+        {
+            try
+            {
+                // 禁用按钮
+                button.IsEnabled = false;
+                
+                // 更新按钮文本
+                var originalContent = button.Content;
+                var progressStack = new StackPanel { Orientation = Orientation.Horizontal };
+                var progressBar = new ProgressBar
+                {
+                    Width = 16,
+                    Height = 16,
+                    Style = (Style)Application.Current.Resources["MaterialDesignCircularProgressBar"],
+                    IsIndeterminate = true,
+                    Margin = new Thickness(0, 0, 6, 0)
+                };
+                var progressText = new TextBlock
+                {
+                    Text = "安装中...",
+                    VerticalAlignment = VerticalAlignment.Center,
+                    FontSize = 13
+                };
+                progressStack.Children.Add(progressBar);
+                progressStack.Children.Add(progressText);
+                button.Content = progressStack;
+                
+                Debug.WriteLine($"[MorePage] 开始安装插件: {plugin.Name}");
+                
+                // 获取插件目录
+                var pluginsDir = System.IO.Path.Combine(
+                    AppDomain.CurrentDomain.BaseDirectory,
+                    "plugins"
+                );
+                
+                // 下载并安装
+                var progress = new Progress<double>(percent =>
+                {
+                    Dispatcher.Invoke(() =>
+                    {
+                        progressText.Text = $"安装中 {percent:F0}%";
+                    });
+                });
+                
+                var success = await PluginMarketService.DownloadAndInstallPluginAsync(
+                    plugin,
+                    pluginsDir,
+                    progress
+                );
+                
+                if (success)
+                {
+                    // 更新按钮状态
+                    button.Content = "已安装";
+                    button.SetResourceReference(Button.StyleProperty, "MaterialDesignOutlinedButton");
+                    
+                    NotificationManager.Instance.ShowNotification(
+                        "插件安装",
+                        $"插件 {plugin.Name} 安装成功！请重启启动器以加载插件。",
+                        NotificationType.Success,
+                        5
+                    );
+                    
+                    Debug.WriteLine($"[MorePage] 插件安装成功: {plugin.Name}");
+                }
+                else
+                {
+                    // 恢复按钮
+                    button.Content = originalContent;
+                    button.IsEnabled = true;
+                    
+                    NotificationManager.Instance.ShowNotification(
+                        "插件安装",
+                        $"插件 {plugin.Name} 安装失败",
+                        NotificationType.Error,
+                        3
+                    );
+                    
+                    Debug.WriteLine($"[MorePage] 插件安装失败: {plugin.Name}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[MorePage] 安装插件失败: {ex.Message}");
+                button.IsEnabled = true;
+                
+                NotificationManager.Instance.ShowNotification(
+                    "插件安装",
+                    $"安装失败: {ex.Message}",
+                    NotificationType.Error,
+                    3
+                );
+            }
+        }
+        
+        /// <summary>
+        /// 搜索框文本变化
+        /// </summary>
+        private void MarketSearchBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            FilterMarketPlugins();
+        }
+        
+        /// <summary>
+        /// 分类筛选变化
+        /// </summary>
+        private void CategoryFilter_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            FilterMarketPlugins();
+        }
+        
+        /// <summary>
+        /// 筛选市场插件
+        /// </summary>
+        private void FilterMarketPlugins()
+        {
+            if (_allMarketPlugins == null || _allMarketPlugins.Count == 0)
+                return;
+            
+            var searchText = MarketSearchBox?.Text?.ToLower() ?? "";
+            var selectedCategory = CategoryFilterCombo?.SelectedItem as PluginCategory;
+            var selectedCategoryId = selectedCategory?.Id ?? "all";
+            
+            _filteredMarketPlugins = _allMarketPlugins.Where(plugin =>
+            {
+                // 搜索筛选
+                var matchesSearch = string.IsNullOrEmpty(searchText) ||
+                                  plugin.Name.ToLower().Contains(searchText) ||
+                                  plugin.Description.ToLower().Contains(searchText) ||
+                                  plugin.Author.ToLower().Contains(searchText);
+                
+                // 分类筛选（使用分类ID进行匹配）
+                var matchesCategory = selectedCategoryId == "all" ||
+                                    plugin.Category.ToLower() == selectedCategoryId.ToLower() ||
+                                    // 兼容旧的中文分类名称
+                                    plugin.Category == selectedCategory?.Name;
+                
+                return matchesSearch && matchesCategory;
+            }).ToList();
+            
+            DisplayMarketPlugins(_filteredMarketPlugins);
+        }
+        
+        #endregion
     }
 }

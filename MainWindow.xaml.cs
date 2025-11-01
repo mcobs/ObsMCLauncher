@@ -1,10 +1,12 @@
 using System;
+using System.IO;
 using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using ObsMCLauncher.Pages;
+using ObsMCLauncher.Plugins;
 using ObsMCLauncher.Utils;
 using ObsMCLauncher.Services;
 
@@ -23,6 +25,9 @@ namespace ObsMCLauncher
         private readonly ResourcesPage _resourcesPage;
         private readonly SettingsPage _settingsPage;
         private readonly MorePage _morePage;
+        
+        // 插件加载器
+        private PluginLoader? _pluginLoader;
 
         public MainWindow()
         {
@@ -50,6 +55,70 @@ namespace ObsMCLauncher
             
             // 初始化下载管理器
             InitializeDownloadManager();
+            
+            // 初始化插件系统
+            InitializePlugins();
+        }
+        
+        /// <summary>
+        /// 初始化插件系统
+        /// </summary>
+        private void InitializePlugins()
+        {
+            try
+            {
+                // 插件目录：运行目录/plugins
+                var pluginsDir = Path.Combine(
+                    AppDomain.CurrentDomain.BaseDirectory,
+                    "plugins"
+                );
+                
+                _pluginLoader = new PluginLoader(pluginsDir);
+                
+                // 设置插件标签页注册回调
+                PluginContext.OnTabRegistered = (pluginId, title, content, icon) =>
+                {
+                    // 在More页面添加插件的自定义标签页
+                    System.Diagnostics.Debug.WriteLine($"[MainWindow] 插件 {pluginId} 注册标签页: {title}");
+                    
+                    // 在主线程中添加标签页
+                    Dispatcher.Invoke(() =>
+                    {
+                        MorePage.RegisterPluginTab(pluginId, title, content, icon);
+                    });
+                };
+                
+                // 加载所有插件
+                _pluginLoader.LoadAllPlugins();
+                
+                // 将插件加载器传递给MorePage
+                MorePage.SetPluginLoader(_pluginLoader);
+                
+                System.Diagnostics.Debug.WriteLine("[MainWindow] 插件系统初始化完成");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[MainWindow] 插件系统初始化失败: {ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// 窗口关闭事件
+        /// </summary>
+        protected override void OnClosed(EventArgs e)
+        {
+            try
+            {
+                // 关闭插件
+                _pluginLoader?.ShutdownPlugins();
+                _pluginLoader?.UnloadAllPlugins();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[MainWindow] 关闭插件时出错: {ex.Message}");
+            }
+            
+            base.OnClosed(e);
         }
 
         /// <summary>

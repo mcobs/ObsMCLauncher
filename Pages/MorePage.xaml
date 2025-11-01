@@ -420,31 +420,179 @@
 
                     <!-- 插件市场卡片 -->
                     <Border Style="{StaticResource CardBorder}">
-                        <StackPanel>
-                            <TextBlock Text="插件市场" Style="{StaticResource SectionTitle}"/>
-                            
-                            <Border Background="{DynamicResource SurfaceBrush}"
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+
+                            <!-- 标题栏 -->
+                            <Grid Grid.Row="0" Margin="0,0,0,16">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock Text="插件市场" 
+                                         Style="{StaticResource SectionTitle}"
+                                         Margin="0"/>
+
+                                <Button Grid.Column="1"
+                                      x:Name="RefreshMarketButton"
+                                      Style="{StaticResource MaterialDesignOutlinedButton}"
+                                      Height="32"
+                                      Padding="12,0"
+                                      Click="RefreshMarket_Click">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="Refresh" 
+                                                               Width="16" 
+                                                               Height="16"
+                                                               VerticalAlignment="Center"
+                                                               Margin="0,0,6,0"/>
+                                        <TextBlock Text="刷新" VerticalAlignment="Center" FontSize="13"/>
+                                    </StackPanel>
+                                </Button>
+                            </Grid>
+
+                            <!-- 搜索和筛选 -->
+                            <Grid Grid.Row="1" Margin="0,0,0,16">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <!-- 搜索框 -->
+                                <TextBox x:Name="MarketSearchBox"
+                                       materialDesign:HintAssist.Hint="搜索插件..."
+                                       materialDesign:HintAssist.FloatingScale="0.75"
+                                       Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                       MinHeight="40"
+                                       FontSize="14"
+                                       Padding="12,8"
+                                       VerticalAlignment="Stretch"
+                                       VerticalContentAlignment="Center"
+                                       TextChanged="MarketSearchBox_TextChanged"/>
+
+                                <!-- 分类筛选 -->
+                                <ComboBox x:Name="CategoryFilterCombo"
+                                        Grid.Column="1"
+                                        Width="150"
+                                        MinHeight="40"
+                                        FontSize="14"
+                                        Padding="12,8"
+                                        Margin="12,0,0,0"
+                                        VerticalAlignment="Stretch"
+                                        VerticalContentAlignment="Center"
+                                        Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                                        materialDesign:HintAssist.Hint="分类"
+                                        materialDesign:HintAssist.FloatingScale="0.75"
+                                        DisplayMemberPath="Name"
+                                        SelectionChanged="CategoryFilter_SelectionChanged">
+                                    <ComboBox.ItemContainerStyle>
+                                        <Style TargetType="ComboBoxItem" BasedOn="{StaticResource MaterialDesignComboBoxItem}">
+                                            <Setter Property="Padding" Value="12,8"/>
+                                            <Setter Property="MinHeight" Value="40"/>
+                                        </Style>
+                                    </ComboBox.ItemContainerStyle>
+                                </ComboBox>
+                            </Grid>
+
+                            <!-- 加载状态 -->
+                            <Border x:Name="MarketLoadingIndicator"
+                                  Grid.Row="2"
+                                  Background="{DynamicResource SurfaceBrush}"
                                   CornerRadius="6"
-                                  Padding="24">
+                                  Padding="24"
+                                  Margin="0,0,0,16"
+                                  Visibility="Collapsed">
+                                <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
+                                    <ProgressBar Style="{StaticResource MaterialDesignCircularProgressBar}"
+                                               IsIndeterminate="True"
+                                               Width="32"
+                                               Height="32"
+                                               Margin="0,0,12,0"/>
+                                    <TextBlock Text="正在加载插件市场..." 
+                                             FontSize="14"
+                                             Foreground="{DynamicResource TextSecondaryBrush}"
+                                             VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- 错误提示 -->
+                            <Border x:Name="MarketErrorHint"
+                                  Grid.Row="2"
+                                  Background="{DynamicResource SurfaceBrush}"
+                                  CornerRadius="6"
+                                  Padding="24"
+                                  Margin="0,0,0,16"
+                                  Visibility="Collapsed">
                                 <StackPanel HorizontalAlignment="Center">
-                                    <materialDesign:PackIcon Kind="Store" 
+                                    <materialDesign:PackIcon Kind="AlertCircleOutline" 
                                                            Width="48" 
                                                            Height="48"
-                                                           Foreground="{DynamicResource PrimaryBrush}"
+                                                           Foreground="#FF4757"
                                                            HorizontalAlignment="Center"
-                                                           Margin="0,0,0,16"/>
-                                    <TextBlock Text="插件市场功能开发中..." 
+                                                           Margin="0,0,0,12"/>
+                                    <TextBlock x:Name="MarketErrorText"
+                                             Text="无法连接到插件市场" 
                                              FontSize="15"
                                              Foreground="{DynamicResource TextSecondaryBrush}"
                                              HorizontalAlignment="Center"
                                              Margin="0,0,0,8"/>
-                                    <TextBlock Text="敬请期待！" 
-                                             FontSize="13"
-                                             Foreground="{DynamicResource TextTertiaryBrush}"
+                                    <Button Style="{StaticResource MaterialDesignOutlinedButton}"
+                                          Height="32"
+                                          Padding="16,0"
+                                          Click="RefreshMarket_Click">
+                                        <StackPanel Orientation="Horizontal">
+                                            <materialDesign:PackIcon Kind="Refresh" 
+                                                                   Width="16" 
+                                                                   Height="16"
+                                                                   VerticalAlignment="Center"
+                                                                   Margin="0,0,6,0"/>
+                                            <TextBlock Text="重试" VerticalAlignment="Center" FontSize="13"/>
+                                        </StackPanel>
+                                    </Button>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- 空状态提示 -->
+                            <Border x:Name="MarketEmptyHint"
+                                  Grid.Row="2"
+                                  Background="{DynamicResource SurfaceBrush}"
+                                  CornerRadius="6"
+                                  Padding="24"
+                                  Margin="0,0,0,16"
+                                  Visibility="Collapsed">
+                                <StackPanel HorizontalAlignment="Center">
+                                    <materialDesign:PackIcon Kind="Magnify" 
+                                                           Width="48" 
+                                                           Height="48"
+                                                           Foreground="{DynamicResource TextTertiaryBrush}"
+                                                           HorizontalAlignment="Center"
+                                                           Margin="0,0,0,12"/>
+                                    <TextBlock Text="没有找到匹配的插件" 
+                                             FontSize="15"
+                                             Foreground="{DynamicResource TextSecondaryBrush}"
                                              HorizontalAlignment="Center"/>
                                 </StackPanel>
                             </Border>
-                        </StackPanel>
+
+                            <!-- 插件列表 -->
+                            <ScrollViewer Grid.Row="3"
+                                        VerticalScrollBarVisibility="Auto"
+                                        HorizontalScrollBarVisibility="Disabled"
+                                        MaxHeight="600">
+                                <ItemsControl x:Name="MarketPluginsList">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <!-- 这里会动态生成插件卡片 -->
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </Grid>
                     </Border>
 
                     <!-- 插件开发说明 -->
