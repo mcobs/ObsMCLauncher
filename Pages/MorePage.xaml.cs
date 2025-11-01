@@ -20,12 +20,126 @@ namespace ObsMCLauncher.Pages
         private DateTime _lastAppTitleClickTime = DateTime.MinValue;
         private const int APP_TITLE_CLICK_RESET_MS = 2000; // 2秒内有效
         
+        // 页面状态保存
+        private static class PageState
+        {
+            public static string SelectedTab { get; set; } = "About"; // "About" or "Plugins"
+        }
+        
         public MorePage()
         {
             InitializeComponent();
             
             // 加载版本信息
             LoadVersionInfo();
+            
+            // 恢复页面状态
+            RestorePageState();
+        }
+        
+        /// <summary>
+        /// 恢复页面状态
+        /// </summary>
+        private void RestorePageState()
+        {
+            if (PageState.SelectedTab == "Plugins")
+            {
+                PluginsTab.IsChecked = true;
+            }
+            else
+            {
+                AboutTab.IsChecked = true;
+            }
+            
+            // 强制触发Tab_Checked以更新UI
+            SwitchTab(PageState.SelectedTab);
+        }
+        
+        /// <summary>
+        /// 标签切换事件
+        /// </summary>
+        private void Tab_Checked(object sender, RoutedEventArgs e)
+        {
+            if (sender is RadioButton radioButton)
+            {
+                if (radioButton == AboutTab)
+                {
+                    SwitchTab("About");
+                    PageState.SelectedTab = "About";
+                }
+                else if (radioButton == PluginsTab)
+                {
+                    SwitchTab("Plugins");
+                    PageState.SelectedTab = "Plugins";
+                    
+                    // 切换到插件页面时，刷新插件列表
+                    RefreshPluginList();
+                }
+            }
+        }
+        
+        /// <summary>
+        /// 切换标签页内容
+        /// </summary>
+        private void SwitchTab(string tabName)
+        {
+            if (AboutContent == null || PluginsContent == null)
+                return;
+                
+            if (tabName == "About")
+            {
+                AboutContent.Visibility = Visibility.Visible;
+                PluginsContent.Visibility = Visibility.Collapsed;
+                Debug.WriteLine("[MorePage] 切换到关于页面");
+            }
+            else if (tabName == "Plugins")
+            {
+                AboutContent.Visibility = Visibility.Collapsed;
+                PluginsContent.Visibility = Visibility.Visible;
+                Debug.WriteLine("[MorePage] 切换到插件页面");
+            }
+        }
+        
+        /// <summary>
+        /// 刷新插件列表
+        /// </summary>
+        private void RefreshPluginList()
+        {
+            try
+            {
+                Debug.WriteLine("[MorePage] 刷新插件列表");
+                
+                // TODO: 实现插件加载逻辑
+                // 目前暂时显示空状态
+                InstalledPluginCountText.Text = "0";
+                EmptyPluginsHint.Visibility = Visibility.Visible;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[MorePage] 刷新插件列表失败: {ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// 刷新插件按钮点击
+        /// </summary>
+        private void RefreshPlugins_Click(object sender, RoutedEventArgs e)
+        {
+            RefreshPluginList();
+            NotificationManager.Instance.ShowNotification(
+                "插件列表",
+                "插件列表已刷新",
+                NotificationType.Success,
+                2
+            );
+        }
+        
+        /// <summary>
+        /// 打开插件开发文档
+        /// </summary>
+        private void OpenPluginDocs_Click(object sender, RoutedEventArgs e)
+        {
+            OpenUrl("https://github.com/mcobs/ObsMCLauncher/Plugin-Development.md");
         }
 
         /// <summary>

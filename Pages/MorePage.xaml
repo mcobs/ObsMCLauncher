@@ -8,7 +8,10 @@
       mc:Ignorable="d" 
       d:DesignHeight="600" d:DesignWidth="800"
       Title="更多"
-      Background="Transparent">
+      Background="Transparent"
+      UseLayoutRounding="True"
+      TextOptions.TextFormattingMode="Display"
+      TextOptions.TextRenderingMode="ClearType">
 
     <Page.Resources>
         <!-- 卡片样式 -->
@@ -62,10 +65,48 @@
         </Style>
     </Page.Resources>
 
-    <ScrollViewer VerticalScrollBarVisibility="Auto" 
-                  HorizontalScrollBarVisibility="Disabled"
-                  Padding="20">
-        <StackPanel MaxWidth="800">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- 顶部导航栏 -->
+        <Border Grid.Row="0" 
+                Background="{DynamicResource SurfaceElevatedBrush}"
+                BorderThickness="0,0,0,1"
+                BorderBrush="{DynamicResource BorderBrush}"
+                Padding="20,12">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                <RadioButton x:Name="AboutTab"
+                           Content="关于"
+                           GroupName="MoreTabs"
+                           Style="{StaticResource MaterialDesignTabRadioButton}"
+                           Padding="20,8"
+                           FontSize="14"
+                           IsChecked="True"
+                           Checked="Tab_Checked"/>
+                
+                <RadioButton x:Name="PluginsTab"
+                           Content="插件"
+                           GroupName="MoreTabs"
+                           Style="{StaticResource MaterialDesignTabRadioButton}"
+                           Padding="20,8"
+                           FontSize="14"
+                           Margin="12,0,0,0"
+                           Checked="Tab_Checked"/>
+            </StackPanel>
+        </Border>
+
+        <!-- 内容区域 -->
+        <Grid Grid.Row="1">
+            <!-- 关于页面 -->
+            <ScrollViewer x:Name="AboutContent"
+                        VerticalScrollBarVisibility="Auto" 
+                        HorizontalScrollBarVisibility="Disabled"
+                        Padding="20"
+                        Visibility="Visible">
+                <StackPanel MaxWidth="800">
             <!-- Logo和标题 -->
             <Border Style="{StaticResource CardBorder}">
                 <StackPanel HorizontalAlignment="Center">
@@ -279,6 +320,166 @@
                      Foreground="{DynamicResource TextTertiaryBrush}"
                      HorizontalAlignment="Center"
                      Margin="0,8,0,20"/>
-        </StackPanel>
-    </ScrollViewer>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- 插件页面 -->
+            <ScrollViewer x:Name="PluginsContent"
+                        VerticalScrollBarVisibility="Auto" 
+                        HorizontalScrollBarVisibility="Disabled"
+                        Padding="20"
+                        Visibility="Collapsed">
+                <StackPanel MaxWidth="800">
+                    <!-- 插件管理卡片 -->
+                    <Border Style="{StaticResource CardBorder}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+
+                            <!-- 标题栏 -->
+                            <Grid Grid.Row="0" Margin="0,0,0,16">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock Text="已安装的插件" 
+                                         Style="{StaticResource SectionTitle}"
+                                         Margin="0"/>
+
+                                <Button Grid.Column="1"
+                                      x:Name="RefreshPluginsButton"
+                                      Style="{StaticResource MaterialDesignOutlinedButton}"
+                                      Height="32"
+                                      Padding="12,0"
+                                      Click="RefreshPlugins_Click">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="Refresh" 
+                                                               Width="16" 
+                                                               Height="16"
+                                                               VerticalAlignment="Center"
+                                                               Margin="0,0,6,0"/>
+                                        <TextBlock Text="刷新" VerticalAlignment="Center" FontSize="13"/>
+                                    </StackPanel>
+                                </Button>
+                            </Grid>
+
+                            <!-- 插件统计 -->
+                            <Border Grid.Row="1"
+                                  Background="{DynamicResource SurfaceBrush}"
+                                  CornerRadius="6"
+                                  Padding="16,12"
+                                  Margin="0,0,0,16">
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="Puzzle" 
+                                                           Width="20" 
+                                                           Height="20"
+                                                           VerticalAlignment="Center"
+                                                           Foreground="{DynamicResource PrimaryBrush}"
+                                                           Margin="0,0,12,0"/>
+                                    <TextBlock VerticalAlignment="Center">
+                                        <Run Text="共" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                        <Run x:Name="InstalledPluginCountText" Text="0" FontWeight="Bold" Foreground="{DynamicResource PrimaryBrush}"/>
+                                        <Run Text="个插件已安装" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                    </TextBlock>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- 插件列表 -->
+                            <StackPanel x:Name="PluginListPanel" Grid.Row="2">
+                                <!-- 空状态提示 -->
+                                <Border x:Name="EmptyPluginsHint"
+                                      Background="{DynamicResource SurfaceBrush}"
+                                      CornerRadius="8"
+                                      Padding="40"
+                                      HorizontalAlignment="Center">
+                                    <StackPanel HorizontalAlignment="Center">
+                                        <materialDesign:PackIcon Kind="PuzzleOutline" 
+                                                               Width="64" 
+                                                               Height="64"
+                                                               Foreground="{DynamicResource TextTertiaryBrush}"
+                                                               HorizontalAlignment="Center"
+                                                               Margin="0,0,0,16"/>
+                                        <TextBlock Text="暂无已安装的插件" 
+                                                 FontSize="16"
+                                                 Foreground="{DynamicResource TextSecondaryBrush}"
+                                                 HorizontalAlignment="Center"
+                                                 Margin="0,0,0,8"/>
+                                        <TextBlock Text="从插件市场安装插件来扩展启动器功能" 
+                                                 FontSize="13"
+                                                 Foreground="{DynamicResource TextTertiaryBrush}"
+                                                 HorizontalAlignment="Center"/>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <!-- 插件市场卡片 -->
+                    <Border Style="{StaticResource CardBorder}">
+                        <StackPanel>
+                            <TextBlock Text="插件市场" Style="{StaticResource SectionTitle}"/>
+                            
+                            <Border Background="{DynamicResource SurfaceBrush}"
+                                  CornerRadius="6"
+                                  Padding="24">
+                                <StackPanel HorizontalAlignment="Center">
+                                    <materialDesign:PackIcon Kind="Store" 
+                                                           Width="48" 
+                                                           Height="48"
+                                                           Foreground="{DynamicResource PrimaryBrush}"
+                                                           HorizontalAlignment="Center"
+                                                           Margin="0,0,0,16"/>
+                                    <TextBlock Text="插件市场功能开发中..." 
+                                             FontSize="15"
+                                             Foreground="{DynamicResource TextSecondaryBrush}"
+                                             HorizontalAlignment="Center"
+                                             Margin="0,0,0,8"/>
+                                    <TextBlock Text="敬请期待！" 
+                                             FontSize="13"
+                                             Foreground="{DynamicResource TextTertiaryBrush}"
+                                             HorizontalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 插件开发说明 -->
+                    <Border Style="{StaticResource CardBorder}">
+                        <StackPanel>
+                            <TextBlock Text="💡 开发插件" Style="{StaticResource SectionTitle}"/>
+                            
+                            <TextBlock FontSize="14" 
+                                     Foreground="{DynamicResource TextSecondaryBrush}"
+                                     TextWrapping="Wrap"
+                                     LineHeight="22"
+                                     Margin="0,0,0,12">
+                                <Run Text="ObsMCLauncher 支持使用 .NET 程序集开发插件。"/>
+                                <LineBreak/>
+                                <Run Text="您可以通过实现插件接口来扩展启动器的功能。"/>
+                            </TextBlock>
+
+                            <Button Style="{StaticResource MaterialDesignOutlinedButton}"
+                                  Height="36"
+                                  Padding="16,0"
+                                  HorizontalAlignment="Left"
+                                  Click="OpenPluginDocs_Click">
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="BookOpenPageVariant" 
+                                                           Width="18" 
+                                                           Height="18"
+                                                           VerticalAlignment="Center"
+                                                           Margin="0,0,8,0"/>
+                                    <TextBlock Text="查看插件开发文档" VerticalAlignment="Center" FontSize="13"/>
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+    </Grid>
 </Page>
