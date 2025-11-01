@@ -1053,16 +1053,51 @@ namespace ObsMCLauncher.Pages
                 QuiltVersionComboBox.IsEnabled = true;
             }
             
-            // 更新OptiFine描述文本（如果已勾选）
-            if (OptiFineCheckBox?.IsChecked == true && OptiFineDescriptionText != null)
+            // OptiFine兼容性控制：仅Vanilla和Forge支持OptiFine
+            if (OptiFineCheckBox != null)
             {
-                if (sender == ForgeRadio)
+                if (sender == VanillaRadio || sender == ForgeRadio)
                 {
-                    OptiFineDescriptionText.Text = "将作为 Mod 安装到 Forge 的 mods 文件夹";
+                    // Vanilla或Forge：启用OptiFine
+                    OptiFineCheckBox.IsEnabled = true;
+                    OptiFineCheckBox.Opacity = 1.0;
+                    
+                    // 更新提示文本
+                    if (OptiFineDescriptionText != null && OptiFineCheckBox.IsChecked == true)
+                    {
+                        if (sender == ForgeRadio)
+                        {
+                            OptiFineDescriptionText.Text = "将作为 Mod 安装到 Forge 的 mods 文件夹";
+                        }
+                        else
+                        {
+                            OptiFineDescriptionText.Text = "独立安装模式，性能优化 MOD";
+                        }
+                    }
                 }
                 else
                 {
-                    OptiFineDescriptionText.Text = "独立安装模式，性能优化 MOD";
+                    // NeoForge/Fabric/Quilt：禁用并取消选中OptiFine
+                    OptiFineCheckBox.IsEnabled = false;
+                    OptiFineCheckBox.IsChecked = false;
+                    OptiFineCheckBox.Opacity = 0.5;
+                    
+                    // 禁用OptiFine版本选择框
+                    if (OptiFineVersionComboBox != null)
+                    {
+                        OptiFineVersionComboBox.IsEnabled = false;
+                    }
+                    
+                    // 更新提示文本
+                    if (OptiFineDescriptionText != null)
+                    {
+                        string loaderName = sender == NeoForgeRadio ? "NeoForge" :
+                                           sender == FabricRadio ? "Fabric" :
+                                           sender == QuiltRadio ? "Quilt" : "此加载器";
+                        OptiFineDescriptionText.Text = $"{loaderName} 不支持与 OptiFine 一起安装";
+                    }
+                    
+                    System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] OptiFine 已禁用（选择了不兼容的加载器）");
                 }
             }
 
