@@ -448,11 +448,11 @@ dotnet new classlib -n YourPlugin -f net8.0-windows
 
 cd YourPlugin
 
-# 添加启动器引用（引用启动器的 exe 文件）
-dotnet add reference path/to/ObsMCLauncher.exe
+# 添加启动器引用
+dotnet add reference path/to/ObsMCLauncher.dll
 ```
 
-> **注意**：虽然启动器是单个 exe 文件，但它同样可以作为程序集被引用。确保在开发时将 `ObsMCLauncher.exe` 复制到可访问的位置。
+> **注意**：虽然启动器是单个 exe 文件，但它同样可以作为程序集被引用。
 
 ### 2. 实现插件接口
 
@@ -573,29 +573,6 @@ ObsMCLauncher/
         ├── plugin.json         # 元数据
         └── icon.png            # 图标（可选）
 ```
-
-### 快速测试脚本（PowerShell）
-
-```powershell
-# 编译插件
-dotnet build -c Debug
-
-# 复制到启动器插件目录
-$pluginId = "your-plugin-id"
-$launcherDir = "H:\projects\ObsMCLauncher\bin\Debug\net8.0-windows"
-$pluginDir = "$launcherDir\plugins\$pluginId"
-
-# 创建插件目录
-New-Item -ItemType Directory -Force -Path $pluginDir
-
-# 复制文件
-Copy-Item "bin\Debug\net8.0-windows\YourPlugin.dll" $pluginDir
-Copy-Item "plugin.json" $pluginDir
-Copy-Item "icon.png" $pluginDir -ErrorAction SilentlyContinue
-
-Write-Host "插件已复制到: $pluginDir"
-```
-
 ### 调试
 
 使用 Visual Studio 附加到 `ObsMCLauncher.exe` 进程进行调试。
