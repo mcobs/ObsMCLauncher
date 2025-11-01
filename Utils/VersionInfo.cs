@@ -20,7 +20,7 @@ namespace ObsMCLauncher.Utils
         /// 格式：日期.构建次数 (yyyyMMdd.build)
         /// 示例：20250108.1, 20250108.2
         /// </summary>
-        public static readonly string BuildVersion = "20251008.1";
+        public static readonly string BuildVersion = "20251101.1";
 
         /// <summary>
         /// 完整版本号（组合显示）
@@ -42,7 +42,7 @@ namespace ObsMCLauncher.Utils
         /// <summary>
         /// 产品完整名称
         /// </summary>
-        public static readonly string FullProductName = "黑曜石 Minecraft 启动器";
+        public static readonly string FullProductName = "黑曜石MC启动器";
 
         /// <summary>
         /// 版本代号（可选，用于重大版本）
@@ -52,7 +52,7 @@ namespace ObsMCLauncher.Utils
         /// <summary>
         /// 发布日期
         /// </summary>
-        public static readonly DateTime ReleaseDate = new DateTime(2025, 10, 8);
+        public static readonly DateTime ReleaseDate = new DateTime(2025, 11, 1);
 
         /// <summary>
         /// 是否为预发布版本
@@ -62,7 +62,7 @@ namespace ObsMCLauncher.Utils
         /// <summary>
         /// 预发布版本类型（alpha, beta, rc）
         /// </summary>
-        public static readonly string PreReleaseType = "alpha";
+        public static readonly string PreReleaseType = "beta";
 
         /// <summary>
         /// 预发布版本序号
