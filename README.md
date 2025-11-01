@@ -64,17 +64,52 @@ dotnet publish -c Release -r win-x64 -p:PublishSingleFile=true
 
 ```text
 ObsMCLauncher/
-├── App.xaml                    # 全局样式和主题配置
-├── MainWindow.xaml             # 主窗口（导航框架）
-├── Pages/                      # 页面目录
-│   ├── HomePage.xaml           # 主页
-│   ├── AccountManagementPage.xaml  # 账号管理页面
-│   ├── VersionDownloadPage.xaml    # 版本下载页面
-│   ├── ResourcesPage.xaml      # 资源中心
-│   └── SettingsPage.xaml       # 设置页面
-├── Models/                     # 数据模型
-├── Services/                   # 服务层（API、下载源管理）
-└── Utils/                      # 工具类
+├── App.xaml                         # 全局样式和主题配置
+├── MainWindow.xaml                  # 主窗口（导航框架）
+├── Assets/                          # 资源文件
+│   ├── LoaderIcons/                 # 模组加载器图标
+│   └── mod_translations.txt         # MOD中文翻译数据
+├── Pages/                           # 页面目录
+│   ├── HomePage.xaml                # 主页（版本列表）
+│   ├── AccountManagementPage.xaml   # 账号管理页面
+│   ├── VersionDownloadPage.xaml     # 版本下载页面
+│   ├── VersionDetailPage.xaml       # 版本详情页（安装Forge/Fabric等）
+│   ├── ResourcesPage.xaml           # 资源中心（MOD/材质包等）
+│   ├── ModDetailPage.xaml           # 资源详情页
+│   ├── MorePage.xaml                # 更多功能页面
+│   └── SettingsPage.xaml            # 设置页面
+├── Models/                          # 数据模型
+│   ├── CurseForgeModels.cs          # CurseForge API模型
+│   ├── ModrinthModels.cs            # Modrinth API模型
+│   ├── GameAccount.cs               # 游戏账号模型
+│   ├── LauncherConfig.cs            # 启动器配置模型
+│   ├── GameDirectoryType.cs         # 版本隔离类型
+│   └── ModTranslation.cs            # MOD翻译模型
+├── Services/                        # 服务层
+│   ├── MinecraftVersionService.cs   # Minecraft版本管理
+│   ├── DownloadService.cs           # 文件下载服务
+│   ├── DownloadSourceManager.cs     # 下载源管理
+│   ├── DownloadTaskManager.cs       # 下载任务管理
+│   ├── GameLauncher.cs              # 游戏启动服务
+│   ├── ForgeService.cs              # Forge服务
+│   ├── NeoForgeService.cs           # NeoForge服务
+│   ├── FabricService.cs             # Fabric服务
+│   ├── OptiFineService.cs           # OptiFine服务
+│   ├── QuiltService.cs              # Quilt服务
+│   ├── CurseForgeService.cs         # CurseForge API服务
+│   ├── ModrinthService.cs           # Modrinth API服务
+│   ├── ModpackInstallService.cs     # 整合包安装服务
+│   ├── ModTranslationService.cs     # MOD翻译服务
+│   ├── LocalVersionService.cs       # 本地版本服务
+│   ├── MicrosoftAuthService.cs      # 微软账号登录
+│   └── AccountService.cs            # 账号管理服务
+└── Utils/                           # 工具类
+    ├── DialogManager.cs             # 对话框管理器
+    ├── NotificationManager.cs       # 通知管理器
+    ├── SystemInfo.cs                # 系统信息
+    ├── VersionInfo.cs               # 版本信息
+    ├── GameVersionNumber.cs         # 游戏版本号解析
+    └── ApiTester.cs                 # API测试工具
 ```
 
 ---
