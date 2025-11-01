@@ -129,6 +129,226 @@ namespace ObsMCLauncher.Utils
         }
 
         /// <summary>
+        /// 显示输入对话框
+        /// </summary>
+        /// <param name="title">标题</param>
+        /// <param name="message">提示信息</param>
+        /// <param name="defaultValue">默认值</param>
+        /// <returns>输入的文本，如果取消则返回null</returns>
+        public async Task<string?> ShowInputDialogAsync(string title, string message, string defaultValue = "")
+        {
+            if (_container == null)
+            {
+                System.Diagnostics.Debug.WriteLine("对话框容器未初始化");
+                return null;
+            }
+
+            var tcs = new TaskCompletionSource<string?>();
+
+            await _container.Dispatcher.InvokeAsync(() =>
+            {
+                // 创建遮罩层
+                _overlay = new Grid
+                {
+                    Background = new SolidColorBrush(Color.FromArgb(180, 0, 0, 0)),
+                    HorizontalAlignment = HorizontalAlignment.Stretch,
+                    VerticalAlignment = VerticalAlignment.Stretch,
+                    Opacity = 0
+                };
+
+                // 创建对话框
+                var dialogBorder = new Border
+                {
+                    MinWidth = 420,
+                    MaxWidth = 550,
+                    Background = (Brush)Application.Current.FindResource("SurfaceBrush"),
+                    CornerRadius = new CornerRadius(12),
+                    Padding = new Thickness(0),
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Opacity = 0,
+                    Effect = new DropShadowEffect
+                    {
+                        Color = Colors.Black,
+                        BlurRadius = 30,
+                        ShadowDepth = 0,
+                        Opacity = 0.5
+                    }
+                };
+
+                var mainGrid = new Grid();
+                mainGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // 标题栏
+                mainGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // 消息
+                mainGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // 输入框
+                mainGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // 按钮区
+
+                // 标题栏
+                var titleText = new TextBlock
+                {
+                    Text = title,
+                    FontSize = 18,
+                    FontWeight = FontWeights.Bold,
+                    Margin = new Thickness(24, 20, 24, 12)
+                };
+                Grid.SetRow(titleText, 0);
+                mainGrid.Children.Add(titleText);
+
+                // 消息
+                var messageText = new TextBlock
+                {
+                    Text = message,
+                    FontSize = 14,
+                    TextWrapping = TextWrapping.Wrap,
+                    Foreground = (Brush)Application.Current.FindResource("TextSecondaryBrush"),
+                    Margin = new Thickness(24, 0, 24, 16)
+                };
+                Grid.SetRow(messageText, 1);
+                mainGrid.Children.Add(messageText);
+
+                // 输入框
+                var inputBox = new TextBox
+                {
+                    Text = defaultValue,
+                    FontSize = 14,
+                    Padding = new Thickness(12, 8, 12, 8),
+                    Margin = new Thickness(24, 0, 24, 20)
+                };
+
+                try
+                {
+                    inputBox.Style = (Style)Application.Current.FindResource("MaterialDesignOutlinedTextBox");
+                }
+                catch { }
+
+                // 自动选中默认文本
+                inputBox.Loaded += (s, e) =>
+                {
+                    inputBox.Focus();
+                    inputBox.SelectAll();
+                };
+
+                Grid.SetRow(inputBox, 2);
+                mainGrid.Children.Add(inputBox);
+
+                // 按钮区
+                var buttonPanel = new StackPanel
+                {
+                    Orientation = Orientation.Horizontal,
+                    HorizontalAlignment = HorizontalAlignment.Right,
+                    Margin = new Thickness(24, 0, 24, 20)
+                };
+
+                var cancelButton = new Button
+                {
+                    Content = "取消",
+                    MinWidth = 90,
+                    Height = 36,
+                    Margin = new Thickness(0, 0, 8, 0),
+                    FontSize = 14
+                };
+
+                var confirmButton = new Button
+                {
+                    Content = "确定",
+                    MinWidth = 90,
+                    Height = 36,
+                    FontSize = 14
+                };
+
+                try
+                {
+                    cancelButton.Style = (Style)Application.Current.FindResource("MaterialDesignOutlinedButton");
+                    confirmButton.Style = (Style)Application.Current.FindResource("MaterialDesignRaisedButton");
+                }
+                catch { }
+
+                void CloseInputDialog(string? result)
+                {
+                    var overlayFadeOut = new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(200));
+                    var dialogFadeOut = new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(200));
+
+                    dialogFadeOut.Completed += (s, e) =>
+                    {
+                        _container?.Children.Remove(_overlay);
+                        tcs.TrySetResult(result);
+                    };
+
+                    _overlay.BeginAnimation(UIElement.OpacityProperty, overlayFadeOut);
+                    dialogBorder.BeginAnimation(UIElement.OpacityProperty, dialogFadeOut);
+                }
+
+                cancelButton.Click += (s, e) => CloseInputDialog(null);
+                confirmButton.Click += (s, e) =>
+                {
+                    var input = inputBox.Text.Trim();
+                    if (string.IsNullOrEmpty(input))
+                    {
+                        inputBox.Focus();
+                        return;
+                    }
+                    CloseInputDialog(input);
+                };
+
+                // 支持回车键确认
+                inputBox.KeyDown += (s, e) =>
+                {
+                    if (e.Key == System.Windows.Input.Key.Enter)
+                    {
+                        var input = inputBox.Text.Trim();
+                        if (!string.IsNullOrEmpty(input))
+                        {
+                            CloseInputDialog(input);
+                        }
+                    }
+                    else if (e.Key == System.Windows.Input.Key.Escape)
+                    {
+                        CloseInputDialog(null);
+                    }
+                };
+
+                buttonPanel.Children.Add(cancelButton);
+                buttonPanel.Children.Add(confirmButton);
+
+                Grid.SetRow(buttonPanel, 3);
+                mainGrid.Children.Add(buttonPanel);
+
+                dialogBorder.Child = mainGrid;
+                _overlay.Children.Add(dialogBorder);
+
+                // 添加到容器
+                _container.Children.Add(_overlay);
+
+                // 淡入动画
+                var overlayFadeIn = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(250));
+                _overlay.BeginAnimation(UIElement.OpacityProperty, overlayFadeIn);
+
+                var dialogFadeIn = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(300))
+                {
+                    EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+                };
+
+                var scaleTransform = new ScaleTransform(0.9, 0.9);
+                dialogBorder.RenderTransform = scaleTransform;
+                dialogBorder.RenderTransformOrigin = new Point(0.5, 0.5);
+
+                var scaleXAnimation = new DoubleAnimation(0.9, 1.0, TimeSpan.FromMilliseconds(300))
+                {
+                    EasingFunction = new BackEase { EasingMode = EasingMode.EaseOut, Amplitude = 0.3 }
+                };
+                var scaleYAnimation = new DoubleAnimation(0.9, 1.0, TimeSpan.FromMilliseconds(300))
+                {
+                    EasingFunction = new BackEase { EasingMode = EasingMode.EaseOut, Amplitude = 0.3 }
+                };
+
+                dialogBorder.BeginAnimation(UIElement.OpacityProperty, dialogFadeIn);
+                scaleTransform.BeginAnimation(ScaleTransform.ScaleXProperty, scaleXAnimation);
+                scaleTransform.BeginAnimation(ScaleTransform.ScaleYProperty, scaleYAnimation);
+            });
+
+            return await tcs.Task;
+        }
+
+        /// <summary>
         /// 显示对话框
         /// </summary>
         private Task<DialogResult> ShowDialog(string title, string message, DialogType type, DialogButtons buttons)
