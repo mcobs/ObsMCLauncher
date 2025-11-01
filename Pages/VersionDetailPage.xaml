@@ -349,12 +349,12 @@
                         </Border>
                     </RadioButton>
 
-                    <!-- OptiFine -->
-                    <RadioButton x:Name="OptiFineRadio"
-                               GroupName="LoaderGroup"
-                               Style="{StaticResource MaterialDesignRadioButton}"
+                    <!-- OptiFine (可与Forge一起使用) -->
+                    <CheckBox x:Name="OptiFineCheckBox"
+                               Style="{StaticResource MaterialDesignCheckBox}"
                                Margin="0,0,0,10"
-                               Checked="LoaderRadio_Checked">
+                               Checked="OptiFineCheckBox_CheckedChanged"
+                               Unchecked="OptiFineCheckBox_CheckedChanged">
                         <Border Background="{StaticResource SurfaceElevatedBrush}"
                               CornerRadius="6"
                               Padding="12">
@@ -377,7 +377,8 @@
                                              FontSize="14" 
                                              FontWeight="SemiBold"
                                              Margin="0,0,0,2"/>
-                                    <TextBlock Text="性能优化 MOD，支持光影和高清材质" 
+                                    <TextBlock x:Name="OptiFineDescriptionText"
+                                             Text="性能优化 MOD，支持光影和高清材质" 
                                              FontSize="12" 
                                              Foreground="{DynamicResource TextSecondaryBrush}"/>
                                 </StackPanel>
@@ -394,7 +395,7 @@
                                 </ComboBox>
                             </Grid>
                         </Border>
-                    </RadioButton>
+                    </CheckBox>
 
                     <!-- Quilt -->
                     <RadioButton x:Name="QuiltRadio"

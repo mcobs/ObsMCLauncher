@@ -493,6 +493,70 @@ namespace ObsMCLauncher.Services
                 };
             }
         }
+
+        /// <summary>
+        /// 将 OptiFine 下载为 mod 文件到指定的 mods 文件夹
+        /// 用于与 Forge/NeoForge 等模组加载器一起使用
+        /// </summary>
+        /// <param name="version">OptiFine 版本信息</param>
+        /// <param name="modsDirectory">mods 文件夹路径</param>
+        /// <param name="progressCallback">进度回调 (status, currentProgress, totalProgress, bytes, totalBytes)</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>是否下载成功</returns>
+        public async Task<bool> DownloadOptiFineAsModAsync(
+            OptifineVersionModel version,
+            string modsDirectory,
+            Action<string, double, double, long, long>? progressCallback = null,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                Debug.WriteLine($"[OptiFineService] 开始将 OptiFine 下载为 mod: {version.Filename}");
+                
+                // 确保 mods 目录存在
+                if (!Directory.Exists(modsDirectory))
+                {
+                    Directory.CreateDirectory(modsDirectory);
+                    Debug.WriteLine($"[OptiFineService] 创建 mods 目录: {modsDirectory}");
+                }
+
+                var modFilePath = Path.Combine(modsDirectory, version.Filename);
+
+                // 如果文件已存在，检查是否完整
+                if (File.Exists(modFilePath))
+                {
+                    var fileInfo = new FileInfo(modFilePath);
+                    if (fileInfo.Length > 1024 * 100) // 大于 100KB 认为是完整文件
+                    {
+                        Debug.WriteLine($"[OptiFineService] OptiFine mod 已存在且完整: {modFilePath}");
+                        progressCallback?.Invoke("OptiFine 已存在", 100, 100, fileInfo.Length, fileInfo.Length);
+                        return true;
+                    }
+                    else
+                    {
+                        // 文件不完整，删除后重新下载
+                        Debug.WriteLine($"[OptiFineService] OptiFine mod 文件不完整，重新下载");
+                        File.Delete(modFilePath);
+                    }
+                }
+
+                // 下载 OptiFine 到 mods 文件夹
+                await DownloadOptifineInstallerAsync(
+                    version,
+                    modFilePath,
+                    progressCallback,
+                    cancellationToken
+                );
+
+                Debug.WriteLine($"[OptiFineService] OptiFine mod 下载完成: {modFilePath}");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[OptiFineService] 下载 OptiFine mod 失败: {ex.Message}");
+                throw new Exception($"下载 OptiFine mod 失败: {ex.Message}", ex);
+            }
+        }
     }
 }
 

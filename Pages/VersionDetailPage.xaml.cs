@@ -750,10 +750,10 @@ namespace ObsMCLauncher.Pages
             // 设置加载状态
             _ = Dispatcher.BeginInvoke(new Action(() =>
             {
-                if (OptiFineRadio != null)
+                if (OptiFineCheckBox != null)
                 {
-                    OptiFineRadio.IsEnabled = false;
-                    OptiFineRadio.ToolTip = "正在加载OptiFine版本列表...";
+                    OptiFineCheckBox.IsEnabled = false;
+                    OptiFineCheckBox.ToolTip = "正在加载OptiFine版本列表...";
                 }
                 if (OptiFineVersionComboBox != null)
                 {
@@ -819,10 +819,10 @@ namespace ObsMCLauncher.Pages
                         }
 
                         // 启用OptiFine选项
-                        if (OptiFineRadio != null)
+                        if (OptiFineCheckBox != null)
                         {
-                            OptiFineRadio.IsEnabled = true;
-                            OptiFineRadio.ToolTip = $"OptiFine for Minecraft {currentVersion} ({optifineVersions.Count} 个版本可用)";
+                            OptiFineCheckBox.IsEnabled = true;
+                            OptiFineCheckBox.ToolTip = $"OptiFine for Minecraft {currentVersion} ({optifineVersions.Count} 个版本可用)";
                         }
 
                         System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] 加载了 {optifineVersions.Count} 个OptiFine版本，自动选择: {optifineVersions[0].FullVersion}");
@@ -831,10 +831,10 @@ namespace ObsMCLauncher.Pages
                     {
                         System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] 未找到 Minecraft {currentVersion} 的OptiFine版本");
                         
-                        if (OptiFineRadio != null)
+                        if (OptiFineCheckBox != null)
                         {
-                            OptiFineRadio.IsEnabled = false;
-                            OptiFineRadio.ToolTip = $"OptiFine暂不支持 Minecraft {currentVersion}";
+                            OptiFineCheckBox.IsEnabled = false;
+                            OptiFineCheckBox.ToolTip = $"OptiFine暂不支持 Minecraft {currentVersion}";
                         }
                         if (OptiFineVersionComboBox != null)
                         {
@@ -858,10 +858,10 @@ namespace ObsMCLauncher.Pages
                 
                 _ = Dispatcher.BeginInvoke(new Action(() =>
                 {
-                    if (OptiFineRadio != null)
+                    if (OptiFineCheckBox != null)
                     {
-                        OptiFineRadio.IsEnabled = false;
-                        OptiFineRadio.ToolTip = "加载OptiFine版本列表失败";
+                        OptiFineCheckBox.IsEnabled = false;
+                        OptiFineCheckBox.ToolTip = "加载OptiFine版本列表失败";
                     }
                     if (OptiFineVersionComboBox != null)
                     {
@@ -1029,11 +1029,10 @@ namespace ObsMCLauncher.Pages
 
         private void LoaderRadio_Checked(object sender, RoutedEventArgs e)
         {
-            // 禁用所有版本选择框
+            // 禁用所有版本选择框（OptiFine除外，它有独立的CheckBox）
             if (ForgeVersionComboBox != null) ForgeVersionComboBox.IsEnabled = false;
             if (NeoForgeVersionComboBox != null) NeoForgeVersionComboBox.IsEnabled = false;
             if (FabricVersionComboBox != null) FabricVersionComboBox.IsEnabled = false;
-            if (OptiFineVersionComboBox != null) OptiFineVersionComboBox.IsEnabled = false;
             if (QuiltVersionComboBox != null) QuiltVersionComboBox.IsEnabled = false;
 
             // 根据选中的加载器启用对应的版本选择框
@@ -1049,15 +1048,58 @@ namespace ObsMCLauncher.Pages
             {
                 FabricVersionComboBox.IsEnabled = true;
             }
-            else if (sender == OptiFineRadio && OptiFineVersionComboBox != null)
-            {
-                OptiFineVersionComboBox.IsEnabled = true;
-            }
             else if (sender == QuiltRadio && QuiltVersionComboBox != null)
             {
                 QuiltVersionComboBox.IsEnabled = true;
             }
+            
+            // 更新OptiFine描述文本（如果已勾选）
+            if (OptiFineCheckBox?.IsChecked == true && OptiFineDescriptionText != null)
+            {
+                if (sender == ForgeRadio)
+                {
+                    OptiFineDescriptionText.Text = "将作为 Mod 安装到 Forge 的 mods 文件夹";
+                }
+                else
+                {
+                    OptiFineDescriptionText.Text = "独立安装模式，性能优化 MOD";
+                }
+            }
 
+            // 更新版本名称
+            UpdateVersionName();
+            
+            // 更新选中的加载器显示
+            UpdateSelectedLoaderText();
+        }
+
+        /// <summary>
+        /// OptiFine CheckBox 状态改变事件
+        /// </summary>
+        private void OptiFineCheckBox_CheckedChanged(object sender, RoutedEventArgs e)
+        {
+            if (OptiFineVersionComboBox != null)
+            {
+                OptiFineVersionComboBox.IsEnabled = OptiFineCheckBox?.IsChecked == true;
+            }
+            
+            // 更新描述文本，提示与Forge一起使用
+            if (OptiFineDescriptionText != null)
+            {
+                if (OptiFineCheckBox?.IsChecked == true && ForgeRadio?.IsChecked == true)
+                {
+                    OptiFineDescriptionText.Text = "将作为 Mod 安装到 Forge 的 mods 文件夹";
+                }
+                else if (OptiFineCheckBox?.IsChecked == true)
+                {
+                    OptiFineDescriptionText.Text = "独立安装模式，性能优化 MOD";
+                }
+                else
+                {
+                    OptiFineDescriptionText.Text = "性能优化 MOD，支持光影和高清材质";
+                }
+            }
+            
             // 更新版本名称
             UpdateVersionName();
             
@@ -1081,35 +1123,43 @@ namespace ObsMCLauncher.Pages
         {
             if (SelectedLoaderText == null) return;
 
+            var selections = new List<string>();
+            
             if (VanillaRadio?.IsChecked == true)
             {
-                SelectedLoaderText.Text = "已选择：原版";
+                selections.Add("原版");
             }
             else if (ForgeRadio?.IsChecked == true)
             {
                 var version = (ForgeVersionComboBox?.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "默认";
-                SelectedLoaderText.Text = $"已选择：Forge {version}";
+                selections.Add($"Forge {version}");
             }
             else if (NeoForgeRadio?.IsChecked == true)
             {
                 var version = (NeoForgeVersionComboBox?.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "默认";
-                SelectedLoaderText.Text = $"已选择：NeoForge {version}";
+                selections.Add($"NeoForge {version}");
             }
             else if (FabricRadio?.IsChecked == true)
             {
                 var version = (FabricVersionComboBox?.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "默认";
-                SelectedLoaderText.Text = $"已选择：Fabric {version}";
-            }
-            else if (OptiFineRadio?.IsChecked == true)
-            {
-                var version = (OptiFineVersionComboBox?.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "默认";
-                SelectedLoaderText.Text = $"已选择：OptiFine {version}";
+                selections.Add($"Fabric {version}");
             }
             else if (QuiltRadio?.IsChecked == true)
             {
                 var version = (QuiltVersionComboBox?.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "默认";
-                SelectedLoaderText.Text = $"已选择：Quilt {version}";
+                selections.Add($"Quilt {version}");
             }
+            
+            // 检查是否勾选了OptiFine
+            if (OptiFineCheckBox?.IsChecked == true)
+            {
+                var optifineVersion = (OptiFineVersionComboBox?.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "默认";
+                selections.Add($"OptiFine {optifineVersion}");
+            }
+            
+            SelectedLoaderText.Text = selections.Count > 0 
+                ? $"已选择：{string.Join(" + ", selections)}" 
+                : "未选择加载器";
         }
 
         /// <summary>
@@ -1144,7 +1194,7 @@ namespace ObsMCLauncher.Pages
 
             string versionName = $"Minecraft-{currentVersion}";
 
-            // 根据选中的加载器添加后缀
+            // 根据选中的主加载器添加后缀
             if (ForgeRadio?.IsChecked == true)
             {
                 var selectedItem = ForgeVersionComboBox?.SelectedItem as ComboBoxItem;
@@ -1202,24 +1252,6 @@ namespace ObsMCLauncher.Pages
                     versionName += "-fabric";
                 }
             }
-            else if (OptiFineRadio?.IsChecked == true)
-            {
-                var selectedItem = OptiFineVersionComboBox?.SelectedItem as ComboBoxItem;
-                var optifineVersion = selectedItem?.Content?.ToString();
-                
-                // 只有在选择了有效版本时才添加后缀
-                if (!string.IsNullOrEmpty(optifineVersion) && 
-                    !optifineVersion.Contains("请选择") && 
-                    selectedItem?.IsEnabled == true)
-                {
-                    optifineVersion = optifineVersion.Replace(" (推荐)", "").Trim();
-                    versionName += $"-optifine-{optifineVersion}";
-                }
-                else
-                {
-                    versionName += "-optifine";
-                }
-            }
             else if (QuiltRadio?.IsChecked == true)
             {
                 var selectedItem = QuiltVersionComboBox?.SelectedItem as ComboBoxItem;
@@ -1235,6 +1267,26 @@ namespace ObsMCLauncher.Pages
                 else
                 {
                     versionName += "-quilt";
+                }
+            }
+            
+            // 检查是否额外勾选了OptiFine（可与Forge等一起使用）
+            if (OptiFineCheckBox?.IsChecked == true)
+            {
+                var selectedItem = OptiFineVersionComboBox?.SelectedItem as ComboBoxItem;
+                var optifineVersion = selectedItem?.Content?.ToString();
+                
+                // 只有在选择了有效版本时才添加后缀
+                if (!string.IsNullOrEmpty(optifineVersion) && 
+                    !optifineVersion.Contains("请选择") && 
+                    selectedItem?.IsEnabled == true)
+                {
+                    optifineVersion = optifineVersion.Replace(" (推荐)", "").Trim();
+                    versionName += $"-optifine-{optifineVersion}";
+                }
+                else
+                {
+                    versionName += "-optifine";
                 }
             }
 
@@ -1318,19 +1370,6 @@ namespace ObsMCLauncher.Pages
                 if (string.IsNullOrEmpty(loaderVersion))
                 {
                     await DialogManager.Instance.ShowWarning("提示", "请先选择一个Fabric版本！");
-                    return;
-                }
-            }
-            else if (OptiFineRadio?.IsChecked == true)
-            {
-                loaderType = "OptiFine";
-                var selectedItem = OptiFineVersionComboBox?.SelectedItem as ComboBoxItem;
-                loaderVersion = selectedItem?.Content?.ToString() ?? "";
-                
-                // 检查是否有选择版本
-                if (string.IsNullOrEmpty(loaderVersion))
-                {
-                    await DialogManager.Instance.ShowWarning("提示", "请先选择一个OptiFine版本！");
                     return;
                 }
             }
@@ -1570,8 +1609,8 @@ namespace ObsMCLauncher.Pages
                 }
                 else if (loaderType == "Forge")
                 {
-                    // Forge安装流程
-                    await InstallForgeAsync(loaderVersion, customVersionName, gameDirectory, config, progress);
+                    // Forge安装流程（可能包含 OptiFine）
+                    await InstallForgeWithOptionalOptiFineAsync(loaderVersion, customVersionName, gameDirectory, config, progress);
                 }
                 else if (loaderType == "NeoForge")
                 {
@@ -1582,11 +1621,6 @@ namespace ObsMCLauncher.Pages
                 {
                     // Fabric安装流程
                     await InstallFabricAsync(loaderVersion, customVersionName, gameDirectory, config, progress);
-                }
-                else if (loaderType == "OptiFine")
-                {
-                    // OptiFine安装流程
-                    await InstallOptiFineAsync(loaderVersion, customVersionName, gameDirectory, config, progress);
                 }
                 else if (loaderType == "Quilt")
                 {
@@ -2062,6 +2096,150 @@ namespace ObsMCLauncher.Pages
         /// <summary>
         /// 取消下载按钮点击事件
         /// </summary>
+        /// <summary>
+        /// 安装 Forge，并根据兼容性决定是否一并安装 OptiFine
+        /// </summary>
+        private async Task InstallForgeWithOptionalOptiFineAsync(
+            string forgeVersion,
+            string customVersionName,
+            string gameDirectory,
+            LauncherConfig config,
+            IProgress<DownloadProgress> progress)
+        {
+            // 1. 检查用户是否也选择了 OptiFine
+            OptifineVersionModel? selectedOptiFineVersion = null;
+            await Dispatcher.InvokeAsync(() =>
+            {
+                // 即使 OptiFineRadio 未被选中，也检查 OptiFineVersionComboBox 是否有有效选择
+                if (OptiFineVersionComboBox?.SelectedItem is ComboBoxItem selectedItem && 
+                    selectedItem.Tag is OptifineVersionModel optifineVer &&
+                    selectedItem.IsEnabled)
+                {
+                    selectedOptiFineVersion = optifineVer;
+                    System.Diagnostics.Debug.WriteLine($"[ForgeOptiFine] 检测到用户同时选择了 OptiFine: {optifineVer.FullVersion}");
+                }
+            });
+
+            // 2. 安装 Forge
+            await InstallForgeAsync(forgeVersion, customVersionName, gameDirectory, config, progress);
+
+            // 3. 如果用户选择了 OptiFine，检查兼容性并下载到 mods 文件夹
+            if (selectedOptiFineVersion != null)
+            {
+                try
+                {
+                    System.Diagnostics.Debug.WriteLine($"[ForgeOptiFine] 开始检查 Forge 和 OptiFine 兼容性");
+
+                    // 检查兼容性
+                    var compatibilityResult = ForgeOptiFineCompatibilityService.CheckCompatibility(
+                        currentVersion,
+                        forgeVersion,
+                        selectedOptiFineVersion
+                    );
+
+                    if (compatibilityResult.IsCompatible)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[ForgeOptiFine] ✅ 兼容性检查通过: {compatibilityResult.Reason}");
+
+                        // 显示提示信息
+                        if (!string.IsNullOrEmpty(compatibilityResult.WarningMessage))
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[ForgeOptiFine] ⚠️ {compatibilityResult.WarningMessage}");
+                        }
+
+                        // 更新进度显示
+                        _ = Dispatcher.BeginInvoke(() =>
+                        {
+                            DownloadStatusText.Text = "正在下载 OptiFine mod...";
+                            CurrentFileText.Text = selectedOptiFineVersion.Filename;
+                            DownloadOverallProgressBar.Value = 85;
+                            DownloadOverallPercentageText.Text = "85%";
+                        });
+
+                        // 根据安装模式下载 OptiFine
+                        if (compatibilityResult.InstallMode == InstallMode.AsMod)
+                        {
+                            // 作为 mod 下载到全局 mods 文件夹
+                            var modsDir = Path.Combine(gameDirectory, "mods");
+                            
+                            System.Diagnostics.Debug.WriteLine($"[ForgeOptiFine] 将 OptiFine 下载为 mod 到: {modsDir}");
+
+                            var optifineService = new OptiFineService(DownloadSourceManager.Instance);
+                            await optifineService.DownloadOptiFineAsModAsync(
+                                selectedOptiFineVersion,
+                                modsDir,
+                                (status, current, total, bytes, totalBytes) =>
+                                {
+                                    _ = Dispatcher.BeginInvoke(() =>
+                                    {
+                                        DownloadStatusText.Text = status;
+                                        var progress = 85 + (current / 100.0 * 10); // 85-95%
+                                        DownloadOverallProgressBar.Value = progress;
+                                        DownloadOverallPercentageText.Text = $"{progress:F0}%";
+                                        DownloadCurrentProgressBar.Value = current;
+                                        DownloadCurrentPercentageText.Text = $"{current:F0}%";
+                                        
+                                        if (_currentDownloadTaskId != null)
+                                        {
+                                            DownloadTaskManager.Instance.UpdateTaskProgress(
+                                                _currentDownloadTaskId,
+                                                progress,
+                                                status,
+                                                0
+                                            );
+                                        }
+                                    });
+                                },
+                                _downloadCancellationToken!.Token
+                            );
+
+                            System.Diagnostics.Debug.WriteLine($"[ForgeOptiFine] ✅ OptiFine mod 下载完成");
+
+                            // 显示成功提示
+                            _ = NotificationManager.Instance.ShowNotification(
+                                "OptiFine 已添加",
+                                $"OptiFine {selectedOptiFineVersion.FullVersion} 已作为 mod 添加到 Forge",
+                                NotificationType.Success,
+                                5
+                            );
+                        }
+                        else
+                        {
+                            // 集成安装模式（暂不实现，仅用于 1.12.2 及以下版本）
+                            System.Diagnostics.Debug.WriteLine($"[ForgeOptiFine] 集成安装模式暂不支持，跳过 OptiFine 安装");
+                        }
+                    }
+                    else
+                    {
+                        // 不兼容，显示警告
+                        System.Diagnostics.Debug.WriteLine($"[ForgeOptiFine] ❌ 不兼容: {compatibilityResult.Reason}");
+                        
+                        _ = NotificationManager.Instance.ShowNotification(
+                            "OptiFine 不兼容",
+                            compatibilityResult.Reason,
+                            NotificationType.Warning,
+                            8
+                        );
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[ForgeOptiFine] 处理 OptiFine 时出错: {ex.Message}");
+                    
+                    _ = NotificationManager.Instance.ShowNotification(
+                        "OptiFine 安装失败",
+                        $"无法添加 OptiFine: {ex.Message}",
+                        NotificationType.Error,
+                        8
+                    );
+                }
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine($"[ForgeOptiFine] 用户未选择 OptiFine，仅安装 Forge");
+            }
+        }
+
         /// <summary>
         /// 安装Forge（使用官方安装器）
         /// </summary>
