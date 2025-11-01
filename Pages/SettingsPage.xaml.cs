@@ -54,6 +54,9 @@ namespace ObsMCLauncher.Pages
             MaxMemorySlider.Value = _config.MaxMemory;
             MaxMemoryTextBox.Text = _config.MaxMemory.ToString();
             JvmArgumentsTextBox.Text = _config.JvmArguments;
+            
+            // 加载版本隔离设置
+            GameDirectoryTypeComboBox.SelectedIndex = _config.GameDirectoryType == GameDirectoryType.VersionFolder ? 1 : 0;
 
             // 加载文件存储设置
             ConfigFileLocationComboBox.SelectedIndex = (int)_config.ConfigFileLocation;
@@ -321,6 +324,11 @@ namespace ObsMCLauncher.Pages
                 _config.MinMemory = 512; // 固定为512MB
                 // Java配置已在选择时保存
                 _config.JvmArguments = JvmArgumentsTextBox.Text;
+                
+                // 保存版本隔离设置
+                _config.GameDirectoryType = GameDirectoryTypeComboBox.SelectedIndex == 1 
+                    ? GameDirectoryType.VersionFolder 
+                    : GameDirectoryType.RootFolder;
 
                 // 保存文件存储设置
                 _config.ConfigFileLocation = (DirectoryLocation)ConfigFileLocationComboBox.SelectedIndex;
@@ -728,6 +736,15 @@ namespace ObsMCLauncher.Pages
         {
             UpdateAccountFileDisplay();
             AutoSaveSettingsImmediately("账号文件位置");
+        }
+
+        /// <summary>
+        /// 版本隔离设置改变（自动保存）
+        /// </summary>
+        private void GameDirectoryType_Changed_AutoSave(object sender, SelectionChangedEventArgs e)
+        {
+            if (!_isInitialized) return;
+            AutoSaveSettingsImmediately("版本隔离");
         }
 
         /// <summary>

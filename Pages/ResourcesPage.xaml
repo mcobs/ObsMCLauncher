@@ -94,17 +94,26 @@
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
-                    <!-- 下载源选择 -->
-                    <ComboBox x:Name="SourceComboBox"
-                            Grid.Column="0"
-                            Width="140"
-                            materialDesign:HintAssist.Hint="下载源"
-                            Style="{StaticResource MaterialDesignOutlinedComboBox}"
-                            Margin="0,0,15,0"
-                            SelectionChanged="SourceComboBox_SelectionChanged">
-                        <ComboBoxItem Content="CurseForge" IsSelected="True" Tag="CurseForge"/>
-                        <ComboBoxItem Content="Modrinth" Tag="Modrinth" IsEnabled="False"/>
-                    </ComboBox>
+                    <!-- 已安装版本选择（仅Mods标签显示） -->
+                    <StackPanel Grid.Column="0" Orientation="Horizontal">
+                        <ComboBox x:Name="InstalledVersionComboBox"
+                                Width="180"
+                                materialDesign:HintAssist.Hint="选择游戏版本"
+                                Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                                Margin="0,0,10,0"
+                                SelectionChanged="InstalledVersionComboBox_SelectionChanged">
+                        </ComboBox>
+                        
+                        <ComboBox x:Name="SourceComboBox"
+                                Width="140"
+                                materialDesign:HintAssist.Hint="下载源"
+                                Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                                Margin="0,0,0,0"
+                                SelectionChanged="SourceComboBox_SelectionChanged">
+                            <ComboBoxItem Content="CurseForge" IsSelected="True" Tag="CurseForge"/>
+                            <ComboBoxItem Content="Modrinth" Tag="Modrinth" IsEnabled="False"/>
+                        </ComboBox>
+                    </StackPanel>
 
                     <!-- 搜索框 -->
                     <TextBox x:Name="SearchBox"

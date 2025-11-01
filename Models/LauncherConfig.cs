@@ -109,6 +109,12 @@ namespace ObsMCLauncher.Models
         public bool DownloadAssetsWithGame { get; set; } = true;
 
         /// <summary>
+        /// 版本隔离模式：决定每个版本使用独立的mods文件夹还是共享
+        /// </summary>
+        [JsonConverter(typeof(JsonStringEnumConverter))]
+        public GameDirectoryType GameDirectoryType { get; set; } = GameDirectoryType.RootFolder;
+
+        /// <summary>
         /// 游戏启动后关闭启动器
         /// </summary>
         public bool CloseAfterLaunch { get; set; } = false;
@@ -375,6 +381,31 @@ namespace ObsMCLauncher.Models
                 default:
                     return JavaPath;
             }
+        }
+
+        /// <summary>
+        /// 获取指定版本的运行目录（根据版本隔离设置）
+        /// </summary>
+        /// <param name="versionName">版本名称</param>
+        /// <returns>运行目录路径</returns>
+        public string GetRunDirectory(string versionName)
+        {
+            return GameDirectoryType switch
+            {
+                GameDirectoryType.VersionFolder => Path.Combine(GameDirectory, "versions", versionName),
+                GameDirectoryType.RootFolder => GameDirectory,
+                _ => GameDirectory
+            };
+        }
+
+        /// <summary>
+        /// 获取指定版本的Mods目录（根据版本隔离设置）
+        /// </summary>
+        /// <param name="versionName">版本名称</param>
+        /// <returns>Mods目录路径</returns>
+        public string GetModsDirectory(string versionName)
+        {
+            return Path.Combine(GetRunDirectory(versionName), "mods");
         }
     }
 }

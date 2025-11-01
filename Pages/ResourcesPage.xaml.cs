@@ -21,6 +21,7 @@ namespace ObsMCLauncher.Pages
         private string _currentResourceType = "Mods";
         private int _currentPage = 0;
         private const int PAGE_SIZE = 20;
+        private string? _selectedVersionId = null;
 
         public ResourcesPage()
         {
@@ -32,8 +33,138 @@ namespace ObsMCLauncher.Pages
 
         private void ResourcesPage_Loaded(object sender, RoutedEventArgs e)
         {
+            // 加载已安装的版本列表
+            LoadInstalledVersions();
+            
             // 页面加载完成后显示空状态
             ShowEmptyState();
+        }
+
+        /// <summary>
+        /// 加载已安装的版本列表
+        /// </summary>
+        private void LoadInstalledVersions()
+        {
+            try
+            {
+                var config = LauncherConfig.Load();
+                var versionsDir = Path.Combine(config.GameDirectory, "versions");
+                
+                if (!Directory.Exists(versionsDir))
+                {
+                    InstalledVersionComboBox.Items.Add(new ComboBoxItem 
+                    { 
+                        Content = "未找到已安装的版本", 
+                        IsEnabled = false 
+                    });
+                    InstalledVersionComboBox.SelectedIndex = 0;
+                    return;
+                }
+                
+                var versionDirs = Directory.GetDirectories(versionsDir);
+                var versionInfos = new List<(string name, string type)>();
+                
+                foreach (var versionDir in versionDirs)
+                {
+                    var versionName = Path.GetFileName(versionDir);
+                    var versionJsonPath = Path.Combine(versionDir, $"{versionName}.json");
+                    
+                    if (File.Exists(versionJsonPath))
+                    {
+                        // 检测版本类型
+                        var versionType = DetectVersionType(versionName);
+                        versionInfos.Add((versionName, versionType));
+                    }
+                }
+                
+                // 排序：先按类型（支持mod的在前），再按版本名
+                versionInfos = versionInfos
+                    .OrderBy(v => v.type == "vanilla" || v.type == "optifine" ? 1 : 0)
+                    .ThenBy(v => v.name)
+                    .ToList();
+                
+                foreach (var (name, type) in versionInfos)
+                {
+                    var displayText = type switch
+                    {
+                        "vanilla" => $"{name} (原版 - 不支持mod)",
+                        "optifine" => $"{name} (OptiFine - 不支持mod)",
+                        "forge" => $"{name} (Forge)",
+                        "neoforge" => $"{name} (NeoForge)",
+                        "fabric" => $"{name} (Fabric)",
+                        "quilt" => $"{name} (Quilt)",
+                        _ => name
+                    };
+                    
+                    var item = new ComboBoxItem 
+                    { 
+                        Content = displayText, 
+                        Tag = name,
+                        IsEnabled = type != "vanilla" && type != "optifine" // 禁用原版和OptiFine
+                    };
+                    
+                    InstalledVersionComboBox.Items.Add(item);
+                }
+                
+                // 选择第一个支持mod的版本
+                for (int i = 0; i < InstalledVersionComboBox.Items.Count; i++)
+                {
+                    if (InstalledVersionComboBox.Items[i] is ComboBoxItem item && item.IsEnabled)
+                    {
+                        InstalledVersionComboBox.SelectedIndex = i;
+                        break;
+                    }
+                }
+                
+                if (InstalledVersionComboBox.SelectedIndex == -1 && InstalledVersionComboBox.Items.Count > 0)
+                {
+                    InstalledVersionComboBox.SelectedIndex = 0;
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[ResourcesPage] 加载版本列表失败: {ex.Message}");
+                InstalledVersionComboBox.Items.Add(new ComboBoxItem 
+                { 
+                    Content = "加载失败", 
+                    IsEnabled = false 
+                });
+                InstalledVersionComboBox.SelectedIndex = 0;
+            }
+        }
+
+        /// <summary>
+        /// 检测版本类型
+        /// </summary>
+        private string DetectVersionType(string versionName)
+        {
+            var lowerName = versionName.ToLower();
+            
+            if (lowerName.Contains("forge") && !lowerName.Contains("neoforge"))
+                return "forge";
+            if (lowerName.Contains("neoforge"))
+                return "neoforge";
+            if (lowerName.Contains("fabric"))
+                return "fabric";
+            if (lowerName.Contains("quilt"))
+                return "quilt";
+            if (lowerName.Contains("optifine"))
+                return "optifine";
+            
+            // 原版检测：不包含任何加载器标识
+            return "vanilla";
+        }
+
+        /// <summary>
+        /// 版本选择改变事件
+        /// </summary>
+        private void InstalledVersionComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (InstalledVersionComboBox.SelectedItem is ComboBoxItem item && item.Tag is string versionId)
+            {
+                _selectedVersionId = versionId;
+                Debug.WriteLine($"[ResourcesPage] 选择的版本: {versionId}");
+            }
         }
 
         private void ResourceTab_Click(object sender, RoutedEventArgs e)
@@ -386,6 +517,21 @@ namespace ObsMCLauncher.Pages
             {
                 Debug.WriteLine($"[ResourcesPage] 准备下载MOD: {mod.Name}");
                 
+                // 检查是否选择了版本
+                if (string.IsNullOrEmpty(_selectedVersionId))
+                {
+                    NotificationManager.Instance.ShowNotification("提示", "请先选择要安装到的游戏版本", NotificationType.Warning);
+                    return;
+                }
+                
+                // 检查选择的版本是否支持mod
+                var versionType = DetectVersionType(_selectedVersionId);
+                if (versionType == "vanilla" || versionType == "optifine")
+                {
+                    NotificationManager.Instance.ShowNotification("提示", "所选版本不支持安装MOD", NotificationType.Warning);
+                    return;
+                }
+                
                 // 获取MOD的文件列表
                 var filesResult = await CurseForgeService.GetModFilesAsync(mod.Id);
                 
@@ -394,9 +540,12 @@ namespace ObsMCLauncher.Pages
                     // 选择最新的文件
                     var latestFile = filesResult.Data.OrderByDescending(f => f.FileDate).First();
                     
-                    // 获取游戏目录
+                    // 根据版本隔离设置获取mods文件夹路径
                     var config = LauncherConfig.Load();
-                    var modsFolder = Path.Combine(config.GameDirectory, "mods");
+                    var modsFolder = config.GetModsDirectory(_selectedVersionId);
+                    
+                    Debug.WriteLine($"[ResourcesPage] MOD下载路径: {modsFolder}");
+                    Debug.WriteLine($"[ResourcesPage] 版本隔离模式: {config.GameDirectoryType}");
                     
                     if (!Directory.Exists(modsFolder))
                     {

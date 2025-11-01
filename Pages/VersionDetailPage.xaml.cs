@@ -2159,10 +2159,11 @@ namespace ObsMCLauncher.Pages
                         // 根据安装模式下载 OptiFine
                         if (compatibilityResult.InstallMode == InstallMode.AsMod)
                         {
-                            // 作为 mod 下载到全局 mods 文件夹
-                            var modsDir = Path.Combine(gameDirectory, "mods");
+                            // 根据版本隔离设置获取 mods 文件夹路径
+                            var modsDir = config.GetModsDirectory(customVersionName);
                             
                             System.Diagnostics.Debug.WriteLine($"[ForgeOptiFine] 将 OptiFine 下载为 mod 到: {modsDir}");
+                            System.Diagnostics.Debug.WriteLine($"[ForgeOptiFine] 版本隔离模式: {config.GameDirectoryType}");
 
                             var optifineService = new OptiFineService(DownloadSourceManager.Instance);
                             await optifineService.DownloadOptiFineAsModAsync(

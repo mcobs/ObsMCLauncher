@@ -384,11 +384,17 @@ namespace ObsMCLauncher.Services
                 // 7. 启动游戏进程
                 onProgressUpdate?.Invoke("正在启动游戏进程...");
                 cancellationToken.ThrowIfCancellationRequested();
+                
+                // 根据版本隔离设置获取工作目录
+                var workingDirectory = config.GetRunDirectory(versionId);
+                Debug.WriteLine($"[GameLauncher] 工作目录: {workingDirectory}");
+                Debug.WriteLine($"[GameLauncher] 版本隔离模式: {config.GameDirectoryType}");
+                
                 var processInfo = new ProcessStartInfo
                 {
                     FileName = actualJavaPath,
                     Arguments = arguments,
-                    WorkingDirectory = config.GameDirectory,
+                    WorkingDirectory = workingDirectory,
                     UseShellExecute = false,
                     CreateNoWindow = false,
                     RedirectStandardOutput = true,
@@ -484,11 +490,13 @@ namespace ObsMCLauncher.Services
             bool isModularNeoForge = versionInfo.MainClass?.Contains("bootstraplauncher", StringComparison.OrdinalIgnoreCase) == true;
 
             // 2.4. 游戏目录相关（移到前面，因为变量替换需要这些信息）
-            var gameDir = config.GameDirectory;
-            var versionDir = Path.Combine(gameDir, "versions", versionId);
+            // 根据版本隔离设置获取运行目录
+            var gameDir = config.GetRunDirectory(versionId);
+            var baseGameDir = config.GameDirectory; // 库文件和资源文件始终在基础游戏目录
+            var versionDir = Path.Combine(baseGameDir, "versions", versionId);
             var nativesDir = Path.Combine(versionDir, "natives");
-            var librariesDir = Path.Combine(gameDir, "libraries");
-            var assetsDir = Path.Combine(gameDir, "assets");
+            var librariesDir = Path.Combine(baseGameDir, "libraries");
+            var assetsDir = Path.Combine(baseGameDir, "assets");
 
             // 2.45. 模块路径JAR集合（用于跟踪哪些JAR在模块路径中，避免重复添加到classpath）
             var modulePathJars = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
