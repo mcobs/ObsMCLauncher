@@ -510,7 +510,7 @@ namespace ObsMCLauncher.Services
                 for (int i = 0; i < versionInfo.Arguments.Jvm.Count; i++)
                 {
                     var arg = versionInfo.Arguments.Jvm[i];
-                    string argStr = null;
+                    string? argStr = null;
                     
                     if (arg is string str)
                         argStr = str;
@@ -543,7 +543,7 @@ namespace ObsMCLauncher.Services
                         if (i + 1 < versionInfo.Arguments.Jvm.Count)
                         {
                             var nextArg = versionInfo.Arguments.Jvm[i + 1];
-                            string nextArgStr = null;
+                            string? nextArgStr = null;
                             
                             if (nextArg is string nextStr)
                                 nextArgStr = nextStr;
