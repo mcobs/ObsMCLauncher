@@ -1133,13 +1133,6 @@ namespace ObsMCLauncher.Pages
                 DisplayMarketPlugins(_filteredMarketPlugins);
                 
                 Debug.WriteLine($"[MorePage] 成功加载 {_allMarketPlugins.Count} 个市场插件");
-                
-                NotificationManager.Instance.ShowNotification(
-                    "插件市场",
-                    $"成功加载 {_allMarketPlugins.Count} 个插件",
-                    NotificationType.Success,
-                    2
-                );
             }
             catch (Exception ex)
             {
@@ -1445,7 +1438,22 @@ namespace ObsMCLauncher.Pages
                 {
                     // 更新按钮状态
                     button.Content = "已安装";
+                    button.IsEnabled = false;
                     button.SetResourceReference(Button.StyleProperty, "MaterialDesignOutlinedButton");
+                    
+                    // 重新加载插件列表（检测新安装的插件）
+                    if (_pluginLoader != null)
+                    {
+                        try
+                        {
+                            _pluginLoader.LoadAllPlugins();
+                            Debug.WriteLine($"[MorePage] 已重新加载插件列表");
+                        }
+                        catch (Exception loadEx)
+                        {
+                            Debug.WriteLine($"[MorePage] 重新加载插件失败: {loadEx.Message}");
+                        }
+                    }
                     
                     NotificationManager.Instance.ShowNotification(
                         "插件安装",

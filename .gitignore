@@ -268,3 +268,7 @@ FodyWeavers.xsd
 # JetBrains Rider
 *.sln.iml
 
+PLUGIN_MARKET_SETUP.md
+example-plugin-submission.json
+.gitignore
+plugin-market-example.json

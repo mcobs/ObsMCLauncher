@@ -108,7 +108,25 @@ namespace ObsMCLauncher.Plugins
     {
         private const string MARKET_INDEX_URL = "https://raw.githubusercontent.com/mcobs/ObsMCLauncher-PluginMarket/main/plugins.json";
         private const string CATEGORY_INDEX_URL = "https://raw.githubusercontent.com/mcobs/ObsMCLauncher-PluginMarket/main/categories.json";
+        private const string GITHUB_PROXY = "https://gh-proxy.com/";
         private static readonly HttpClient _httpClient;
+        
+        /// <summary>
+        /// 为GitHub URL添加镜像代理
+        /// </summary>
+        private static string UseProxyIfNeeded(string url)
+        {
+            // 如果是GitHub相关的URL，使用镜像源
+            if (url.Contains("github.com") || url.Contains("githubusercontent.com"))
+            {
+                if (!url.StartsWith(GITHUB_PROXY))
+                {
+                    Debug.WriteLine($"[PluginMarket] 使用镜像源: {GITHUB_PROXY}");
+                    return GITHUB_PROXY + url;
+                }
+            }
+            return url;
+        }
         
         static PluginMarketService()
         {
@@ -130,7 +148,8 @@ namespace ObsMCLauncher.Plugins
             {
                 Debug.WriteLine($"[PluginMarket] 正在获取插件市场索引...");
                 
-                var response = await _httpClient.GetAsync(MARKET_INDEX_URL);
+                var url = UseProxyIfNeeded(MARKET_INDEX_URL);
+                var response = await _httpClient.GetAsync(url);
                 response.EnsureSuccessStatusCode();
                 
                 var json = await response.Content.ReadAsStringAsync();
@@ -158,7 +177,8 @@ namespace ObsMCLauncher.Plugins
             {
                 Debug.WriteLine($"[PluginMarket] 正在获取插件分类...");
                 
-                var response = await _httpClient.GetAsync(CATEGORY_INDEX_URL);
+                var url = UseProxyIfNeeded(CATEGORY_INDEX_URL);
+                var response = await _httpClient.GetAsync(url);
                 response.EnsureSuccessStatusCode();
                 
                 var json = await response.Content.ReadAsStringAsync();
@@ -191,8 +211,11 @@ namespace ObsMCLauncher.Plugins
                 Debug.WriteLine($"[PluginMarket] 开始下载插件: {plugin.Name}");
                 progress?.Report(0);
                 
-                // 下载插件ZIP文件
-                var response = await _httpClient.GetAsync(plugin.DownloadUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+                // 使用镜像源下载插件ZIP文件
+                var downloadUrl = UseProxyIfNeeded(plugin.DownloadUrl);
+                Debug.WriteLine($"[PluginMarket] 下载地址: {downloadUrl}");
+                
+                var response = await _httpClient.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
                 response.EnsureSuccessStatusCode();
                 
                 var totalBytes = response.Content.Headers.ContentLength ?? -1;

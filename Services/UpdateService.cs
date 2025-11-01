@@ -65,7 +65,24 @@ namespace ObsMCLauncher.Services
         private const string GITHUB_API = "https://api.github.com/repos/{0}/{1}/releases/latest";
         
         // 镜像加速地址（用于国内访问）
-        private const string GITHUB_MIRROR = "https://ghproxy.com/"; // GitHub文件加速
+        private const string GITHUB_MIRROR = "https://gh-proxy.com/"; // GitHub文件加速
+        
+        /// <summary>
+        /// 为GitHub URL添加镜像代理
+        /// </summary>
+        private static string UseProxyIfNeeded(string url)
+        {
+            // 如果是GitHub相关的URL，使用镜像源
+            if (url.Contains("github.com") || url.Contains("githubusercontent.com"))
+            {
+                if (!url.StartsWith(GITHUB_MIRROR))
+                {
+                    Debug.WriteLine($"[UpdateService] 使用镜像源: {GITHUB_MIRROR}");
+                    return GITHUB_MIRROR + url;
+                }
+            }
+            return url;
+        }
         
         static UpdateService()
         {
@@ -253,11 +270,7 @@ namespace ObsMCLauncher.Services
                 }
 
                 // 使用镜像加速下载（如果URL是GitHub）
-                string downloadUrl = installer.BrowserDownloadUrl;
-                if (downloadUrl.Contains("github.com"))
-                {
-                    downloadUrl = GITHUB_MIRROR + downloadUrl;
-                }
+                string downloadUrl = UseProxyIfNeeded(installer.BrowserDownloadUrl);
 
                 Debug.WriteLine($"[UpdateService] 开始下载: {installer.Name}");
                 Debug.WriteLine($"[UpdateService] 下载地址: {downloadUrl}");
