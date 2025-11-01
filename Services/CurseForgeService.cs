@@ -56,14 +56,15 @@ namespace ObsMCLauncher.Services
             int pageIndex = 0,
             int pageSize = 20,
             int sortField = 2, // 默认按人气排序
-            string sortOrder = "desc")
+            string sortOrder = "desc",
+            int? classId = null)  // 可选的资源类型ID
         {
             try
             {
                 var queryParams = new List<string>
                 {
                     $"gameId={MINECRAFT_GAME_ID}",
-                    $"classId={SECTION_MODS}",
+                    $"classId={classId ?? SECTION_MODS}",  // 使用传入的classId或默认MODS
                     $"index={pageIndex * pageSize}",
                     $"pageSize={pageSize}",
                     $"sortField={sortField}",
@@ -174,8 +175,6 @@ namespace ObsMCLauncher.Services
 
                 var url = $"{API_BASE_URL}/v1/mods/{modId}/files?{string.Join("&", queryParams)}";
                 
-                Debug.WriteLine($"[CurseForge] 获取MOD文件列表: {modId}");
-                
                 var response = await _httpClient.GetAsync(url);
                 response.EnsureSuccessStatusCode();
 
@@ -186,8 +185,6 @@ namespace ObsMCLauncher.Services
                 };
 
                 var result = JsonSerializer.Deserialize<CurseForgeResponse<List<CurseForgeFile>>>(json, options);
-                
-                Debug.WriteLine($"[CurseForge] ✅ 获取到 {result?.Data?.Count ?? 0} 个文件");
                 
                 return result;
             }

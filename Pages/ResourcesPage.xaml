@@ -94,24 +94,24 @@
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
-                    <!-- 已安装版本选择（仅Mods标签显示） -->
+                    <!-- 已安装版本选择 -->
                     <StackPanel Grid.Column="0" Orientation="Horizontal">
                         <ComboBox x:Name="InstalledVersionComboBox"
-                                Width="180"
+                                Width="160"
                                 materialDesign:HintAssist.Hint="选择游戏版本"
                                 Style="{StaticResource MaterialDesignOutlinedComboBox}"
-                                Margin="0,0,10,0"
+                                Margin="0,0,8,0"
                                 SelectionChanged="InstalledVersionComboBox_SelectionChanged">
                         </ComboBox>
                         
                         <ComboBox x:Name="SourceComboBox"
-                                Width="140"
+                                Width="120"
                                 materialDesign:HintAssist.Hint="下载源"
                                 Style="{StaticResource MaterialDesignOutlinedComboBox}"
                                 Margin="0,0,0,0"
                                 SelectionChanged="SourceComboBox_SelectionChanged">
                             <ComboBoxItem Content="CurseForge" IsSelected="True" Tag="CurseForge"/>
-                            <ComboBoxItem Content="Modrinth" Tag="Modrinth" IsEnabled="False"/>
+                            <ComboBoxItem Content="Modrinth" Tag="Modrinth"/>
                         </ComboBox>
                     </StackPanel>
 
@@ -120,16 +120,16 @@
                            Grid.Column="1"
                            materialDesign:HintAssist.Hint="搜索资源..."
                            Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                           Margin="0,0,15,0"
+                           Margin="12,0,12,0"
                            KeyDown="SearchBox_KeyDown"/>
 
                     <!-- 游戏版本筛选 -->
                     <ComboBox x:Name="VersionFilterComboBox"
                             Grid.Column="2"
-                            Width="140"
+                            Width="120"
                             materialDesign:HintAssist.Hint="适用版本"
                             Style="{StaticResource MaterialDesignOutlinedComboBox}"
-                            Margin="0,0,15,0"
+                            Margin="0,0,8,0"
                             SelectionChanged="FilterChanged">
                         <ComboBoxItem Content="全部版本" IsSelected="True" Tag=""/>
                         <ComboBoxItem Content="1.21.x" Tag="1.21"/>
@@ -143,10 +143,10 @@
                     <!-- 排序方式 -->
                     <ComboBox x:Name="SortComboBox"
                             Grid.Column="3"
-                            Width="140"
+                            Width="120"
                             materialDesign:HintAssist.Hint="排序方式"
                             Style="{StaticResource MaterialDesignOutlinedComboBox}"
-                            Margin="0,0,15,0"
+                            Margin="0,0,8,0"
                             SelectionChanged="FilterChanged">
                         <ComboBoxItem Content="最热门" IsSelected="True" Tag="2"/>
                         <ComboBoxItem Content="下载量" Tag="6"/>

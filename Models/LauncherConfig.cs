@@ -407,6 +407,37 @@ namespace ObsMCLauncher.Models
         {
             return Path.Combine(GetRunDirectory(versionName), "mods");
         }
+
+        /// <summary>
+        /// 获取指定版本的材质包目录（根据版本隔离设置）
+        /// </summary>
+        /// <param name="versionName">版本名称</param>
+        /// <returns>材质包目录路径</returns>
+        public string GetResourcePacksDirectory(string versionName)
+        {
+            return Path.Combine(GetRunDirectory(versionName), "resourcepacks");
+        }
+
+        /// <summary>
+        /// 获取指定版本的光影目录（根据版本隔离设置）
+        /// </summary>
+        /// <param name="versionName">版本名称</param>
+        /// <returns>光影目录路径</returns>
+        public string GetShaderPacksDirectory(string versionName)
+        {
+            return Path.Combine(GetRunDirectory(versionName), "shaderpacks");
+        }
+
+        /// <summary>
+        /// 获取指定版本的数据包目录（根据版本隔离设置）
+        /// 通常在saves/[世界名]/datapacks，这里返回版本目录下的saves文件夹
+        /// </summary>
+        /// <param name="versionName">版本名称</param>
+        /// <returns>Saves目录路径</returns>
+        public string GetSavesDirectory(string versionName)
+        {
+            return Path.Combine(GetRunDirectory(versionName), "saves");
+        }
     }
 }
 
