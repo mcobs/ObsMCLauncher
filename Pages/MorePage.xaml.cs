@@ -104,44 +104,171 @@ namespace ObsMCLauncher.Pages
                     Visibility = Visibility.Collapsed
                 };
                 
-                // 设置内容
-                if (content is Page page)
+                // 设置内容（添加异常处理）
+                try
                 {
-                    var frame = new Frame
+                    if (content is Page page)
                     {
-                        Content = page,
-                        NavigationUIVisibility = NavigationUIVisibility.Hidden
-                    };
-                    scrollViewer.Content = frame;
+                        var frame = new Frame
+                        {
+                            Content = page,
+                            NavigationUIVisibility = NavigationUIVisibility.Hidden
+                        };
+                        scrollViewer.Content = frame;
+                    }
+                    else if (content is UIElement uiElement)
+                    {
+                        scrollViewer.Content = uiElement;
+                    }
+                    else
+                    {
+                        Debug.WriteLine($"[MorePage] ❌ 不支持的内容类型: {content.GetType()}");
+                        ShowPluginErrorNotification(pluginId, $"不支持的UI类型: {content.GetType().Name}");
+                        return;
+                    }
                 }
-                else if (content is UIElement uiElement)
+                catch (Exception contentEx)
                 {
-                    scrollViewer.Content = uiElement;
-                }
-                else
-                {
-                    Debug.WriteLine($"[MorePage] 不支持的内容类型: {content.GetType()}");
-                    return;
+                    Debug.WriteLine($"[MorePage] ❌ 创建插件内容失败: {contentEx.Message}");
+                    Debug.WriteLine($"[MorePage] 堆栈跟踪: {contentEx.StackTrace}");
+                    
+                    // 创建错误显示页面
+                    var errorPage = CreatePluginErrorPage(pluginId, title, contentEx);
+                    scrollViewer.Content = errorPage;
+                    
+                    ShowPluginErrorNotification(pluginId, $"UI创建失败: {contentEx.Message}");
                 }
                 
                 // 添加到UI
-                // 获取导航栏的StackPanel
-                var navBar = (StackPanel)((Border)((Grid)this.Content).Children[0]).Child;
-                navBar.Children.Add(radioButton);
-                
-                // 添加内容到Grid
-                var mainGrid = (Grid)this.Content;
-                Grid.SetRow(scrollViewer, 1);
-                mainGrid.Children.Add(scrollViewer);
-                
-                // 保存引用
-                _pluginTabs[pluginId] = (radioButton, scrollViewer);
-                
-                Debug.WriteLine($"[MorePage] ✅ 插件标签页注册成功: {title}");
+                try
+                {
+                    // 获取导航栏的StackPanel
+                    var navBar = (StackPanel)((Border)((Grid)this.Content).Children[0]).Child;
+                    navBar.Children.Add(radioButton);
+                    
+                    // 添加内容到Grid
+                    var mainGrid = (Grid)this.Content;
+                    Grid.SetRow(scrollViewer, 1);
+                    mainGrid.Children.Add(scrollViewer);
+                    
+                    // 保存引用
+                    _pluginTabs[pluginId] = (radioButton, scrollViewer);
+                    
+                    Debug.WriteLine($"[MorePage] ✅ 插件标签页注册成功: {title}");
+                }
+                catch (Exception uiEx)
+                {
+                    Debug.WriteLine($"[MorePage] ❌ 添加插件UI到界面失败: {uiEx.Message}");
+                    ShowPluginErrorNotification(pluginId, $"UI添加失败: {uiEx.Message}");
+                }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[MorePage] 注册插件标签页失败: {ex.Message}");
+                Debug.WriteLine($"[MorePage] ❌ 注册插件标签页失败: {ex.Message}");
+                Debug.WriteLine($"[MorePage] 完整异常: {ex}");
+                ShowPluginErrorNotification(pluginId, $"注册失败: {ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// 创建插件错误显示页面
+        /// </summary>
+        private UIElement CreatePluginErrorPage(string pluginId, string title, Exception ex)
+        {
+            var errorPanel = new StackPanel
+            {
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                MaxWidth = 600
+            };
+            
+            // 错误图标
+            var errorIcon = new MaterialDesignThemes.Wpf.PackIcon
+            {
+                Kind = MaterialDesignThemes.Wpf.PackIconKind.AlertCircle,
+                Width = 64,
+                Height = 64,
+                Foreground = new SolidColorBrush(Color.FromRgb(255, 71, 87)),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Margin = new Thickness(0, 0, 0, 16)
+            };
+            errorPanel.Children.Add(errorIcon);
+            
+            // 标题
+            var titleText = new TextBlock
+            {
+                Text = $"插件 {title} 加载失败",
+                FontSize = 20,
+                FontWeight = FontWeights.Bold,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Margin = new Thickness(0, 0, 0, 8)
+            };
+            titleText.SetResourceReference(TextBlock.ForegroundProperty, "TextBrush");
+            errorPanel.Children.Add(titleText);
+            
+            // 插件ID
+            var idText = new TextBlock
+            {
+                Text = $"插件ID: {pluginId}",
+                FontSize = 12,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Margin = new Thickness(0, 0, 0, 16)
+            };
+            idText.SetResourceReference(TextBlock.ForegroundProperty, "TextSecondaryBrush");
+            errorPanel.Children.Add(idText);
+            
+            // 错误信息
+            var errorBorder = new Border
+            {
+                Background = new SolidColorBrush(Color.FromArgb(25, 255, 71, 87)),
+                CornerRadius = new CornerRadius(8),
+                Padding = new Thickness(16),
+                Margin = new Thickness(0, 0, 0, 16)
+            };
+            
+            var errorText = new TextBlock
+            {
+                Text = $"错误信息：\n{ex.Message}",
+                FontSize = 13,
+                TextWrapping = TextWrapping.Wrap,
+                Foreground = new SolidColorBrush(Color.FromRgb(255, 71, 87))
+            };
+            
+            errorBorder.Child = errorText;
+            errorPanel.Children.Add(errorBorder);
+            
+            // 建议
+            var suggestionText = new TextBlock
+            {
+                Text = "建议：\n• 检查插件是否与当前启动器版本兼容\n• 查看插件文档或联系插件作者\n• 尝试重新安装插件\n• 查看调试控制台获取详细错误信息",
+                FontSize = 13,
+                TextWrapping = TextWrapping.Wrap,
+                LineHeight = 20,
+                HorizontalAlignment = HorizontalAlignment.Left
+            };
+            suggestionText.SetResourceReference(TextBlock.ForegroundProperty, "TextSecondaryBrush");
+            errorPanel.Children.Add(suggestionText);
+            
+            return errorPanel;
+        }
+        
+        /// <summary>
+        /// 显示插件错误通知
+        /// </summary>
+        private void ShowPluginErrorNotification(string pluginId, string message)
+        {
+            try
+            {
+                NotificationManager.Instance.ShowNotification(
+                    $"插件错误 ({pluginId})",
+                    message,
+                    NotificationType.Error,
+                    5
+                );
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[MorePage] 显示通知失败: {ex.Message}");
             }
         }
         
@@ -159,11 +286,8 @@ namespace ObsMCLauncher.Pages
             if (PluginsContent != null)
                 PluginsContent.Visibility = Visibility.Collapsed;
             
-            // 隐藏所有插件页面
-            foreach (var (_, content) in _pluginTabs.Values)
-            {
-                content.Visibility = Visibility.Collapsed;
-            }
+            // 隐藏所有插件页面（使用统一方法）
+            HideAllPluginTabs();
             
             // 显示选中的插件页面
             tabInfo.content.Visibility = Visibility.Visible;
@@ -241,13 +365,32 @@ namespace ObsMCLauncher.Pages
             {
                 AboutContent.Visibility = Visibility.Visible;
                 PluginsContent.Visibility = Visibility.Collapsed;
+                
+                // 隐藏所有插件标签页
+                HideAllPluginTabs();
+                
                 Debug.WriteLine("[MorePage] 切换到关于页面");
             }
             else if (tabName == "Plugins")
             {
                 AboutContent.Visibility = Visibility.Collapsed;
                 PluginsContent.Visibility = Visibility.Visible;
+                
+                // 隐藏所有插件标签页
+                HideAllPluginTabs();
+                
                 Debug.WriteLine("[MorePage] 切换到插件页面");
+            }
+        }
+        
+        /// <summary>
+        /// 隐藏所有插件标签页
+        /// </summary>
+        private void HideAllPluginTabs()
+        {
+            foreach (var (_, content) in _pluginTabs.Values)
+            {
+                content.Visibility = Visibility.Collapsed;
             }
         }
         
