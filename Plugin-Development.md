@@ -670,14 +670,37 @@ obsmclauncher
 
 #### 手动发布
 
-1. 编译插件（Release 模式）
-2. 将以下文件打包成 ZIP：
-   - `YourPlugin.dll`
-   - `plugin.json`
-   - `icon.png`（如有）
-   - `README.md`
-   - `LICENSE`
-3. 在 GitHub 创建新 Release：
+1. **编译插件**（Release 模式）
+   ```bash
+   dotnet build -c Release
+   ```
+
+2. **打包成 ZIP**（⚠️ 注意：文件直接放在ZIP根目录）
+   
+   进入编译输出目录：
+   ```bash
+   cd bin/Release/net8.0-windows/
+   ```
+   
+   选择需要的文件并打包（**不要包含文件夹**）：
+   ```bash
+   # Windows PowerShell
+   Compress-Archive -Path YourPlugin.dll,plugin.json,icon.png -DestinationPath YourPlugin.zip
+   
+   # 或使用 7-Zip 等工具，确保文件在ZIP根目录
+   ```
+   
+   打包的文件应包括：
+   - `YourPlugin.dll` - 插件主程序集
+   - `plugin.json` - 元数据文件
+   - `icon.png` - 图标（可选）
+   - 其他依赖的 DLL 文件（如有）
+   - `README.md`（可选）
+   - `LICENSE`（可选）
+   
+   ⚠️ **重要**：确保文件直接在ZIP根目录，而不是嵌套在文件夹中！
+
+3. **在 GitHub 创建新 Release**：
    - **Tag version**: `v1.0.0`（遵循 SemVer）
    - **Release title**: `YourPlugin v1.0.0`
    - **Description**: 更新日志
@@ -738,14 +761,30 @@ obsmclauncher
 - `integration` - 服务集成
 - `enhancement` - 功能增强
 
-**重要**：`downloadUrl` 必须是可直接下载的ZIP文件链接，ZIP包内应包含：
+**重要**：`downloadUrl` 必须是可直接下载的ZIP文件链接。
+
+**ZIP包结构要求**（⚠️ 重要）：
+
+✅ **正确的ZIP包结构**（文件直接放在ZIP根目录）：
 ```
 your-plugin.zip
-├── your-plugin.dll
-├── plugin.json
-├── icon.png (可选)
-└── 其他依赖文件
+├── your-plugin.dll          # 插件主程序集
+├── plugin.json              # 插件元数据
+├── icon.png                 # 插件图标（可选）
+├── DependencyLib.dll        # 依赖库（如有）
+└── README.md                # 说明文档（可选）
 ```
+
+❌ **错误的ZIP包结构**（不要在ZIP内创建文件夹）：
+```
+your-plugin.zip
+└── your-plugin/             ❌ 不要这样！启动器会自动创建插件目录
+    ├── your-plugin.dll
+    ├── plugin.json
+    └── icon.png
+```
+
+**说明**：启动器会将ZIP包直接解压到 `plugins/your-plugin-id/` 目录，因此ZIP包内的文件必须直接放在根目录，不要额外嵌套文件夹。
 
 #### 方式一：提交 PR 到插件索引仓库
 
