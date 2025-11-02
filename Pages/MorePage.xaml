@@ -585,13 +585,7 @@
                                         VerticalScrollBarVisibility="Auto"
                                         HorizontalScrollBarVisibility="Disabled"
                                         MaxHeight="600">
-                                <ItemsControl x:Name="MarketPluginsList">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <!-- 这里会动态生成插件卡片 -->
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
+                                <ItemsControl x:Name="MarketPluginsList"/>
                             </ScrollViewer>
                         </Grid>
                     </Border>
