@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 
 namespace ObsMCLauncher.Services
@@ -33,40 +34,42 @@ namespace ObsMCLauncher.Services
         {
             try
             {
-                // 尝试多个可能的路径
-                var possiblePaths = new[]
-                {
-                    Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "mod_translations.txt"),
-                    Path.Combine(Directory.GetCurrentDirectory(), "Assets", "mod_translations.txt"),
-                    Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "Assets", "mod_translations.txt")
-                };
+                string[]? lines = null;
 
-                string? translationFile = null;
-                foreach (var path in possiblePaths)
+                // 首先尝试从嵌入资源读取
+                lines = LoadFromEmbeddedResource();
+                
+                // 如果嵌入资源读取失败，尝试从文件系统读取
+                if (lines == null)
                 {
-                    var normalizedPath = Path.GetFullPath(path);
-                    if (File.Exists(normalizedPath))
+                    var possiblePaths = new[]
                     {
-                        translationFile = normalizedPath;
-                        Debug.WriteLine($"[ModTranslation] 找到翻译文件: {translationFile}");
-                        break;
+                        Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "mod_translations.txt"),
+                        Path.Combine(Directory.GetCurrentDirectory(), "Assets", "mod_translations.txt"),
+                        Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "Assets", "mod_translations.txt")
+                    };
+
+                    string? translationFile = null;
+                    foreach (var path in possiblePaths)
+                    {
+                        var normalizedPath = Path.GetFullPath(path);
+                        if (File.Exists(normalizedPath))
+                        {
+                            translationFile = normalizedPath;
+                            Debug.WriteLine($"[ModTranslation] 从文件系统找到翻译文件: {translationFile}");
+                            lines = File.ReadAllLines(translationFile, Encoding.UTF8);
+                            break;
+                        }
                     }
                 }
                 
-                if (translationFile == null)
+                if (lines == null)
                 {
                     Debug.WriteLine("[ModTranslation] 翻译文件不存在，跳过加载");
-                    Debug.WriteLine($"[ModTranslation] 提示：如需启用翻译功能，请在以下路径创建翻译文件：");
-                    foreach (var path in possiblePaths)
-                    {
-                        Debug.WriteLine($"[ModTranslation]   - {Path.GetFullPath(path)}");
-                    }
-                    Debug.WriteLine($"[ModTranslation] 文件格式：curseforge_id|mod_ids|chinese_name|abbr");
+                    Debug.WriteLine($"[ModTranslation] 提示：如需启用翻译功能，请确保 Assets\\mod_translations.txt 已嵌入到程序集中");
                     _isLoaded = false;
                     return;
                 }
-
-                var lines = File.ReadAllLines(translationFile, Encoding.UTF8);
                 _translations.Clear();
                 _curseForgeIdMap.Clear();
                 _modIdMap.Clear();
@@ -221,6 +224,53 @@ namespace ObsMCLauncher.Services
         /// 获取所有翻译
         /// </summary>
         public IReadOnlyList<ModTranslation> GetAllTranslations() => _translations.AsReadOnly();
+
+        /// <summary>
+        /// 从嵌入资源加载翻译文件
+        /// </summary>
+        private string[]? LoadFromEmbeddedResource()
+        {
+            try
+            {
+                var assembly = Assembly.GetExecutingAssembly();
+                
+                // 尝试多个可能的资源名称格式
+                var resourceNames = new[]
+                {
+                    "ObsMCLauncher.Assets.mod_translations.txt",
+                    "Assets.mod_translations.txt",
+                    "mod_translations.txt"
+                };
+
+                // 如果没有找到，列出所有资源名称用于调试
+                var allResources = assembly.GetManifestResourceNames();
+                
+                foreach (var resourceName in resourceNames)
+                {
+                    using var stream = assembly.GetManifestResourceStream(resourceName);
+                    if (stream != null)
+                    {
+                        Debug.WriteLine($"[ModTranslation] 从嵌入资源加载: {resourceName}");
+                        using var reader = new StreamReader(stream, Encoding.UTF8);
+                        var content = reader.ReadToEnd();
+                        return content.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
+                    }
+                }
+
+                // 调试：输出所有可用的资源名称
+                Debug.WriteLine("[ModTranslation] 未找到嵌入资源，可用的资源名称：");
+                foreach (var name in allResources)
+                {
+                    Debug.WriteLine($"  - {name}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[ModTranslation] 从嵌入资源读取失败: {ex.Message}");
+            }
+
+            return null;
+        }
     }
 }
 

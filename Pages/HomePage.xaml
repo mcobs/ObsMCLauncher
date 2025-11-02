@@ -92,13 +92,13 @@
                         
                         <TextBlock Text="让您的 Minecraft 之旅更加轻松愉快" 
                                  FontSize="16" 
-                                 Foreground="#E0E0E0"
+                                 Foreground="{DynamicResource TextSecondaryBrush}"
                                  HorizontalAlignment="Center"
                                  Margin="0,0,0,8"/>
                         
                         <TextBlock Text="🎮 开始您的冒险吧" 
                                  FontSize="14" 
-                                 Foreground="#B0B0B0"
+                                 Foreground="{DynamicResource TextTertiaryBrush}"
                                  HorizontalAlignment="Center"/>
                     </StackPanel>
                 </Grid>

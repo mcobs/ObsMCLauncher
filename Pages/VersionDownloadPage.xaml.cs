@@ -241,10 +241,10 @@ namespace ObsMCLauncher.Pages
                 {
                     Text = "没有找到匹配的版本",
                     FontSize = 16,
-                    Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#AAAAAA")),
                     HorizontalAlignment = HorizontalAlignment.Center,
                     Margin = new Thickness(0, 50, 0, 0)
                 };
+                emptyText.SetResourceReference(TextBlock.ForegroundProperty, "TextSecondaryBrush");
                 VersionListPanel.Children.Add(emptyText);
                 return;
             }
@@ -263,10 +263,10 @@ namespace ObsMCLauncher.Pages
                 {
                     Text = $"还有 {_filteredVersions.Count - 50} 个版本未显示，请使用搜索功能",
                     FontSize = 14,
-                    Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#999999")),
                     HorizontalAlignment = HorizontalAlignment.Center,
                     Margin = new Thickness(0, 20, 0, 20)
                 };
+                moreText.SetResourceReference(TextBlock.ForegroundProperty, "TextSecondaryBrush");
                 VersionListPanel.Children.Add(moreText);
             }
         }
@@ -304,11 +304,10 @@ namespace ObsMCLauncher.Pages
             // 创建内容 - 使用更可靠的方式
             var border = new Border
             {
-                Background = (Brush)Application.Current.TryFindResource("SurfaceElevatedBrush") 
-                    ?? new SolidColorBrush(Color.FromRgb(39, 39, 42)),
                 CornerRadius = new CornerRadius(6),
                 Padding = new Thickness(12, 10, 12, 10)
             };
+            border.SetResourceReference(Border.BackgroundProperty, "SurfaceElevatedBrush");
 
             var grid = new Grid();
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -338,10 +337,9 @@ namespace ObsMCLauncher.Pages
             var titleText = new TextBlock
             {
                 FontSize = 15,
-                FontWeight = FontWeights.SemiBold,
-                Foreground = (Brush)Application.Current.TryFindResource("TextBrush")
-                    ?? Brushes.White
+                FontWeight = FontWeights.SemiBold
             };
+            titleText.SetResourceReference(TextBlock.ForegroundProperty, "TextBrush");
 
             var typeText = version.Type == "release" ? "正式版" :
                           version.Type == "snapshot" ? "快照版" :
@@ -365,11 +363,10 @@ namespace ObsMCLauncher.Pages
             var detailText = new TextBlock
             {
                 FontSize = 11,
-                Foreground = (Brush)Application.Current.TryFindResource("TextSecondaryBrush")
-                    ?? new SolidColorBrush(Color.FromRgb(153, 153, 153)),
                 Margin = new Thickness(0, 3, 0, 0),
                 Text = $"发布时间: {version.ReleaseTime:yyyy-MM-dd HH:mm}"
             };
+            detailText.SetResourceReference(TextBlock.ForegroundProperty, "TextSecondaryBrush");
             infoPanel.Children.Add(detailText);
 
             Grid.SetColumn(infoPanel, 1);
@@ -381,10 +378,9 @@ namespace ObsMCLauncher.Pages
                 Kind = PackIconKind.ChevronRight,
                 Width = 18,
                 Height = 18,
-                Foreground = (Brush)Application.Current.TryFindResource("TextSecondaryBrush")
-                    ?? new SolidColorBrush(Color.FromRgb(153, 153, 153)),
                 VerticalAlignment = VerticalAlignment.Center
             };
+            arrow.SetResourceReference(PackIcon.ForegroundProperty, "TextSecondaryBrush");
             Grid.SetColumn(arrow, 2);
             grid.Children.Add(arrow);
 
@@ -548,12 +544,11 @@ namespace ObsMCLauncher.Pages
         {
             var border = new Border
             {
-                Background = (Brush)Application.Current.TryFindResource("SurfaceElevatedBrush")
-                    ?? new SolidColorBrush(Color.FromRgb(39, 39, 42)),
                 CornerRadius = new CornerRadius(6),
                 Padding = new Thickness(15, 12, 15, 12),
                 Margin = new Thickness(10, 5, 10, 5)
             };
+            border.SetResourceReference(Border.BackgroundProperty, "SurfaceElevatedBrush");
 
             var grid = new Grid();
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -571,6 +566,7 @@ namespace ObsMCLauncher.Pages
                 FontWeight = FontWeights.SemiBold,
                 VerticalAlignment = VerticalAlignment.Center
             };
+            titleText.SetResourceReference(TextBlock.ForegroundProperty, "TextBrush");
             titlePanel.Children.Add(titleText);
             
             // 如果自定义名称与实际版本ID不同，显示实际版本
@@ -622,10 +618,9 @@ namespace ObsMCLauncher.Pages
             var detailText = new TextBlock
             {
                 FontSize = 11,
-                Foreground = (Brush)Application.Current.TryFindResource("TextSecondaryBrush")
-                    ?? new SolidColorBrush(Color.FromRgb(153, 153, 153)),
                 Margin = new Thickness(0, 3, 0, 0)
             };
+            detailText.SetResourceReference(TextBlock.ForegroundProperty, "TextSecondaryBrush");
 
             var typeText = version.Type == "release" ? "正式版" :
                           version.Type == "snapshot" ? "快照版" : "其他";

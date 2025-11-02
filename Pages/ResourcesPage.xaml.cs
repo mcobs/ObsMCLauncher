@@ -808,14 +808,13 @@ namespace ObsMCLauncher.Pages
         {
             var border = new Border
             {
-                Background = (Brush)Application.Current.TryFindResource("SurfaceElevatedBrush")
-                    ?? new SolidColorBrush(Color.FromRgb(45, 45, 48)),
                 CornerRadius = new CornerRadius(8),
                 Padding = new Thickness(12),
                 Margin = new Thickness(0, 0, 0, 10),
                 Cursor = Cursors.Hand,  // 鼠标悬停变成手型
                 Tag = mod  // 保存mod数据
             };
+            border.SetResourceReference(Border.BackgroundProperty, "SurfaceElevatedBrush");
 
             // 添加点击事件
             border.MouseLeftButtonDown += ModCard_Click;
@@ -823,13 +822,11 @@ namespace ObsMCLauncher.Pages
             // 添加悬停效果
             border.MouseEnter += (s, e) =>
             {
-                border.Background = (Brush)Application.Current.TryFindResource("SurfaceHoverBrush")
-                    ?? new SolidColorBrush(Color.FromRgb(55, 55, 58));
+                border.SetResourceReference(Border.BackgroundProperty, "SurfaceHoverBrush");
             };
             border.MouseLeave += (s, e) =>
             {
-                border.Background = (Brush)Application.Current.TryFindResource("SurfaceElevatedBrush")
-                    ?? new SolidColorBrush(Color.FromRgb(45, 45, 48));
+                border.SetResourceReference(Border.BackgroundProperty, "SurfaceElevatedBrush");
             };
 
             var grid = new Grid();
@@ -842,9 +839,9 @@ namespace ObsMCLauncher.Pages
                 Width = 60,
                 Height = 60,
                 CornerRadius = new CornerRadius(8),
-                Background = new SolidColorBrush(Color.FromRgb(63, 63, 70)),
                 VerticalAlignment = VerticalAlignment.Top
             };
+            iconBorder.SetResourceReference(Border.BackgroundProperty, "SurfaceBrush");
 
             if (mod.Logo != null && !string.IsNullOrEmpty(mod.Logo.ThumbnailUrl))
             {
@@ -907,12 +904,12 @@ namespace ObsMCLauncher.Pages
             {
                 Text = mod.Summary,
                 FontSize = 13,
-                Foreground = new SolidColorBrush(Color.FromRgb(170, 170, 170)),
                 TextWrapping = TextWrapping.Wrap,
                 MaxHeight = 40,
                 TextTrimming = TextTrimming.CharacterEllipsis,
                 Margin = new Thickness(0, 5, 0, 8)
             };
+            descText.SetResourceReference(TextBlock.ForegroundProperty, "TextSecondaryBrush");
             infoPanel.Children.Add(descText);
 
             // 标签区
@@ -947,9 +944,9 @@ namespace ObsMCLauncher.Pages
             {
                 Text = CurseForgeService.FormatDownloadCount(mod.DownloadCount),
                 FontSize = 12,
-                Foreground = new SolidColorBrush(Color.FromRgb(170, 170, 170)),
                 VerticalAlignment = VerticalAlignment.Center
             };
+            downloadText.SetResourceReference(TextBlock.ForegroundProperty, "TextSecondaryBrush");
             tagsPanel.Children.Add(downloadText);
 
             // 支持的版本范围
@@ -1020,9 +1017,9 @@ namespace ObsMCLauncher.Pages
                     {
                         Text = string.Join(", ", loaders),
                         FontSize = 12,
-                        Foreground = new SolidColorBrush(Color.FromRgb(170, 170, 170)),
                         VerticalAlignment = VerticalAlignment.Center
                     };
+                    loaderText.SetResourceReference(TextBlock.ForegroundProperty, "TextSecondaryBrush");
                     tagsPanel.Children.Add(loaderText);
                 }
             }
@@ -1043,14 +1040,13 @@ namespace ObsMCLauncher.Pages
         {
             var border = new Border
             {
-                Background = (Brush)Application.Current.TryFindResource("SurfaceElevatedBrush")
-                    ?? new SolidColorBrush(Color.FromRgb(45, 45, 48)),
                 CornerRadius = new CornerRadius(8),
                 Padding = new Thickness(12),
                 Margin = new Thickness(0, 0, 0, 10),
                 Cursor = Cursors.Hand,
                 Tag = mod  // 保存mod数据
             };
+            border.SetResourceReference(Border.BackgroundProperty, "SurfaceElevatedBrush");
 
             // 添加点击事件
             border.MouseLeftButtonDown += ModrinthModCard_Click;
@@ -1058,13 +1054,11 @@ namespace ObsMCLauncher.Pages
             // 添加悬停效果
             border.MouseEnter += (s, e) =>
             {
-                border.Background = (Brush)Application.Current.TryFindResource("SurfaceHoverBrush")
-                    ?? new SolidColorBrush(Color.FromRgb(55, 55, 58));
+                border.SetResourceReference(Border.BackgroundProperty, "SurfaceHoverBrush");
             };
             border.MouseLeave += (s, e) =>
             {
-                border.Background = (Brush)Application.Current.TryFindResource("SurfaceElevatedBrush")
-                    ?? new SolidColorBrush(Color.FromRgb(45, 45, 48));
+                border.SetResourceReference(Border.BackgroundProperty, "SurfaceElevatedBrush");
             };
 
             var grid = new Grid();
@@ -1077,9 +1071,9 @@ namespace ObsMCLauncher.Pages
                 Width = 60,
                 Height = 60,
                 CornerRadius = new CornerRadius(8),
-                Background = new SolidColorBrush(Color.FromRgb(63, 63, 70)),
                 VerticalAlignment = VerticalAlignment.Top
             };
+            iconBorder.SetResourceReference(Border.BackgroundProperty, "SurfaceBrush");
 
             if (!string.IsNullOrEmpty(mod.IconUrl))
             {
@@ -1134,12 +1128,12 @@ namespace ObsMCLauncher.Pages
             {
                 Text = mod.Description,
                 FontSize = 13,
-                Foreground = new SolidColorBrush(Color.FromRgb(170, 170, 170)),
                 TextWrapping = TextWrapping.Wrap,
                 MaxHeight = 40,
                 TextTrimming = TextTrimming.CharacterEllipsis,
                 Margin = new Thickness(0, 5, 0, 8)
             };
+            descText.SetResourceReference(TextBlock.ForegroundProperty, "TextSecondaryBrush");
             infoPanel.Children.Add(descText);
 
             // 标签区
@@ -1174,9 +1168,9 @@ namespace ObsMCLauncher.Pages
             {
                 Text = CurseForgeService.FormatDownloadCount(mod.Downloads),
                 FontSize = 12,
-                Foreground = new SolidColorBrush(Color.FromRgb(170, 170, 170)),
                 VerticalAlignment = VerticalAlignment.Center
             };
+            downloadText.SetResourceReference(TextBlock.ForegroundProperty, "TextSecondaryBrush");
             tagsPanel.Children.Add(downloadText);
 
             // 支持的版本范围
@@ -1211,9 +1205,9 @@ namespace ObsMCLauncher.Pages
                     {
                         Text = versionDisplay,
                         FontSize = 12,
-                        Foreground = new SolidColorBrush(Color.FromRgb(170, 170, 170)),
                         VerticalAlignment = VerticalAlignment.Center
                     };
+                    versionText.SetResourceReference(TextBlock.ForegroundProperty, "TextSecondaryBrush");
                     tagsPanel.Children.Add(versionText);
                 }
             }
@@ -1457,10 +1451,10 @@ namespace ObsMCLauncher.Pages
                 {
                     Text = "没有找到匹配的资源，请尝试其他关键词",
                     FontSize = 16,
-                    Foreground = new SolidColorBrush(Color.FromRgb(170, 170, 170)),
                     HorizontalAlignment = HorizontalAlignment.Center,
                     Margin = new Thickness(0, 50, 0, 0)
                 };
+                noResultsText.SetResourceReference(TextBlock.ForegroundProperty, "TextSecondaryBrush");
                 ResourceListPanel.Children.Add(noResultsText);
             }));
         }

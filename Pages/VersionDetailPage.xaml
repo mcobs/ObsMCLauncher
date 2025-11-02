@@ -466,7 +466,7 @@
                              Margin="0,5,0,0"/>
                     <TextBlock x:Name="DownloadAssetsHintText"
                              FontSize="11" 
-                             Foreground="#FFA500"
+                             Foreground="{StaticResource PrimaryBrush}"
                              Margin="0,3,0,0"
                              Visibility="Collapsed">
                         <Run Text="✓ "/>
@@ -680,8 +680,8 @@
                           FontSize="14"
                           Style="{StaticResource MaterialDesignOutlinedButton}"
                           materialDesign:ButtonAssist.CornerRadius="8"
-                          BorderBrush="#DC3545"
-                          Foreground="#DC3545"
+                          BorderBrush="{StaticResource PrimaryBrush}"
+                          Foreground="{StaticResource PrimaryBrush}"
                           HorizontalAlignment="Center"
                           Click="CancelDownloadButton_Click">
                         <Button.Resources>

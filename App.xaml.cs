@@ -87,6 +87,9 @@ namespace ObsMCLauncher
                 var config = LauncherConfig.Load();
                 DownloadSourceManager.Instance.SetDownloadSource(config.DownloadSource);
                 
+                // 初始化动态主题资源（确保它们是可变的，非冻结的）
+                InitializeDynamicBrushes();
+                
                 // 应用主题
                 ApplyTheme(config.ThemeMode);
                 
@@ -192,40 +195,41 @@ namespace ObsMCLauncher
                 theme.SetBaseTheme(isDark ? Theme.Dark : Theme.Light);
                 paletteHelper.SetTheme(theme);
 
-                // 更新动态资源
+                // 更新动态资源 - 更新Color属性而不是替换整个Brush对象
+                // 这样使用SetResourceReference的元素会自动响应变化
                 if (isDark)
                 {
-                    app.Resources["BackgroundBrush"] = app.Resources["DarkBackgroundBrush"];
-                    app.Resources["SurfaceBrush"] = app.Resources["DarkSurfaceBrush"];
-                    app.Resources["SurfaceElevatedBrush"] = app.Resources["DarkSurfaceElevatedBrush"];
-                    app.Resources["SurfaceHoverBrush"] = app.Resources["DarkSurfaceHoverBrush"];
-                    app.Resources["TextBrush"] = app.Resources["DarkTextBrush"];
-                    app.Resources["TextSecondaryBrush"] = app.Resources["DarkTextSecondaryBrush"];
-                    app.Resources["TextTertiaryBrush"] = app.Resources["DarkTextTertiaryBrush"];
-                    app.Resources["BorderBrush"] = app.Resources["DarkBorderBrush"];
-                    app.Resources["DividerBrush"] = app.Resources["DarkDividerBrush"];
-                    app.Resources["InputBackgroundBrush"] = app.Resources["DarkInputBackgroundBrush"];
-                    app.Resources["InputForegroundBrush"] = app.Resources["DarkInputForegroundBrush"];
-                    app.Resources["TooltipBackgroundBrush"] = app.Resources["DarkTooltipBackgroundBrush"];
-                    app.Resources["TooltipForegroundBrush"] = new SolidColorBrush(Colors.White);
-                    app.Resources["TooltipBorderBrush"] = app.Resources["DarkBorderBrush"];
+                    UpdateBrushColor("BackgroundBrush", "DarkBackgroundBrush");
+                    UpdateBrushColor("SurfaceBrush", "DarkSurfaceBrush");
+                    UpdateBrushColor("SurfaceElevatedBrush", "DarkSurfaceElevatedBrush");
+                    UpdateBrushColor("SurfaceHoverBrush", "DarkSurfaceHoverBrush");
+                    UpdateBrushColor("TextBrush", "DarkTextBrush");
+                    UpdateBrushColor("TextSecondaryBrush", "DarkTextSecondaryBrush");
+                    UpdateBrushColor("TextTertiaryBrush", "DarkTextTertiaryBrush");
+                    UpdateBrushColor("BorderBrush", "DarkBorderBrush");
+                    UpdateBrushColor("DividerBrush", "DarkDividerBrush");
+                    UpdateBrushColor("InputBackgroundBrush", "DarkInputBackgroundBrush");
+                    UpdateBrushColor("InputForegroundBrush", "DarkInputForegroundBrush");
+                    UpdateBrushColor("TooltipBackgroundBrush", "DarkTooltipBackgroundBrush");
+                    UpdateBrushColor("TooltipForegroundBrush", "DarkTextBrush");
+                    UpdateBrushColor("TooltipBorderBrush", "DarkBorderBrush");
                 }
                 else
                 {
-                    app.Resources["BackgroundBrush"] = app.Resources["LightBackgroundBrush"];
-                    app.Resources["SurfaceBrush"] = app.Resources["LightSurfaceBrush"];
-                    app.Resources["SurfaceElevatedBrush"] = app.Resources["LightSurfaceElevatedBrush"];
-                    app.Resources["SurfaceHoverBrush"] = app.Resources["LightSurfaceHoverBrush"];
-                    app.Resources["TextBrush"] = app.Resources["LightTextBrush"];
-                    app.Resources["TextSecondaryBrush"] = app.Resources["LightTextSecondaryBrush"];
-                    app.Resources["TextTertiaryBrush"] = app.Resources["LightTextTertiaryBrush"];
-                    app.Resources["BorderBrush"] = app.Resources["LightBorderBrush"];
-                    app.Resources["DividerBrush"] = app.Resources["LightDividerBrush"];
-                    app.Resources["InputBackgroundBrush"] = app.Resources["LightInputBackgroundBrush"];
-                    app.Resources["InputForegroundBrush"] = app.Resources["LightInputForegroundBrush"];
-                    app.Resources["TooltipBackgroundBrush"] = app.Resources["LightTooltipBackgroundBrush"];
-                    app.Resources["TooltipForegroundBrush"] = app.Resources["LightTextBrush"];
-                    app.Resources["TooltipBorderBrush"] = app.Resources["LightBorderBrush"];
+                    UpdateBrushColor("BackgroundBrush", "LightBackgroundBrush");
+                    UpdateBrushColor("SurfaceBrush", "LightSurfaceBrush");
+                    UpdateBrushColor("SurfaceElevatedBrush", "LightSurfaceElevatedBrush");
+                    UpdateBrushColor("SurfaceHoverBrush", "LightSurfaceHoverBrush");
+                    UpdateBrushColor("TextBrush", "LightTextBrush");
+                    UpdateBrushColor("TextSecondaryBrush", "LightTextSecondaryBrush");
+                    UpdateBrushColor("TextTertiaryBrush", "LightTextTertiaryBrush");
+                    UpdateBrushColor("BorderBrush", "LightBorderBrush");
+                    UpdateBrushColor("DividerBrush", "LightDividerBrush");
+                    UpdateBrushColor("InputBackgroundBrush", "LightInputBackgroundBrush");
+                    UpdateBrushColor("InputForegroundBrush", "LightInputForegroundBrush");
+                    UpdateBrushColor("TooltipBackgroundBrush", "LightTooltipBackgroundBrush");
+                    UpdateBrushColor("TooltipForegroundBrush", "LightTextBrush");
+                    UpdateBrushColor("TooltipBorderBrush", "LightBorderBrush");
                 }
 
                 System.Diagnostics.Debug.WriteLine("[App] ✅ 主题切换完成");
@@ -233,6 +237,94 @@ namespace ObsMCLauncher
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[App] ❌ 主题切换失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 初始化动态Brush资源，确保它们是可变的（非冻结的）
+        /// 这样在主题切换时，更新Color属性会自动触发所有使用DynamicResource的元素更新
+        /// </summary>
+        private static void InitializeDynamicBrushes()
+        {
+            try
+            {
+                var app = Application.Current;
+                if (app == null) return;
+
+                // 需要确保可变的动态资源列表
+                var dynamicBrushKeys = new[]
+                {
+                    "BackgroundBrush", "SurfaceBrush", "SurfaceElevatedBrush", "SurfaceHoverBrush",
+                    "TextBrush", "TextSecondaryBrush", "TextTertiaryBrush",
+                    "BorderBrush", "DividerBrush",
+                    "InputBackgroundBrush", "InputForegroundBrush",
+                    "TooltipBackgroundBrush", "TooltipForegroundBrush", "TooltipBorderBrush"
+                };
+
+                foreach (var key in dynamicBrushKeys)
+                {
+                    if (app.Resources[key] is SolidColorBrush brush)
+                    {
+                        // 如果是冻结的，创建一个可变的副本
+                        if (brush.IsFrozen)
+                        {
+                            var mutableBrush = new SolidColorBrush(brush.Color);
+                            app.Resources[key] = mutableBrush;
+                            System.Diagnostics.Debug.WriteLine($"[App] ✅ 已将 {key} 转换为可变Brush");
+                        }
+                    }
+                }
+
+                System.Diagnostics.Debug.WriteLine("[App] ✅ 动态Brush资源初始化完成");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[App] ❌ 初始化动态Brush失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 更新Brush资源的颜色
+        /// 直接修改现有Brush的Color属性，这样所有使用DynamicResource的元素会自动更新
+        /// </summary>
+        private static void UpdateBrushColor(string targetKey, string sourceKey)
+        {
+            try
+            {
+                var app = Application.Current;
+                if (app == null) return;
+
+                var sourceBrush = app.Resources[sourceKey] as SolidColorBrush;
+                if (sourceBrush == null)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[App] ⚠️ 源Brush不存在: {sourceKey}");
+                    return;
+                }
+
+                var targetBrush = app.Resources[targetKey] as SolidColorBrush;
+                if (targetBrush == null)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[App] ⚠️ 目标Brush不存在: {targetKey}");
+                    return;
+                }
+
+                // 检查是否被冻结
+                if (targetBrush.IsFrozen)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[App] ⚠️ Brush被冻结无法更新: {targetKey}");
+                    // 如果被冻结，创建新的可变Brush（不应该发生，因为我们在InitializeDynamicBrushes中已经处理了）
+                    var newBrush = new SolidColorBrush(sourceBrush.Color);
+                    app.Resources[targetKey] = newBrush;
+                }
+                else
+                {
+                    // 直接更新颜色 - 这会触发所有使用此资源的元素更新
+                    targetBrush.Color = sourceBrush.Color;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[App] ❌ 更新Brush颜色失败 ({targetKey}): {ex.Message}");
             }
         }
 

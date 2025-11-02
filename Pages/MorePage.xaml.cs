@@ -463,11 +463,11 @@ namespace ObsMCLauncher.Pages
         {
             var card = new Border
             {
-                Background = (Brush)Application.Current.Resources["SurfaceBrush"],
                 CornerRadius = new CornerRadius(8),
                 Padding = new Thickness(16),
                 Margin = new Thickness(0, 0, 0, 12)
             };
+            card.SetResourceReference(Border.BackgroundProperty, "SurfaceBrush");
             
             var grid = new Grid();
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(48, GridUnitType.Pixel) });
@@ -1216,11 +1216,11 @@ namespace ObsMCLauncher.Pages
         {
             var card = new Border
             {
-                Background = (Brush)Application.Current.Resources["SurfaceBrush"],
                 CornerRadius = new CornerRadius(8),
                 Padding = new Thickness(16),
                 Margin = new Thickness(0, 0, 0, 12)
             };
+            card.SetResourceReference(Border.BackgroundProperty, "SurfaceBrush");
             
             var grid = new Grid();
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(48, GridUnitType.Pixel) });
