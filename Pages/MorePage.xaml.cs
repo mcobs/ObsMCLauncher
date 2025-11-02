@@ -1,10 +1,12 @@
 using System;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
@@ -250,6 +252,62 @@ namespace ObsMCLauncher.Pages
             errorPanel.Children.Add(suggestionText);
             
             return errorPanel;
+        }
+        
+        /// <summary>
+        /// 移除插件标签页
+        /// </summary>
+        public static void RemovePluginTab(string pluginId)
+        {
+            try
+            {
+                if (_instance == null)
+                {
+                    Debug.WriteLine($"[MorePage] MorePage实例不存在，无法移除标签页");
+                    return;
+                }
+                
+                if (!_pluginTabs.TryGetValue(pluginId, out var tabInfo))
+                {
+                    Debug.WriteLine($"[MorePage] 插件标签页不存在: {pluginId}");
+                    return;
+                }
+                
+                _instance.Dispatcher.Invoke(() =>
+                {
+                    try
+                    {
+                        // 获取导航栏的StackPanel
+                        var mainGrid = (Grid)_instance.Content;
+                        var navBar = (StackPanel)((Border)mainGrid.Children[0]).Child;
+                        
+                        // 移除RadioButton
+                        if (navBar.Children.Contains(tabInfo.tab))
+                        {
+                            navBar.Children.Remove(tabInfo.tab);
+                        }
+                        
+                        // 移除内容容器
+                        if (mainGrid.Children.Contains(tabInfo.content))
+                        {
+                            mainGrid.Children.Remove(tabInfo.content);
+                        }
+                        
+                        // 从字典中移除
+                        _pluginTabs.Remove(pluginId);
+                        
+                        Debug.WriteLine($"[MorePage] ✅ 已移除插件标签页: {pluginId}");
+                    }
+                    catch (Exception innerEx)
+                    {
+                        Debug.WriteLine($"[MorePage] ❌ 移除UI元素失败: {innerEx.Message}");
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[MorePage] ❌ 移除插件标签页失败: {ex.Message}");
+            }
         }
         
         /// <summary>
@@ -568,6 +626,15 @@ namespace ObsMCLauncher.Pages
             
             grid.Children.Add(infoPanel);
             
+            // 右侧控制面板
+            var controlPanel = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                HorizontalAlignment = HorizontalAlignment.Right,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            Grid.SetColumn(controlPanel, 2);
+            
             // 状态标签
             var statusBadge = new Border
             {
@@ -576,7 +643,8 @@ namespace ObsMCLauncher.Pages
                     : new SolidColorBrush(Color.FromArgb(25, 255, 71, 87)),
                 CornerRadius = new CornerRadius(12),
                 Padding = new Thickness(10, 4, 10, 4),
-                VerticalAlignment = VerticalAlignment.Center
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(0, 0, 8, 0)
             };
             
             var statusText = new TextBlock
@@ -588,11 +656,41 @@ namespace ObsMCLauncher.Pages
                     ? new SolidColorBrush(Color.FromRgb(102, 187, 106)) 
                     : new SolidColorBrush(Color.FromRgb(255, 71, 87))
             };
-            
             statusBadge.Child = statusText;
-            Grid.SetColumn(statusBadge, 2);
-            grid.Children.Add(statusBadge);
+            controlPanel.Children.Add(statusBadge);
             
+            // 禁用/启用按钮
+            var toggleButton = new Button
+            {
+                Content = plugin.IsLoaded ? "禁用" : "启用",
+                FontSize = 12,
+                Padding = new Thickness(12, 4, 12, 4),
+                Margin = new Thickness(0, 0, 4, 0),
+                Cursor = Cursors.Hand
+            };
+            toggleButton.SetResourceReference(Button.StyleProperty, "MaterialDesignFlatButton");
+            toggleButton.Click += async (s, e) =>
+            {
+                await TogglePlugin(plugin, toggleButton);
+            };
+            controlPanel.Children.Add(toggleButton);
+            
+            // 卸载按钮
+            var uninstallButton = new Button
+            {
+                Content = "卸载",
+                FontSize = 12,
+                Padding = new Thickness(12, 4, 12, 4),
+                Cursor = Cursors.Hand
+            };
+            uninstallButton.SetResourceReference(Button.StyleProperty, "MaterialDesignFlatButton");
+            uninstallButton.Click += async (s, e) =>
+            {
+                await UninstallPlugin(plugin);
+            };
+            controlPanel.Children.Add(uninstallButton);
+            
+            grid.Children.Add(controlPanel);
             card.Child = grid;
             return card;
         }
@@ -622,6 +720,169 @@ namespace ObsMCLauncher.Pages
             
             iconBorder.Child = icon;
             return iconBorder;
+        }
+        
+        /// <summary>
+        /// 禁用/启用插件（支持热加载/热卸载）
+        /// </summary>
+        private async Task TogglePlugin(LoadedPlugin plugin, Button button)
+        {
+            if (_pluginLoader == null)
+                return;
+                
+            try
+            {
+                var disabledMarkerPath = Path.Combine(plugin.DirectoryPath, ".disabled");
+                var willDisable = plugin.IsLoaded || !File.Exists(disabledMarkerPath);
+                
+                var originalContent = button.Content;
+                button.Content = willDisable ? "禁用中..." : "启用中...";
+                button.IsEnabled = false;
+                
+                bool success = false;
+                string? errorMessage = null;
+                
+                if (willDisable)
+                {
+                    // 热卸载插件可以在后台线程执行
+                    await Task.Run(() =>
+                    {
+                        success = _pluginLoader.DisablePluginImmediately(plugin.Id);
+                    });
+                }
+                else
+                {
+                    // 热加载插件必须在UI线程执行（插件可能需要创建UI组件）
+                    await Dispatcher.InvokeAsync(() =>
+                    {
+                        success = _pluginLoader.EnablePlugin(plugin.Id, out errorMessage);
+                    });
+                }
+                
+                if (success)
+                {
+                    // 立即刷新插件列表UI
+                    RefreshPluginList();
+                    
+                    NotificationManager.Instance.ShowNotification(
+                        "插件管理",
+                        willDisable 
+                            ? $"✅ 插件 {plugin.Name} 已热禁用。" 
+                            : $"✅ 插件 {plugin.Name} 已热启用。",
+                        NotificationType.Success,
+                        3
+                    );
+                }
+                else
+                {
+                    button.Content = originalContent;
+                    button.IsEnabled = true;
+                    NotificationManager.Instance.ShowNotification(
+                        "插件管理",
+                        $"操作失败: {errorMessage ?? "未知错误"}",
+                        NotificationType.Error,
+                        4
+                    );
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[MorePage] 切换插件状态失败: {ex.Message}");
+                NotificationManager.Instance.ShowNotification(
+                    "插件管理",
+                    $"操作失败: {ex.Message}",
+                    NotificationType.Error,
+                    3
+                );
+                button.Content = plugin.IsLoaded ? "禁用" : "启用";
+                button.IsEnabled = true;
+            }
+        }
+        
+        /// <summary>
+        /// 卸载插件（支持热卸载）
+        /// </summary>
+        private async Task UninstallPlugin(LoadedPlugin plugin)
+        {
+            if (_pluginLoader == null)
+                return;
+                
+            try
+            {
+                // 确认卸载
+                var result = MessageBox.Show(
+                    $"确定要卸载插件 \"{plugin.Name}\" 吗？\n\n此操作将热卸载插件实例并删除所有文件，且无法恢复。",
+                    "确认卸载",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning
+                );
+                
+                if (result != MessageBoxResult.Yes)
+                {
+                    return;
+                }
+                
+                Debug.WriteLine($"[MorePage] 开始热卸载插件: {plugin.Name}");
+                
+                string? errorMessage = null;
+                bool success = false;
+                
+                // 卸载插件（在后台线程）
+                await Task.Run(() =>
+                {
+                    success = _pluginLoader.RemovePlugin(plugin.Id, out errorMessage);
+                });
+                
+                if (success)
+                {
+                    // 刷新UI（确保在UI线程）
+                    await Dispatcher.InvokeAsync(() =>
+                    {
+                        RefreshPluginList();
+                    });
+                    
+                    // 如果有警告信息（文件被占用），显示警告
+                    if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        NotificationManager.Instance.ShowNotification(
+                            "插件卸载",
+                            $"插件 {plugin.Name} 已热卸载。{errorMessage}",
+                            NotificationType.Warning,
+                            5
+                        );
+                    }
+                    else
+                    {
+                        NotificationManager.Instance.ShowNotification(
+                            "插件卸载",
+                            $"✅ 插件 {plugin.Name} 已成功热卸载。",
+                            NotificationType.Success,
+                            3
+                        );
+                    }
+                    
+                    Debug.WriteLine($"[MorePage] 插件热卸载成功: {plugin.Name}");
+                }
+                else
+                {
+                    NotificationManager.Instance.ShowNotification(
+                        "插件卸载",
+                        $"卸载失败: {errorMessage ?? "未知错误"}",
+                        NotificationType.Error,
+                        5
+                    );
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[MorePage] 卸载插件失败: {ex.Message}");
+                NotificationManager.Instance.ShowNotification(
+                    "插件卸载",
+                    $"卸载失败: {ex.Message}",
+                    NotificationType.Error,
+                    5
+                );
+            }
         }
         
         /// <summary>
@@ -1233,11 +1494,25 @@ namespace ObsMCLauncher.Pages
             {
                 try
                 {
+                    // 为GitHub图片添加代理
+                    var iconUrl = plugin.Icon;
+                    if (iconUrl.Contains("github.com") || iconUrl.Contains("githubusercontent.com"))
+                    {
+                        iconUrl = "https://gh-proxy.com/" + iconUrl;
+                        Debug.WriteLine($"[MorePage] 使用代理加载图标: {iconUrl}");
+                    }
+                    
+                    var bitmapImage = new BitmapImage();
+                    bitmapImage.BeginInit();
+                    bitmapImage.UriSource = new Uri(iconUrl, UriKind.Absolute);
+                    bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
+                    bitmapImage.EndInit();
+                    
                     var iconImage = new Image
                     {
                         Width = 48,
                         Height = 48,
-                        Source = new BitmapImage(new Uri(plugin.Icon))
+                        Source = bitmapImage
                     };
                     iconBorder = new Border
                     {
@@ -1247,9 +1522,12 @@ namespace ObsMCLauncher.Pages
                         ClipToBounds = true,
                         Child = iconImage
                     };
+                    
+                    Debug.WriteLine($"[MorePage] 成功创建图标Image: {plugin.Name}");
                 }
-                catch
+                catch (Exception ex)
                 {
+                    Debug.WriteLine($"[MorePage] 加载插件图标失败 [{plugin.Name}]: {ex.Message}");
                     iconBorder = CreateDefaultPluginIcon();
                 }
             }
@@ -1448,6 +1726,9 @@ namespace ObsMCLauncher.Pages
                         {
                             _pluginLoader.LoadAllPlugins();
                             Debug.WriteLine($"[MorePage] 已重新加载插件列表");
+                            
+                            // 刷新已安装插件列表UI
+                            RefreshPluginList();
                         }
                         catch (Exception loadEx)
                         {
@@ -1457,7 +1738,7 @@ namespace ObsMCLauncher.Pages
                     
                     NotificationManager.Instance.ShowNotification(
                         "插件安装",
-                        $"插件 {plugin.Name} 安装成功！请重启启动器以加载插件。",
+                        $"插件 {plugin.Name} 安装成功！已自动加载。",
                         NotificationType.Success,
                         5
                     );
