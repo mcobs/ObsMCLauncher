@@ -118,11 +118,31 @@ namespace ObsMCLauncher.Pages
             {
                 var item = new ComboBoxItem
                 {
-                    Content = version.Id, // 显示自定义名称
                     Tag = version.Id,
                     ToolTip = version.Id != version.ActualVersionId ? $"版本: {version.ActualVersionId}" : null
                 };
 
+                // 创建包含图标和文本的面板
+                var panel = new StackPanel { Orientation = Orientation.Horizontal };
+
+                // 添加加载器图标
+                var icon = GetVersionLoaderIcon(version);
+                if (icon != null)
+                {
+                    icon.VerticalAlignment = VerticalAlignment.Center;
+                    icon.Margin = new Thickness(0, 0, 8, 0);
+                    panel.Children.Add(icon);
+                }
+
+                // 添加版本名称文本
+                var text = new TextBlock
+                {
+                    Text = version.Id,
+                    VerticalAlignment = VerticalAlignment.Center
+                };
+                panel.Children.Add(text);
+
+                item.Content = panel;
                 VersionComboBox.Items.Add(item);
 
                 // 选中配置中保存的版本
@@ -811,6 +831,72 @@ namespace ObsMCLauncher.Pages
             }
 
             return string.Empty;
+        }
+
+        /// <summary>
+        /// 获取版本加载器图标
+        /// </summary>
+        private PackIcon? GetVersionLoaderIcon(InstalledVersion version)
+        {
+            try
+            {
+                var config = LauncherConfig.Load();
+                var versionJsonPath = Path.Combine(config.GameDirectory, "versions", version.ActualVersionId, $"{version.ActualVersionId}.json");
+                
+                if (!File.Exists(versionJsonPath))
+                {
+                    return null;
+                }
+
+                var jsonContent = File.ReadAllText(versionJsonPath);
+
+                // 检测加载器类型
+                PackIconKind iconKind = PackIconKind.Minecraft;
+                System.Windows.Media.Color iconColor = System.Windows.Media.Colors.Green;
+
+                // 检查是否有 Forge
+                if (jsonContent.Contains("net.minecraftforge") || jsonContent.Contains("forge"))
+                {
+                    iconKind = PackIconKind.Anvil;
+                    iconColor = System.Windows.Media.Color.FromRgb(205, 92, 92); // Forge红色
+                }
+                // 检查是否有 Fabric
+                else if (jsonContent.Contains("fabric") || jsonContent.Contains("net.fabricmc"))
+                {
+                    iconKind = PackIconKind.AlphaFBox;
+                    iconColor = System.Windows.Media.Color.FromRgb(222, 184, 135); // Fabric棕色
+                }
+                // 检查是否有 Quilt
+                else if (jsonContent.Contains("quilt") || jsonContent.Contains("org.quiltmc"))
+                {
+                    iconKind = PackIconKind.AlphaQBox;
+                    iconColor = System.Windows.Media.Color.FromRgb(138, 43, 226); // Quilt紫色
+                }
+                // 检查是否有 NeoForge
+                else if (jsonContent.Contains("neoforge") || jsonContent.Contains("net.neoforged"))
+                {
+                    iconKind = PackIconKind.Anvil;
+                    iconColor = System.Windows.Media.Color.FromRgb(255, 140, 0); // NeoForge橙色
+                }
+                // 检查是否有 OptiFine
+                else if (jsonContent.Contains("optifine"))
+                {
+                    iconKind = PackIconKind.Sunglasses;
+                    iconColor = System.Windows.Media.Color.FromRgb(100, 149, 237); // OptiFine蓝色
+                }
+
+                return new PackIcon
+                {
+                    Kind = iconKind,
+                    Width = 20,
+                    Height = 20,
+                    Foreground = new System.Windows.Media.SolidColorBrush(iconColor)
+                };
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         /// <summary>

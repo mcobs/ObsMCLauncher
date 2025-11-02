@@ -557,8 +557,18 @@ namespace ObsMCLauncher.Pages
             // 左侧信息
             var infoPanel = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
 
-            // 版本号
+            // 版本号（带加载器图标）
             var titlePanel = new StackPanel { Orientation = Orientation.Horizontal };
+            
+            // 添加加载器图标
+            var loaderIcon = GetVersionLoaderIcon(version);
+            if (loaderIcon != null)
+            {
+                loaderIcon.VerticalAlignment = VerticalAlignment.Center;
+                loaderIcon.Margin = new Thickness(0, 0, 8, 0);
+                titlePanel.Children.Add(loaderIcon);
+            }
+            
             var titleText = new TextBlock
             {
                 Text = version.Id,
@@ -650,6 +660,28 @@ namespace ObsMCLauncher.Pages
                 buttonPanel.Children.Add(selectButton);
             }
 
+            // 快速启动按钮
+            var launchButton = new Button
+            {
+                Tag = version.Id,
+                Style = (Style)Application.Current.TryFindResource("MaterialDesignIconButton"),
+                ToolTip = "快速启动",
+                Width = 28,
+                Height = 28,
+                Padding = new Thickness(0),
+                Margin = new Thickness(0, 0, 8, 0)
+            };
+            launchButton.Click += QuickLaunchButton_Click;
+            var launchIcon = new PackIcon
+            {
+                Kind = PackIconKind.Play,
+                Width = 16,
+                Height = 16
+            };
+            launchIcon.SetResourceReference(PackIcon.ForegroundProperty, "PrimaryBrush");
+            launchButton.Content = launchIcon;
+            buttonPanel.Children.Add(launchButton);
+
             // 打开文件夹按钮
             var openFolderButton = new Button
             {
@@ -709,6 +741,120 @@ namespace ObsMCLauncher.Pages
                 
                 // 使用动画将选中的版本移动到顶部
                 AnimateMoveToTop(version);
+            }
+        }
+
+        /// <summary>
+        /// 快速启动按钮点击事件
+        /// </summary>
+        private async void QuickLaunchButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button button && button.Tag is string versionId)
+            {
+                // 获取默认账号
+                var accounts = AccountService.Instance.GetAllAccounts();
+                var defaultAccount = accounts.FirstOrDefault(a => a.IsDefault) ?? accounts.FirstOrDefault();
+                
+                if (defaultAccount == null)
+                {
+                    NotificationManager.Instance.ShowNotification(
+                        "无法启动",
+                        "请先在账号管理中添加账号",
+                        NotificationType.Error
+                    );
+                    return;
+                }
+                
+                // 禁用按钮
+                button.IsEnabled = false;
+                var originalContent = button.Content;
+                
+                try
+                {
+                    // 显示加载动画
+                    var progressRing = new ProgressBar
+                    {
+                        Width = 16,
+                        Height = 16,
+                        IsIndeterminate = true,
+                        Style = (Style)Application.Current.TryFindResource("MaterialDesignCircularProgressBar")
+                    };
+                    button.Content = progressRing;
+                    
+                    // 加载配置
+                    var config = LauncherConfig.Load();
+                    
+                    // 显示启动通知
+                    var launchNotificationId = NotificationManager.Instance.ShowNotification(
+                        "正在启动游戏",
+                        $"版本: {versionId}",
+                        NotificationType.Progress
+                    );
+                    
+                    // 检查游戏完整性
+                    bool hasIntegrityIssue = await GameLauncher.CheckGameIntegrityAsync(
+                        versionId, 
+                        config, 
+                        (progress) => NotificationManager.Instance.UpdateNotification(launchNotificationId, progress)
+                    );
+                    
+                    // 如果有缺失依赖，下载
+                    if (hasIntegrityIssue && GameLauncher.MissingLibraries.Count > 0)
+                    {
+                        NotificationManager.Instance.UpdateNotification(
+                            launchNotificationId,
+                            $"检测到 {GameLauncher.MissingLibraries.Count} 个缺失依赖，正在下载..."
+                        );
+                        
+                        var (successCount, failedCount) = await LibraryDownloader.DownloadMissingLibrariesAsync(
+                            config.GameDirectory,
+                            versionId,
+                            GameLauncher.MissingLibraries,
+                            (libName, current, total) => 
+                            {
+                                NotificationManager.Instance.UpdateNotification(
+                                    launchNotificationId, 
+                                    $"下载依赖: {libName} ({current}/{total})"
+                                );
+                            }
+                        );
+                        
+                        if (failedCount > 0)
+                        {
+                            NotificationManager.Instance.ShowNotification(
+                                "启动失败",
+                                $"依赖库下载失败 ({failedCount}/{GameLauncher.MissingLibraries.Count})",
+                                NotificationType.Error
+                            );
+                            return;
+                        }
+                    }
+                    
+                    // 启动游戏
+                    NotificationManager.Instance.UpdateNotification(launchNotificationId, "正在启动游戏...");
+                    await GameLauncher.LaunchGameAsync(versionId, defaultAccount, config);
+                    
+                    NotificationManager.Instance.ShowNotification(
+                        "启动成功",
+                        $"游戏 {versionId} 已启动",
+                        NotificationType.Success
+                    );
+                }
+                catch (Exception ex)
+                {
+                    NotificationManager.Instance.ShowNotification(
+                        "启动失败",
+                        ex.Message,
+                        NotificationType.Error
+                    );
+                    System.Diagnostics.Debug.WriteLine($"[QuickLaunch] 启动失败: {ex.Message}");
+                }
+                finally
+                {
+                    // 恢复按钮
+                    button.Content = originalContent;
+                    button.IsEnabled = true;
+                }
             }
         }
 
@@ -879,6 +1025,71 @@ namespace ObsMCLauncher.Pages
         {
             LoadInstalledVersions();
             System.Diagnostics.Debug.WriteLine("已刷新已安装版本列表");
+        }
+
+        /// <summary>
+        /// 获取加载器图标
+        /// </summary>
+        private PackIcon? GetVersionLoaderIcon(InstalledVersion version)
+        {
+            try
+            {
+                // 读取版本JSON文件
+                var versionJsonPath = System.IO.Path.Combine(version.Path, $"{version.ActualVersionId}.json");
+                if (!System.IO.File.Exists(versionJsonPath))
+                {
+                    return null;
+                }
+
+                var jsonContent = System.IO.File.ReadAllText(versionJsonPath);
+
+                // 检测加载器类型
+                PackIconKind iconKind = PackIconKind.Minecraft;
+                System.Windows.Media.Color iconColor = System.Windows.Media.Colors.Green;
+
+                // 检查是否有 Forge
+                if (jsonContent.Contains("net.minecraftforge") || jsonContent.Contains("forge"))
+                {
+                    iconKind = PackIconKind.Anvil;
+                    iconColor = System.Windows.Media.Color.FromRgb(205, 92, 92); // Forge红色
+                }
+                // 检查是否有 Fabric
+                else if (jsonContent.Contains("fabric") || jsonContent.Contains("net.fabricmc"))
+                {
+                    iconKind = PackIconKind.AlphaFBox;
+                    iconColor = System.Windows.Media.Color.FromRgb(222, 184, 135); // Fabric棕色
+                }
+                // 检查是否有 Quilt
+                else if (jsonContent.Contains("quilt") || jsonContent.Contains("org.quiltmc"))
+                {
+                    iconKind = PackIconKind.AlphaQBox;
+                    iconColor = System.Windows.Media.Color.FromRgb(138, 43, 226); // Quilt紫色
+                }
+                // 检查是否有 NeoForge
+                else if (jsonContent.Contains("neoforge") || jsonContent.Contains("net.neoforged"))
+                {
+                    iconKind = PackIconKind.Anvil;
+                    iconColor = System.Windows.Media.Color.FromRgb(255, 140, 0); // NeoForge橙色
+                }
+                // 检查是否有 OptiFine
+                else if (jsonContent.Contains("optifine"))
+                {
+                    iconKind = PackIconKind.Sunglasses;
+                    iconColor = System.Windows.Media.Color.FromRgb(100, 149, 237); // OptiFine蓝色
+                }
+
+                return new PackIcon
+                {
+                    Kind = iconKind,
+                    Width = 20,
+                    Height = 20,
+                    Foreground = new System.Windows.Media.SolidColorBrush(iconColor)
+                };
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         #endregion
