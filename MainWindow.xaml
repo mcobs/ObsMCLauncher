@@ -6,7 +6,7 @@
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
         xmlns:svgc="http://sharpvectors.codeplex.com/svgc/"
         mc:Ignorable="d"
-        Title="Obs Minecraft 启动器" 
+        Title="ObsMCLauncher" 
         Icon="/Assets/app_icon.ico"
         Height="700" 
         Width="1100"
