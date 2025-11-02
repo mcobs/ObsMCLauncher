@@ -1499,7 +1499,6 @@ namespace ObsMCLauncher.Pages
                     if (iconUrl.Contains("github.com") || iconUrl.Contains("githubusercontent.com"))
                     {
                         iconUrl = "https://gh-proxy.com/" + iconUrl;
-                        Debug.WriteLine($"[MorePage] 使用代理加载图标: {iconUrl}");
                     }
                     
                     var bitmapImage = new BitmapImage();
@@ -1522,12 +1521,10 @@ namespace ObsMCLauncher.Pages
                         ClipToBounds = true,
                         Child = iconImage
                     };
-                    
-                    Debug.WriteLine($"[MorePage] 成功创建图标Image: {plugin.Name}");
                 }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine($"[MorePage] 加载插件图标失败 [{plugin.Name}]: {ex.Message}");
+                    Debug.WriteLine($"[MorePage] ⚠️ 插件图标加载失败 [{plugin.Name}]: {ex.Message}");
                     iconBorder = CreateDefaultPluginIcon();
                 }
             }

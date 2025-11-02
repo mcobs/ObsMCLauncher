@@ -64,7 +64,12 @@ namespace ObsMCLauncher.Pages
             UpdateConfigFileDisplay();
 
             AccountFileLocationComboBox.SelectedIndex = (int)_config.AccountFileLocation;
+            AccountFileTextBox.Text = _config.CustomAccountPath;
             UpdateAccountFileDisplay();
+
+            PluginDirectoryLocationComboBox.SelectedIndex = (int)_config.PluginDirectoryLocation;
+            PluginDirectoryTextBox.Text = _config.CustomPluginDirectory;
+            UpdatePluginDirectoryDisplay();
 
             // 加载下载设置
             DownloadSourceComboBox.SelectedIndex = (int)_config.DownloadSource;
@@ -334,6 +339,9 @@ namespace ObsMCLauncher.Pages
                 _config.ConfigFileLocation = (DirectoryLocation)ConfigFileLocationComboBox.SelectedIndex;
                 _config.CustomConfigPath = ConfigFileTextBox.Text;
                 _config.AccountFileLocation = (DirectoryLocation)AccountFileLocationComboBox.SelectedIndex;
+                _config.CustomAccountPath = AccountFileTextBox.Text;
+                _config.PluginDirectoryLocation = (DirectoryLocation)PluginDirectoryLocationComboBox.SelectedIndex;
+                _config.CustomPluginDirectory = PluginDirectoryTextBox.Text;
 
                 // 保存下载设置
                 _config.DownloadSource = (DownloadSource)DownloadSourceComboBox.SelectedIndex;
@@ -734,6 +742,10 @@ namespace ObsMCLauncher.Pages
         /// </summary>
         private void AccountFileLocation_Changed_AutoSave(object sender, SelectionChangedEventArgs e)
         {
+            if (AccountFileLocationComboBox == null) return;
+
+            var location = (DirectoryLocation)AccountFileLocationComboBox.SelectedIndex;
+            CustomAccountFilePanel.Visibility = location == DirectoryLocation.Custom ? Visibility.Visible : Visibility.Collapsed;
             UpdateAccountFileDisplay();
             AutoSaveSettingsImmediately("账号文件位置");
         }
@@ -796,7 +808,7 @@ namespace ObsMCLauncher.Pages
             var tempConfig = new LauncherConfig
             {
                 AccountFileLocation = location,
-                CustomConfigPath = ConfigFileTextBox.Text
+                CustomAccountPath = AccountFileTextBox.Text
             };
 
             AccountFileDisplayText.Text = $"实际路径：{tempConfig.GetAccountFilePath()}";
@@ -847,6 +859,115 @@ namespace ObsMCLauncher.Pages
         private void ConfigFileTextBox_TextChanged(object sender, TextChangedEventArgs e)
         {
             UpdateConfigFileDisplay();
+        }
+
+        /// <summary>
+        /// 浏览账号文件
+        /// </summary>
+        private void BrowseAccountFile_Click(object sender, RoutedEventArgs e)
+        {
+            var dialog = new System.Windows.Forms.SaveFileDialog
+            {
+                Title = "选择账号文件保存位置",
+                Filter = "JSON文件|*.json",
+                FileName = "accounts.json",
+                InitialDirectory = System.IO.Path.GetDirectoryName(AccountFileTextBox.Text)
+            };
+
+            if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+            {
+                AccountFileTextBox.Text = dialog.FileName;
+                UpdateAccountFileDisplay();
+                // 浏览选择账号文件后自动保存
+                AutoSaveSettingsImmediately("账号文件位置");
+            }
+        }
+
+        /// <summary>
+        /// 账号文件文本框失去焦点时自动保存
+        /// </summary>
+        private void AccountFileTextBox_LostFocus(object sender, RoutedEventArgs e)
+        {
+            UpdateAccountFileDisplay();
+            AutoSaveSettingsImmediately("账号文件位置");
+        }
+
+        /// <summary>
+        /// 账号文件文本框内容改变时更新显示
+        /// </summary>
+        private void AccountFileTextBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            UpdateAccountFileDisplay();
+        }
+
+        /// <summary>
+        /// 插件目录位置选择改变（自动保存）
+        /// </summary>
+        private void PluginDirectoryLocation_Changed_AutoSave(object sender, SelectionChangedEventArgs e)
+        {
+            if (PluginDirectoryLocationComboBox == null) return;
+
+            var location = (DirectoryLocation)PluginDirectoryLocationComboBox.SelectedIndex;
+            CustomPluginDirectoryPanel.Visibility = location == DirectoryLocation.Custom ? Visibility.Visible : Visibility.Collapsed;
+            UpdatePluginDirectoryDisplay();
+            AutoSaveSettingsImmediately("插件目录位置");
+        }
+
+        /// <summary>
+        /// 更新插件目录路径显示
+        /// </summary>
+        private void UpdatePluginDirectoryDisplay()
+        {
+            if (PluginDirectoryDisplayText == null) return;
+
+            var location = (DirectoryLocation)PluginDirectoryLocationComboBox.SelectedIndex;
+            var tempConfig = new LauncherConfig
+            {
+                PluginDirectoryLocation = location,
+                CustomPluginDirectory = PluginDirectoryTextBox.Text
+            };
+
+            PluginDirectoryDisplayText.Text = $"实际路径：{tempConfig.GetPluginDirectory()}";
+        }
+
+        /// <summary>
+        /// 浏览插件目录
+        /// </summary>
+        private void BrowsePluginDirectory_Click(object sender, RoutedEventArgs e)
+        {
+            var dialog = new System.Windows.Forms.FolderBrowserDialog
+            {
+                Description = "选择插件目录",
+                ShowNewFolderButton = true,
+                SelectedPath = string.IsNullOrEmpty(PluginDirectoryTextBox.Text) 
+                    ? System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "OMCL", "plugins")
+                    : PluginDirectoryTextBox.Text
+            };
+
+            if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+            {
+                PluginDirectoryTextBox.Text = dialog.SelectedPath;
+                UpdatePluginDirectoryDisplay();
+                // 浏览选择插件目录后自动保存
+                AutoSaveSettingsImmediately("插件目录位置");
+            }
+        }
+
+        /// <summary>
+        /// 插件目录文本框失去焦点时自动保存
+        /// </summary>
+        private void PluginDirectoryTextBox_LostFocus(object sender, RoutedEventArgs e)
+        {
+            UpdatePluginDirectoryDisplay();
+            AutoSaveSettingsImmediately("插件目录位置");
+        }
+
+        /// <summary>
+        /// 插件目录文本框内容改变时更新显示
+        /// </summary>
+        private void PluginDirectoryTextBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            UpdatePluginDirectoryDisplay();
         }
     }
 }

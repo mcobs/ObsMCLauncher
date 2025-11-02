@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
+using ObsMCLauncher.Models;
 using ObsMCLauncher.Pages;
 using ObsMCLauncher.Plugins;
 using ObsMCLauncher.Utils;
@@ -67,11 +68,9 @@ namespace ObsMCLauncher
         {
             try
             {
-                // 插件目录：运行目录/plugins
-                var pluginsDir = Path.Combine(
-                    AppDomain.CurrentDomain.BaseDirectory,
-                    "plugins"
-                );
+                // 从配置读取插件目录
+                var config = LauncherConfig.Load();
+                var pluginsDir = config.GetPluginDirectory();
                 
                 _pluginLoader = new PluginLoader(pluginsDir);
                 

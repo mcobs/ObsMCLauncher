@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using ObsMCLauncher.Utils;
 
 namespace ObsMCLauncher.Models
 {
@@ -79,6 +80,22 @@ namespace ObsMCLauncher.Models
         public DirectoryLocation AccountFileLocation { get; set; } = DirectoryLocation.AppData;
 
         /// <summary>
+        /// 自定义账号文件路径
+        /// </summary>
+        public string CustomAccountPath { get; set; } = "";
+
+        /// <summary>
+        /// 插件目录位置类型
+        /// </summary>
+        [JsonConverter(typeof(JsonStringEnumConverter))]
+        public DirectoryLocation PluginDirectoryLocation { get; set; } = DirectoryLocation.RunningDirectory;
+
+        /// <summary>
+        /// 自定义插件目录路径
+        /// </summary>
+        public string CustomPluginDirectory { get; set; } = "";
+
+        /// <summary>
         /// Java选择模式：0=自动选择，1=指定路径，2=自定义路径
         /// </summary>
         public int JavaSelectionMode { get; set; } = 0;
@@ -144,14 +161,17 @@ namespace ObsMCLauncher.Models
                 DirectoryLocation.AppData => Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                     "ObsMCLauncher",
+                    "config",
                     "config.json"),
                 DirectoryLocation.RunningDirectory => Path.Combine(
                     AppDomain.CurrentDomain.BaseDirectory,
+                    "OMCL",
+                    "config",
                     "config.json"),
                 DirectoryLocation.Custom => string.IsNullOrEmpty(customPath)
-                    ? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "config.json")
+                    ? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "OMCL", "config", "config.json")
                     : customPath,
-                _ => Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "config.json")
+                _ => Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "OMCL", "config", "config.json")
             };
         }
 
@@ -309,10 +329,37 @@ namespace ObsMCLauncher.Models
         {
             try
             {
-                var bootstrap = new BootstrapConfig { ConfigFilePath = configPath };
-                var json = JsonSerializer.Serialize(bootstrap, new JsonSerializerOptions { WriteIndented = true });
+                // 检查是否存在旧的引导配置
+                BootstrapConfig? existingBootstrap = null;
+                if (File.Exists(BootstrapConfigPath))
+                {
+                    try
+                    {
+                        var existingData = File.ReadAllText(BootstrapConfigPath);
+                        existingBootstrap = JsonSerializer.Deserialize<BootstrapConfig>(existingData);
+                    }
+                    catch
+                    {
+                        // 忽略解析错误，使用新配置
+                    }
+                }
+
+                var bootstrap = new BootstrapConfig 
+                { 
+                    ConfigFilePath = configPath,
+                    Version = VersionInfo.Version,
+                    CreatedAt = existingBootstrap?.CreatedAt ?? DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+                    LastModified = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
+                };
+
+                var options = new JsonSerializerOptions 
+                { 
+                    WriteIndented = true,
+                    Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+                };
+                var json = JsonSerializer.Serialize(bootstrap, options);
                 File.WriteAllText(BootstrapConfigPath, json);
-                System.Diagnostics.Debug.WriteLine($"✅ 引导配置已保存: {BootstrapConfigPath} -> {configPath}");
+                System.Diagnostics.Debug.WriteLine($"✅ 引导配置已保存: {BootstrapConfigPath} -> {configPath} (Version: {VersionInfo.Version})");
             }
             catch (Exception ex)
             {
@@ -325,7 +372,17 @@ namespace ObsMCLauncher.Models
         /// </summary>
         private class BootstrapConfig
         {
+            [JsonPropertyName("configFilePath")]
             public string ConfigFilePath { get; set; } = string.Empty;
+
+            [JsonPropertyName("version")]
+            public string Version { get; set; } = string.Empty;
+
+            [JsonPropertyName("createdAt")]
+            public string CreatedAt { get; set; } = string.Empty;
+
+            [JsonPropertyName("lastModified")]
+            public string LastModified { get; set; } = string.Empty;
         }
 
 
@@ -339,14 +396,39 @@ namespace ObsMCLauncher.Models
                 DirectoryLocation.AppData => Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                     "ObsMCLauncher",
+                    "config",
                     "accounts.json"),
                 DirectoryLocation.RunningDirectory => Path.Combine(
                     AppDomain.CurrentDomain.BaseDirectory,
+                    "OMCL",
+                    "config",
                     "accounts.json"),
-                DirectoryLocation.Custom => Path.Combine(
-                    Path.GetDirectoryName(CustomConfigPath) ?? AppDomain.CurrentDomain.BaseDirectory,
-                    "accounts.json"),
-                _ => Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "accounts.json")
+                DirectoryLocation.Custom => string.IsNullOrEmpty(CustomAccountPath)
+                    ? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "OMCL", "config", "accounts.json")
+                    : CustomAccountPath,
+                _ => Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "OMCL", "config", "accounts.json")
+            };
+        }
+
+        /// <summary>
+        /// 获取插件目录路径
+        /// </summary>
+        public string GetPluginDirectory()
+        {
+            return PluginDirectoryLocation switch
+            {
+                DirectoryLocation.AppData => Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                    "ObsMCLauncher",
+                    "plugins"),
+                DirectoryLocation.RunningDirectory => Path.Combine(
+                    AppDomain.CurrentDomain.BaseDirectory,
+                    "OMCL",
+                    "plugins"),
+                DirectoryLocation.Custom => string.IsNullOrEmpty(CustomPluginDirectory)
+                    ? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "OMCL", "plugins")
+                    : CustomPluginDirectory,
+                _ => Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "OMCL", "plugins")
             };
         }
 

@@ -232,7 +232,7 @@ namespace ObsMCLauncher
                     UpdateBrushColor("TooltipBorderBrush", "LightBorderBrush");
                 }
 
-                System.Diagnostics.Debug.WriteLine("[App] ✅ 主题切换完成");
+                // System.Diagnostics.Debug.WriteLine("[App] ✅ 主题切换完成"); 
             }
             catch (Exception ex)
             {
@@ -270,12 +270,11 @@ namespace ObsMCLauncher
                         {
                             var mutableBrush = new SolidColorBrush(brush.Color);
                             app.Resources[key] = mutableBrush;
-                            System.Diagnostics.Debug.WriteLine($"[App] ✅ 已将 {key} 转换为可变Brush");
                         }
                     }
                 }
 
-                System.Diagnostics.Debug.WriteLine("[App] ✅ 动态Brush资源初始化完成");
+                System.Diagnostics.Debug.WriteLine($"[App] ✅ 动态资源初始化完成 (共 {dynamicBrushKeys.Length} 个)");
             }
             catch (Exception ex)
             {
@@ -311,7 +310,6 @@ namespace ObsMCLauncher
                 // 检查是否被冻结
                 if (targetBrush.IsFrozen)
                 {
-                    System.Diagnostics.Debug.WriteLine($"[App] ⚠️ Brush被冻结无法更新: {targetKey}");
                     // 如果被冻结，创建新的可变Brush（不应该发生，因为我们在InitializeDynamicBrushes中已经处理了）
                     var newBrush = new SolidColorBrush(sourceBrush.Color);
                     app.Resources[targetKey] = newBrush;
