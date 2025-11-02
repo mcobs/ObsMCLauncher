@@ -538,11 +538,19 @@ namespace ObsMCLauncher.Pages
             {
                 try
                 {
+                    // 优化图片加载：限制解码尺寸以减少内存占用
+                    var bitmapImage = new BitmapImage();
+                    bitmapImage.BeginInit();
+                    bitmapImage.UriSource = new Uri(plugin.IconPath);
+                    bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
+                    bitmapImage.DecodePixelWidth = 48;
+                    bitmapImage.EndInit();
+                    
                     var iconImage = new Image
                     {
                         Width = 48,
                         Height = 48,
-                        Source = new BitmapImage(new Uri(plugin.IconPath))
+                        Source = bitmapImage
                     };
                     iconBorder = new Border
                     {
@@ -1501,10 +1509,12 @@ namespace ObsMCLauncher.Pages
                         iconUrl = "https://gh-proxy.com/" + iconUrl;
                     }
                     
+                    // 优化图片加载：限制解码尺寸以减少内存占用
                     var bitmapImage = new BitmapImage();
                     bitmapImage.BeginInit();
                     bitmapImage.UriSource = new Uri(iconUrl, UriKind.Absolute);
                     bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
+                    bitmapImage.DecodePixelWidth = 48;
                     bitmapImage.EndInit();
                     
                     var iconImage = new Image

@@ -62,95 +62,12 @@ namespace ObsMCLauncher.Pages
             // 恢复页面状态
             RestorePageState();
             
-            // 异步预加载所有资源类型的数据
-            _ = PreloadAllResourceTypesAsync();
+            // 移除预加载逻辑以降低内存占用
+            // 资源将在用户切换标签时按需加载
         }
 
-        /// <summary>
-        /// 异步预加载所有资源类型的数据
-        /// </summary>
-        private async System.Threading.Tasks.Task PreloadAllResourceTypesAsync()
-        {
-            var resourceTypes = new[] { "Mods", "Textures", "Shaders", "Datapacks", "Modpacks" };
-            
-            foreach (var type in resourceTypes)
-            {
-                // 跳过当前已显示的资源类型
-                if (type == _currentResourceType) continue;
-                
-                // 如果该资源类型已有缓存，跳过
-                if (PageState.ResourceStates.ContainsKey(type))
-                {
-                    var state = PageState.ResourceStates[type];
-                    if ((state.CachedCurseForgeMods != null && state.CachedCurseForgeMods.Count > 0) ||
-                        (state.CachedModrinthMods != null && state.CachedModrinthMods.Count > 0))
-                    {
-                        continue;
-                    }
-                }
-                
-                Debug.WriteLine($"[ResourcesPage] 预加载 {type} 资源...");
-                
-                try
-                {
-                    // 根据当前选择的下载源预加载数据
-                    if (_currentSource == ResourceSource.CurseForge)
-                    {
-                        var result = await CurseForgeService.SearchModsAsync(
-                            searchFilter: "",
-                            gameVersion: "",
-                            categoryId: 0,
-                            pageIndex: 0,
-                            pageSize: 20,
-                            sortField: 2,
-                            sortOrder: "desc",
-                            classId: GetCurseForgeClassId(type)
-                        );
-                        
-                        if (result?.Data != null && result.Data.Count > 0)
-                        {
-                            if (!PageState.ResourceStates.ContainsKey(type))
-                            {
-                                PageState.ResourceStates[type] = new ResourceTypeState();
-                            }
-                            PageState.ResourceStates[type].CachedCurseForgeMods = result.Data;
-                            Debug.WriteLine($"[ResourcesPage] ✅ 预加载 {type} 完成: {result.Data.Count} 个资源");
-                        }
-                    }
-                    else
-                    {
-                        var modrinthService = new ModrinthService(DownloadSourceManager.Instance);
-                        var result = await modrinthService.SearchModsAsync(
-                            searchQuery: "",
-                            gameVersion: "",
-                            offset: 0,
-                            limit: 20,
-                            sortBy: "downloads",
-                            projectType: GetModrinthProjectType(type)
-                        );
-                        
-                        if (result?.Hits != null && result.Hits.Count > 0)
-                        {
-                            if (!PageState.ResourceStates.ContainsKey(type))
-                            {
-                                PageState.ResourceStates[type] = new ResourceTypeState();
-                            }
-                            PageState.ResourceStates[type].CachedModrinthMods = result.Hits;
-                            Debug.WriteLine($"[ResourcesPage] ✅ 预加载 {type} 完成: {result.Hits.Count} 个资源");
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine($"[ResourcesPage] ⚠️ 预加载 {type} 失败: {ex.Message}");
-                }
-                
-                // 短暂延迟，避免同时发送太多请求
-                await System.Threading.Tasks.Task.Delay(500);
-            }
-            
-            Debug.WriteLine($"[ResourcesPage] 所有资源类型预加载完成");
-        }
+        // 预加载功能已移除以降低内存占用
+        // 资源将在用户切换标签时按需加载
 
         /// <summary>
         /// 加载已安装的版本列表
@@ -847,9 +764,17 @@ namespace ObsMCLauncher.Pages
             {
                 try
                 {
+                    // 优化图片加载：限制解码尺寸以减少内存占用
+                    var bitmapImage = new BitmapImage();
+                    bitmapImage.BeginInit();
+                    bitmapImage.UriSource = new Uri(mod.Logo.ThumbnailUrl);
+                    bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
+                    bitmapImage.DecodePixelWidth = 96; // 限制解码宽度为96px
+                    bitmapImage.EndInit();
+                    
                     var image = new Image
                     {
-                        Source = new BitmapImage(new Uri(mod.Logo.ThumbnailUrl)),
+                        Source = bitmapImage,
                         Stretch = Stretch.UniformToFill
                     };
                     iconBorder.Child = image;
@@ -1079,9 +1004,17 @@ namespace ObsMCLauncher.Pages
             {
                 try
                 {
+                    // 优化图片加载：限制解码尺寸以减少内存占用
+                    var bitmapImage = new BitmapImage();
+                    bitmapImage.BeginInit();
+                    bitmapImage.UriSource = new Uri(mod.IconUrl);
+                    bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
+                    bitmapImage.DecodePixelWidth = 96; // 限制解码宽度为96px
+                    bitmapImage.EndInit();
+                    
                     var image = new Image
                     {
-                        Source = new BitmapImage(new Uri(mod.IconUrl)),
+                        Source = bitmapImage,
                         Stretch = Stretch.UniformToFill
                     };
                     iconBorder.Child = image;

@@ -18,6 +18,20 @@ namespace ObsMCLauncher.Services
     {
         private readonly DownloadSourceManager _downloadSourceManager;
         private const string BaseUrl = "https://api.modrinth.com/v2";
+        
+        // 静态HttpClient单例，避免每次请求都创建新实例
+        private static readonly HttpClient _httpClient;
+
+        static ModrinthService()
+        {
+            var handler = new HttpClientHandler
+            {
+                ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+            };
+            _httpClient = new HttpClient(handler);
+            _httpClient.DefaultRequestHeaders.Add("User-Agent", "ObsMCLauncher/1.0");
+            _httpClient.Timeout = TimeSpan.FromMinutes(30);
+        }
 
         public ModrinthService(DownloadSourceManager downloadSourceManager)
         {
@@ -61,16 +75,7 @@ namespace ObsMCLauncher.Services
 
                 var url = $"{BaseUrl}/search?{queryParams}";
 
-                // 创建HttpClient并配置SSL处理
-                using var handler = new HttpClientHandler
-                {
-                    ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
-                };
-                using var httpClient = new HttpClient(handler);
-                httpClient.DefaultRequestHeaders.Add("User-Agent", "ObsMCLauncher/1.0");
-                httpClient.Timeout = TimeSpan.FromSeconds(30);
-
-                var response = await httpClient.GetAsync(url, cancellationToken);
+                var response = await _httpClient.GetAsync(url, cancellationToken);
                 response.EnsureSuccessStatusCode();
 
                 var json = await response.Content.ReadAsStringAsync(cancellationToken);
@@ -95,16 +100,7 @@ namespace ObsMCLauncher.Services
                 var url = $"{BaseUrl}/project/{projectId}";
                 Debug.WriteLine($"[ModrinthService] 获取项目详情: {url}");
 
-                // 创建HttpClient并配置SSL处理
-                using var handler = new HttpClientHandler
-                {
-                    ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
-                };
-                using var httpClient = new HttpClient(handler);
-                httpClient.DefaultRequestHeaders.Add("User-Agent", "ObsMCLauncher/1.0");
-                httpClient.Timeout = TimeSpan.FromSeconds(30);
-
-                var response = await httpClient.GetAsync(url, cancellationToken);
+                var response = await _httpClient.GetAsync(url, cancellationToken);
                 response.EnsureSuccessStatusCode();
 
                 var json = await response.Content.ReadAsStringAsync(cancellationToken);
@@ -142,16 +138,8 @@ namespace ObsMCLauncher.Services
 
                 var queryString = queryParams.Count > 0 ? $"?{queryParams}" : "";
                 var url = $"{BaseUrl}/project/{projectId}/version{queryString}";
-                // 创建HttpClient并配置SSL处理
-                using var handler = new HttpClientHandler
-                {
-                    ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
-                };
-                using var httpClient = new HttpClient(handler);
-                httpClient.DefaultRequestHeaders.Add("User-Agent", "ObsMCLauncher/1.0");
-                httpClient.Timeout = TimeSpan.FromSeconds(30);
 
-                var response = await httpClient.GetAsync(url, cancellationToken);
+                var response = await _httpClient.GetAsync(url, cancellationToken);
                 response.EnsureSuccessStatusCode();
 
                 var json = await response.Content.ReadAsStringAsync(cancellationToken);
@@ -177,16 +165,7 @@ namespace ObsMCLauncher.Services
         {
             try
             {
-
-                // 创建HttpClient并配置SSL处理
-                using var handler = new HttpClientHandler
-                {
-                    ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
-                };
-                using var httpClient = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(30) };
-                httpClient.DefaultRequestHeaders.Add("User-Agent", "ObsMCLauncher/1.0");
-
-                var response = await httpClient.GetAsync(file.Url, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+                var response = await _httpClient.GetAsync(file.Url, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
                 response.EnsureSuccessStatusCode();
 
                 var totalBytes = response.Content.Headers.ContentLength ?? 0;

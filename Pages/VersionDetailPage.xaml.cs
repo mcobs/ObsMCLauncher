@@ -20,6 +20,12 @@ namespace ObsMCLauncher.Pages
 {
     public partial class VersionDetailPage : Page
     {
+        // 静态HttpClient单例，避免每次请求都创建新实例
+        private static readonly HttpClient _httpClient = new HttpClient
+        {
+            Timeout = TimeSpan.FromMinutes(30)
+        };
+        
         private string currentVersion;
         private MinecraftVersion? versionInfo;
         private CancellationTokenSource? _downloadCancellationToken;
@@ -1914,7 +1920,6 @@ namespace ObsMCLauncher.Pages
                 System.Diagnostics.Debug.WriteLine($"[Forge] 检测到 {forgeLibs.Count} 个Forge库文件");
 
                 var downloadService = DownloadSourceManager.Instance.CurrentService;
-                var httpClient = new HttpClient { Timeout = TimeSpan.FromMinutes(5) };
                 
                 int successCount = 0;
                 int skipCount = 0;
@@ -2000,7 +2005,7 @@ namespace ObsMCLauncher.Pages
                         System.Diagnostics.Debug.WriteLine($"[Forge] 📥 下载: {lib.Name}");
                         System.Diagnostics.Debug.WriteLine($"[Forge]    URL: {downloadUrl}");
                         
-                        var response = await httpClient.GetAsync(downloadUrl, _downloadCancellationToken!.Token);
+                        var response = await _httpClient.GetAsync(downloadUrl, _downloadCancellationToken!.Token);
                         
                         // 对于404错误且是特定的Forge库，跳过（这些库可能从JAR中提取或不需要）
                         if (!response.IsSuccessStatusCode && response.StatusCode == System.Net.HttpStatusCode.NotFound)
@@ -2039,8 +2044,6 @@ namespace ObsMCLauncher.Pages
                         }
                     }
                 }
-
-                httpClient.Dispose();
 
                 System.Diagnostics.Debug.WriteLine($"[Forge] 库文件下载完成: 成功 {successCount}, 跳过 {skipCount}, 失败 {failedCount}");
 
@@ -2534,8 +2537,7 @@ namespace ObsMCLauncher.Pages
         private async Task<(string jsonPath, string jarPath, string sha1)> DownloadVanillaFilesToTemp(string tempDir)
         {
             var versionManifestUrl = "https://bmclapi2.bangbang93.com/mc/game/version_manifest.json";
-            using var httpClient = new HttpClient();
-            var manifestResponse = await httpClient.GetStringAsync(versionManifestUrl, _downloadCancellationToken!.Token);
+            var manifestResponse = await _httpClient.GetStringAsync(versionManifestUrl, _downloadCancellationToken!.Token);
             var manifestDoc = JsonDocument.Parse(manifestResponse);
             var versions = manifestDoc.RootElement.GetProperty("versions");
 
@@ -2546,7 +2548,7 @@ namespace ObsMCLauncher.Pages
             if (string.IsNullOrEmpty(versionJsonUrl))
                 throw new Exception($"无法找到版本 {currentVersion} 的元数据URL");
 
-            var jsonContent = await httpClient.GetStringAsync(versionJsonUrl, _downloadCancellationToken!.Token);
+            var jsonContent = await _httpClient.GetStringAsync(versionJsonUrl, _downloadCancellationToken!.Token);
             var jsonPath = Path.Combine(tempDir, $"{currentVersion}.json");
             await File.WriteAllTextAsync(jsonPath, jsonContent, _downloadCancellationToken!.Token);
 
@@ -2559,7 +2561,7 @@ namespace ObsMCLauncher.Pages
                 clientUrl = $"https://bmclapi2.bangbang93.com/version/{currentVersion}/client";
 
             System.Diagnostics.Debug.WriteLine($"[Forge] 下载原版客户端JAR: {clientUrl}");
-            var jarBytes = await httpClient.GetByteArrayAsync(clientUrl, _downloadCancellationToken!.Token);
+            var jarBytes = await _httpClient.GetByteArrayAsync(clientUrl, _downloadCancellationToken!.Token);
             var jarPath = Path.Combine(tempDir, $"{currentVersion}.jar");
             await File.WriteAllBytesAsync(jarPath, jarBytes, _downloadCancellationToken!.Token);
             System.Diagnostics.Debug.WriteLine($"[Forge] 原版JAR下载完成: {jarPath} ({jarBytes.Length} bytes)");
@@ -4281,8 +4283,7 @@ namespace ObsMCLauncher.Pages
                 // 下载版本JSON
                 if (!File.Exists(jsonPath))
                 {
-                    using var httpClient = new HttpClient();
-                    var jsonContent = await httpClient.GetStringAsync(versionInfo.Url, _downloadCancellationToken?.Token ?? default);
+                    var jsonContent = await _httpClient.GetStringAsync(versionInfo.Url, _downloadCancellationToken?.Token ?? default);
                     await File.WriteAllTextAsync(jsonPath, jsonContent);
                     System.Diagnostics.Debug.WriteLine($"[Forge] ✅ 已下载原版JSON");
                 }
@@ -4314,8 +4315,7 @@ namespace ObsMCLauncher.Pages
                     var lastReportTime = startTime;
                     long lastReportedBytes = 0;
                     
-                    using var httpClient = new HttpClient { Timeout = TimeSpan.FromMinutes(30) };
-                    using var response = await httpClient.GetAsync(downloadUrl!, HttpCompletionOption.ResponseHeadersRead, _downloadCancellationToken?.Token ?? default);
+                    using var response = await _httpClient.GetAsync(downloadUrl!, HttpCompletionOption.ResponseHeadersRead, _downloadCancellationToken?.Token ?? default);
                     response.EnsureSuccessStatusCode();
                     
                     var totalBytes = response.Content.Headers.ContentLength ?? clientSize;
@@ -4888,9 +4888,7 @@ namespace ObsMCLauncher.Pages
                         {
                             try
                             {
-                                using var client = new HttpClient();
-                                client.Timeout = TimeSpan.FromMinutes(2);
-                                var response = await client.GetAsync(url, _downloadCancellationToken!.Token);
+                                var response = await _httpClient.GetAsync(url, _downloadCancellationToken!.Token);
                                 
                                 if (response.IsSuccessStatusCode)
                                 {

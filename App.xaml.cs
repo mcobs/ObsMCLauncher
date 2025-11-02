@@ -6,6 +6,7 @@ using System.Windows.Media;
 using MaterialDesignThemes.Wpf;
 using ObsMCLauncher.Models;
 using ObsMCLauncher.Services;
+using ObsMCLauncher.Utils;
 
 namespace ObsMCLauncher
 {
@@ -92,6 +93,9 @@ namespace ObsMCLauncher
                 
                 // 应用主题
                 ApplyTheme(config.ThemeMode);
+                
+                // 启动图片缓存自动清理（降低内存占用）
+                ImageCacheManager.StartAutoCleanup();
                 
                 try
                 {
