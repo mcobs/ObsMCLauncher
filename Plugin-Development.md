@@ -61,41 +61,45 @@ ObsMCLauncher 采用基于 .NET Assembly 的插件系统，支持开发者使用
 
 ### 插件安装目录
 
-插件安装在启动器运行目录下的 `plugins` 文件夹：
+ObsMCLauncher 支持三种插件目录位置（可在设置中配置）：
 
-```
-ObsMCLauncher.exe 所在目录/plugins/
-```
+1. **运行目录\OMCL\plugins\** （默认，便携模式）
+   ```
+   启动器目录\OMCL\plugins\
+   ```
+   示例：`C:\Program Files\ObsMCLauncher\OMCL\plugins\`
 
-完整路径示例：
+2. **%APPDATA%\ObsMCLauncher\plugins\** （系统目录）
+   ```
+   C:\Users\[用户名]\AppData\Roaming\ObsMCLauncher\plugins\
+   ```
 
-```
-H:\projects\ObsMCLauncher\bin\Debug\net8.0-windows\plugins\
-```
+3. **自定义目录** （用户指定的任意位置）
 
-或发布后：
-
-```
-C:\Program Files\ObsMCLauncher\plugins\
-```
+**默认使用运行目录，适合便携使用。** 用户可以在"设置 - 文件存储设置 - 插件目录位置"中更改。
 
 ### 目录结构
 
 ```
-ObsMCLauncher/                      # 启动器运行目录
+ObsMCLauncher/                           # 启动器运行目录
 ├── ObsMCLauncher.exe
-├── plugins/                        # 插件目录
-│   ├── example-hello-plugin/       # 插件文件夹
-│   │   ├── example-hello-plugin.dll    # 插件程序集
-│   │   ├── plugin.json                 # 插件元数据
-│   │   ├── icon.png                    # 插件图标（可选）
-│   │   ├── config.json                 # 插件配置（可选，由开发者自定义）
-│   │   └── data/                       # 插件数据（可选，由开发者自定义）
-│   └── another-plugin/             # 另一个插件
-│       ├── another-plugin.dll
-│       ├── plugin.json
-│       ├── icon.png
-│       └── settings.json           # 插件自定义的配置文件
+├── OMCL/                                # 启动器数据目录
+│   ├── config/                          # 配置文件
+│   │   ├── config.json
+│   │   └── accounts.json
+│   └── plugins/                         # 插件目录（默认位置）
+│       ├── example-hello-plugin/        # 插件文件夹
+│       │   ├── example-hello-plugin.dll # 插件程序集
+│       │   ├── plugin.json              # 插件元数据
+│       │   ├── icon.png                 # 插件图标（可选）
+│       │   ├── config.json              # 插件配置（可选，由开发者自定义）
+│       │   └── data/                    # 插件数据（可选，由开发者自定义）
+│       └── another-plugin/              # 另一个插件
+│           ├── another-plugin.dll
+│           ├── plugin.json
+│           ├── icon.png
+│           └── settings.json            # 插件自定义的配置文件
+├── OMCL.ini                             # 引导配置文件
 └── (其他启动器文件)
 ```
 
@@ -906,7 +910,9 @@ A: 不会，启动器会捕获插件异常并隔离错误，只会禁用有问�
 
 本文档采用 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) 许可协议。
 
-插件开发者可以选择任何开源协议发布插件，推荐使用 MIT License。
+插件开发者可以选择任何开源协议发布插件，推荐使用 MIT License 或 GPL-3.0。
+
+**注意**：ObsMCLauncher 本身采用 GPL-3.0 许可证，如果您的插件与启动器深度集成，可能需要考虑使用兼容的许可证。
 
 ---
 

@@ -3,7 +3,7 @@
 <div align="center">
   <img src="https://img.shields.io/badge/.NET-8.0-512BD4?style=for-the-badge&logo=dotnet" alt=".NET 8.0"/>
   <img src="https://img.shields.io/badge/WPF-Windows-0078D6?style=for-the-badge&logo=windows" alt="WPF"/>
-  <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License"/>
+  <img src="https://img.shields.io/badge/License-GPL--3.0-blue?style=for-the-badge" alt="License"/>
   <br/>
   <img src="https://github.com/x1aoren/ObsMCLauncher/actions/workflows/build.yml/badge.svg" alt="Build Status"/>
 </div>
@@ -116,7 +116,15 @@ ObsMCLauncher/
 
 ## 📄 许可证
 
-本项目采用 **MIT 许可证** 开源。详见 [LICENSE](LICENSE) 文件。
+本项目采用 **GNU General Public License v3.0** 开源。
+
+这意味着：
+- ✅ 可以自由使用、修改和分发
+- ✅ 必须开源修改后的代码
+- ✅ 必须使用相同的 GPL-3.0 许可证
+- ✅ 必须声明变更内容
+
+详见 [LICENSE](LICENSE) 文件。
 
 ---
 

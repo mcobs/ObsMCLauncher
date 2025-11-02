@@ -276,7 +276,7 @@
                                  FontSize="14" 
                                  Foreground="{DynamicResource TextTertiaryBrush}"
                                  Width="80"/>
-                        <TextBlock Text="MIT License" 
+                        <TextBlock Text="GNU GPL v3.0" 
                                  FontSize="14" 
                                  Foreground="{DynamicResource TextBrush}"/>
                     </StackPanel>
