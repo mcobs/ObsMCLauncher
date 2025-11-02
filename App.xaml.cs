@@ -88,6 +88,9 @@ namespace ObsMCLauncher
                 var config = LauncherConfig.Load();
                 DownloadSourceManager.Instance.SetDownloadSource(config.DownloadSource);
                 
+                // 释放MOD翻译文件到运行目录
+                ExtractModTranslations();
+                
                 // 初始化动态主题资源（确保它们是可变的，非冻结的）
                 InitializeDynamicBrushes();
                 
@@ -327,6 +330,59 @@ namespace ObsMCLauncher
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[App] ❌ 更新Brush颜色失败 ({targetKey}): {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 释放MOD翻译文件到运行目录\OMCL\
+        /// </summary>
+        private static void ExtractModTranslations()
+        {
+            try
+            {
+                // 目标目录和文件路径
+                var omclDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "OMCL");
+                var targetPath = Path.Combine(omclDir, "mod_translations.txt");
+
+                // 如果文件已存在，不覆盖（允许用户自定义编辑）
+                if (File.Exists(targetPath))
+                {
+                    System.Diagnostics.Debug.WriteLine($"[App] MOD翻译文件已存在，跳过释放: {targetPath}");
+                    return;
+                }
+
+                // 确保目录存在
+                Directory.CreateDirectory(omclDir);
+
+                // 从嵌入资源读取
+                var assembly = System.Reflection.Assembly.GetExecutingAssembly();
+                var resourceName = "ObsMCLauncher.Assets.mod_translations.txt";
+                
+                using var stream = assembly.GetManifestResourceStream(resourceName);
+                if (stream == null)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[App] ⚠️ 未找到嵌入资源: {resourceName}");
+                    
+                    // 列出所有嵌入资源用于调试
+                    var allResources = assembly.GetManifestResourceNames();
+                    System.Diagnostics.Debug.WriteLine("[App] 可用的嵌入资源:");
+                    foreach (var name in allResources)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"  - {name}");
+                    }
+                    return;
+                }
+
+                // 写入文件
+                using var fileStream = File.Create(targetPath);
+                stream.CopyTo(fileStream);
+                
+                System.Diagnostics.Debug.WriteLine($"[App] ✅ MOD翻译文件已释放: {targetPath}");
+                System.Diagnostics.Debug.WriteLine($"[App] 文件大小: {new FileInfo(targetPath).Length / 1024.0:F2} KB");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[App] ❌ 释放MOD翻译文件失败: {ex.Message}");
             }
         }
 

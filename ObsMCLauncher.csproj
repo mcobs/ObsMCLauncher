@@ -33,7 +33,12 @@
 
   <!-- 包含资源文件 -->
   <ItemGroup>
-    <Resource Include="Assets\**\*" />
+    <Resource Include="Assets\**\*" Exclude="Assets\mod_translations.txt" />
+  </ItemGroup>
+
+  <!-- 嵌入翻译文件为程序集资源 -->
+  <ItemGroup>
+    <EmbeddedResource Include="Assets\mod_translations.txt" />
   </ItemGroup>
 
 </Project>

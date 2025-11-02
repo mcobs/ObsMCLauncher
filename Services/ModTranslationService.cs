@@ -36,10 +36,21 @@ namespace ObsMCLauncher.Services
             {
                 string[]? lines = null;
 
-                // 首先尝试从嵌入资源读取
-                lines = LoadFromEmbeddedResource();
+                // 优先从运行目录\OMCL\mod_translations.txt读取（用户可编辑）
+                var userTranslationPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "OMCL", "mod_translations.txt");
+                if (File.Exists(userTranslationPath))
+                {
+                    Debug.WriteLine($"[ModTranslation] 从用户目录读取翻译: {userTranslationPath}");
+                    lines = File.ReadAllLines(userTranslationPath, Encoding.UTF8);
+                }
                 
-                // 如果嵌入资源读取失败，尝试从文件系统读取
+                // 如果用户目录没有，尝试从嵌入资源读取
+                if (lines == null)
+                {
+                    lines = LoadFromEmbeddedResource();
+                }
+                
+                // 如果嵌入资源读取失败，尝试从其他路径读取
                 if (lines == null)
                 {
                     var possiblePaths = new[]
@@ -56,7 +67,7 @@ namespace ObsMCLauncher.Services
                         if (File.Exists(normalizedPath))
                         {
                             translationFile = normalizedPath;
-                            Debug.WriteLine($"[ModTranslation] 从文件系统找到翻译文件: {translationFile}");
+                            Debug.WriteLine($"[ModTranslation] 从备用路径找到翻译文件: {translationFile}");
                             lines = File.ReadAllLines(translationFile, Encoding.UTF8);
                             break;
                         }
@@ -66,7 +77,7 @@ namespace ObsMCLauncher.Services
                 if (lines == null)
                 {
                     Debug.WriteLine("[ModTranslation] 翻译文件不存在，跳过加载");
-                    Debug.WriteLine($"[ModTranslation] 提示：如需启用翻译功能，请确保 Assets\\mod_translations.txt 已嵌入到程序集中");
+                    Debug.WriteLine($"[ModTranslation] 提示：翻译文件应位于 {userTranslationPath}");
                     _isLoaded = false;
                     return;
                 }
