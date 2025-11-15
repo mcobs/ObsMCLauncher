@@ -20,7 +20,7 @@ namespace ObsMCLauncher.Utils
         /// 格式：日期.构建次数 (yyyyMMdd.build)
         /// 示例：20250108.1, 20250108.2
         /// </summary>
-        public static readonly string BuildVersion = "20251102.2";
+        public static readonly string BuildVersion = "20251115.2";
 
         /// <summary>
         /// 完整版本号（组合显示）
@@ -52,7 +52,7 @@ namespace ObsMCLauncher.Utils
         /// <summary>
         /// 发布日期
         /// </summary>
-        public static readonly DateTime ReleaseDate = new DateTime(2025, 11, 2);
+        public static readonly DateTime ReleaseDate = new DateTime(2025, 11, 15);
 
         /// <summary>
         /// 是否为预发布版本
