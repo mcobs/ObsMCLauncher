@@ -52,10 +52,9 @@ namespace ObsMCLauncher.Pages
 
             if (accounts.Count == 0)
             {
-                // 显示空状态
                 var emptyText = new TextBlock
                 {
-                    Text = "还没有添加账号，点击上方按钮添加账号",
+                    Text = "暂无账号，请添加账号",
                     FontSize = 14,
                     Foreground = (Brush)Application.Current.FindResource("TextSecondaryBrush"),
                     HorizontalAlignment = HorizontalAlignment.Center,
@@ -70,6 +69,81 @@ namespace ObsMCLauncher.Pages
                 var accountCard = CreateAccountCard(account);
                 AccountListPanel.Children.Add(accountCard);
             }
+
+            // 检查并更新外置登录按钮状态
+            UpdateYggdrasilButtonState();
+        }
+
+        /// <summary>
+        /// 更新外置登录按钮状态
+        /// </summary>
+        private void UpdateYggdrasilButtonState()
+        {
+            // 查找外置登录按钮（通过遍历可视树）
+            var yggdrasilButton = FindVisualChild<Button>(this, btn =>
+            {
+                var content = btn.Content as StackPanel;
+                if (content != null)
+                {
+                    foreach (var child in content.Children)
+                    {
+                        if (child is TextBlock tb && tb.Text == "外置登录")
+                        {
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            });
+
+            if (yggdrasilButton != null)
+            {
+                bool hasAuthlibInjector = AuthlibInjectorService.IsAuthlibInjectorExists();
+
+                if (!hasAuthlibInjector)
+                {
+                    yggdrasilButton.Opacity = 0.5;
+                    yggdrasilButton.ToolTip = "需要下载 authlib-injector.jar";
+                }
+                else
+                {
+                    yggdrasilButton.Opacity = 1.0;
+                    yggdrasilButton.ToolTip = null;
+                }
+            }
+        }
+
+        /// <summary>
+        /// 查找可视树中的子元素
+        /// </summary>
+        private T? FindVisualChild<T>(DependencyObject parent, Func<T, bool> predicate) where T : DependencyObject
+        {
+            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+            {
+                var child = VisualTreeHelper.GetChild(parent, i);
+                if (child is T typedChild && predicate(typedChild))
+                {
+                    return typedChild;
+                }
+
+                var result = FindVisualChild(child, predicate);
+                if (result != null) return result;
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// 获取 Yggdrasil 服务器名称
+        /// </summary>
+        private string GetYggdrasilServerName(GameAccount account)
+        {
+            if (account.Type != AccountType.Yggdrasil || string.IsNullOrEmpty(account.YggdrasilServerId))
+            {
+                return "外置登录账户";
+            }
+
+            var server = YggdrasilServerService.Instance.GetServerById(account.YggdrasilServerId);
+            return server != null ? $"外置登录 • {server.Name}" : "外置登录账户";
         }
 
         /// <summary>
@@ -91,20 +165,34 @@ namespace ObsMCLauncher.Pages
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
             // 头像
+            Brush avatarBackground = account.Type switch
+            {
+                AccountType.Offline => (Brush)Application.Current.FindResource("PrimaryBrush"),
+                AccountType.Microsoft => (Brush)Application.Current.FindResource("SecondaryBrush"),
+                AccountType.Yggdrasil => new SolidColorBrush(Color.FromRgb(102, 187, 106)),
+                _ => (Brush)Application.Current.FindResource("PrimaryBrush")
+            };
+
             var avatarBorder = new Border
             {
                 Width = 60,
                 Height = 60,
                 CornerRadius = new CornerRadius(30),
-                Background = account.Type == AccountType.Offline
-                    ? (Brush)Application.Current.FindResource("PrimaryBrush")
-                    : (Brush)Application.Current.FindResource("SecondaryBrush"),
+                Background = avatarBackground,
                 Margin = new Thickness(0, 0, 20, 0)
+            };
+
+            PackIconKind iconKind = account.Type switch
+            {
+                AccountType.Offline => PackIconKind.Account,
+                AccountType.Microsoft => PackIconKind.Microsoft,
+                AccountType.Yggdrasil => PackIconKind.Shield,
+                _ => PackIconKind.Account
             };
 
             var avatarIcon = new PackIcon
             {
-                Kind = account.Type == AccountType.Offline ? PackIconKind.Account : PackIconKind.Microsoft,
+                Kind = iconKind,
                 Width = 40,
                 Height = 40,
                 HorizontalAlignment = HorizontalAlignment.Center,
@@ -134,9 +222,17 @@ namespace ObsMCLauncher.Pages
                 });
             }
 
+            string typeDescription = account.Type switch
+            {
+                AccountType.Offline => "离线账户",
+                AccountType.Microsoft => $"微软账户 • {account.Email}",
+                AccountType.Yggdrasil => GetYggdrasilServerName(account),
+                _ => "未知类型"
+            };
+
             var typeText = new TextBlock
             {
-                Text = account.Type == AccountType.Offline ? "离线账户" : $"微软账户 • {account.Email}",
+                Text = typeDescription,
                 FontSize = 13,
                 Foreground = (Brush)Application.Current.FindResource("TextSecondaryBrush"),
                 Margin = new Thickness(0, 5, 0, 0)
@@ -281,6 +377,100 @@ namespace ObsMCLauncher.Pages
             {
                 _isLoggingIn = false;
                 cts?.Dispose();
+            }
+        }
+
+        private async void AddYggdrasilAccount_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                // 先检查 authlib-injector.jar 是否存在
+                if (!AuthlibInjectorService.IsAuthlibInjectorExists())
+                {
+                    var result = await DialogManager.Instance.ShowQuestion(
+                        "缺少必需文件",
+                        "外置登录需要 authlib-injector.jar 文件。\n\n是否立即下载？",
+                        DialogButtons.YesNo
+                    );
+
+                    if (result != Utils.DialogResult.Yes)
+                    {
+                        return;
+                    }
+
+                    // 下载 authlib-injector.jar
+                    var config = LauncherConfig.Load();
+                    var useBMCLAPI = config.DownloadSource == DownloadSource.BMCLAPI;
+
+                    var notificationId = NotificationManager.Instance.ShowNotification(
+                        "下载中",
+                        "正在下载 authlib-injector.jar...",
+                        NotificationType.Progress
+                    );
+
+                    try
+                    {
+                        var service = new AuthlibInjectorService();
+                        service.OnProgressUpdate = (downloaded, total) =>
+                        {
+                            Dispatcher.Invoke(() =>
+                            {
+                                if (total > 0)
+                                {
+                                    var progress = (double)downloaded / total * 100;
+                                    var downloadedMB = downloaded / 1024.0 / 1024.0;
+                                    var totalMB = total / 1024.0 / 1024.0;
+                                    NotificationManager.Instance.UpdateNotification(notificationId,
+                                        $"正在下载... {downloadedMB:F2} MB / {totalMB:F2} MB ({progress:F1}%)");
+                                }
+                            });
+                        };
+
+                        await service.DownloadAuthlibInjectorAsync(useBMCLAPI);
+
+                        NotificationManager.Instance.RemoveNotification(notificationId);
+                        NotificationManager.Instance.ShowNotification(
+                            "下载完成",
+                            $"authlib-injector.jar 下载成功！",
+                            NotificationType.Success,
+                            3
+                        );
+                        
+                        // 更新按钮状态
+                        UpdateYggdrasilButtonState();
+                    }
+                    catch (Exception ex)
+                    {
+                        NotificationManager.Instance.RemoveNotification(notificationId);
+                        await DialogManager.Instance.ShowError(
+                            "下载失败",
+                            $"下载 authlib-injector.jar 失败：\n\n{ex.Message}\n\n请检查网络连接或稍后重试。"
+                        );
+                        return;
+                    }
+                }
+
+                // 使用悬浮框显示外置登录面板
+                var account = await YggdrasilPanelManager.Instance.ShowLoginPanelAsync();
+                
+                if (account != null)
+                {
+                    // 添加账号
+                    AccountService.Instance.AddYggdrasilAccount(account);
+                    LoadAccounts();
+                    
+                    // 显示成功消息
+                    NotificationManager.Instance.ShowNotification(
+                        "登录成功",
+                        $"成功添加外置登录账号：{account.Username}",
+                        NotificationType.Success,
+                        3
+                    );
+                }
+            }
+            catch (Exception ex)
+            {
+                await DialogManager.Instance.ShowError("错误", $"添加外置登录账号失败：{ex.Message}");
             }
         }
 

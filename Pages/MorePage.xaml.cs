@@ -972,6 +972,14 @@ namespace ObsMCLauncher.Pages
         }
 
         /// <summary>
+        /// 打开 authlib-injector 项目主页
+        /// </summary>
+        private void OpenAuthlibInjector_Click(object sender, RoutedEventArgs e)
+        {
+            OpenUrl("https://github.com/yushijinhun/authlib-injector");
+        }
+
+        /// <summary>
         /// 在默认浏览器中打开 URL
         /// </summary>
         private void OpenUrl(string url)

@@ -39,6 +39,9 @@ namespace ObsMCLauncher
             // 初始化对话框管理器
             DialogManager.Instance.Initialize(GlobalDialogContainer);
             
+            // 初始化 Yggdrasil 悬浮框管理器
+            YggdrasilPanelManager.Instance.Initialize(GlobalDialogContainer);
+            
             // 默认导航到主页（按需创建）
             MainFrame.Navigate(GetOrCreatePage("Home"));
             

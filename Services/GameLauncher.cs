@@ -184,9 +184,38 @@ namespace ObsMCLauncher.Services
                 Debug.WriteLine($"账号: {account.Username} ({account.Type})");
                 Debug.WriteLine($"游戏目录: {config.GameDirectory}");
 
-                // 0. 如果是微软账号且令牌过期，尝试刷新
+                // 0. 如果是外置登录账号，检查 authlib-injector.jar
                 cancellationToken.ThrowIfCancellationRequested();
-                if (account.Type == AccountType.Microsoft && account.IsTokenExpired())
+                if (account.Type == AccountType.Yggdrasil)
+                {
+                    Debug.WriteLine("检查外置登录所需文件...");
+                    onProgressUpdate?.Invoke("正在检查外置登录文件...");
+                    
+                    if (!AuthlibInjectorService.IsAuthlibInjectorExists())
+                    {
+                        LastError = "外置登录需要 authlib-injector.jar 文件\n请在账号管理中重新登录以自动下载";
+                        Debug.WriteLine($"❌ {LastError}");
+                        throw new Exception(LastError);
+                    }
+                    
+                    Debug.WriteLine("✅ authlib-injector.jar 文件检查通过");
+                    
+                    // 刷新 Yggdrasil 令牌
+                    Debug.WriteLine("尝试刷新外置登录令牌...");
+                    onProgressUpdate?.Invoke("正在刷新外置登录令牌...");
+                    
+                    var refreshSuccess = await AccountService.Instance.RefreshYggdrasilAccountAsync(account.Id);
+                    if (refreshSuccess)
+                    {
+                        Debug.WriteLine("✅ 外置登录令牌刷新成功");
+                    }
+                    else
+                    {
+                        Debug.WriteLine("⚠️ 外置登录令牌刷新失败，将使用现有令牌");
+                    }
+                }
+                // 如果是微软账号且令牌过期，尝试刷新
+                else if (account.Type == AccountType.Microsoft && account.IsTokenExpired())
                 {
                     Debug.WriteLine("⚠️ 微软账号令牌已过期，尝试刷新...");
                     Console.WriteLine("⚠️ 微软账号令牌已过期，尝试刷新...");
@@ -480,7 +509,20 @@ namespace ObsMCLauncher.Services
                 Debug.WriteLine($"[GameLauncher] 检测到非常旧的Forge版本 ({versionId})，已添加安全绕过参数");
             }
 
-            // 2. 自定义JVM参数
+            // 2. 外置登录 authlib-injector 参数（必须在其他JVM参数之前）
+            if (account.Type == AccountType.Yggdrasil)
+            {
+                var server = YggdrasilServerService.Instance.GetServerById(account.YggdrasilServerId ?? "");
+                if (server != null)
+                {
+                    var authlibPath = AuthlibInjectorService.GetAuthlibInjectorPath();
+                    var apiUrl = server.GetFullApiUrl();
+                    args.Append($"-javaagent:\"{authlibPath}\"={apiUrl} ");
+                    Debug.WriteLine($"[GameLauncher] 添加 authlib-injector: -javaagent:\"{authlibPath}\"={apiUrl}");
+                }
+            }
+
+            // 3. 自定义JVM参数
             if (!string.IsNullOrWhiteSpace(config.JvmArguments))
             {
                 args.Append($"{config.JvmArguments} ");
@@ -1030,6 +1072,16 @@ namespace ObsMCLauncher.Services
                 args.Append($"--uuid {uuid} ");
                 args.Append($"--accessToken {accessToken} ");
                 args.Append($"--userType msa ");
+            }
+            else if (account.Type == AccountType.Yggdrasil)
+            {
+                // 外置登录账号使用 Yggdrasil 的 UUID 和 AccessToken
+                var uuid = account.UUID;
+                var accessToken = account.YggdrasilAccessToken ?? "0";
+                args.Append($"--uuid {uuid} ");
+                args.Append($"--accessToken {accessToken} ");
+                args.Append($"--userType mojang ");
+                Debug.WriteLine($"[GameLauncher] 使用外置登录令牌: UUID={uuid}");
             }
             else
             {

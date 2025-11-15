@@ -46,6 +46,7 @@
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
 
                         <StackPanel Grid.Column="0" VerticalAlignment="Center">
@@ -53,7 +54,7 @@
                                      FontSize="18" 
                                      FontWeight="SemiBold"
                                      Margin="0,0,0,5"/>
-                            <TextBlock Text="登录微软账户或创建离线账号" 
+                            <TextBlock Text="登录微软账户、外置登录或创建离线账号" 
                                      FontSize="13" 
                                      Foreground="{DynamicResource TextSecondaryBrush}"/>
                         </StackPanel>
@@ -74,6 +75,20 @@
                         </Button>
 
                         <Button Grid.Column="2"
+                              Style="{StaticResource MaterialDesignOutlinedButton}"
+                              Padding="20,10"
+                              Margin="0,0,15,0"
+                              Click="AddYggdrasilAccount_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="Shield" 
+                                                       Width="20" 
+                                                       Height="20"
+                                                       Margin="0,0,8,0"/>
+                                <TextBlock Text="外置登录" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+
+                        <Button Grid.Column="3"
                               Style="{StaticResource MaterialDesignOutlinedButton}"
                               Padding="20,10"
                               Click="AddOfflineAccount_Click">
@@ -153,10 +168,11 @@
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
 
                             <!-- 微软账户说明 -->
-                            <StackPanel Grid.Column="0" Margin="0,0,15,0">
+                            <StackPanel Grid.Column="0" Margin="0,0,10,0">
                                 <Border Background="{DynamicResource SurfaceElevatedBrush}"
                                         CornerRadius="8"
                                         Padding="15">
@@ -185,8 +201,38 @@
                                 </Border>
                             </StackPanel>
 
+                            <!-- 外置登录说明 -->
+                            <StackPanel Grid.Column="1" Margin="10,0,10,0">
+                                <Border Background="{DynamicResource SurfaceElevatedBrush}"
+                                        CornerRadius="8"
+                                        Padding="15">
+                                    <StackPanel>
+                                        <materialDesign:PackIcon Kind="Shield"
+                                                               Width="30"
+                                                               Height="30"
+                                                               Foreground="#66BB6A"
+                                                               Margin="0,0,0,10"/>
+                                        <TextBlock Text="外置登录" 
+                                                 FontSize="16" 
+                                                 FontWeight="SemiBold"
+                                                 Margin="0,0,0,5"/>
+                                        <TextBlock Text="• 支持第三方认证服务器" 
+                                                 FontSize="12" 
+                                                 Foreground="{DynamicResource TextSecondaryBrush}"
+                                                 Margin="0,0,0,3"/>
+                                        <TextBlock Text="• 可加载自定义皮肤披风" 
+                                                 FontSize="12" 
+                                                 Foreground="{DynamicResource TextSecondaryBrush}"
+                                                 Margin="0,0,0,3"/>
+                                        <TextBlock Text="• 需要注册外置账号" 
+                                                 FontSize="12" 
+                                                 Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+
                             <!-- 离线账户说明 -->
-                            <StackPanel Grid.Column="1" Margin="15,0,0,0">
+                            <StackPanel Grid.Column="2" Margin="10,0,0,0">
                                 <Border Background="{DynamicResource SurfaceElevatedBrush}"
                                         CornerRadius="8"
                                         Padding="15">

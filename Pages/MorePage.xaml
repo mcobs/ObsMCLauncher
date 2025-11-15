@@ -238,7 +238,8 @@
                     <!-- 图标设计师 -->
                     <Border Background="{DynamicResource SurfaceBrush}" 
                             CornerRadius="6" 
-                            Padding="16">
+                            Padding="16"
+                            Margin="0,0,0,12">
                         <StackPanel>
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="🎨" FontSize="18" Margin="0,0,8,0"/>
@@ -254,6 +255,40 @@
                                      Foreground="{DynamicResource TextSecondaryBrush}"
                                      Margin="26,8,0,0"
                                      TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- authlib-injector -->
+                    <Border Background="{DynamicResource SurfaceBrush}" 
+                            CornerRadius="6" 
+                            Padding="16">
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                <TextBlock Text="🔐" FontSize="18" Margin="0,0,8,0"/>
+                                <TextBlock Text="authlib-injector" 
+                                         FontSize="16" 
+                                         FontWeight="SemiBold"
+                                         Foreground="{DynamicResource TextBrush}"
+                                         VerticalAlignment="Center"/>
+                            </StackPanel>
+                            
+                            <TextBlock Text="感谢提供 Yggdrasil 外置登录支持" 
+                                     FontSize="14" 
+                                     Foreground="{DynamicResource TextSecondaryBrush}"
+                                     Margin="26,0,0,12"
+                                     TextWrapping="Wrap"/>
+                            
+                            <Button Style="{StaticResource LinkButton}" 
+                                    Click="OpenAuthlibInjector_Click"
+                                    Margin="26,0,0,0"
+                                    Background="Transparent"
+                                    BorderBrush="{DynamicResource PrimaryBrush}"
+                                    BorderThickness="1">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="🔗" FontSize="14" Margin="0,0,8,0"/>
+                                    <TextBlock Text="访问项目主页" Foreground="{DynamicResource PrimaryBrush}"/>
+                                </StackPanel>
+                            </Button>
                         </StackPanel>
                     </Border>
                 </StackPanel>

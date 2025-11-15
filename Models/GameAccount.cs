@@ -8,7 +8,8 @@ namespace ObsMCLauncher.Models
     public enum AccountType
     {
         Offline,    // 离线账户
-        Microsoft   // 微软账户
+        Microsoft,  // 微软账户
+        Yggdrasil   // 外置登录账户
     }
 
     /// <summary>
@@ -83,6 +84,23 @@ namespace ObsMCLauncher.Models
     /// </summary>
     public string? MinecraftUUID { get; set; }
 
+    // ========== Yggdrasil 外置登录专用字段 ==========
+
+    /// <summary>
+    /// Yggdrasil 服务器 ID（外置登录）
+    /// </summary>
+    public string? YggdrasilServerId { get; set; }
+
+    /// <summary>
+    /// Yggdrasil 访问令牌（外置登录）
+    /// </summary>
+    public string? YggdrasilAccessToken { get; set; }
+
+    /// <summary>
+    /// Yggdrasil 客户端令牌（外置登录）
+    /// </summary>
+    public string? YggdrasilClientToken { get; set; }
+
     /// <summary>
     /// 获取显示名称
     /// </summary>
@@ -94,6 +112,7 @@ namespace ObsMCLauncher.Models
             {
                 AccountType.Offline => $"{Username} (离线)",
                 AccountType.Microsoft => $"{Username} (微软)",
+                AccountType.Yggdrasil => $"{Username} (外置)",
                 _ => Username
             };
         }

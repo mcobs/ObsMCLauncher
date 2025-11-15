@@ -433,6 +433,15 @@ namespace ObsMCLauncher.Models
         }
 
         /// <summary>
+        /// 获取数据目录路径（用于存放 Libraries 等数据）
+        /// </summary>
+        public string GetDataDirectory()
+        {
+            // 数据目录固定在运行目录的 OMCL 文件夹下
+            return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "OMCL");
+        }
+
+        /// <summary>
         /// 获取实际应该使用的Java路径
         /// </summary>
         /// <param name="minecraftVersion">Minecraft版本号，用于自动选择模式</param>
