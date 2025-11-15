@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
@@ -7,6 +8,24 @@ using ObsMCLauncher.Models;
 
 namespace ObsMCLauncher.Services
 {
+    /// <summary>
+    /// 多角色异常，用于处理用户有多个角色的情况
+    /// </summary>
+    public class MultipleProfilesException : Exception
+    {
+        public List<(string id, string name)> Profiles { get; }
+        public string AccessToken { get; }
+        public string ClientToken { get; }
+
+        public MultipleProfilesException(List<(string id, string name)> profiles, string accessToken, string clientToken)
+            : base("用户有多个角色，需要选择")
+        {
+            Profiles = profiles;
+            AccessToken = accessToken;
+            ClientToken = clientToken;
+        }
+    }
+
     /// <summary>
     /// Yggdrasil 外置登录认证服务
     /// </summary>
@@ -89,14 +108,51 @@ namespace ObsMCLauncher.Services
                     throw new Exception("认证响应缺少访问令牌");
                 }
 
-                // 提取选中的角色信息
-                if (!root.TryGetProperty("selectedProfile", out var selectedProfile))
+                // 提取角色信息
+                // 优先使用 selectedProfile，如果不存在则检查 availableProfiles
+                JsonElement profileElement;
+                if (root.TryGetProperty("selectedProfile", out var selectedProfile))
+                {
+                    profileElement = selectedProfile;
+                }
+                else if (root.TryGetProperty("availableProfiles", out var availableProfiles) && 
+                         availableProfiles.ValueKind == JsonValueKind.Array && 
+                         availableProfiles.GetArrayLength() > 0)
+                {
+                    // 如果有多个角色，返回特殊结果，让调用者处理角色选择
+                    var profiles = new System.Collections.Generic.List<(string id, string name)>();
+                    foreach (var profile in availableProfiles.EnumerateArray())
+                    {
+                        var id = profile.GetProperty("id").GetString();
+                        var name = profile.GetProperty("name").GetString();
+                        if (!string.IsNullOrEmpty(id) && !string.IsNullOrEmpty(name))
+                        {
+                            profiles.Add((id, name));
+                        }
+                    }
+                    
+                    if (profiles.Count > 1)
+                    {
+                        // 多个角色，需要用户选择
+                        throw new MultipleProfilesException(profiles, accessToken.GetString()!, clientToken);
+                    }
+                    else if (profiles.Count == 1)
+                    {
+                        // 只有一个角色，直接使用
+                        profileElement = availableProfiles[0];
+                    }
+                    else
+                    {
+                        throw new Exception("认证响应中没有可用的角色");
+                    }
+                }
+                else
                 {
                     throw new Exception("认证响应缺少角色信息");
                 }
 
-                var profileId = selectedProfile.GetProperty("id").GetString();
-                var profileName = selectedProfile.GetProperty("name").GetString();
+                var profileId = profileElement.GetProperty("id").GetString();
+                var profileName = profileElement.GetProperty("name").GetString();
 
                 if (string.IsNullOrEmpty(profileId) || string.IsNullOrEmpty(profileName))
                 {
@@ -131,10 +187,39 @@ namespace ObsMCLauncher.Services
             {
                 throw new Exception("请求超时，请检查网络连接");
             }
+            catch (MultipleProfilesException)
+            {
+                // 多角色异常直接抛出，让调用者处理
+                throw;
+            }
             catch (Exception ex)
             {
                 throw new Exception($"登录失败: {ex.Message}", ex);
             }
+        }
+
+        /// <summary>
+        /// 根据选择的角色创建账号（用于多角色情况）
+        /// </summary>
+        public GameAccount CreateAccountFromProfile(YggdrasilServer server, string profileId, string profileName, 
+            string accessToken, string clientToken)
+        {
+            var account = new GameAccount
+            {
+                Username = profileName,
+                Type = AccountType.Yggdrasil,
+                UUID = profileId,
+                YggdrasilServerId = server.Id,
+                YggdrasilAccessToken = accessToken,
+                YggdrasilClientToken = clientToken,
+                CreatedAt = DateTime.Now,
+                LastUsed = DateTime.Now
+            };
+
+            // 更新服务器最后使用时间
+            YggdrasilServerService.Instance.UpdateLastUsed(server.Id);
+
+            return account;
         }
 
         /// <summary>

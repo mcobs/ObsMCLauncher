@@ -63,41 +63,56 @@
                               Style="{StaticResource MaterialDesignRaisedButton}"
                               Background="{StaticResource PrimaryBrush}"
                               Margin="0,0,15,0"
-                              Padding="20,10"
+                              Padding="16,14"
+                              MinWidth="120"
+                              Height="48"
                               Click="AddMicrosoftAccount_Click">
-                            <StackPanel Orientation="Horizontal">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                 <materialDesign:PackIcon Kind="Microsoft" 
                                                        Width="20" 
                                                        Height="20"
+                                                       VerticalAlignment="Center"
                                                        Margin="0,0,8,0"/>
-                                <TextBlock Text="微软账户" VerticalAlignment="Center"/>
+                                <TextBlock Text="微软账户" 
+                                         VerticalAlignment="Center"
+                                         FontSize="14"/>
                             </StackPanel>
                         </Button>
 
                         <Button Grid.Column="2"
                               Style="{StaticResource MaterialDesignOutlinedButton}"
-                              Padding="20,10"
+                              Padding="16,14"
+                              MinWidth="120"
+                              Height="48"
                               Margin="0,0,15,0"
                               Click="AddYggdrasilAccount_Click">
-                            <StackPanel Orientation="Horizontal">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                 <materialDesign:PackIcon Kind="Shield" 
                                                        Width="20" 
                                                        Height="20"
+                                                       VerticalAlignment="Center"
                                                        Margin="0,0,8,0"/>
-                                <TextBlock Text="外置登录" VerticalAlignment="Center"/>
+                                <TextBlock Text="外置登录" 
+                                         VerticalAlignment="Center"
+                                         FontSize="14"/>
                             </StackPanel>
                         </Button>
 
                         <Button Grid.Column="3"
                               Style="{StaticResource MaterialDesignOutlinedButton}"
-                              Padding="20,10"
+                              Padding="16,14"
+                              MinWidth="120"
+                              Height="48"
                               Click="AddOfflineAccount_Click">
-                            <StackPanel Orientation="Horizontal">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                 <materialDesign:PackIcon Kind="AccountOff" 
                                                        Width="20" 
                                                        Height="20"
+                                                       VerticalAlignment="Center"
                                                        Margin="0,0,8,0"/>
-                                <TextBlock Text="离线账户" VerticalAlignment="Center"/>
+                                <TextBlock Text="离线账户" 
+                                         VerticalAlignment="Center"
+                                         FontSize="14"/>
                             </StackPanel>
                         </Button>
                     </Grid>

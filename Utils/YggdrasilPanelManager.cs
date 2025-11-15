@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
@@ -268,6 +269,50 @@ namespace ObsMCLauncher.Utils
 
             formPanel.Children.Add(passwordBox);
 
+            // OAuth 登录按钮（仅 LittleSkin）
+            var oauthButton = new Button
+            {
+                Content = "🔐 OAuth 登录",
+                HorizontalAlignment = HorizontalAlignment.Left,
+                Margin = new Thickness(0, 12, 0, 0),
+                Visibility = Visibility.Collapsed // 默认隐藏
+            };
+
+            try
+            {
+                oauthButton.Style = (Style)Application.Current.FindResource("MaterialDesignOutlinedButton");
+            }
+            catch { }
+
+            oauthButton.Click += async (s, e) =>
+            {
+                await DialogManager.Instance.ShowInfo(
+                    "功能开发中",
+                    "OAuth 登录功能正在开发中，敬请期待！\n\n目前请使用账号密码登录。"
+                );
+            };
+
+            formPanel.Children.Add(oauthButton);
+
+            // 根据服务器选择显示/隐藏 OAuth 按钮
+            Action updateOAuthButtonVisibility = () =>
+            {
+                var selectedServer = serverComboBox.SelectedItem as YggdrasilServer;
+                if (selectedServer != null && selectedServer.Name == "LittleSkin")
+                {
+                    oauthButton.Visibility = Visibility.Visible;
+                }
+                else
+                {
+                    oauthButton.Visibility = Visibility.Collapsed;
+                }
+            };
+
+            serverComboBox.SelectionChanged += (s, e) => updateOAuthButtonVisibility();
+            
+            // 初始化时也检查一次
+            serverComboBox.Loaded += (s, e) => updateOAuthButtonVisibility();
+
             formBorder.Child = formPanel;
             contentPanel.Children.Add(formBorder);
 
@@ -431,17 +476,17 @@ namespace ObsMCLauncher.Utils
             // 显示进度
             progressPanel.Visibility = Visibility.Visible;
 
+            var authService = new YggdrasilAuthService();
+            authService.OnProgressUpdate = (message) =>
+            {
+                _container?.Dispatcher.Invoke(() =>
+                {
+                    progressText.Text = message;
+                });
+            };
+
             try
             {
-                var authService = new YggdrasilAuthService();
-                authService.OnProgressUpdate = (message) =>
-                {
-                    _container?.Dispatcher.Invoke(() =>
-                    {
-                        progressText.Text = message;
-                    });
-                };
-
                 var account = await authService.LoginAsync(server, username, password);
 
                 if (account != null)
@@ -451,6 +496,24 @@ namespace ObsMCLauncher.Utils
                 else
                 {
                     await DialogManager.Instance.ShowError("登录失败", "无法登录到认证服务器，请检查账号密码是否正确");
+                }
+            }
+            catch (MultipleProfilesException mpEx)
+            {
+                // 用户有多个角色，让用户选择
+                progressPanel.Visibility = Visibility.Collapsed;
+                
+                var selectedProfile = await ShowProfileSelectionDialog(mpEx.Profiles);
+                if (selectedProfile.HasValue)
+                {
+                    var account = authService.CreateAccountFromProfile(
+                        server, 
+                        selectedProfile.Value.id, 
+                        selectedProfile.Value.name,
+                        mpEx.AccessToken,
+                        mpEx.ClientToken
+                    );
+                    ClosePanel(account);
                 }
             }
             catch (Exception ex)
@@ -1486,6 +1549,127 @@ namespace ObsMCLauncher.Utils
                 _container?.Children.Remove(overlay);
             };
             overlay.BeginAnimation(UIElement.OpacityProperty, fadeOut);
+        }
+
+        /// <summary>
+        /// 显示角色选择对话框
+        /// </summary>
+        private async Task<(string id, string name)?> ShowProfileSelectionDialog(List<(string id, string name)> profiles)
+        {
+            var tcs = new TaskCompletionSource<(string id, string name)?>();
+
+            await Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                var dialog = new Border
+                {
+                    Background = (Brush)Application.Current.FindResource("SurfaceBrush"),
+                    CornerRadius = new CornerRadius(12),
+                    Padding = new Thickness(24),
+                    MaxWidth = 400,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center
+                };
+
+                var panel = new StackPanel();
+
+                // 标题
+                panel.Children.Add(new TextBlock
+                {
+                    Text = "选择角色",
+                    FontSize = 20,
+                    FontWeight = FontWeights.Bold,
+                    Foreground = (Brush)Application.Current.FindResource("TextBrush"),
+                    Margin = new Thickness(0, 0, 0, 8)
+                });
+
+                panel.Children.Add(new TextBlock
+                {
+                    Text = "您的账号有多个角色，请选择一个角色登录：",
+                    FontSize = 13,
+                    Foreground = (Brush)Application.Current.FindResource("TextSecondaryBrush"),
+                    TextWrapping = TextWrapping.Wrap,
+                    Margin = new Thickness(0, 0, 0, 20)
+                });
+
+                // 角色列表
+                foreach (var profile in profiles)
+                {
+                    var profileButton = new Button
+                    {
+                        HorizontalAlignment = HorizontalAlignment.Stretch,
+                        Margin = new Thickness(0, 0, 0, 8),
+                        Padding = new Thickness(16, 12, 16, 12),
+                        MinHeight = 48,
+                        HorizontalContentAlignment = HorizontalAlignment.Left
+                    };
+
+                    // 使用 TextBlock 确保文字完整显示
+                    var textBlock = new TextBlock
+                    {
+                        Text = profile.name,
+                        FontSize = 14,
+                        TextWrapping = TextWrapping.Wrap,
+                        VerticalAlignment = VerticalAlignment.Center
+                    };
+                    profileButton.Content = textBlock;
+
+                    try
+                    {
+                        profileButton.Style = (Style)Application.Current.FindResource("MaterialDesignOutlinedButton");
+                    }
+                    catch { }
+
+                    profileButton.Click += (s, e) =>
+                    {
+                        tcs.TrySetResult(profile);
+                    };
+
+                    panel.Children.Add(profileButton);
+                }
+
+                // 取消按钮
+                var cancelButton = new Button
+                {
+                    Content = "取消",
+                    HorizontalAlignment = HorizontalAlignment.Right,
+                    Margin = new Thickness(0, 12, 0, 0),
+                    Width = 100
+                };
+
+                try
+                {
+                    cancelButton.Style = (Style)Application.Current.FindResource("MaterialDesignOutlinedButton");
+                }
+                catch { }
+
+                cancelButton.Click += (s, e) =>
+                {
+                    tcs.TrySetResult(null);
+                };
+
+                panel.Children.Add(cancelButton);
+
+                dialog.Child = panel;
+
+                // 添加到 overlay
+                if (_overlay != null)
+                {
+                    _overlay.Children.Add(dialog);
+                }
+            });
+
+            var result = await tcs.Task;
+
+            // 移除对话框
+            await Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                if (_overlay != null && _overlay.Children.Count > 1)
+                {
+                    _overlay.Children.RemoveAt(_overlay.Children.Count - 1);
+                }
+            });
+
+            return result;
         }
 
         /// <summary>
