@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
@@ -164,7 +165,7 @@ namespace ObsMCLauncher.Pages
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
-            // 头像
+            // 头像容器
             Brush avatarBackground = account.Type switch
             {
                 AccountType.Offline => (Brush)Application.Current.FindResource("PrimaryBrush"),
@@ -177,30 +178,50 @@ namespace ObsMCLauncher.Pages
             {
                 Width = 60,
                 Height = 60,
-                CornerRadius = new CornerRadius(30),
+                CornerRadius = new CornerRadius(8),
                 Background = avatarBackground,
-                Margin = new Thickness(0, 0, 20, 0)
+                Margin = new Thickness(0, 0, 20, 0),
+                ClipToBounds = true
             };
 
-            PackIconKind iconKind = account.Type switch
+            // 尝试加载皮肤头像
+            var skinHeadImage = LoadSkinHead(account);
+            
+            if (skinHeadImage != null)
             {
-                AccountType.Offline => PackIconKind.Account,
-                AccountType.Microsoft => PackIconKind.Microsoft,
-                AccountType.Yggdrasil => PackIconKind.Shield,
-                _ => PackIconKind.Account
-            };
-
-            var avatarIcon = new PackIcon
+                // 使用皮肤头像
+                var headImage = new System.Windows.Controls.Image
+                {
+                    Source = skinHeadImage,
+                    Stretch = Stretch.UniformToFill,
+                    Width = 60,
+                    Height = 60
+                };
+                avatarBorder.Child = headImage;
+            }
+            else
             {
-                Kind = iconKind,
-                Width = 40,
-                Height = 40,
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Center,
-                Foreground = Brushes.White
-            };
+                // 回退到账号类型图标
+                PackIconKind iconKind = account.Type switch
+                {
+                    AccountType.Offline => PackIconKind.Account,
+                    AccountType.Microsoft => PackIconKind.Microsoft,
+                    AccountType.Yggdrasil => PackIconKind.Shield,
+                    _ => PackIconKind.Account
+                };
 
-            avatarBorder.Child = avatarIcon;
+                var avatarIcon = new PackIcon
+                {
+                    Kind = iconKind,
+                    Width = 40,
+                    Height = 40,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Foreground = Brushes.White
+                };
+                avatarBorder.Child = avatarIcon;
+            }
+
             Grid.SetColumn(avatarBorder, 0);
 
             // 账号信息
@@ -249,6 +270,23 @@ namespace ObsMCLauncher.Pages
                 VerticalAlignment = VerticalAlignment.Center
             };
 
+            // 刷新按钮（刷新令牌和皮肤）
+            var refreshButton = new Button
+            {
+                Style = (Style)Application.Current.FindResource("MaterialDesignIconButton"),
+                ToolTip = "刷新令牌和皮肤",
+                Tag = account.Id,
+                Margin = new Thickness(0, 0, 5, 0)
+            };
+            refreshButton.Content = new PackIcon
+            {
+                Kind = PackIconKind.Refresh,
+                Width = 20,
+                Height = 20,
+                Foreground = (Brush)Application.Current.FindResource("TextSecondaryBrush")
+            };
+            refreshButton.Click += RefreshAccount_Click;
+
             // 设为默认按钮
             var defaultButton = new Button
             {
@@ -285,6 +323,7 @@ namespace ObsMCLauncher.Pages
             };
             deleteButton.Click += DeleteAccount_Click;
 
+            buttonPanel.Children.Add(refreshButton);
             buttonPanel.Children.Add(defaultButton);
             buttonPanel.Children.Add(deleteButton);
             Grid.SetColumn(buttonPanel, 2);
@@ -562,6 +601,133 @@ namespace ObsMCLauncher.Pages
                         );
                     }
                 }
+            }
+        }
+
+        /// <summary>
+        /// 刷新账号（令牌和皮肤）
+        /// </summary>
+        private async void RefreshAccount_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button button && button.Tag is string accountId)
+            {
+                var account = AccountService.Instance.GetAllAccounts()
+                    .FirstOrDefault(a => a.Id == accountId);
+
+                if (account == null) return;
+
+                // 禁用刷新按钮，防止重复点击
+                button.IsEnabled = false;
+                var originalIcon = (PackIcon)button.Content;
+                var originalKind = originalIcon.Kind;
+
+                try
+                {
+                    // 显示加载动画
+                    originalIcon.Kind = PackIconKind.Loading;
+
+                    var notificationId = NotificationManager.Instance.ShowNotification(
+                        "刷新中",
+                        $"正在刷新账号 '{account.Username}'...",
+                        NotificationType.Progress
+                    );
+
+                    bool tokenRefreshed = false;
+
+                    // 根据账号类型刷新令牌
+                    if (account.Type == AccountType.Microsoft)
+                    {
+                        tokenRefreshed = await AccountService.Instance.RefreshMicrosoftAccountAsync(accountId);
+                    }
+                    else if (account.Type == AccountType.Yggdrasil)
+                    {
+                        tokenRefreshed = await AccountService.Instance.RefreshYggdrasilAccountAsync(accountId);
+                    }
+
+                    // 刷新皮肤
+                    var skinPath = await SkinService.Instance.GetSkinHeadPathAsync(account, forceRefresh: true);
+
+                    NotificationManager.Instance.RemoveNotification(notificationId);
+
+                    if (account.Type == AccountType.Offline || tokenRefreshed || skinPath != null)
+                    {
+                        // 重新加载账号列表以更新UI
+                        LoadAccounts();
+
+                        NotificationManager.Instance.ShowNotification(
+                            "刷新成功",
+                            $"账号 '{account.Username}' 已刷新",
+                            NotificationType.Success,
+                            3
+                        );
+                    }
+                    else
+                    {
+                        await DialogManager.Instance.ShowWarning(
+                            "刷新失败",
+                            $"刷新账号 '{account.Username}' 失败\n\n可能的原因：\n• 令牌已过期，需要重新登录\n• 网络连接问题"
+                        );
+                    }
+                }
+                catch (Exception ex)
+                {
+                    await DialogManager.Instance.ShowError(
+                        "刷新错误",
+                        $"刷新账号时发生错误：\n\n{ex.Message}"
+                    );
+                }
+                finally
+                {
+                    // 恢复按钮状态
+                    originalIcon.Kind = originalKind;
+                    button.IsEnabled = true;
+                }
+            }
+        }
+
+        /// <summary>
+        /// 加载皮肤头像
+        /// </summary>
+        private System.Windows.Media.ImageSource? LoadSkinHead(GameAccount account)
+        {
+            try
+            {
+                // 检查是否有缓存的皮肤
+                if (!string.IsNullOrEmpty(account.CachedSkinPath) && File.Exists(account.CachedSkinPath))
+                {
+                    return Utils.SkinHeadRenderer.GetHeadFromSkin(account.CachedSkinPath);
+                }
+
+                // 异步加载皮肤（不阻塞UI）
+                _ = LoadSkinHeadAsync(account);
+
+                return null;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[AccountManagementPage] 加载皮肤头像失败: {ex.Message}");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// 异步加载皮肤头像
+        /// </summary>
+        private async System.Threading.Tasks.Task LoadSkinHeadAsync(GameAccount account)
+        {
+            try
+            {
+                var skinPath = await SkinService.Instance.GetSkinHeadPathAsync(account);
+                
+                if (!string.IsNullOrEmpty(skinPath))
+                {
+                    // 在UI线程上重新加载账号列表
+                    await Dispatcher.InvokeAsync(() => LoadAccounts());
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[AccountManagementPage] 异步加载皮肤失败: {ex.Message}");
             }
         }
     }

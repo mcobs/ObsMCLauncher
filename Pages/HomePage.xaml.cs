@@ -7,6 +7,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using System.Windows.Threading;
 using MaterialDesignThemes.Wpf;
 using ObsMCLauncher.Services;
@@ -68,14 +69,54 @@ namespace ObsMCLauncher.Pages
 
                 var panel = new StackPanel { Orientation = Orientation.Horizontal };
 
-                var icon = new PackIcon
+                // 尝试加载皮肤头像
+                var skinHeadImage = LoadSkinHeadForComboBox(account);
+                
+                if (skinHeadImage != null)
                 {
-                    Kind = account.Type == AccountType.Offline ? PackIconKind.Account : PackIconKind.Microsoft,
-                    Width = 20,
-                    Height = 20,
-                    VerticalAlignment = VerticalAlignment.Center,
-                    Margin = new Thickness(0, 0, 10, 0)
-                };
+                    // 使用皮肤头像
+                    var headBorder = new Border
+                    {
+                        Width = 24,
+                        Height = 24,
+                        CornerRadius = new CornerRadius(4),
+                        ClipToBounds = true,
+                        Margin = new Thickness(0, 0, 10, 0),
+                        VerticalAlignment = VerticalAlignment.Center
+                    };
+
+                    var headImage = new System.Windows.Controls.Image
+                    {
+                        Source = skinHeadImage,
+                        Stretch = Stretch.UniformToFill,
+                        Width = 24,
+                        Height = 24
+                    };
+
+                    headBorder.Child = headImage;
+                    panel.Children.Add(headBorder);
+                }
+                else
+                {
+                    // 回退到账号类型图标
+                    PackIconKind iconKind = account.Type switch
+                    {
+                        AccountType.Offline => PackIconKind.Account,
+                        AccountType.Microsoft => PackIconKind.Microsoft,
+                        AccountType.Yggdrasil => PackIconKind.Shield,
+                        _ => PackIconKind.Account
+                    };
+
+                    var icon = new PackIcon
+                    {
+                        Kind = iconKind,
+                        Width = 20,
+                        Height = 20,
+                        VerticalAlignment = VerticalAlignment.Center,
+                        Margin = new Thickness(0, 0, 10, 0)
+                    };
+                    panel.Children.Add(icon);
+                }
 
                 var text = new TextBlock
                 {
@@ -83,7 +124,6 @@ namespace ObsMCLauncher.Pages
                     VerticalAlignment = VerticalAlignment.Center
                 };
 
-                panel.Children.Add(icon);
                 panel.Children.Add(text);
                 item.Content = panel;
 
@@ -925,6 +965,52 @@ namespace ObsMCLauncher.Pages
             if (OperatingSystem.IsMacOS())
                 return "osx";
             return "unknown";
+        }
+
+        /// <summary>
+        /// 为 ComboBox 加载皮肤头像
+        /// </summary>
+        private System.Windows.Media.ImageSource? LoadSkinHeadForComboBox(GameAccount account)
+        {
+            try
+            {
+                // 检查是否有缓存的皮肤
+                if (!string.IsNullOrEmpty(account.CachedSkinPath) && File.Exists(account.CachedSkinPath))
+                {
+                    return Utils.SkinHeadRenderer.GetHeadFromSkin(account.CachedSkinPath, size: 24);
+                }
+
+                // 异步加载皮肤（不阻塞UI）
+                _ = LoadSkinHeadForComboBoxAsync(account);
+
+                return null;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[HomePage] 加载皮肤头像失败: {ex.Message}");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// 异步加载皮肤头像（用于 ComboBox）
+        /// </summary>
+        private async Task LoadSkinHeadForComboBoxAsync(GameAccount account)
+        {
+            try
+            {
+                var skinPath = await SkinService.Instance.GetSkinHeadPathAsync(account);
+                
+                if (!string.IsNullOrEmpty(skinPath))
+                {
+                    // 在UI线程上重新加载账号列表
+                    await Dispatcher.InvokeAsync(() => LoadAccounts());
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[HomePage] 异步加载皮肤失败: {ex.Message}");
+            }
         }
 
         // 版本详情模型（用于解析JSON）

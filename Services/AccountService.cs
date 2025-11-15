@@ -295,6 +295,14 @@ namespace ObsMCLauncher.Services
         }
 
         /// <summary>
+        /// 保存账号信息（公共方法，供外部服务调用）
+        /// </summary>
+        public void SaveAccountsData()
+        {
+            SaveAccounts();
+        }
+
+        /// <summary>
         /// 加载账号列表
         /// </summary>
         private List<GameAccount> LoadAccounts()

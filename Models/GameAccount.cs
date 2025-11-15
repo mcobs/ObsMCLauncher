@@ -101,6 +101,23 @@ namespace ObsMCLauncher.Models
     /// </summary>
     public string? YggdrasilClientToken { get; set; }
 
+    // ========== 皮肤相关字段 ==========
+
+    /// <summary>
+    /// 皮肤 URL
+    /// </summary>
+    public string? SkinUrl { get; set; }
+
+    /// <summary>
+    /// 缓存的皮肤文件路径
+    /// </summary>
+    public string? CachedSkinPath { get; set; }
+
+    /// <summary>
+    /// 皮肤最后更新时间
+    /// </summary>
+    public DateTime? SkinLastUpdated { get; set; }
+
     /// <summary>
     /// 获取显示名称
     /// </summary>
