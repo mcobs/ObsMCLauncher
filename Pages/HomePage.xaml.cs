@@ -21,12 +21,22 @@ namespace ObsMCLauncher.Pages
         {
             InitializeComponent();
             Loaded += HomePage_Loaded;
+            Unloaded += HomePage_Unloaded;
         }
 
         private void HomePage_Loaded(object sender, RoutedEventArgs e)
         {
             LoadAccounts();
             LoadVersions();
+        }
+
+        private void HomePage_Unloaded(object sender, RoutedEventArgs e)
+        {
+            // 清理事件订阅，防止内存泄漏
+            if (VersionComboBox != null)
+            {
+                VersionComboBox.SelectionChanged -= VersionComboBox_SelectionChanged;
+            }
         }
 
         private void LoadAccounts()
@@ -113,7 +123,7 @@ namespace ObsMCLauncher.Pages
                 return;
             }
 
-            // 添加所有版本
+            // 添加所有版本（优化UI元素创建）
             foreach (var version in installedVersions)
             {
                 var item = new ComboBoxItem
@@ -122,27 +132,31 @@ namespace ObsMCLauncher.Pages
                     ToolTip = version.Id != version.ActualVersionId ? $"版本: {version.ActualVersionId}" : null
                 };
 
-                // 创建包含图标和文本的面板
-                var panel = new StackPanel { Orientation = Orientation.Horizontal };
-
                 // 添加加载器图标
                 var icon = GetVersionLoaderIcon(version);
                 if (icon != null)
                 {
+                    // 创建包含图标和文本的面板（只在有图标时创建）
+                    var panel = new StackPanel { Orientation = Orientation.Horizontal };
                     icon.VerticalAlignment = VerticalAlignment.Center;
                     icon.Margin = new Thickness(0, 0, 8, 0);
                     panel.Children.Add(icon);
+                    
+                    // 添加版本名称文本
+                    var text = new TextBlock
+                    {
+                        Text = version.Id,
+                        VerticalAlignment = VerticalAlignment.Center
+                    };
+                    panel.Children.Add(text);
+                    item.Content = panel;
+                }
+                else
+                {
+                    // 没有图标时直接使用文本，减少UI对象创建
+                    item.Content = version.Id;
                 }
 
-                // 添加版本名称文本
-                var text = new TextBlock
-                {
-                    Text = version.Id,
-                    VerticalAlignment = VerticalAlignment.Center
-                };
-                panel.Children.Add(text);
-
-                item.Content = panel;
                 VersionComboBox.Items.Add(item);
 
                 // 选中配置中保存的版本

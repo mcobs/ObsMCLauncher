@@ -356,10 +356,14 @@ namespace ObsMCLauncher.Pages
         public MorePage()
         {
             InitializeComponent();
-            
-            // 保存实例引用
             _instance = this;
             
+            Loaded += MorePage_Loaded;
+            Unloaded += MorePage_Unloaded;
+        }
+
+        private void MorePage_Loaded(object sender, RoutedEventArgs e)
+        {
             // 加载版本信息
             LoadVersionInfo();
             
@@ -368,6 +372,12 @@ namespace ObsMCLauncher.Pages
             
             // 加载插件市场（异步）
             _ = LoadMarketPluginsAsync();
+        }
+
+        private void MorePage_Unloaded(object sender, RoutedEventArgs e)
+        {
+            // 触发图片缓存清理
+            ImageCacheManager.CleanupCache();
         }
         
         /// <summary>
@@ -542,7 +552,7 @@ namespace ObsMCLauncher.Pages
                     var bitmapImage = new BitmapImage();
                     bitmapImage.BeginInit();
                     bitmapImage.UriSource = new Uri(plugin.IconPath);
-                    bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
+                    bitmapImage.CacheOption = BitmapCacheOption.OnDemand; // 按需加载
                     bitmapImage.DecodePixelWidth = 48;
                     bitmapImage.EndInit();
                     
@@ -1513,7 +1523,7 @@ namespace ObsMCLauncher.Pages
                     var bitmapImage = new BitmapImage();
                     bitmapImage.BeginInit();
                     bitmapImage.UriSource = new Uri(iconUrl, UriKind.Absolute);
-                    bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
+                    bitmapImage.CacheOption = BitmapCacheOption.OnDemand; // 按需加载
                     bitmapImage.DecodePixelWidth = 48;
                     bitmapImage.EndInit();
                     

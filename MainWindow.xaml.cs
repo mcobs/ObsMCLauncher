@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Windows;
@@ -19,13 +20,8 @@ namespace ObsMCLauncher
         private string? _currentLoginNotificationId;
         private CancellationTokenSource? _loginCancellationTokenSource;
 
-        // 页面实例缓存 - 实现状态保持
-        private readonly HomePage _homePage;
-        private readonly AccountManagementPage _accountPage;
-        private readonly VersionDownloadPage _versionPage;
-        private readonly ResourcesPage _resourcesPage;
-        private readonly SettingsPage _settingsPage;
-        private readonly MorePage _morePage;
+        // 页面实例缓存 - 实现状态保持（按需创建）
+        private readonly Dictionary<string, Page> _pageCache = new Dictionary<string, Page>();
         
         // 插件加载器
         private PluginLoader? _pluginLoader;
@@ -43,16 +39,8 @@ namespace ObsMCLauncher
             // 初始化对话框管理器
             DialogManager.Instance.Initialize(GlobalDialogContainer);
             
-            // 预创建所有页面实例
-            _homePage = new HomePage();
-            _accountPage = new AccountManagementPage();
-            _versionPage = new VersionDownloadPage();
-            _resourcesPage = new ResourcesPage();
-            _settingsPage = new SettingsPage();
-            _morePage = new MorePage();
-            
-            // 默认导航到主页
-            MainFrame.Navigate(_homePage);
+            // 默认导航到主页（按需创建）
+            MainFrame.Navigate(GetOrCreatePage("Home"));
             
             // 初始化下载管理器
             InitializeDownloadManager();
@@ -90,8 +78,8 @@ namespace ObsMCLauncher
                 // 加载所有插件
                 _pluginLoader.LoadAllPlugins();
                 
-                // 将插件加载器传递给MorePage
-                MorePage.SetPluginLoader(_pluginLoader);
+                // 将插件加载器传递给MorePage（延迟到More页面创建时）
+                // MorePage.SetPluginLoader(_pluginLoader); // 移除预设置，改为在页面创建时设置
                 
                 System.Diagnostics.Debug.WriteLine("[MainWindow] 插件系统初始化完成");
             }
@@ -257,7 +245,10 @@ namespace ObsMCLauncher
                 _loginCancellationTokenSource = null;
                 
                 // 重置账户页面的登录状态
-                _accountPage.ResetLoginState();
+                if (_pageCache.ContainsKey("Account") && _pageCache["Account"] is AccountManagementPage accountPage)
+                {
+                    accountPage.ResetLoginState();
+                }
                 
                 // 隐藏旧版UI（保留兼容）
                 GlobalLoginProgressPanel.Visibility = Visibility.Collapsed;
@@ -349,7 +340,10 @@ namespace ObsMCLauncher
             _loginCancellationTokenSource = null;
             
             // 重置账户页面的登录状态
-            _accountPage.ResetLoginState();
+            if (_pageCache.ContainsKey("Account") && _pageCache["Account"] is AccountManagementPage accountPage)
+            {
+                accountPage.ResetLoginState();
+            }
             
             System.Diagnostics.Debug.WriteLine("[MainWindow] 用户取消了微软登录");
         }
@@ -364,32 +358,51 @@ namespace ObsMCLauncher
 
         #endregion
 
+        /// <summary>
+        /// 创建More页面并设置插件加载器
+        /// </summary>
+        private MorePage CreateMorePage()
+        {
+            var morePage = new MorePage();
+            if (_pluginLoader != null)
+            {
+                MorePage.SetPluginLoader(_pluginLoader);
+            }
+            return morePage;
+        }
+
+        /// <summary>
+        /// 获取或创建页面实例（按需创建，保持状态）
+        /// </summary>
+        private Page GetOrCreatePage(string pageTag)
+        {
+            if (!_pageCache.ContainsKey(pageTag))
+            {
+                // 按需创建页面
+                Page page = pageTag switch
+                {
+                    "Home" => new HomePage(),
+                    "Account" => new AccountManagementPage(),
+                    "Version" => new VersionDownloadPage(),
+                    "Resources" => new ResourcesPage(),
+                    "Settings" => new SettingsPage(),
+                    "More" => CreateMorePage(),
+                    _ => throw new ArgumentException($"未知的页面标签: {pageTag}")
+                };
+                
+                _pageCache[pageTag] = page;
+                System.Diagnostics.Debug.WriteLine($"[MainWindow] 创建页面: {pageTag}");
+            }
+            
+            return _pageCache[pageTag];
+        }
+
         private void NavigationButton_Click(object sender, RoutedEventArgs e)
         {
             if (sender is RadioButton button && button.Tag is string tag)
             {
-                // 使用缓存的页面实例，保持状态
-                switch (tag)
-                {
-                    case "Home":
-                        MainFrame.Navigate(_homePage);
-                        break;
-                    case "Account":
-                        MainFrame.Navigate(_accountPage);
-                        break;
-                    case "Version":
-                        MainFrame.Navigate(_versionPage);
-                        break;
-                    case "Resources":
-                        MainFrame.Navigate(_resourcesPage);
-                        break;
-                    case "Settings":
-                        MainFrame.Navigate(_settingsPage);
-                        break;
-                    case "More":
-                        MainFrame.Navigate(_morePage);
-                        break;
-                }
+                // 使用缓存的页面实例，保持状态（按需创建）
+                MainFrame.Navigate(GetOrCreatePage(tag));
             }
         }
 

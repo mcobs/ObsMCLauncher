@@ -52,6 +52,23 @@ namespace ObsMCLauncher.Pages
             
             // 在 Loaded 事件中初始化 UI 状态
             Loaded += ResourcesPage_Loaded;
+            Unloaded += ResourcesPage_Unloaded;
+        }
+
+        private void ResourcesPage_Unloaded(object sender, RoutedEventArgs e)
+        {
+            // 清理事件订阅，防止内存泄漏
+            if (InstalledVersionComboBox != null)
+            {
+                InstalledVersionComboBox.SelectionChanged -= InstalledVersionComboBox_SelectionChanged;
+            }
+            if (SourceComboBox != null)
+            {
+                SourceComboBox.SelectionChanged -= SourceComboBox_SelectionChanged;
+            }
+            
+            // 触发图片缓存清理
+            ImageCacheManager.CleanupCache();
         }
 
         private void ResourcesPage_Loaded(object sender, RoutedEventArgs e)
@@ -768,7 +785,7 @@ namespace ObsMCLauncher.Pages
                     var bitmapImage = new BitmapImage();
                     bitmapImage.BeginInit();
                     bitmapImage.UriSource = new Uri(mod.Logo.ThumbnailUrl);
-                    bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
+                    bitmapImage.CacheOption = BitmapCacheOption.OnDemand; // 按需加载，不用时可被GC回收
                     bitmapImage.DecodePixelWidth = 96; // 限制解码宽度为96px
                     bitmapImage.EndInit();
                     
@@ -1008,7 +1025,7 @@ namespace ObsMCLauncher.Pages
                     var bitmapImage = new BitmapImage();
                     bitmapImage.BeginInit();
                     bitmapImage.UriSource = new Uri(mod.IconUrl);
-                    bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
+                    bitmapImage.CacheOption = BitmapCacheOption.OnDemand; // 按需加载，不用时可被GC回收
                     bitmapImage.DecodePixelWidth = 96; // 限制解码宽度为96px
                     bitmapImage.EndInit();
                     
