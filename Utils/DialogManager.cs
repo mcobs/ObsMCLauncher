@@ -155,6 +155,7 @@ namespace ObsMCLauncher.Utils
                     VerticalAlignment = VerticalAlignment.Stretch,
                     Opacity = 0
                 };
+                Panel.SetZIndex(_overlay, 9); // 设置 ZIndex 为 9
 
                 // 创建对话框
                 var dialogBorder = new Border
@@ -371,6 +372,7 @@ namespace ObsMCLauncher.Utils
                     VerticalAlignment = VerticalAlignment.Stretch,
                     Opacity = 0
                 };
+                Panel.SetZIndex(_overlay, 9); // 设置 ZIndex 为 9，高于外置登录窗口，低于通知
 
                 // 创建对话框
                 _dialogBorder = CreateDialogElement(title, message, type, buttons);
@@ -668,6 +670,7 @@ namespace ObsMCLauncher.Utils
                     VerticalAlignment = VerticalAlignment.Stretch,
                     Opacity = 0
                 };
+                Panel.SetZIndex(overlay, 9); // 设置 ZIndex 为 9
 
                 var dialogBorder = new Border
                 {

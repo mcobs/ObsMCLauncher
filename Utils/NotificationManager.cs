@@ -107,6 +107,7 @@ namespace ObsMCLauncher.Utils
             _container.Dispatcher.Invoke(() =>
             {
                 _notifications.Add(notification);
+                Panel.SetZIndex(element, 10); // 设置 ZIndex 为 10，最高优先级
                 _container.Children.Add(element);
                 UpdateNotificationPositions();
                 // 不再使用淡入动画，通知直接显示
