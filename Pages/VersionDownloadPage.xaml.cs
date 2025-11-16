@@ -682,26 +682,6 @@ namespace ObsMCLauncher.Pages
             launchButton.Content = launchIcon;
             buttonPanel.Children.Add(launchButton);
 
-            // 打开文件夹按钮
-            var openFolderButton = new Button
-            {
-                Tag = version.Path,
-                Style = (Style)Application.Current.TryFindResource("MaterialDesignIconButton"),
-                ToolTip = "打开文件夹",
-                Width = 28,
-                Height = 28,
-                Padding = new Thickness(0)
-            };
-            openFolderButton.Click += OpenFolderButton_Click;
-            var folderIcon = new PackIcon
-            {
-                Kind = PackIconKind.Folder,
-                Width = 16,
-                Height = 16
-            };
-            openFolderButton.Content = folderIcon;
-            buttonPanel.Children.Add(openFolderButton);
-
             // 管理按钮
             var manageButton = new Button
             {

@@ -10,7 +10,7 @@
       Background="{DynamicResource BackgroundBrush}">
 
     <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <Grid Margin="30">
+        <Grid Margin="20">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
@@ -19,13 +19,13 @@
             </Grid.RowDefinitions>
 
             <!-- 返回按钮和标题 -->
-            <StackPanel Grid.Row="0" Margin="0,0,0,20">
+            <StackPanel Grid.Row="0" Margin="0,0,0,15">
                 <Button x:Name="BackButton"
                       Click="BackButton_Click"
                       Style="{StaticResource MaterialDesignFlatButton}"
                       HorizontalAlignment="Left"
                       Padding="5"
-                      Margin="-5,0,0,15">
+                      Margin="-5,0,0,10">
                     <StackPanel Orientation="Horizontal">
                         <materialDesign:PackIcon Kind="ArrowLeft" 
                                                Width="20" 
@@ -40,11 +40,11 @@
 
                 <TextBlock x:Name="VersionTitle"
                          Text="Minecraft 1.20.4" 
-                         FontSize="28" 
+                         FontSize="24" 
                          FontWeight="Bold"
-                         Margin="0,0,0,10"/>
+                         Margin="0,0,0,8"/>
                 <TextBlock Text="配置版本信息和加载器选项" 
-                         FontSize="14" 
+                         FontSize="13" 
                          Foreground="{DynamicResource TextSecondaryBrush}"/>
             </StackPanel>
 
@@ -52,13 +52,13 @@
             <Border Grid.Row="1"
                     Background="{DynamicResource SurfaceBrush}"
                     CornerRadius="10"
-                    Padding="25"
-                    Margin="0,0,0,20">
+                    Padding="18"
+                    Margin="0,0,0,15">
                 <StackPanel>
                     <TextBlock Text="版本信息" 
-                             FontSize="18" 
+                             FontSize="16" 
                              FontWeight="SemiBold"
-                             Margin="0,0,0,20"/>
+                             Margin="0,0,0,15"/>
 
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -159,17 +159,17 @@
                     Grid.Row="2"
                     Background="{DynamicResource SurfaceBrush}"
                     CornerRadius="10"
-                    Padding="25"
-                    Margin="0,0,0,20">
+                    Padding="18"
+                    Margin="0,0,0,15">
                 <StackPanel>
                     <TextBlock Text="加载器选择" 
-                             FontSize="18" 
+                             FontSize="16" 
                              FontWeight="SemiBold"
-                             Margin="0,0,0,10"/>
+                             Margin="0,0,0,8"/>
                     <TextBlock Text="选择要安装的加载器（仅能选择一个，不选则安装原版）" 
-                             FontSize="13" 
+                             FontSize="12" 
                              Foreground="{DynamicResource TextSecondaryBrush}"
-                             Margin="0,0,0,20"/>
+                             Margin="0,0,0,15"/>
 
                     <!-- 原版 -->
                     <RadioButton x:Name="VanillaRadio"
@@ -448,7 +448,7 @@
             </Border>
 
             <!-- 底部操作按钮 -->
-            <Grid Grid.Row="3" Margin="0,0,0,20">
+            <Grid Grid.Row="3" Margin="0,0,0,15">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>

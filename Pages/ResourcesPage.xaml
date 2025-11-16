@@ -9,7 +9,7 @@
       KeepAlive="True"
       Background="{DynamicResource BackgroundBrush}">
 
-    <Grid Margin="30">
+    <Grid Margin="20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
@@ -19,21 +19,21 @@
         <!-- 标题区域 -->
         <StackPanel Grid.Row="0">
             <TextBlock Text="资源中心" 
-                     FontSize="28" 
+                     FontSize="24" 
                      FontWeight="Bold"
-                     Margin="0,0,0,10"/>
+                     Margin="0,0,0,8"/>
             <TextBlock Text="下载 MOD、材质包、光影、数据包和整合包" 
-                     FontSize="14" 
+                     FontSize="13" 
                      Foreground="{DynamicResource TextSecondaryBrush}"
-                     Margin="0,0,0,25"/>
+                     Margin="0,0,0,18"/>
         </StackPanel>
 
         <!-- 分类标签页 -->
         <Border Grid.Row="1"
                 Background="{DynamicResource SurfaceBrush}"
                 CornerRadius="10"
-                Padding="10"
-                Margin="0,0,0,20">
+                Padding="8"
+                Margin="0,0,0,15">
             <StackPanel Orientation="Horizontal">
                 <RadioButton x:Name="ModsTab"
                            Content="MOD"
@@ -85,7 +85,7 @@
                 </Grid.RowDefinitions>
 
                 <!-- 搜索和筛选区域 -->
-                <Grid Grid.Row="0" Margin="20,20,20,10">
+                <Grid Grid.Row="0" Margin="15,15,15,10">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
@@ -205,7 +205,7 @@
                     <ScrollViewer x:Name="ResourceScrollViewer"
                                  VerticalScrollBarVisibility="Auto"
                                  Visibility="Visible">
-                        <StackPanel x:Name="ResourceListPanel" Margin="20,10,20,20">
+                        <StackPanel x:Name="ResourceListPanel" Margin="15,10,15,15">
                         <!-- 动态加载MOD列表 -->
                         </StackPanel>
                     </ScrollViewer>
