@@ -10,6 +10,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
+using ObsMCLauncher.Models;
 using ObsMCLauncher.Plugins;
 using ObsMCLauncher.Services;
 using ObsMCLauncher.Utils;
@@ -1717,10 +1718,9 @@ namespace ObsMCLauncher.Pages
                 Debug.WriteLine($"[MorePage] 开始安装插件: {plugin.Name}");
                 
                 // 获取插件目录
-                var pluginsDir = System.IO.Path.Combine(
-                    AppDomain.CurrentDomain.BaseDirectory,
-                    "plugins"
-                );
+                // 从配置文件获取插件目录
+                var config = LauncherConfig.Load();
+                var pluginsDir = config.GetPluginDirectory();
                 
                 // 下载并安装
                 var progress = new Progress<double>(percent =>
