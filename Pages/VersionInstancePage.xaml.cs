@@ -53,23 +53,28 @@ namespace ObsMCLauncher.Pages
             var config = LauncherConfig.Load();
             var versionIsolation = VersionConfigService.GetVersionIsolation(_version.Path);
             
-            bool useIsolation;
-            string statusText;
-            
-            if (versionIsolation.HasValue)
+            // 根据版本隔离设置选择下拉框项
+            if (!versionIsolation.HasValue)
             {
-                // 版本有独立设置
-                useIsolation = versionIsolation.Value;
-                statusText = useIsolation ? "已启用（独立文件夹）" : "未启用（共享文件夹）";
+                // 跟随全局设置
+                IsolationComboBox.SelectedIndex = 0;
+            }
+            else if (versionIsolation.Value)
+            {
+                // 启用版本隔离
+                IsolationComboBox.SelectedIndex = 1;
             }
             else
             {
-                // 使用全局设置
-                useIsolation = config.GameDirectoryType == GameDirectoryType.VersionFolder;
-                statusText = useIsolation ? "已启用（跟随全局设置）" : "未启用（跟随全局设置）";
+                // 禁用版本隔离
+                IsolationComboBox.SelectedIndex = 2;
             }
             
-            IsolationStatusText.Text = statusText;
+            // 更新图标
+            bool useIsolation = versionIsolation.HasValue 
+                ? versionIsolation.Value 
+                : config.GameDirectoryType == GameDirectoryType.VersionFolder;
+            
             if (useIsolation)
             {
                 IsolationIcon.Kind = PackIconKind.FolderMultiple;
@@ -413,38 +418,47 @@ namespace ObsMCLauncher.Pages
         }
 
         /// <summary>
-        /// 切换版本隔离按钮点击
+        /// 版本隔离下拉框选择改变事件
         /// </summary>
-        private void ToggleIsolationButton_Click(object sender, RoutedEventArgs e)
+        private void IsolationComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (_version == null) return;
-
-            var config = LauncherConfig.Load();
-            var currentIsolation = VersionConfigService.GetVersionIsolation(_version.Path);
             
-            // 循环切换：null -> true -> false -> null
-            bool? newSetting;
-            if (!currentIsolation.HasValue)
+            // 避免初始化时触发
+            if (!IsLoaded) return;
+            
+            var comboBox = sender as ComboBox;
+            if (comboBox == null) return;
+            
+            var selectedItem = comboBox.SelectedItem as ComboBoxItem;
+            if (selectedItem == null) return;
+            
+            var tag = selectedItem.Tag as string;
+            bool? newSetting = null;
+            string statusMessage = "";
+            
+            switch (tag)
             {
-                // 当前跟随全局 -> 启用隔离
-                newSetting = true;
-            }
-            else if (currentIsolation.Value)
-            {
-                // 当前启用隔离 -> 禁用隔离
-                newSetting = false;
-            }
-            else
-            {
-                // 当前禁用隔离 -> 跟随全局
-                newSetting = null;
+                case "global":
+                    newSetting = null;
+                    statusMessage = "已设置为跟随全局设置";
+                    IsolationIcon.Kind = PackIconKind.Folder;
+                    break;
+                case "enabled":
+                    newSetting = true;
+                    statusMessage = "已启用版本隔离";
+                    IsolationIcon.Kind = PackIconKind.FolderMultiple;
+                    IsolationIcon.Foreground = new SolidColorBrush(Color.FromRgb(34, 197, 94)); // 绿色
+                    break;
+                case "disabled":
+                    newSetting = false;
+                    statusMessage = "已禁用版本隔离";
+                    IsolationIcon.Kind = PackIconKind.Folder;
+                    IsolationIcon.Foreground = new SolidColorBrush(Color.FromRgb(156, 163, 175)); // 灰色
+                    break;
             }
             
             VersionConfigService.SetVersionIsolation(_version.Path, newSetting);
-            
-            string statusMessage = newSetting.HasValue 
-                ? (newSetting.Value ? "已启用版本隔离" : "已禁用版本隔离")
-                : "已设置为跟随全局设置";
             
             NotificationManager.Instance.ShowNotification(
                 "设置已更新",
@@ -452,9 +466,6 @@ namespace ObsMCLauncher.Pages
                 NotificationType.Success,
                 2
             );
-            
-            // 重新加载版本信息
-            LoadVersionInfo();
         }
 
         /// <summary>

@@ -154,19 +154,21 @@
                                                        Height="16"
                                                        VerticalAlignment="Center"
                                                        Margin="0,0,8,0"/>
-                                <TextBlock x:Name="IsolationStatusText"
-                                         Text="-"
-                                         FontSize="14"
-                                         VerticalAlignment="Center"
-                                         Margin="0,0,10,0"/>
-                                <Button x:Name="ToggleIsolationButton"
-                                        Click="ToggleIsolationButton_Click"
-                                        Style="{StaticResource MaterialDesignFlatButton}"
-                                        Height="24"
-                                        Padding="8,0"
-                                        FontSize="12"
-                                        Content="切换设置"
-                                        ToolTip="切换此版本的隔离设置"/>
+                                <ComboBox x:Name="IsolationComboBox"
+                                          SelectionChanged="IsolationComboBox_SelectionChanged"
+                                          Width="200"
+                                          FontSize="13"
+                                          materialDesign:HintAssist.Hint="版本隔离设置"
+                                          Background="{DynamicResource SurfaceElevatedBrush}"
+                                          Foreground="{DynamicResource TextBrush}"
+                                          BorderBrush="{DynamicResource BorderBrush}">
+                                    <ComboBoxItem Content="跟随全局设置" Tag="global" 
+                                                  Foreground="{DynamicResource TextBrush}"/>
+                                    <ComboBoxItem Content="启用版本隔离（独立文件夹）" Tag="enabled"
+                                                  Foreground="{DynamicResource TextBrush}"/>
+                                    <ComboBoxItem Content="禁用版本隔离（共享文件夹）" Tag="disabled"
+                                                  Foreground="{DynamicResource TextBrush}"/>
+                                </ComboBox>
                             </StackPanel>
 
                             <!-- 存储路径 -->
