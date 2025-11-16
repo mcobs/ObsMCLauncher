@@ -84,7 +84,7 @@
 
         <!-- 主要内容区域 -->
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-        <Grid Margin="30">
+        <Grid Margin="20">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
@@ -93,13 +93,13 @@
             <!-- 标题区域 -->
             <StackPanel Grid.Row="0">
                 <TextBlock Text="设置" 
-                         FontSize="28" 
+                         FontSize="24" 
                          FontWeight="Bold"
-                         Margin="0,0,0,10"/>
+                         Margin="0,0,0,8"/>
                     <TextBlock Text="配置启动器和游戏参数（修改后自动保存）" 
-                         FontSize="14" 
+                         FontSize="13" 
                          Foreground="{DynamicResource TextSecondaryBrush}"
-                         Margin="0,0,0,25"/>
+                         Margin="0,0,0,18"/>
             </StackPanel>
 
             <!-- 设置内容 -->
@@ -108,13 +108,13 @@
                 <!-- 游戏设置 -->
                 <Border Background="{DynamicResource SurfaceBrush}"
                         CornerRadius="10"
-                        Padding="20"
-                        Margin="0,0,0,15">
+                        Padding="15"
+                        Margin="0,0,0,12">
                     <StackPanel>
                         <TextBlock Text="游戏设置" 
-                                 FontSize="20" 
+                                 FontSize="17" 
                                  FontWeight="SemiBold"
-                                 Margin="0,0,0,15"/>
+                                 Margin="0,0,0,12"/>
 
                         <!-- 游戏目录 -->
                         <TextBlock Text="游戏目录" 
@@ -262,13 +262,13 @@
                 <!-- 启动器设置 -->
                 <Border Background="{DynamicResource SurfaceBrush}"
                         CornerRadius="10"
-                        Padding="20"
-                        Margin="0,0,0,15">
+                        Padding="15"
+                        Margin="0,0,0,12">
                     <StackPanel>
                         <TextBlock Text="启动器设置" 
-                                 FontSize="20" 
+                                 FontSize="17" 
                                  FontWeight="SemiBold"
-                                 Margin="0,0,0,15"/>
+                                 Margin="0,0,0,12"/>
 
                         <!-- 主题设置 -->
                         <Grid Margin="0,0,0,12">
@@ -351,13 +351,13 @@
                 <!-- 文件存储设置 -->
                 <Border Background="{DynamicResource SurfaceBrush}"
                         CornerRadius="10"
-                        Padding="20"
-                        Margin="0,0,0,15">
+                        Padding="15"
+                        Margin="0,0,0,12">
                     <StackPanel>
                         <TextBlock Text="文件存储" 
-                                 FontSize="20" 
+                                 FontSize="17" 
                                  FontWeight="SemiBold"
-                                 Margin="0,0,0,15"/>
+                                 Margin="0,0,0,12"/>
 
                         <!-- 配置文件位置 -->
                         <TextBlock Text="配置文件存储位置" 
@@ -476,13 +476,13 @@
                 <!-- 下载设置 -->
                 <Border Background="{DynamicResource SurfaceBrush}"
                         CornerRadius="10"
-                        Padding="20"
-                        Margin="0,0,0,15">
+                        Padding="15"
+                        Margin="0,0,0,12">
                     <StackPanel>
                         <TextBlock Text="下载设置" 
-                                 FontSize="20" 
+                                 FontSize="17" 
                                  FontWeight="SemiBold"
-                                 Margin="0,0,0,15"/>
+                                 Margin="0,0,0,12"/>
 
                         <!-- 下载源 -->
                         <Grid Margin="0,0,0,12">
