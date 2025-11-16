@@ -42,6 +42,12 @@ namespace ObsMCLauncher.Services
                     Directory.Delete(versionDir, true);
                 }
                 Directory.CreateDirectory(versionDir);
+                
+                Debug.WriteLine($"[ModpackInstall] 整合包默认开启版本隔离，mods等文件将安装到版本目录");
+                
+                // 为整合包设置版本隔离
+                VersionConfigService.SetVersionIsolation(versionDir, true);
+                Debug.WriteLine($"[ModpackInstall] 已为整合包 {versionName} 启用版本隔离");
 
                 progressCallback?.Invoke("正在解析整合包格式...", 10);
 

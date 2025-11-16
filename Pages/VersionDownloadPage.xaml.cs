@@ -9,6 +9,7 @@ using MaterialDesignThemes.Wpf;
 using ObsMCLauncher.Models;
 using ObsMCLauncher.Services;
 using ObsMCLauncher.Utils;
+using ObsMCLauncher.Windows;
 
 namespace ObsMCLauncher.Pages
 {
@@ -834,7 +835,28 @@ namespace ObsMCLauncher.Pages
                     
                     // 启动游戏
                     NotificationManager.Instance.UpdateNotification(launchNotificationId, "正在启动游戏...");
-                    await GameLauncher.LaunchGameAsync(versionId, defaultAccount, config);
+                    
+                    // 创建日志窗口（如果配置启用）
+                    GameLogWindow? logWindow = null;
+                    if (config.ShowGameLogOnLaunch)
+                    {
+                        logWindow = new GameLogWindow(versionId);
+                        logWindow.Show();
+                    }
+                    
+                    await GameLauncher.LaunchGameAsync(
+                        versionId, 
+                        defaultAccount, 
+                        config,
+                        (progress) => NotificationManager.Instance.UpdateNotification(launchNotificationId, progress),
+                        (output) => logWindow?.AppendGameOutput(output),
+                        (exitCode) => 
+                        {
+                            logWindow?.OnGameExit(exitCode);
+                            // 移除启动进度通知
+                            NotificationManager.Instance.RemoveNotification(launchNotificationId);
+                        }
+                    );
                     
                     NotificationManager.Instance.ShowNotification(
                         "启动成功",

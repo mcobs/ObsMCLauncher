@@ -71,6 +71,12 @@ namespace ObsMCLauncher.Services
         /// 加载器类型：null/空=原版, "Forge", "Fabric", "OptiFine", "Quilt"
         /// </summary>
         public string? LoaderType { get; set; }
+        
+        /// <summary>
+        /// 版本隔离设置：true=启用版本隔离（独立文件夹），false=共享文件夹
+        /// 整合包默认为 true，普通版本默认使用全局设置
+        /// </summary>
+        public bool? UseVersionIsolation { get; set; } = null; // null表示使用全局设置
     }
 
     /// <summary>
@@ -148,6 +154,9 @@ namespace ObsMCLauncher.Services
                         {
                             var lastPlayed = Directory.GetLastAccessTime(versionDir);
                             
+                            // 加载版本配置
+                            var versionConfig = VersionConfigService.LoadVersionConfig(versionDir);
+                            
                             installedVersions.Add(new InstalledVersion
                             {
                                 Id = versionId, // 文件夹名称（显示名称）
@@ -157,11 +166,14 @@ namespace ObsMCLauncher.Services
                                 LastPlayed = lastPlayed,
                                 Path = versionDir,
                                 IsSelected = false,
-                                LoaderType = loaderType
+                                LoaderType = loaderType,
+                                UseVersionIsolation = versionConfig.UseVersionIsolation
                             });
                             
                             var loaderInfo = string.IsNullOrEmpty(loaderType) ? "" : $" [{loaderType}]";
-                            System.Diagnostics.Debug.WriteLine($"  找到版本: {versionId} (实际版本: {versionData.Id}){loaderInfo}");
+                            var isolationInfo = versionConfig.UseVersionIsolation.HasValue ? 
+                                (versionConfig.UseVersionIsolation.Value ? " [版本隔离]" : " [共享]") : "";
+                            System.Diagnostics.Debug.WriteLine($"  找到版本: {versionId} (实际版本: {versionData.Id}){loaderInfo}{isolationInfo}");
                         }
                     }
                     catch (Exception ex)

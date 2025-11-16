@@ -8,6 +8,7 @@ using MaterialDesignThemes.Wpf;
 using ObsMCLauncher.Models;
 using ObsMCLauncher.Services;
 using ObsMCLauncher.Utils;
+using ObsMCLauncher.Windows;
 
 namespace ObsMCLauncher.Pages
 {
@@ -50,15 +51,32 @@ namespace ObsMCLauncher.Pages
 
             // 设置版本隔离状态
             var config = LauncherConfig.Load();
-            if (config.GameDirectoryType == GameDirectoryType.VersionFolder)
+            var versionIsolation = VersionConfigService.GetVersionIsolation(_version.Path);
+            
+            bool useIsolation;
+            string statusText;
+            
+            if (versionIsolation.HasValue)
             {
-                IsolationStatusText.Text = "已启用（独立文件夹）";
+                // 版本有独立设置
+                useIsolation = versionIsolation.Value;
+                statusText = useIsolation ? "已启用（独立文件夹）" : "未启用（共享文件夹）";
+            }
+            else
+            {
+                // 使用全局设置
+                useIsolation = config.GameDirectoryType == GameDirectoryType.VersionFolder;
+                statusText = useIsolation ? "已启用（跟随全局设置）" : "未启用（跟随全局设置）";
+            }
+            
+            IsolationStatusText.Text = statusText;
+            if (useIsolation)
+            {
                 IsolationIcon.Kind = PackIconKind.FolderMultiple;
                 IsolationIcon.Foreground = new SolidColorBrush(Color.FromRgb(34, 197, 94)); // 绿色
             }
             else
             {
-                IsolationStatusText.Text = "未启用（共享文件夹）";
                 IsolationIcon.Kind = PackIconKind.Folder;
                 IsolationIcon.Foreground = new SolidColorBrush(Color.FromRgb(156, 163, 175)); // 灰色
             }
@@ -310,7 +328,28 @@ namespace ObsMCLauncher.Pages
                 }
 
                 NotificationManager.Instance.UpdateNotification(launchNotificationId, "正在启动游戏...");
-                await GameLauncher.LaunchGameAsync(_version.Id, defaultAccount, config);
+                
+                // 创建日志窗口（如果配置启用）
+                GameLogWindow? logWindow = null;
+                if (config.ShowGameLogOnLaunch)
+                {
+                    logWindow = new GameLogWindow(_version.Id);
+                    logWindow.Show();
+                }
+                
+                await GameLauncher.LaunchGameAsync(
+                    _version.Id, 
+                    defaultAccount, 
+                    config,
+                    (progress) => NotificationManager.Instance.UpdateNotification(launchNotificationId, progress),
+                    (output) => logWindow?.AppendGameOutput(output),
+                    (exitCode) => 
+                    {
+                        logWindow?.OnGameExit(exitCode);
+                        // 移除启动进度通知
+                        NotificationManager.Instance.RemoveNotification(launchNotificationId);
+                    }
+                );
 
                 NotificationManager.Instance.ShowNotification(
                     "启动成功",
@@ -371,6 +410,51 @@ namespace ObsMCLauncher.Pages
                     }
                 }
             };
+        }
+
+        /// <summary>
+        /// 切换版本隔离按钮点击
+        /// </summary>
+        private void ToggleIsolationButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_version == null) return;
+
+            var config = LauncherConfig.Load();
+            var currentIsolation = VersionConfigService.GetVersionIsolation(_version.Path);
+            
+            // 循环切换：null -> true -> false -> null
+            bool? newSetting;
+            if (!currentIsolation.HasValue)
+            {
+                // 当前跟随全局 -> 启用隔离
+                newSetting = true;
+            }
+            else if (currentIsolation.Value)
+            {
+                // 当前启用隔离 -> 禁用隔离
+                newSetting = false;
+            }
+            else
+            {
+                // 当前禁用隔离 -> 跟随全局
+                newSetting = null;
+            }
+            
+            VersionConfigService.SetVersionIsolation(_version.Path, newSetting);
+            
+            string statusMessage = newSetting.HasValue 
+                ? (newSetting.Value ? "已启用版本隔离" : "已禁用版本隔离")
+                : "已设置为跟随全局设置";
+            
+            NotificationManager.Instance.ShowNotification(
+                "设置已更新",
+                statusMessage,
+                NotificationType.Success,
+                2
+            );
+            
+            // 重新加载版本信息
+            LoadVersionInfo();
         }
 
         /// <summary>

@@ -157,7 +157,16 @@
                                 <TextBlock x:Name="IsolationStatusText"
                                          Text="-"
                                          FontSize="14"
-                                         VerticalAlignment="Center"/>
+                                         VerticalAlignment="Center"
+                                         Margin="0,0,10,0"/>
+                                <Button x:Name="ToggleIsolationButton"
+                                        Click="ToggleIsolationButton_Click"
+                                        Style="{StaticResource MaterialDesignFlatButton}"
+                                        Height="24"
+                                        Padding="8,0"
+                                        FontSize="12"
+                                        Content="切换设置"
+                                        ToolTip="切换此版本的隔离设置"/>
                             </StackPanel>
 
                             <!-- 存储路径 -->

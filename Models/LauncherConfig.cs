@@ -481,17 +481,32 @@ namespace ObsMCLauncher.Models
 
         /// <summary>
         /// 获取指定版本的运行目录（根据版本隔离设置）
+        /// 优先使用版本自己的设置，如果没有则使用全局设置
         /// </summary>
         /// <param name="versionName">版本名称</param>
         /// <returns>运行目录路径</returns>
         public string GetRunDirectory(string versionName)
         {
-            return GameDirectoryType switch
+            // 获取版本路径
+            var versionPath = Path.Combine(GameDirectory, "versions", versionName);
+            
+            // 尝试加载版本配置
+            var versionIsolation = Services.VersionConfigService.GetVersionIsolation(versionPath);
+            
+            // 如果版本有独立设置，使用版本设置；否则使用全局设置
+            bool useIsolation;
+            if (versionIsolation.HasValue)
             {
-                GameDirectoryType.VersionFolder => Path.Combine(GameDirectory, "versions", versionName),
-                GameDirectoryType.RootFolder => GameDirectory,
-                _ => GameDirectory
-            };
+                useIsolation = versionIsolation.Value;
+            }
+            else
+            {
+                useIsolation = GameDirectoryType == GameDirectoryType.VersionFolder;
+            }
+            
+            return useIsolation 
+                ? Path.Combine(GameDirectory, "versions", versionName)
+                : GameDirectory;
         }
 
         /// <summary>

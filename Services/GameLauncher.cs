@@ -563,6 +563,36 @@ namespace ObsMCLauncher.Services
 
             // 2.45. 模块路径JAR集合（用于跟踪哪些JAR在模块路径中，避免重复添加到classpath）
             var modulePathJars = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            
+            // 2.46. 提前构建 classpath（因为 JVM 参数中可能包含 ${classpath} 变量）
+            var classpathItems = new System.Collections.Generic.List<string>();
+            
+            // 遍历所有库，构建classpath
+            if (versionInfo.Libraries != null)
+            {
+                foreach (var lib in versionInfo.Libraries)
+                {
+                    if (IsLibraryAllowed(lib))
+                    {
+                        var libPath = GetLibraryPath(librariesDir, lib);
+                        if (!string.IsNullOrEmpty(libPath) && File.Exists(libPath))
+                        {
+                            classpathItems.Add(libPath);
+                        }
+                    }
+                }
+            }
+            
+            // 版本jar必须在classpath的最后
+            var versionJarPath = Path.Combine(versionDir, $"{versionId}.jar");
+            if (File.Exists(versionJarPath))
+            {
+                classpathItems.Add(versionJarPath);
+            }
+            
+            // 构建完整的 classpath 字符串
+            var classpathString = string.Join(Path.PathSeparator, classpathItems);
+            Debug.WriteLine($"✅ 已提前构建 classpath: {classpathItems.Count} 个项目");
 
             // 2.5. version.json中定义的JVM参数（如Forge/NeoForge的额外JVM参数）
             bool hasModulePathInJson = false;
@@ -584,7 +614,7 @@ namespace ObsMCLauncher.Services
                             continue;
                         
                     // 先进行变量替换
-                    var replacedArg = ReplaceArgVariables(argStr, versionId, gameDir, librariesDir, nativesDir, assetsDir);
+                    var replacedArg = ReplaceArgVariables(argStr, versionId, gameDir, librariesDir, nativesDir, assetsDir, classpathString);
                     
                     // 检测 NeoForge 1.20.x 特定参数
                     if (replacedArg.Contains("-Dfml.pluginLayerLibraries"))
@@ -596,6 +626,18 @@ namespace ObsMCLauncher.Services
                     {
                         hasGameLayerLibrariesInJson = true;
                         Debug.WriteLine("ℹ️ 检测到 version.json 中已定义 -Dfml.gameLayerLibraries");
+                    }
+                    
+                    // 特殊处理 -cp/--class-path 参数（需要跳过它和下一个参数，因为我们会自己添加）
+                    if (replacedArg == "-cp" || replacedArg == "--class-path")
+                    {
+                        Debug.WriteLine("ℹ️ 跳过 version.json 中的 -cp 参数（启动器会自己添加）");
+                        // 跳过下一个参数（classpath 值）
+                        if (i + 1 < versionInfo.Arguments.Jvm.Count)
+                        {
+                            i++; // 跳过下一个参数
+                        }
+                        continue;
                     }
                     
                     // 特殊处理 -p/--module-path 参数（需要连续读取下一个参数作为路径）
@@ -615,7 +657,7 @@ namespace ObsMCLauncher.Services
                             
                             if (!string.IsNullOrEmpty(nextArgStr))
                             {
-                                var replacedModulePath = ReplaceArgVariables(nextArgStr, versionId, gameDir, librariesDir, nativesDir, assetsDir);
+                                var replacedModulePath = ReplaceArgVariables(nextArgStr, versionId, gameDir, librariesDir, nativesDir, assetsDir, classpathString);
                                 
                                 // 保存初始的模块路径字符串，稍后可能需要添加 ASM 库
                                 var modulePathList = new List<string>();
@@ -916,53 +958,11 @@ namespace ObsMCLauncher.Services
                 Debug.WriteLine("✅ 使用JSON中的模块路径配置（不使用 --add-modules 以保持 ServiceLoader）");
             }
 
-            // 6. 类路径
+            // 6. 类路径（已在前面构建，这里直接使用）
             args.Append("-cp \"");
-            
-            var classpathItems = new System.Collections.Generic.List<string>();
-            
-            
-            // 遍历所有库，构建classpath
-            if (versionInfo.Libraries != null)
-            {
-                foreach (var lib in versionInfo.Libraries)
-                {
-                    if (IsLibraryAllowed(lib))
-                    {
-                        var libPath = GetLibraryPath(librariesDir, lib);
-                        if (!string.IsNullOrEmpty(libPath) && File.Exists(libPath))
-                        {
-                            classpathItems.Add(libPath);
-                        }
-                        else
-                        {
-                            // 仅当库不是可选的特殊库时才打印警告
-                            bool isForgeSpecialLib = lib.Name != null && lib.Name.StartsWith("net.minecraftforge") && 
-                                                     (lib.Name.Contains(":client") || lib.Name.Contains(":server"));
-                            if (!isForgeSpecialLib)
-                            {
-                                Debug.WriteLine($"⚠️ 库文件不存在或路径无效: {libPath} (来自: {lib.Name})");
-                            }
-                        }
-                    }
-                }
-            }
-            
-            // 版本jar必须在classpath的最后，这样ServiceLoader才能优先从库中加载服务
-            var versionJarPath = Path.Combine(versionDir, $"{versionId}.jar");
-            if (File.Exists(versionJarPath))
-            {
-                classpathItems.Add(versionJarPath);
-                Debug.WriteLine($"✅ 版本JAR添加到classpath末尾: {versionId}.jar");
-            }
-            else
-            {
-                Debug.WriteLine($"⚠️ 客户端JAR不存在: {versionJarPath}");
-            }
-            
-            // 使用系统路径分隔符连接
-            args.Append(string.Join(Path.PathSeparator, classpathItems));
+            args.Append(classpathString);
             args.Append("\" ");
+            Debug.WriteLine($"✅ 已添加 classpath 到启动参数");
 
             // 6. 主类
             // version.json 中已包含所有必需的模块参数（--module-path, --add-modules 等）
@@ -1148,7 +1148,7 @@ namespace ObsMCLauncher.Services
         /// <parameter>
         /// 替换参数中的变量占位符
         /// </summary>
-        private static string ReplaceArgVariables(string arg, string versionId, string gameDir, string librariesDir, string nativesDir, string assetsDir)
+        private static string ReplaceArgVariables(string arg, string versionId, string gameDir, string librariesDir, string nativesDir, string assetsDir, string classpath)
         {
             if (string.IsNullOrEmpty(arg))
                 return arg;
@@ -1175,7 +1175,8 @@ namespace ObsMCLauncher.Services
                 .Replace("${clientid}", Guid.Empty.ToString())
                 .Replace("${auth_xuid}", "")
                 .Replace("${clientJar}", clientJar)
-                .Replace("${primary_jar}", clientJar);
+                .Replace("${primary_jar}", clientJar)
+                .Replace("${classpath}", classpath); // 添加 classpath 变量替换
         }
 
         private static bool ShouldSkipJvmArg(string arg)
