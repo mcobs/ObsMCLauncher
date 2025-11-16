@@ -48,6 +48,21 @@ namespace ObsMCLauncher.Pages
             LastPlayedText.Text = _version.LastPlayed.ToString("yyyy-MM-dd HH:mm:ss");
             PathText.Text = _version.Path;
 
+            // 设置版本隔离状态
+            var config = LauncherConfig.Load();
+            if (config.GameDirectoryType == GameDirectoryType.VersionFolder)
+            {
+                IsolationStatusText.Text = "已启用（独立文件夹）";
+                IsolationIcon.Kind = PackIconKind.FolderMultiple;
+                IsolationIcon.Foreground = new SolidColorBrush(Color.FromRgb(34, 197, 94)); // 绿色
+            }
+            else
+            {
+                IsolationStatusText.Text = "未启用（共享文件夹）";
+                IsolationIcon.Kind = PackIconKind.Folder;
+                IsolationIcon.Foreground = new SolidColorBrush(Color.FromRgb(156, 163, 175)); // 灰色
+            }
+
             // 设置版本类型
             var typeText = _version.Type == "release" ? "正式版" :
                           _version.Type == "snapshot" ? "快照版" :
@@ -69,7 +84,6 @@ namespace ObsMCLauncher.Pages
             }
 
             // 检查是否是当前版本
-            var config = LauncherConfig.Load();
             if (_version.Id == config.SelectedVersion)
             {
                 SetAsCurrentButton.IsEnabled = false;
@@ -105,30 +119,37 @@ namespace ObsMCLauncher.Pages
             if (_version == null) return;
 
             var config = LauncherConfig.Load();
-            var gameDir = config.GameDirectory;
+            
+            // 根据版本隔离设置获取正确的运行目录
+            var runDirectory = config.GetRunDirectory(_version.Id);
+            
+            // 添加版本隔离状态说明
+            string isolationNote = config.GameDirectoryType == GameDirectoryType.VersionFolder 
+                ? "（版本独立）" 
+                : "（所有版本共享）";
 
             // 检查Mods文件夹
-            var modsPath = Path.Combine(gameDir, "mods");
+            var modsPath = Path.Combine(runDirectory, "mods");
             if (Directory.Exists(modsPath))
             {
                 var modFiles = Directory.GetFiles(modsPath, "*.jar");
-                ModsCountText.Text = $"共 {modFiles.Length} 个 Mod 文件";
+                ModsCountText.Text = $"共 {modFiles.Length} 个 Mod 文件 {isolationNote}";
             }
             else
             {
-                ModsCountText.Text = "Mods 文件夹不存在";
+                ModsCountText.Text = $"Mods 文件夹不存在 {isolationNote}";
             }
 
             // 检查存档文件夹
-            var savesPath = Path.Combine(gameDir, "saves");
+            var savesPath = Path.Combine(runDirectory, "saves");
             if (Directory.Exists(savesPath))
             {
                 var savesFolders = Directory.GetDirectories(savesPath);
-                SavesCountText.Text = $"共 {savesFolders.Length} 个存档";
+                SavesCountText.Text = $"共 {savesFolders.Length} 个存档 {isolationNote}";
             }
             else
             {
-                SavesCountText.Text = "存档文件夹不存在";
+                SavesCountText.Text = $"存档文件夹不存在 {isolationNote}";
             }
         }
 
@@ -394,8 +415,12 @@ namespace ObsMCLauncher.Pages
         /// </summary>
         private void OpenModsFolderButton_Click(object sender, RoutedEventArgs e)
         {
+            if (_version == null) return;
+
             var config = LauncherConfig.Load();
-            var modsPath = Path.Combine(config.GameDirectory, "mods");
+            
+            // 根据版本隔离设置获取正确的Mods目录
+            var modsPath = config.GetModsDirectory(_version.Id);
 
             if (!Directory.Exists(modsPath))
             {
@@ -410,8 +435,12 @@ namespace ObsMCLauncher.Pages
         /// </summary>
         private void OpenSavesFolderButton_Click(object sender, RoutedEventArgs e)
         {
+            if (_version == null) return;
+
             var config = LauncherConfig.Load();
-            var savesPath = Path.Combine(config.GameDirectory, "saves");
+            
+            // 根据版本隔离设置获取正确的Saves目录
+            var savesPath = config.GetSavesDirectory(_version.Id);
 
             if (!Directory.Exists(savesPath))
             {

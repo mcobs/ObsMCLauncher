@@ -605,8 +605,8 @@ namespace ObsMCLauncher.Pages
                 Debug.WriteLine($"[ModDetailPage] 选择版本: {file.DisplayName}");
 
                 // 显示确认对话框
-                var translation = ModTranslationService.Instance.GetTranslationByCurseForgeId(_curseForgeMod.Id);
-                var resourceDisplayName = ModTranslationService.Instance.GetDisplayName(_curseForgeMod.Name, translation);
+                var translation = ModTranslationService.Instance.GetTranslationByCurseForgeId(_curseForgeMod?.Id ?? 0);
+                var resourceDisplayName = ModTranslationService.Instance.GetDisplayName(_curseForgeMod?.Name ?? "", translation);
                 
                 var resourceTypeName = _resourceType switch
                 {
