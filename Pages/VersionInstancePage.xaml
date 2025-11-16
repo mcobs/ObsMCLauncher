@@ -159,15 +159,27 @@
                                           Width="200"
                                           FontSize="13"
                                           materialDesign:HintAssist.Hint="版本隔离设置"
-                                          Background="{DynamicResource SurfaceElevatedBrush}"
-                                          Foreground="{DynamicResource TextBrush}"
-                                          BorderBrush="{DynamicResource BorderBrush}">
-                                    <ComboBoxItem Content="跟随全局设置" Tag="global" 
-                                                  Foreground="{DynamicResource TextBrush}"/>
-                                    <ComboBoxItem Content="启用版本隔离（独立文件夹）" Tag="enabled"
-                                                  Foreground="{DynamicResource TextBrush}"/>
-                                    <ComboBoxItem Content="禁用版本隔离（共享文件夹）" Tag="disabled"
-                                                  Foreground="{DynamicResource TextBrush}"/>
+                                          Style="{StaticResource MaterialDesignComboBox}"
+                                          Foreground="{DynamicResource TextBrush}">
+                                    <ComboBox.Resources>
+                                        <Style TargetType="ComboBoxItem">
+                                            <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+                                            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+                                            <Setter Property="Padding" Value="10,8"/>
+                                            <Style.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter Property="Background" Value="{DynamicResource SurfaceElevatedBrush}"/>
+                                                </Trigger>
+                                                <Trigger Property="IsSelected" Value="True">
+                                                    <Setter Property="Background" Value="{DynamicResource PrimaryBrush}"/>
+                                                    <Setter Property="Foreground" Value="White"/>
+                                                </Trigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </ComboBox.Resources>
+                                    <ComboBoxItem Content="跟随全局设置" Tag="global"/>
+                                    <ComboBoxItem Content="启用版本隔离（独立文件夹）" Tag="enabled"/>
+                                    <ComboBoxItem Content="禁用版本隔离（共享文件夹）" Tag="disabled"/>
                                 </ComboBox>
                             </StackPanel>
 

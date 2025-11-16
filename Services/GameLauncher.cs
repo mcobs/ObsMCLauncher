@@ -410,7 +410,11 @@ namespace ObsMCLauncher.Services
                 onProgressUpdate?.Invoke("正在准备启动参数...");
                 cancellationToken.ThrowIfCancellationRequested();
                 var arguments = BuildLaunchArguments(versionId, account, config, versionInfo);
+                Debug.WriteLine($"========== 启动命令详情 ==========");
+                Debug.WriteLine($"Java路径: {actualJavaPath}");
+                Debug.WriteLine($"主类: {versionInfo.MainClass}");
                 Debug.WriteLine($"完整启动命令: \"{actualJavaPath}\" {arguments}");
+                Debug.WriteLine($"====================================");
 
                 // 7. 启动游戏进程
                 onProgressUpdate?.Invoke("正在启动游戏进程...");
@@ -959,15 +963,24 @@ namespace ObsMCLauncher.Services
             }
 
             // 6. 类路径（已在前面构建，这里直接使用）
-            args.Append("-cp \"");
-            args.Append(classpathString);
-            args.Append("\" ");
+            // 注意：在 Windows 上，如果路径包含空格，需要确保整个 classpath 被正确引用
+            args.Append("-cp ");
+            args.Append($"\"{classpathString}\" ");
             Debug.WriteLine($"✅ 已添加 classpath 到启动参数");
 
             // 6. 主类
             // version.json 中已包含所有必需的模块参数（--module-path, --add-modules 等）
-            args.Append($"{versionInfo.MainClass} ");
-            Debug.WriteLine($"✅ 主类: {versionInfo.MainClass}");
+            // 主类名称通常不需要引号，但为了安全起见，如果包含空格则添加引号
+            var mainClass = versionInfo.MainClass ?? "";
+            if (mainClass.Contains(" "))
+            {
+                args.Append($"\"{mainClass}\" ");
+            }
+            else
+            {
+                args.Append($"{mainClass} ");
+            }
+            Debug.WriteLine($"✅ 主类: {mainClass}");
 
             // 7. 游戏参数
             var gameArgs = BuildGameArguments(versionId, account, config, versionInfo, gameDir, assetsDir);
