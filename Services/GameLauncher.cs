@@ -171,9 +171,11 @@ namespace ObsMCLauncher.Services
         /// <param name="account">游戏账号</param>
         /// <param name="config">启动器配置</param>
         /// <param name="onProgressUpdate">进度更新回调</param>
+        /// <param name="onGameOutput">游戏输出回调</param>
+        /// <param name="onGameExit">游戏退出回调</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>是否启动成功</returns>
-        public static async System.Threading.Tasks.Task<bool> LaunchGameAsync(string versionId, GameAccount account, LauncherConfig config, Action<string>? onProgressUpdate = null, System.Threading.CancellationToken cancellationToken = default)
+        public static async System.Threading.Tasks.Task<bool> LaunchGameAsync(string versionId, GameAccount account, LauncherConfig config, Action<string>? onProgressUpdate = null, Action<string>? onGameOutput = null, Action<int>? onGameExit = null, System.Threading.CancellationToken cancellationToken = default)
         {
             LastError = string.Empty;
             
@@ -436,13 +438,19 @@ namespace ObsMCLauncher.Services
                 process.OutputDataReceived += (sender, e) =>
                 {
                     if (!string.IsNullOrEmpty(e.Data))
+                    {
                         Debug.WriteLine($"[Minecraft] {e.Data}");
+                        onGameOutput?.Invoke(e.Data);
+                    }
                 };
                 
                 process.ErrorDataReceived += (sender, e) =>
                 {
                     if (!string.IsNullOrEmpty(e.Data))
+                    {
                         Debug.WriteLine($"[Minecraft Error] {e.Data}");
+                        onGameOutput?.Invoke(e.Data);
+                    }
                 };
 
                 if (!process.Start())
@@ -454,6 +462,18 @@ namespace ObsMCLauncher.Services
                 process.BeginOutputReadLine();
                 process.BeginErrorReadLine();
                 
+                // 监听进程退出事件
+                if (onGameExit != null)
+                {
+                    process.EnableRaisingEvents = true;
+                    process.Exited += (sender, e) =>
+                    {
+                        var exitCode = process.ExitCode;
+                        Debug.WriteLine($"[GameLauncher] 游戏进程已退出，退出代码: {exitCode}");
+                        onGameExit?.Invoke(exitCode);
+                    };
+                }
+                
                 Debug.WriteLine($"✅ 游戏进程已启动 (PID: {process.Id})");
                 onProgressUpdate?.Invoke("游戏进程已启动，检查运行状态...");
                 
@@ -464,6 +484,7 @@ namespace ObsMCLauncher.Services
                 {
                     LastError = $"游戏进程启动后立即退出\n退出代码: {process.ExitCode}\n请检查Debug输出窗口查看详细错误日志";
                     Debug.WriteLine($"❌ 进程立即退出，退出代码: {process.ExitCode}");
+                    onGameExit?.Invoke(process.ExitCode);
                     return false;
                 }
                 

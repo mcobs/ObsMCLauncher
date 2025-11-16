@@ -137,6 +137,11 @@ namespace ObsMCLauncher.Models
         public bool CloseAfterLaunch { get; set; } = false;
 
         /// <summary>
+        /// 启动时显示游戏日志窗口
+        /// </summary>
+        public bool ShowGameLogOnLaunch { get; set; } = false;
+
+        /// <summary>
         /// 自动检查更新
         /// </summary>
         public bool AutoCheckUpdate { get; set; } = true;

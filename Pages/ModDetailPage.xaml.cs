@@ -624,7 +624,7 @@ namespace ObsMCLauncher.Pages
                     var versionName = await DialogManager.Instance.ShowInputDialogAsync(
                         "安装整合包",
                         $"请为整合包命名：\n\n整合包: {resourceDisplayName}\n版本: {file.DisplayName}\n文件大小: {FormatFileSize(file.FileLength)}",
-                        _curseForgeMod.Name);
+                        _curseForgeMod?.Name ?? "");
 
                     if (!string.IsNullOrEmpty(versionName))
                     {

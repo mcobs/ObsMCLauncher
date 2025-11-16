@@ -29,6 +29,7 @@ namespace ObsMCLauncher.Pages
         {
             LoadAccounts();
             LoadVersions();
+            LoadGameLogCheckBoxState();
         }
 
         private void HomePage_Unloaded(object sender, RoutedEventArgs e)
@@ -467,11 +468,34 @@ namespace ObsMCLauncher.Pages
                     );
                     LaunchButton.Content = "启动中...";
                     
-                    bool finalLaunchSuccess = await GameLauncher.LaunchGameAsync(versionId, account, config, (progress) =>
+                    // 创建游戏日志窗口（如果配置启用）
+                    Windows.GameLogWindow? logWindow = null;
+                    if (config.ShowGameLogOnLaunch)
                     {
-                        NotificationManager.Instance.UpdateNotification(launchNotificationId, progress);
-                        LaunchButton.Content = progress;
-                    }, launchCts.Token);
+                        logWindow = new Windows.GameLogWindow(versionId);
+                        logWindow.Show();
+                    }
+                    
+                    bool finalLaunchSuccess = await GameLauncher.LaunchGameAsync(
+                        versionId, 
+                        account, 
+                        config, 
+                        (progress) =>
+                        {
+                            NotificationManager.Instance.UpdateNotification(launchNotificationId, progress);
+                            LaunchButton.Content = progress;
+                        },
+                        (output) =>
+                        {
+                            // 游戏输出回调
+                            logWindow?.AppendGameOutput(output);
+                        },
+                        (exitCode) =>
+                        {
+                            // 游戏退出回调
+                            logWindow?.OnGameExit(exitCode);
+                        },
+                        launchCts.Token);
                     
                     // 移除启动进度通知
                     NotificationManager.Instance.RemoveNotification(launchNotificationId);
@@ -1105,6 +1129,25 @@ namespace ObsMCLauncher.Pages
         private class OsInfo
         {
             public string? Name { get; set; }
+        }
+
+        /// <summary>
+        /// 加载游戏日志复选框状态
+        /// </summary>
+        private void LoadGameLogCheckBoxState()
+        {
+            var config = LauncherConfig.Load();
+            ShowGameLogCheckBox.IsChecked = config.ShowGameLogOnLaunch;
+        }
+
+        /// <summary>
+        /// 游戏日志复选框状态改变
+        /// </summary>
+        private void ShowGameLogCheckBox_Changed(object sender, RoutedEventArgs e)
+        {
+            var config = LauncherConfig.Load();
+            config.ShowGameLogOnLaunch = ShowGameLogCheckBox.IsChecked == true;
+            config.Save();
         }
     }
 }
