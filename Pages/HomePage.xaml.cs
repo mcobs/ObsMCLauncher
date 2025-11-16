@@ -1013,6 +1013,63 @@ namespace ObsMCLauncher.Pages
             }
         }
 
+        /// <summary>
+        /// 管理版本按钮点击事件
+        /// </summary>
+        private void ManageVersionButton_Click(object sender, RoutedEventArgs e)
+        {
+            // 获取当前选中的版本
+            if (VersionComboBox.SelectedItem is not ComboBoxItem versionItem || versionItem.Tag is not string versionId)
+            {
+                NotificationManager.Instance.ShowNotification(
+                    "无法打开",
+                    "请先选择一个游戏版本",
+                    NotificationType.Warning,
+                    3
+                );
+                return;
+            }
+
+            // 获取版本信息
+            var config = LauncherConfig.Load();
+            var installedVersions = LocalVersionService.GetInstalledVersions(config.GameDirectory);
+            var version = installedVersions.FirstOrDefault(v => v.Id == versionId);
+
+            if (version == null)
+            {
+                NotificationManager.Instance.ShowNotification(
+                    "版本不存在",
+                    $"未找到版本 {versionId}",
+                    NotificationType.Error,
+                    3
+                );
+                return;
+            }
+
+            // 导航到版本实例管理页面
+            var mainWindow = Application.Current.MainWindow as MainWindow;
+            if (mainWindow != null)
+            {
+                var mainFrame = mainWindow.FindName("MainFrame") as Frame;
+                if (mainFrame != null)
+                {
+                    var instancePage = new VersionInstancePage(version);
+                    
+                    // 设置返回回调
+                    instancePage.OnBackRequested = () =>
+                    {
+                        // 返回到主页
+                        mainFrame.Navigate(this);
+                        
+                        // 刷新版本列表
+                        LoadVersions();
+                    };
+                    
+                    mainFrame.Navigate(instancePage);
+                }
+            }
+        }
+
         // 版本详情模型（用于解析JSON）
         private class VersionDetail
         {

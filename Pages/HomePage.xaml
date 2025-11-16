@@ -131,15 +131,38 @@
                         <!-- 动态加载账号列表 -->
                     </ComboBox>
 
-                    <!-- 版本选择 -->
-                    <ComboBox Grid.Column="2"
-                            x:Name="VersionComboBox"
-                            HorizontalAlignment="Stretch"
-                            VerticalAlignment="Center"
-                            materialDesign:HintAssist.Hint="选择游戏版本"
-                            Style="{StaticResource MaterialDesignOutlinedComboBox}">
-                        <!-- 动态加载版本列表 -->
-                    </ComboBox>
+                    <!-- 版本选择区域 -->
+                    <Grid Grid.Column="2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        
+                        <!-- 版本选择下拉框 -->
+                        <ComboBox Grid.Column="0"
+                                x:Name="VersionComboBox"
+                                HorizontalAlignment="Stretch"
+                                VerticalAlignment="Center"
+                                materialDesign:HintAssist.Hint="选择游戏版本"
+                                Style="{StaticResource MaterialDesignOutlinedComboBox}">
+                            <!-- 动态加载版本列表 -->
+                        </ComboBox>
+                        
+                        <!-- 管理按钮 -->
+                        <Button Grid.Column="1"
+                              x:Name="ManageVersionButton"
+                              Click="ManageVersionButton_Click"
+                              Style="{StaticResource MaterialDesignIconButton}"
+                              Width="40"
+                              Height="40"
+                              Margin="8,0,0,0"
+                              ToolTip="管理当前版本">
+                            <materialDesign:PackIcon Kind="Cog" 
+                                                   Width="20" 
+                                                   Height="20"
+                                                   Foreground="{StaticResource PrimaryBrush}"/>
+                        </Button>
+                    </Grid>
 
                     <!-- 启动按钮 -->
                     <Button Grid.Column="4"

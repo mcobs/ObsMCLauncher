@@ -702,6 +702,28 @@ namespace ObsMCLauncher.Pages
             openFolderButton.Content = folderIcon;
             buttonPanel.Children.Add(openFolderButton);
 
+            // 管理按钮
+            var manageButton = new Button
+            {
+                Tag = version,
+                Style = (Style)Application.Current.TryFindResource("MaterialDesignIconButton"),
+                ToolTip = "管理实例",
+                Width = 28,
+                Height = 28,
+                Padding = new Thickness(0),
+                Margin = new Thickness(0, 0, 8, 0)
+            };
+            manageButton.Click += ManageVersionButton_Click;
+            var manageIcon = new PackIcon
+            {
+                Kind = PackIconKind.Cog,
+                Width = 16,
+                Height = 16
+            };
+            manageIcon.SetResourceReference(PackIcon.ForegroundProperty, "PrimaryBrush");
+            manageButton.Content = manageIcon;
+            buttonPanel.Children.Add(manageButton);
+
             // 删除按钮
             var deleteButton = new Button
             {
@@ -1007,6 +1029,34 @@ namespace ObsMCLauncher.Pages
                         );
                     }
                 }
+            }
+        }
+
+        /// <summary>
+        /// 管理版本按钮点击
+        /// </summary>
+        private void ManageVersionButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button button && button.Tag is InstalledVersion version)
+            {
+                // 创建版本实例管理页面
+                var instancePage = new VersionInstancePage(version);
+                
+                // 设置返回回调
+                instancePage.OnBackRequested = () =>
+                {
+                    // 返回到版本列表
+                    DetailFrame.Visibility = Visibility.Collapsed;
+                    VersionListGrid.Visibility = Visibility.Visible;
+                    
+                    // 刷新已安装版本列表
+                    RefreshInstalledVersions();
+                };
+                
+                // 显示实例管理页面
+                DetailFrame.Navigate(instancePage);
+                DetailFrame.Visibility = Visibility.Visible;
+                VersionListGrid.Visibility = Visibility.Collapsed;
             }
         }
 
