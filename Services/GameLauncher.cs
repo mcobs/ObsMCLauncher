@@ -425,6 +425,14 @@ namespace ObsMCLauncher.Services
                 Debug.WriteLine($"[GameLauncher] 工作目录: {workingDirectory}");
                 Debug.WriteLine($"[GameLauncher] 版本隔离模式: {config.GameDirectoryType}");
                 
+                // 输出完整的启动参数用于调试
+                Debug.WriteLine($"========== 进程启动信息 ==========");
+                Debug.WriteLine($"可执行文件: {actualJavaPath}");
+                Debug.WriteLine($"工作目录: {workingDirectory}");
+                Debug.WriteLine($"参数长度: {arguments.Length} 字符");
+                Debug.WriteLine($"参数内容（前500字符）: {(arguments.Length > 500 ? arguments.Substring(0, 500) + "..." : arguments)}");
+                Debug.WriteLine($"====================================");
+                
                 var processInfo = new ProcessStartInfo
                 {
                     FileName = actualJavaPath,
@@ -1049,11 +1057,11 @@ namespace ObsMCLauncher.Services
                 var gameAssetsPath = isVeryOldVersion ? gameDir : assetsDir;
                 
                 var minecraftArgs = versionInfo.MinecraftArguments
-                    .Replace("${auth_player_name}", account.Username)
-                    .Replace("${version_name}", versionId)
+                    .Replace("${auth_player_name}", $"\"{account.Username}\"")
+                    .Replace("${version_name}", $"\"{versionId}\"")
                     .Replace("${game_directory}", $"\"{gameDir}\"")
                     .Replace("${assets_root}", $"\"{assetsDir}\"")
-                    .Replace("${assets_index_name}", assetIndex)
+                    .Replace("${assets_index_name}", $"\"{assetIndex}\"")
                     .Replace("${auth_uuid}", isVeryOldVersion ? "00000000-0000-0000-0000-000000000000" : (account.Type == AccountType.Microsoft ? (account.MinecraftUUID ?? account.UUID) : account.UUID))
                     .Replace("${auth_access_token}", sessionToken)
                     .Replace("${auth_session}", sessionToken) // ⭐ 1.5.2等旧版本使用 auth_session
@@ -1091,11 +1099,11 @@ namespace ObsMCLauncher.Services
             }
 
             // 2. 标准参数
-            args.Append($"--username {account.Username} ");
-            args.Append($"--version {versionId} ");
+            args.Append($"--username \"{account.Username}\" ");
+            args.Append($"--version \"{versionId}\" ");
             args.Append($"--gameDir \"{gameDir}\" ");
             args.Append($"--assetsDir \"{assetsDir}\" ");
-            args.Append($"--assetIndex {assetIndex} ");
+            args.Append($"--assetIndex \"{assetIndex}\" ");
             
             // 根据账号类型使用不同的 UUID 和 AccessToken
             if (account.Type == AccountType.Microsoft)
@@ -1169,10 +1177,18 @@ namespace ObsMCLauncher.Services
             var versionDir = Path.Combine(gameDir, "versions", versionId);
             var clientJar = Path.Combine(versionDir, $"{versionId}.jar");
             
+            // 对于包含空格或特殊字符的值，用引号包围
+            var safeVersionId = NeedsQuoting(versionId) ? $"\"{versionId}\"" : versionId;
+            var safeGameDir = NeedsQuoting(gameDir) ? $"\"{gameDir}\"" : gameDir;
+            var safeAssetsDir = NeedsQuoting(assetsDir) ? $"\"{assetsDir}\"" : assetsDir;
+            var safeNativesDir = NeedsQuoting(nativesDir) ? $"\"{nativesDir}\"" : nativesDir;
+            var safeLibrariesDir = NeedsQuoting(librariesDir) ? $"\"{librariesDir}\"" : librariesDir;
+            var safeClientJar = NeedsQuoting(clientJar) ? $"\"{clientJar}\"" : clientJar;
+            
             return arg
-                .Replace("${version_name}", versionId)
-                .Replace("${game_directory}", gameDir)
-                .Replace("${assets_root}", assetsDir)
+                .Replace("${version_name}", safeVersionId)
+                .Replace("${game_directory}", safeGameDir)
+                .Replace("${assets_root}", safeAssetsDir)
                 .Replace("${assets_index_name}", "26") // 可以从 versionInfo 获取
                 .Replace("${auth_player_name}", "Player") // 这个会在后面替换
                 .Replace("${version_type}", "release")
@@ -1180,16 +1196,30 @@ namespace ObsMCLauncher.Services
                 .Replace("${auth_access_token}", "")
                 .Replace("${user_type}", "msa")
                 .Replace("${user_properties}", "{}")
-                .Replace("${library_directory}", librariesDir)
+                .Replace("${library_directory}", safeLibrariesDir)
                 .Replace("${classpath_separator}", Path.PathSeparator.ToString())
-                .Replace("${natives_directory}", nativesDir)
+                .Replace("${natives_directory}", safeNativesDir)
                 .Replace("${launcher_name}", "ObsMCLauncher")
                 .Replace("${launcher_version}", "1.0")
                 .Replace("${clientid}", Guid.Empty.ToString())
                 .Replace("${auth_xuid}", "")
-                .Replace("${clientJar}", clientJar)
-                .Replace("${primary_jar}", clientJar)
+                .Replace("${clientJar}", safeClientJar)
+                .Replace("${primary_jar}", safeClientJar)
                 .Replace("${classpath}", classpath); // 添加 classpath 变量替换
+        }
+        
+        /// <summary>
+        /// 判断字符串是否需要用引号包围（包含空格或特殊字符）
+        /// </summary>
+        private static bool NeedsQuoting(string value)
+        {
+            if (string.IsNullOrEmpty(value))
+                return false;
+            
+            // 检查是否包含空格、方括号或其他特殊字符
+            return value.Contains(' ') || value.Contains('[') || value.Contains(']') || 
+                   value.Contains('(') || value.Contains(')') || value.Contains('&') ||
+                   value.Contains('|') || value.Contains(';');
         }
 
         private static bool ShouldSkipJvmArg(string arg)
