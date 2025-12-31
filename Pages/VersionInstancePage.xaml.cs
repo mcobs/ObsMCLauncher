@@ -423,49 +423,69 @@ namespace ObsMCLauncher.Pages
         private void IsolationComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (_version == null) return;
-            
+
             // 避免初始化时触发
             if (!IsLoaded) return;
-            
+
             var comboBox = sender as ComboBox;
             if (comboBox == null) return;
-            
+
             var selectedItem = comboBox.SelectedItem as ComboBoxItem;
             if (selectedItem == null) return;
-            
+
+            // 当前设置（null=跟随全局）
+            var currentSetting = VersionConfigService.GetVersionIsolation(_version.Path);
+
             var tag = selectedItem.Tag as string;
             bool? newSetting = null;
             string statusMessage = "";
-            
+
             switch (tag)
             {
                 case "global":
+                    // 如果本来就是跟随全局，则不做任何事，也不弹提示
+                    if (currentSetting == null) return;
+
                     newSetting = null;
                     statusMessage = "已设置为跟随全局设置";
                     IsolationIcon.Kind = PackIconKind.Folder;
                     break;
+
                 case "enabled":
+                    // 如果本来已经启用，则不做任何事，也不弹提示
+                    if (currentSetting == true) return;
+
                     newSetting = true;
                     statusMessage = "已启用版本隔离";
                     IsolationIcon.Kind = PackIconKind.FolderMultiple;
                     IsolationIcon.Foreground = new SolidColorBrush(Color.FromRgb(34, 197, 94)); // 绿色
                     break;
+
                 case "disabled":
+                    // 如果本来已经禁用，则不做任何事，也不弹提示
+                    if (currentSetting == false) return;
+
                     newSetting = false;
                     statusMessage = "已禁用版本隔离";
                     IsolationIcon.Kind = PackIconKind.Folder;
                     IsolationIcon.Foreground = new SolidColorBrush(Color.FromRgb(156, 163, 175)); // 灰色
                     break;
+
+                default:
+                    return;
             }
-            
+
             VersionConfigService.SetVersionIsolation(_version.Path, newSetting);
-            
+
             NotificationManager.Instance.ShowNotification(
                 "设置已更新",
                 statusMessage,
                 NotificationType.Success,
                 2
             );
+
+            // 设置变更后，刷新显示的文件夹统计，确保“（版本独立）/（共享）”提示同步
+            CheckGameFolders();
         }
 
         /// <summary>
