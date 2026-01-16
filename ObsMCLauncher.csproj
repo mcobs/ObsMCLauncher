@@ -23,6 +23,13 @@
     <Company>MCOBS</Company>
     <Authors>MCOBS</Authors>
     <Copyright>© 2025 ObsMCLauncher</Copyright>
+    
+    <!-- 发布优化配置  -->
+    <SelfContained>false</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+    <IncludeNativeLibrariesForSelfExtract>false</IncludeNativeLibrariesForSelfExtract>
   </PropertyGroup>
 
   <ItemGroup>

@@ -36,20 +36,14 @@ jobs:
     - name: Setup MSBuild.exe
       uses: microsoft/setup-msbuild@v2
         
-    - name: Restore the application
+    - name: Restore dependencies
       run: dotnet restore $env:Solution_Name
-      env:
-        Configuration: ${{ matrix.configuration }}
       
-    - name: Build
-      run: dotnet build $env:Solution_Name -c $env:Configuration --no-restore
-      env:
-        Configuration: ${{ matrix.configuration }}
+    - name: Build application
+      run: dotnet build $env:Solution_Name -c ${{ matrix.configuration }} --no-restore
       
     - name: Publish single-file executable
-      run: dotnet publish $env:Solution_Name -c $env:Configuration -r win-x64 --self-contained false -p:PublishSingleFile=true -p:DebugType=none -p:DebugSymbols=false -o ./publish
-      env:
-        Configuration: ${{ matrix.configuration }}
+      run: dotnet publish $env:Solution_Name -c ${{ matrix.configuration }} -r win-x64 --self-contained false -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=false -o ./publish
       
     - name: Get version info
       id: version
@@ -61,15 +55,29 @@ jobs:
         echo "version=$version" >> $env:GITHUB_OUTPUT
         echo "当前版本: $version"
         
-    - name: Rename executable
+    - name: Verify and rename executable
       shell: pwsh
       run: |
+        $exePath = "./publish/ObsMCLauncher.exe"
+        if (-not (Test-Path $exePath)) {
+          Write-Error "发布文件不存在: $exePath"
+          exit 1
+        }
+        
         $version = "${{ steps.version.outputs.version }}"
         $exeName = "ObsMCLauncher-$version-win-x64.exe"
-        Copy-Item -Path "./publish/ObsMCLauncher.exe" -Destination $exeName
-        Write-Host "已重命名为: $exeName"
-        $fileSize = (Get-Item $exeName).Length / 1MB
-        Write-Host "文件大小: $([Math]::Round($fileSize, 2)) MB"
+        Copy-Item -Path $exePath -Destination $exeName
+        
+        $fileInfo = Get-Item $exeName
+        $fileSizeMB = [Math]::Round($fileInfo.Length / 1MB, 2)
+        
+        Write-Host "✅ 已重命名为: $exeName"
+        Write-Host "📦 文件大小: $fileSizeMB MB"
+        
+        # 验证文件大小合理性（框架依赖发布应该在5-20MB之间）
+        if ($fileSizeMB -gt 50) {
+          Write-Warning "⚠️ 文件大小异常大 ($fileSizeMB MB)，可能配置有误"
+        }
         
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
@@ -77,5 +85,6 @@ jobs:
         name: ObsMCLauncher-${{ steps.version.outputs.version }}-win-x64
         path: ObsMCLauncher-${{ steps.version.outputs.version }}-win-x64.exe
         retention-days: 90
-        compression-level: 6  # GitHub 会自动压缩，下载时自动解压
+        compression-level: 6
+        if-no-files-found: error
 
