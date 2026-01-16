@@ -423,23 +423,23 @@ namespace ObsMCLauncher.Pages
         private void IsolationComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (_version == null) return;
-
+            
             // 避免初始化时触发
             if (!IsLoaded) return;
-
+            
             var comboBox = sender as ComboBox;
             if (comboBox == null) return;
-
+            
             var selectedItem = comboBox.SelectedItem as ComboBoxItem;
             if (selectedItem == null) return;
 
             // 当前设置（null=跟随全局）
             var currentSetting = VersionConfigService.GetVersionIsolation(_version.Path);
-
+            
             var tag = selectedItem.Tag as string;
             bool? newSetting = null;
             string statusMessage = "";
-
+            
             switch (tag)
             {
                 case "global":
@@ -474,9 +474,9 @@ namespace ObsMCLauncher.Pages
                 default:
                     return;
             }
-
+            
             VersionConfigService.SetVersionIsolation(_version.Path, newSetting);
-
+            
             NotificationManager.Instance.ShowNotification(
                 "设置已更新",
                 statusMessage,

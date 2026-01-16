@@ -325,6 +325,47 @@ namespace ObsMCLauncher.Services
         #region 主安装流程
 
         /// <summary>
+        /// 安装NeoForge - 供整合包安装流程调用
+        /// </summary>
+        public static async Task InstallNeoForgeAsync(
+            string mcVersion,
+            string neoForgeVersion,
+            string gameDirectory,
+            string customVersionName,
+            Action<string, double>? progressCallback = null)
+        {
+            // NeoForge 版本号通常不包含 MC 版本，需要组合
+            var fullNeoForgeVersion = $"{mcVersion}-{neoForgeVersion}";
+
+            // 包装 progressCallback 以适配现有方法
+            Action<string, double, double, long, long> wrappedCallback = (status, current, total, _, __) =>
+            {
+                var percent = total > 0 ? (current / total) * 100 : 0;
+                progressCallback?.Invoke(status, percent);
+            };
+
+            // 调用现有的安装方法
+            var success = await InstallNeoForgeAsync(fullNeoForgeVersion, gameDirectory, wrappedCallback, CancellationToken.None);
+
+            if (!success)
+            {
+                throw new Exception($"NeoForge {fullNeoForgeVersion} 安装失败");
+            }
+
+            // 安装后重命名版本
+            // (这部分逻辑需要从 VersionDetailPage 迁移过来，暂时简化处理)
+            var officialVersionId = $"{mcVersion}-neoforge-{neoForgeVersion}";
+            var officialDir = Path.Combine(gameDirectory, "versions", officialVersionId);
+            var customDir = Path.Combine(gameDirectory, "versions", customVersionName);
+
+            if (Directory.Exists(officialDir) && !Directory.Exists(customDir))
+            {
+                Directory.Move(officialDir, customDir);
+                // 注意：还需要重命名json和jar文件，并修改json内部的id
+            }
+        }
+
+        /// <summary>
         /// 安装NeoForge - 主入口
         /// </summary>
         public static async Task<bool> InstallNeoForgeAsync(

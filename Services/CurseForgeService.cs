@@ -147,6 +147,36 @@ namespace ObsMCLauncher.Services
         }
 
         /// <summary>
+        /// 获取指定文件信息（用于整合包安装：projectId + fileId）
+        /// </summary>
+        public static async Task<CurseForgeFile?> GetModFileInfoAsync(int projectId, int fileId)
+        {
+            try
+            {
+                var url = $"{API_BASE_URL}/v1/mods/{projectId}/files/{fileId}";
+
+                Debug.WriteLine($"[CurseForge] 获取文件信息: {projectId}/{fileId}");
+
+                var response = await _httpClient.GetAsync(url);
+                response.EnsureSuccessStatusCode();
+
+                var json = await response.Content.ReadAsStringAsync();
+                var options = new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                };
+
+                var result = JsonSerializer.Deserialize<CurseForgeResponse<CurseForgeFile>>(json, options);
+                return result?.Data;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[CurseForge] ❌ 获取文件信息失败: {ex.Message}");
+                return null;
+            }
+        }
+
+        /// <summary>
         /// 获取MOD的所有文件
         /// </summary>
         public static async Task<CurseForgeResponse<List<CurseForgeFile>>?> GetModFilesAsync(

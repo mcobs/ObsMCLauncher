@@ -565,13 +565,14 @@ namespace ObsMCLauncher.Services
 
                         var localPath = Path.Combine(librariesPath, libPath.Replace('/', Path.DirectorySeparatorChar));
 
-                        // 如果文件已存在，跳过
+                        // 如果文件已存在且大小大于0，跳过
                         if (File.Exists(localPath))
                         {
                             var fileInfo = new FileInfo(localPath);
                             if (fileInfo.Length > 0)
                             {
                                 downloadedLibs++;
+                                Debug.WriteLine($"[FabricService] 库文件已存在，跳过: {Path.GetFileName(localPath)}");
                                 continue;
                             }
                         }
@@ -586,19 +587,65 @@ namespace ObsMCLauncher.Services
                             totalLibs
                         );
 
-                        await DownloadFileAsync(libUrl, localPath, cancellationToken);
-                        downloadedLibs++;
-
-                        Debug.WriteLine($"[FabricService] 已下载库: {Path.GetFileName(localPath)} ({downloadedLibs}/{totalLibs})");
+                        try
+                        {
+                            await DownloadFileAsync(libUrl, localPath, cancellationToken);
+                            downloadedLibs++;
+                            Debug.WriteLine($"[FabricService] 已下载库: {Path.GetFileName(localPath)} ({downloadedLibs}/{totalLibs})");
+                        }
+                        catch (HttpRequestException httpEx) when (httpEx.Message.Contains("304"))
+                        {
+                            // 304 Not Modified - 如果文件已存在，视为成功
+                            if (File.Exists(localPath) && new FileInfo(localPath).Length > 0)
+                            {
+                                downloadedLibs++;
+                                Debug.WriteLine($"[FabricService] 库文件已是最新（304）: {Path.GetFileName(localPath)}");
+                            }
+                            else
+                            {
+                                Debug.WriteLine($"[FabricService] 收到304但文件不存在，可能需要重新下载: {library.Name}");
+                                throw;
+                            }
+                        }
                     }
                     catch (Exception ex)
                     {
                         Debug.WriteLine($"[FabricService] 下载库文件失败: {library.Name} - {ex.Message}");
-                        // 继续下载其他库
+                        // 继续下载其他库，但记录失败
                     }
                 }
 
                 Debug.WriteLine($"[FabricService] 库文件下载完成: {downloadedLibs}/{totalLibs}");
+                
+                // 验证关键库文件是否存在
+                var criticalLibraries = new[]
+                {
+                    "net/fabricmc/fabric-loader",
+                    "net/fabricmc/sponge-mixin"
+                };
+                
+                var missingCriticalLibs = new List<string>();
+                foreach (var libPrefix in criticalLibraries)
+                {
+                    var libDir = Path.Combine(librariesPath, libPrefix);
+                    if (Directory.Exists(libDir))
+                    {
+                        var jarFiles = Directory.GetFiles(libDir, "*.jar", SearchOption.AllDirectories);
+                        if (jarFiles.Length == 0)
+                        {
+                            missingCriticalLibs.Add(libPrefix);
+                        }
+                    }
+                    else
+                    {
+                        missingCriticalLibs.Add(libPrefix);
+                    }
+                }
+                
+                if (missingCriticalLibs.Count > 0)
+                {
+                    throw new Exception($"关键Fabric库文件缺失: {string.Join(", ", missingCriticalLibs)}。请检查网络连接或重试安装。");
+                }
             }
             catch (Exception ex)
             {
@@ -613,7 +660,36 @@ namespace ObsMCLauncher.Services
         private static async Task DownloadFileAsync(string url, string savePath, CancellationToken cancellationToken)
         {
             using var response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-            response.EnsureSuccessStatusCode();
+            
+            // 304 Not Modified 表示文件已是最新，视为成功
+            if (response.StatusCode == System.Net.HttpStatusCode.NotModified)
+            {
+                // 如果文件已存在，视为成功
+                if (File.Exists(savePath) && new FileInfo(savePath).Length > 0)
+                {
+                    Debug.WriteLine($"[FabricService] 文件已是最新（304）: {Path.GetFileName(savePath)}");
+                    return;
+                }
+                // 如果文件不存在但返回304，抛出异常让上层处理
+                throw new HttpRequestException($"收到304状态码但文件不存在: {Path.GetFileName(savePath)}");
+            }
+            
+            // 检查其他状态码
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new HttpRequestException($"下载失败: {response.StatusCode} - {url}");
+            }
+
+            // 如果文件已存在且大小匹配，跳过下载
+            if (File.Exists(savePath) && response.Content.Headers.ContentLength.HasValue)
+            {
+                var fileInfo = new FileInfo(savePath);
+                if (fileInfo.Length == response.Content.Headers.ContentLength.Value && fileInfo.Length > 0)
+                {
+                    Debug.WriteLine($"[FabricService] 文件已存在且大小匹配，跳过下载: {Path.GetFileName(savePath)}");
+                    return;
+                }
+            }
 
             using var contentStream = await response.Content.ReadAsStreamAsync(cancellationToken);
             using var fileStream = new FileStream(savePath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true);
