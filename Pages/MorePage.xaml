@@ -17,9 +17,9 @@
         <!-- 卡片样式 -->
         <Style x:Key="CardBorder" TargetType="Border">
             <Setter Property="Background" Value="{DynamicResource SurfaceElevatedBrush}"/>
-            <Setter Property="CornerRadius" Value="8"/>
-            <Setter Property="Padding" Value="18"/>
-            <Setter Property="Margin" Value="0,0,0,12"/>
+            <Setter Property="CornerRadius" Value="10"/>
+            <Setter Property="Padding" Value="20"/>
+            <Setter Property="Margin" Value="0,0,0,16"/>
             <Setter Property="Effect">
                 <Setter.Value>
                     <DropShadowEffect Color="Black" Opacity="0.3" BlurRadius="10" ShadowDepth="2"/>
@@ -76,7 +76,7 @@
                 Background="{DynamicResource SurfaceElevatedBrush}"
                 BorderThickness="0,0,0,1"
                 BorderBrush="{DynamicResource BorderBrush}"
-                Padding="20,12">
+                Padding="24,16">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                 <RadioButton x:Name="AboutTab"
                            Content="关于"
@@ -104,7 +104,7 @@
             <ScrollViewer x:Name="AboutContent"
                         VerticalScrollBarVisibility="Auto" 
                         HorizontalScrollBarVisibility="Disabled"
-                        Padding="15"
+                        Padding="24"
                         Visibility="Visible">
                 <StackPanel MaxWidth="800">
             <!-- Logo和标题 -->
@@ -362,7 +362,7 @@
             <ScrollViewer x:Name="PluginsContent"
                         VerticalScrollBarVisibility="Auto" 
                         HorizontalScrollBarVisibility="Disabled"
-                        Padding="15"
+                        Padding="24"
                         Visibility="Collapsed">
                 <StackPanel MaxWidth="800">
                     <!-- 插件管理卡片 -->

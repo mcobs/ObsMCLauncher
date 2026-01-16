@@ -15,7 +15,7 @@
     <Grid>
         <!-- 主内容区域 -->
         <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <Grid Margin="30">
+        <Grid Margin="24">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
@@ -26,11 +26,11 @@
                 <TextBlock Text="账号管理" 
                          FontSize="28" 
                          FontWeight="Bold"
-                         Margin="0,0,0,10"/>
+                         Margin="0,0,0,8"/>
                 <TextBlock Text="管理您的 Minecraft 账号，支持微软账户和离线模式" 
                          FontSize="14" 
                          Foreground="{DynamicResource TextSecondaryBrush}"
-                         Margin="0,0,0,25"/>
+                         Margin="0,0,0,16"/>
             </StackPanel>
 
             <!-- 账号列表和操作 -->
@@ -39,8 +39,8 @@
                 <!-- 添加账号按钮 -->
                 <Border Background="{DynamicResource SurfaceBrush}"
                         CornerRadius="10"
-                        Padding="25"
-                        Margin="0,0,0,20">
+                        Padding="20"
+                        Margin="0,0,0,16">
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>

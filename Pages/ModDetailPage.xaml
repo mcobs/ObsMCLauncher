@@ -8,14 +8,14 @@
       d:DesignHeight="700" d:DesignWidth="900"
       Background="{DynamicResource BackgroundBrush}">
 
-    <Grid Margin="30">
+    <Grid Margin="24">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
         <!-- 返回按钮和标题 -->
-        <StackPanel Grid.Row="0" Margin="0,0,0,12">
+        <StackPanel Grid.Row="0" Margin="0,0,0,16">
             <Button x:Name="BackButton"
                     Style="{StaticResource MaterialDesignFlatButton}"
                     HorizontalAlignment="Left"
@@ -32,7 +32,8 @@
             <!-- MOD基本信息 -->
             <Border Background="{DynamicResource SurfaceBrush}"
                     CornerRadius="10"
-                    Padding="15">
+                    Padding="20"
+                    Margin="0,0,0,16">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>

@@ -10,7 +10,7 @@
       Background="{DynamicResource BackgroundBrush}">
 
     <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <Grid Margin="20">
+        <Grid Margin="24">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
@@ -19,7 +19,7 @@
             </Grid.RowDefinitions>
 
             <!-- 返回按钮和标题 -->
-            <StackPanel Grid.Row="0" Margin="0,0,0,15">
+            <StackPanel Grid.Row="0" Margin="0,0,0,12">
                 <Button x:Name="BackButton"
                       Click="BackButton_Click"
                       Style="{StaticResource MaterialDesignFlatButton}"
@@ -52,8 +52,8 @@
             <Border Grid.Row="1"
                     Background="{DynamicResource SurfaceBrush}"
                     CornerRadius="10"
-                    Padding="18"
-                    Margin="0,0,0,15">
+                    Padding="20"
+                    Margin="0,0,0,16">
                 <StackPanel>
                     <TextBlock Text="版本信息" 
                              FontSize="16" 
@@ -72,11 +72,11 @@
                         </Grid.RowDefinitions>
 
                         <!-- 版本号 -->
-                        <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,10,15">
+                        <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,10,12">
                             <TextBlock Text="版本号" 
                                      FontSize="13" 
                                      Foreground="{DynamicResource TextSecondaryBrush}"
-                                     Margin="0,0,0,5"/>
+                                     Margin="0,0,0,8"/>
                             <TextBlock x:Name="VersionNumber"
                                      Text="1.20.4" 
                                      FontSize="16" 
@@ -84,11 +84,11 @@
                         </StackPanel>
 
                         <!-- 发布日期 -->
-                        <StackPanel Grid.Row="0" Grid.Column="1" Margin="10,0,0,15">
+                        <StackPanel Grid.Row="0" Grid.Column="1" Margin="10,0,0,12">
                             <TextBlock Text="发布日期" 
                                      FontSize="13" 
                                      Foreground="{DynamicResource TextSecondaryBrush}"
-                                     Margin="0,0,0,5"/>
+                                     Margin="0,0,0,8"/>
                             <TextBlock x:Name="ReleaseDate"
                                      Text="2023-12-07" 
                                      FontSize="16" 
@@ -96,11 +96,11 @@
                         </StackPanel>
 
                         <!-- 版本类型 -->
-                        <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,10,15">
+                        <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,10,12">
                             <TextBlock Text="版本类型" 
                                      FontSize="13" 
                                      Foreground="{DynamicResource TextSecondaryBrush}"
-                                     Margin="0,0,0,5"/>
+                                     Margin="0,0,0,8"/>
                             <Border x:Name="VersionTypeBorder"
                                   Background="{StaticResource PrimaryBrush}"
                                   CornerRadius="4"
@@ -114,11 +114,11 @@
                         </StackPanel>
 
                         <!-- 下载大小 -->
-                        <StackPanel Grid.Row="1" Grid.Column="1" Margin="10,0,0,15">
+                        <StackPanel Grid.Row="1" Grid.Column="1" Margin="10,0,0,12">
                             <TextBlock Text="下载大小" 
                                      FontSize="13" 
                                      Foreground="{DynamicResource TextSecondaryBrush}"
-                                     Margin="0,0,0,5"/>
+                                     Margin="0,0,0,8"/>
                             <TextBlock x:Name="DownloadSize"
                                      Text="计算中..." 
                                      FontSize="16" 
@@ -126,11 +126,11 @@
                         </StackPanel>
                         
                         <!-- 版本名称编辑 -->
-                        <StackPanel Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,5,0,0">
+                        <StackPanel Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,8,0,0">
                             <TextBlock Text="安装名称" 
                                      FontSize="13" 
                                      Foreground="{DynamicResource TextSecondaryBrush}"
-                                     Margin="0,0,0,5"/>
+                                     Margin="0,0,0,8"/>
                             <TextBox x:Name="VersionNameTextBox"
                                    materialDesign:HintAssist.Hint="自定义版本名称"
                                    Style="{StaticResource MaterialDesignOutlinedTextBox}"
@@ -144,7 +144,7 @@
                             </TextBox>
                             <TextBlock FontSize="11" 
                                      Foreground="{DynamicResource TextSecondaryBrush}"
-                                     Margin="0,5,0,0">
+                                     Margin="0,8,0,0">
                                 <Run Text="提示：版本将安装到 "/>
                                 <Run Text=".minecraft/versions/" FontWeight="SemiBold"/>
                                 <Run x:Name="VersionNamePreview" Text="Minecraft-1.20.4" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryBrush}"/>
@@ -159,24 +159,24 @@
                     Grid.Row="2"
                     Background="{DynamicResource SurfaceBrush}"
                     CornerRadius="10"
-                    Padding="18"
-                    Margin="0,0,0,15">
+                    Padding="20"
+                    Margin="0,0,0,16">
                 <StackPanel>
                     <TextBlock Text="加载器选择" 
                              FontSize="16" 
                              FontWeight="SemiBold"
-                             Margin="0,0,0,8"/>
+                             Margin="0,0,0,12"/>
                     <TextBlock Text="选择要安装的加载器（仅能选择一个，不选则安装原版）" 
                              FontSize="12" 
                              Foreground="{DynamicResource TextSecondaryBrush}"
-                             Margin="0,0,0,15"/>
+                             Margin="0,0,0,12"/>
 
                     <!-- 原版 -->
                     <RadioButton x:Name="VanillaRadio"
                                IsChecked="True"
                                GroupName="LoaderGroup"
                                Style="{StaticResource MaterialDesignRadioButton}"
-                               Margin="0,0,0,10"
+                               Margin="0,0,0,8"
                                Checked="LoaderRadio_Checked">
                         <Border Background="{StaticResource SurfaceElevatedBrush}"
                               CornerRadius="6"
@@ -212,7 +212,7 @@
                     <RadioButton x:Name="ForgeRadio"
                                GroupName="LoaderGroup"
                                Style="{StaticResource MaterialDesignRadioButton}"
-                               Margin="0,0,0,10"
+                               Margin="0,0,0,8"
                                Checked="LoaderRadio_Checked">
                         <Border Background="{StaticResource SurfaceElevatedBrush}"
                               CornerRadius="6"
@@ -259,7 +259,7 @@
                     <RadioButton x:Name="NeoForgeRadio"
                                GroupName="LoaderGroup"
                                Style="{StaticResource MaterialDesignRadioButton}"
-                               Margin="0,0,0,10"
+                               Margin="0,0,0,8"
                                Checked="LoaderRadio_Checked">
                         <Border Background="{StaticResource SurfaceElevatedBrush}"
                               CornerRadius="6"
@@ -306,7 +306,7 @@
                     <RadioButton x:Name="FabricRadio"
                                GroupName="LoaderGroup"
                                Style="{StaticResource MaterialDesignRadioButton}"
-                               Margin="0,0,0,10"
+                               Margin="0,0,0,8"
                                Checked="LoaderRadio_Checked">
                         <Border Background="{StaticResource SurfaceElevatedBrush}"
                               CornerRadius="6"
@@ -352,7 +352,7 @@
                     <!-- OptiFine (可与Forge一起使用) -->
                     <CheckBox x:Name="OptiFineCheckBox"
                                Style="{StaticResource MaterialDesignCheckBox}"
-                               Margin="0,0,0,10"
+                               Margin="0,0,0,8"
                                Checked="OptiFineCheckBox_CheckedChanged"
                                Unchecked="OptiFineCheckBox_CheckedChanged">
                         <Border Background="{StaticResource SurfaceElevatedBrush}"
@@ -448,7 +448,7 @@
             </Border>
 
             <!-- 底部操作按钮 -->
-            <Grid Grid.Row="3" Margin="0,0,0,15">
+            <Grid Grid.Row="3" Margin="0,0,0,16">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
@@ -463,11 +463,11 @@
                              Text="点击「开始安装」将下载并安装该版本" 
                              FontSize="12" 
                              Foreground="{DynamicResource TextSecondaryBrush}"
-                             Margin="0,5,0,0"/>
+                             Margin="0,8,0,0"/>
                     <TextBlock x:Name="DownloadAssetsHintText"
                              FontSize="11" 
                              Foreground="{StaticResource PrimaryBrush}"
-                             Margin="0,3,0,0"
+                             Margin="0,8,0,0"
                              Visibility="Collapsed">
                         <Run Text="✓ "/>
                         <Run Text="已启用完整下载：将下载所有游戏资源（库文件+Assets）"/>
@@ -498,12 +498,12 @@
                     Grid.Row="2"
                     Background="{DynamicResource SurfaceBrush}"
                     CornerRadius="10"
-                    Padding="30"
-                    Margin="0,0,0,20"
+                    Padding="20"
+                    Margin="0,0,0,16"
                     Visibility="Collapsed">
                 <StackPanel>
                     <!-- 标题 -->
-                    <Grid Margin="0,0,0,25">
+                    <Grid Margin="0,0,0,16">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
@@ -513,7 +513,7 @@
                             <TextBlock Text="正在下载版本" 
                                      FontSize="20" 
                                      FontWeight="Bold"
-                                     Margin="0,0,0,5"/>
+                                     Margin="0,0,0,8"/>
                             <TextBlock x:Name="DownloadVersionText"
                                      Text="Minecraft 1.20.4" 
                                      FontSize="14" 
@@ -530,8 +530,8 @@
                     </Grid>
 
                     <!-- 总进度条 -->
-                    <StackPanel Margin="0,0,0,25">
-                        <Grid Margin="0,0,0,10">
+                    <StackPanel Margin="0,0,0,16">
+                        <Grid Margin="0,0,0,8">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
@@ -555,8 +555,8 @@
                     </StackPanel>
 
                     <!-- 当前文件进度条 -->
-                    <StackPanel Margin="0,0,0,20">
-                        <Grid Margin="0,0,0,10">
+                    <StackPanel Margin="0,0,0,16">
+                        <Grid Margin="0,0,0,8">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
@@ -582,8 +582,8 @@
                     <!-- 详细信息 -->
                     <Border Background="{StaticResource SurfaceElevatedBrush}"
                           CornerRadius="8"
-                          Padding="20"
-                          Margin="0,0,0,20">
+                          Padding="16"
+                          Margin="0,0,0,16">
                         <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
@@ -593,7 +593,7 @@
                             </Grid.RowDefinitions>
                             
                             <!-- 状态 -->
-                            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,12">
+                            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
                                 <materialDesign:PackIcon Kind="Information" 
                                                        Width="18" 
                                                        Height="18"
@@ -613,7 +613,7 @@
                     </StackPanel>
 
                             <!-- 当前文件 -->
-                            <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,12">
+                            <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
                         <materialDesign:PackIcon Kind="File" 
                                                        Width="18" 
                                                        Height="18"
@@ -633,7 +633,7 @@
                             </StackPanel>
 
                             <!-- 下载速度 -->
-                            <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,12">
+                            <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,8">
                                 <materialDesign:PackIcon Kind="Speedometer" 
                                                        Width="18" 
                                                        Height="18"

@@ -14,7 +14,7 @@
 
     <Grid>
         <!-- 版本列表内容 -->
-        <Grid x:Name="VersionListGrid" Margin="30">
+        <Grid x:Name="VersionListGrid" Margin="24">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
@@ -25,11 +25,11 @@
                 <TextBlock Text="版本管理" 
                          FontSize="28" 
                          FontWeight="Bold"
-                         Margin="0,0,0,10"/>
+                         Margin="0,0,0,8"/>
                 <TextBlock Text="管理已安装的版本或下载新版本" 
                          FontSize="14" 
                          Foreground="{DynamicResource TextSecondaryBrush}"
-                         Margin="0,0,0,25"/>
+                         Margin="0,0,0,16"/>
             </StackPanel>
 
             <!-- Tab 控件 -->
