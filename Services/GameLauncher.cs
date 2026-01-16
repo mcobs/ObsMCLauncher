@@ -47,19 +47,7 @@ namespace ObsMCLauncher.Services
                 Debug.WriteLine($"版本: {versionId}");
                 Debug.WriteLine($"游戏目录: {config.GameDirectory}");
 
-                // 1. 验证Java路径
-                onProgressUpdate?.Invoke("正在验证Java环境...");
-                cancellationToken.ThrowIfCancellationRequested();
-                var actualJavaPath = config.GetActualJavaPath(versionId);
-                if (!File.Exists(actualJavaPath))
-                {
-                    LastError = $"Java路径不存在: {actualJavaPath}";
-                    Debug.WriteLine($"❌ {LastError}");
-                    return false;
-                }
-                Debug.WriteLine($"使用Java: {actualJavaPath}");
-
-                // 2. 读取版本JSON
+                // 1. 先读取版本JSON以获取实际的Minecraft版本号（用于Java选择）
                 onProgressUpdate?.Invoke("正在读取版本信息...");
                 cancellationToken.ThrowIfCancellationRequested();
                 var versionJsonPath = Path.Combine(config.GameDirectory, "versions", versionId, $"{versionId}.json");
@@ -84,11 +72,25 @@ namespace ObsMCLauncher.Services
                 }
 
                 // 处理inheritsFrom（合并父版本的libraries和其他信息）
+                string actualMcVersion = versionId; // 默认使用版本ID
                 if (!string.IsNullOrEmpty(versionInfo.InheritsFrom))
                 {
                     Debug.WriteLine($"检测到inheritsFrom: {versionInfo.InheritsFrom}，开始合并父版本信息");
+                    actualMcVersion = versionInfo.InheritsFrom; // 使用实际的Minecraft版本号
                     versionInfo = MergeInheritedVersion(config.GameDirectory, versionId, versionInfo);
                 }
+
+                // 2. 验证Java路径（使用实际的Minecraft版本号）
+                onProgressUpdate?.Invoke("正在验证Java环境...");
+                cancellationToken.ThrowIfCancellationRequested();
+                var actualJavaPath = config.GetActualJavaPath(actualMcVersion);
+                if (!File.Exists(actualJavaPath))
+                {
+                    LastError = $"Java路径不存在: {actualJavaPath}";
+                    Debug.WriteLine($"❌ {LastError}");
+                    return false;
+                }
+                Debug.WriteLine($"使用Java: {actualJavaPath}");
 
                 Debug.WriteLine($"版本JSON路径: {versionJsonPath}");
                 Debug.WriteLine($"MainClass: {versionInfo.MainClass}");
@@ -258,18 +260,7 @@ namespace ObsMCLauncher.Services
                 // 它期望资源文件在JAR内部或游戏目录的根级别
                 // 因此，对于1.5.2，跳过所有现代资源处理可以加快启动速度
 
-                // 1. 验证Java路径
-                onProgressUpdate?.Invoke("正在验证Java环境...");
-                cancellationToken.ThrowIfCancellationRequested();
-                var actualJavaPath = config.GetActualJavaPath(versionId);
-                Debug.WriteLine($"Java路径: {actualJavaPath}");
-                if (!File.Exists(actualJavaPath))
-                {
-                    LastError = $"Java可执行文件不存在\n路径: {actualJavaPath}";
-                    throw new FileNotFoundException(LastError);
-                }
-
-                // 2. 读取版本JSON
+                // 1. 先读取版本JSON以获取实际的Minecraft版本号（用于Java选择）
                 onProgressUpdate?.Invoke("正在读取游戏版本信息...");
                 cancellationToken.ThrowIfCancellationRequested();
                 var versionJsonPath = Path.Combine(config.GameDirectory, "versions", versionId, $"{versionId}.json");
@@ -294,10 +285,23 @@ namespace ObsMCLauncher.Services
                 }
 
                 // 处理inheritsFrom（合并父版本的libraries和其他信息）
+                string actualMcVersion = versionId; // 默认使用版本ID
                 if (!string.IsNullOrEmpty(versionInfo.InheritsFrom))
                 {
                     Debug.WriteLine($"检测到inheritsFrom: {versionInfo.InheritsFrom}，开始合并父版本信息");
+                    actualMcVersion = versionInfo.InheritsFrom; // 使用实际的Minecraft版本号
                     versionInfo = MergeInheritedVersion(config.GameDirectory, versionId, versionInfo);
+                }
+
+                // 2. 验证Java路径（使用实际的Minecraft版本号）
+                onProgressUpdate?.Invoke("正在验证Java环境...");
+                cancellationToken.ThrowIfCancellationRequested();
+                var actualJavaPath = config.GetActualJavaPath(actualMcVersion);
+                Debug.WriteLine($"Java路径: {actualJavaPath}");
+                if (!File.Exists(actualJavaPath))
+                {
+                    LastError = $"Java可执行文件不存在\n路径: {actualJavaPath}";
+                    throw new FileNotFoundException(LastError);
                 }
 
                 Debug.WriteLine($"MainClass: {versionInfo.MainClass}");

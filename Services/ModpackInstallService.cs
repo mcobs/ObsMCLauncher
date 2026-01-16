@@ -382,12 +382,14 @@ namespace ObsMCLauncher.Services
                         return;
                     }
 
-                    // 根据ClassId确定目标目录
+                    // 根据ClassId和文件名确定目标目录
                     string destPath;
                     var safeFileName = string.IsNullOrWhiteSpace(fileInfo.FileName) ? $"{f.ProjectID}-{f.FileID}" : fileInfo.FileName;
                     var fileNameLower = safeFileName.ToLowerInvariant();
 
                     int classId = projectInfo.Data.ClassId;
+                    
+                    // 优先通过ClassId判断
                     if (classId == CurseForgeService.SECTION_MODS)
                     {
                         destPath = Path.Combine(modsDir, safeFileName);
@@ -395,24 +397,45 @@ namespace ObsMCLauncher.Services
                     }
                     else if (classId == CurseForgeService.SECTION_RESOURCE_PACKS)
                     {
-                        destPath = Path.Combine(resourcepacksDir, safeFileName);
-                        Interlocked.Increment(ref resourcepacksCount);
+                        // 资源包：进一步判断是否是光影包
+                        if (fileNameLower.Contains("shader") || fileNameLower.Contains("shaders") || 
+                            fileNameLower.Contains("optifine") || fileNameLower.Contains("iris") ||
+                            fileNameLower.Contains("sodium") || fileNameLower.Contains("canvas"))
+                        {
+                            destPath = Path.Combine(shaderpacksDir, safeFileName);
+                            Interlocked.Increment(ref shaderpacksCount);
+                        }
+                        else
+                        {
+                            destPath = Path.Combine(resourcepacksDir, safeFileName);
+                            Interlocked.Increment(ref resourcepacksCount);
+                        }
                     }
                     else
                     {
-                        // 其他类型：通过文件名关键词判断
-                        if (fileNameLower.Contains("shader") || fileNameLower.Contains("shaders"))
+                        // 其他类型或ClassId未知：通过文件名和扩展名判断
+                        if (fileNameLower.Contains("shader") || fileNameLower.Contains("shaders") || 
+                            fileNameLower.Contains("optifine") || fileNameLower.Contains("iris") ||
+                            fileNameLower.Contains("sodium") || fileNameLower.Contains("canvas"))
                         {
                             destPath = Path.Combine(shaderpacksDir, safeFileName);
                             Interlocked.Increment(ref shaderpacksCount);
                         }
                         else if (fileNameLower.EndsWith(".jar"))
                         {
+                            // .jar文件通常是MOD
                             destPath = Path.Combine(modsDir, safeFileName);
                             Interlocked.Increment(ref modsCount);
                         }
+                        else if (fileNameLower.EndsWith(".zip") || fileNameLower.EndsWith(".mcpack"))
+                        {
+                            // .zip或.mcpack文件通常是资源包
+                            destPath = Path.Combine(resourcepacksDir, safeFileName);
+                            Interlocked.Increment(ref resourcepacksCount);
+                        }
                         else
                         {
+                            // 默认归类为资源包
                             destPath = Path.Combine(resourcepacksDir, safeFileName);
                             Interlocked.Increment(ref resourcepacksCount);
                         }

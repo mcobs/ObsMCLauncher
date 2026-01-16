@@ -764,7 +764,7 @@ namespace ObsMCLauncher.Services
 
             foreach (var args in argsList)
             {
-                if (await TryRunForgeInstallerWithArgs(installerPath, gameDirectory, args, cancellationToken))
+                if (await TryRunForgeInstallerWithArgs(installerPath, gameDirectory, mcVersion, args, cancellationToken))
                     return true;
             }
 
@@ -784,12 +784,24 @@ namespace ObsMCLauncher.Services
         private static async Task<bool> TryRunForgeInstallerWithArgs(
             string installerPath,
             string gameDirectory,
+            string mcVersion,
             string arguments,
             CancellationToken cancellationToken = default)
         {
-            // 优先使用用户配置的 Java，这对于安装器兼容性至关重要
+            // 根据Minecraft版本选择Java，这对于旧版本Forge兼容性至关重要
             var config = LauncherConfig.Load();
-            var javaPath = config.JavaPath;
+            string javaPath;
+            
+            // 根据Minecraft版本选择Java
+            if (!string.IsNullOrEmpty(mcVersion))
+            {
+                javaPath = config.GetActualJavaPath(mcVersion);
+                Debug.WriteLine($"[Forge] 根据Minecraft版本 {mcVersion} 选择Java: {javaPath}");
+            }
+            else
+            {
+                javaPath = config.JavaPath ?? "java";
+            }
 
             if (string.IsNullOrEmpty(javaPath) || !File.Exists(javaPath))
             {
