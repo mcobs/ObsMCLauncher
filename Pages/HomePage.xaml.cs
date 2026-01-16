@@ -433,9 +433,8 @@ namespace ObsMCLauncher.Pages
                                 8
                             );
                         }
-                    }
-                    }
-                    } // ⭐ 结束 else (!isVeryOldVersion) 块
+                    } // 结束 if (!assetsResult.Success) 块
+                    } // 结束 else (!isVeryOldVersion) 块
                     
                     // 8. Assets检查完成后，正式启动游戏
                     NotificationManager.Instance.UpdateNotification(
