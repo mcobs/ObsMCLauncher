@@ -102,13 +102,13 @@ namespace ObsMCLauncher.Services
 
                 var result = JsonSerializer.Deserialize<CurseForgeResponse<List<CurseForgeMod>>>(json, options);
                 
-                Debug.WriteLine($"[CurseForge] ✅ 搜索成功，找到 {result?.Data?.Count ?? 0} 个MOD");
+                Debug.WriteLine($"[CurseForge] 搜索成功，找到 {result?.Data?.Count ?? 0} 个MOD");
                 
                 return result;
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[CurseForge] ❌ 搜索失败: {ex.Message}");
+                Debug.WriteLine($"[CurseForge] 搜索失败: {ex.Message}");
                 return null;
             }
         }
@@ -135,13 +135,13 @@ namespace ObsMCLauncher.Services
 
                 var result = JsonSerializer.Deserialize<CurseForgeResponse<CurseForgeMod>>(json, options);
                 
-                Debug.WriteLine($"[CurseForge] ✅ 获取MOD详情成功: {result?.Data?.Name}");
+                Debug.WriteLine($"[CurseForge] 获取MOD详情成功: {result?.Data?.Name}");
                 
                 return result;
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[CurseForge] ❌ 获取MOD详情失败: {ex.Message}");
+                Debug.WriteLine($"[CurseForge] 获取MOD详情失败: {ex.Message}");
                 return null;
             }
         }
@@ -171,7 +171,7 @@ namespace ObsMCLauncher.Services
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[CurseForge] ❌ 获取文件信息失败: {ex.Message}");
+                Debug.WriteLine($"[CurseForge] 获取文件信息失败: {ex.Message}");
                 return null;
             }
         }
@@ -221,7 +221,7 @@ namespace ObsMCLauncher.Services
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[CurseForge] ❌ 获取MOD文件列表失败: {ex.Message}");
+                Debug.WriteLine($"[CurseForge] 获取MOD文件列表失败: {ex.Message}");
                 return null;
             }
         }

@@ -92,7 +92,6 @@ namespace ObsMCLauncher.Pages
                 if (versionInfo.Type == "snapshot")
                 {
                     iconPath = "/Assets/LoaderIcons/vanilia_snapshot.png";
-                    System.Diagnostics.Debug.WriteLine($"[VanillaIcon] 快照版本 {currentVersion}，使用 vanilla_snapshot.png");
                 }
                 // 判断是否为正式版
                 else if (versionInfo.Type == "release")
@@ -101,19 +100,16 @@ namespace ObsMCLauncher.Pages
                     if (IsVersionLessThanOrEqual(currentVersion, "1.12.2"))
                     {
                         iconPath = "/Assets/LoaderIcons/vanilla_old.png";
-                        System.Diagnostics.Debug.WriteLine($"[VanillaIcon] 旧版本 {currentVersion} (<=1.12.2)，使用 vanilla_old.png");
                     }
                     else
                     {
                         iconPath = "/Assets/LoaderIcons/vanilla.png";
-                        System.Diagnostics.Debug.WriteLine($"[VanillaIcon] 新版本 {currentVersion} (>1.12.2)，使用 vanilla.png");
                     }
                 }
                 // 其他版本类型（old_alpha, old_beta 等）
                 else
                 {
                     iconPath = "/Assets/LoaderIcons/vanilla_old.png";
-                    System.Diagnostics.Debug.WriteLine($"[VanillaIcon] 远古版本 {currentVersion} (类型: {versionInfo.Type})，使用 vanilla_old.png");
                 }
                 
                 // 设置图标
@@ -123,7 +119,6 @@ namespace ObsMCLauncher.Pages
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[VanillaIcon] 设置图标失败: {ex.Message}");
             }
         }
         
@@ -162,7 +157,6 @@ namespace ObsMCLauncher.Pages
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[VanillaIcon] 版本比较失败: {ex.Message}");
                 return false;
             }
         }
@@ -267,7 +261,6 @@ namespace ObsMCLauncher.Pages
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"获取下载大小失败: {ex.Message}");
             }
         }
         
@@ -390,14 +383,12 @@ namespace ObsMCLauncher.Pages
             
             try
             {
-                System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] 检查Forge支持: {currentVersion}");
 
                 // 检查Forge是否支持当前MC版本
                 var supportedVersions = await ForgeService.GetSupportedMinecraftVersionsAsync();
                 
                 if (!supportedVersions.Contains(currentVersion))
                 {
-                    System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] Forge不支持版本 {currentVersion}");
                     
                     _ = Dispatcher.BeginInvoke(new Action(() =>
                     {
@@ -418,7 +409,6 @@ namespace ObsMCLauncher.Pages
                 }
 
                 // 获取Forge版本列表
-                System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] 获取Forge版本列表...");
                 var forgeVersions = await ForgeService.GetForgeVersionsAsync(currentVersion);
 
                 _ = Dispatcher.BeginInvoke(new Action(() =>
@@ -463,14 +453,12 @@ namespace ObsMCLauncher.Pages
                                 ForgeRadio.ToolTip = $"Forge for Minecraft {currentVersion} ({forgeVersions.Count} 个版本可用)";
                             }
 
-                            System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] 加载了 {forgeVersions.Count} 个Forge版本，自动选择: {forgeVersions[0].Version}");
                         }
                     }
                 }));
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] 加载Forge版本失败: {ex.Message}");
                 
                 _ = Dispatcher.BeginInvoke(new Action(() =>
                 {
@@ -519,7 +507,6 @@ namespace ObsMCLauncher.Pages
             
             try
             {
-                System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] 获取NeoForge版本列表 for {currentVersion}...");
 
                 // 直接获取NeoForge版本列表（如果不支持会返回空列表）
                 var neoforgeVersions = await NeoForgeService.GetNeoForgeVersionsAsync(currentVersion);
@@ -548,7 +535,6 @@ namespace ObsMCLauncher.Pages
                                 NeoForgeRadio.ToolTip = $"NeoForge暂不支持 Minecraft {currentVersion}";
                             }
                             
-                            System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] NeoForge不支持版本 {currentVersion}");
                         }
                         else
                         {
@@ -571,14 +557,12 @@ namespace ObsMCLauncher.Pages
                                 NeoForgeRadio.ToolTip = $"安装NeoForge Mod加载器（共 {neoforgeVersions.Count} 个版本）";
                             }
 
-                            System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] NeoForge版本列表加载完成，共 {neoforgeVersions.Count} 个版本");
                         }
                     }
                 }));
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] 加载NeoForge版本列表失败: {ex.Message}");
                 
                 _ = Dispatcher.BeginInvoke(new Action(() =>
                 {
@@ -633,14 +617,12 @@ namespace ObsMCLauncher.Pages
             
             try
             {
-                System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] 检查Fabric支持: {currentVersion}");
 
                 // 检查Fabric是否支持当前MC版本
                 var supportedVersions = await FabricService.GetSupportedMinecraftVersionsAsync();
                 
                 if (!supportedVersions.Contains(currentVersion))
                 {
-                    System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] Fabric不支持版本 {currentVersion}");
                     
                     _ = Dispatcher.BeginInvoke(new Action(() =>
                     {
@@ -707,7 +689,6 @@ namespace ObsMCLauncher.Pages
                             FabricRadio.ToolTip = $"Fabric for Minecraft {currentVersion} ({fabricVersions.Count} 个版本可用)";
                         }
 
-                        System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] 加载了 {fabricVersions.Count} 个Fabric版本，自动选择: {fabricVersions[0].Version}");
                     }
                     else
                     {
@@ -728,7 +709,6 @@ namespace ObsMCLauncher.Pages
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] 加载Fabric版本失败: {ex.Message}");
                 
                 _ = Dispatcher.BeginInvoke(new Action(() =>
                 {
@@ -777,7 +757,6 @@ namespace ObsMCLauncher.Pages
             
             try
             {
-                System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] 正在获取OptiFine版本列表: {currentVersion}");
 
                 // 创建 OptiFineService 实例
                 var optifineService = new OptiFineService(DownloadSourceManager.Instance);
@@ -831,11 +810,9 @@ namespace ObsMCLauncher.Pages
                             OptiFineCheckBox.ToolTip = $"OptiFine for Minecraft {currentVersion} ({optifineVersions.Count} 个版本可用)";
                         }
 
-                        System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] 加载了 {optifineVersions.Count} 个OptiFine版本，自动选择: {optifineVersions[0].FullVersion}");
                     }
                     else
                     {
-                        System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] 未找到 Minecraft {currentVersion} 的OptiFine版本");
                         
                         if (OptiFineCheckBox != null)
                         {
@@ -860,7 +837,6 @@ namespace ObsMCLauncher.Pages
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] 加载OptiFine版本失败: {ex.Message}");
                 
                 _ = Dispatcher.BeginInvoke(new Action(() =>
                 {
@@ -909,26 +885,20 @@ namespace ObsMCLauncher.Pages
             
             try
             {
-                System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] 检查Quilt支持: {currentVersion}");
 
                 // 检查Quilt是否支持当前MC版本
                 var supportedVersions = await QuiltService.GetSupportedMinecraftVersionsAsync();
-                System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] 获取到的支持版本数量: {supportedVersions.Count}");
                 
                 if (supportedVersions.Count > 0)
                 {
-                    System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] 支持的版本示例: {string.Join(", ", supportedVersions.Take(5))}");
-                    System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] 当前版本 '{currentVersion}' 是否在列表中: {supportedVersions.Contains(currentVersion)}");
                 }
 
                 // 直接尝试获取Quilt版本列表（如果能获取到说明支持）
-                System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] 尝试获取 MC {currentVersion} 的Quilt版本列表");
                 var quiltVersions = await QuiltService.GetQuiltVersionsAsync(currentVersion);
                 
                 // 如果没有获取到版本，说明不支持
                 if (quiltVersions == null || quiltVersions.Count == 0)
                 {
-                    System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] Quilt不支持版本 {currentVersion} 或获取失败");
                     
                     _ = Dispatcher.BeginInvoke(new Action(() =>
                     {
@@ -992,7 +962,6 @@ namespace ObsMCLauncher.Pages
                             QuiltRadio.ToolTip = $"Quilt for Minecraft {currentVersion} ({quiltVersions.Count} 个版本可用)";
                         }
 
-                        System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] 加载了 {quiltVersions.Count} 个Quilt版本，自动选择: {quiltVersions[0].Version}");
                     }
                     else
                     {
@@ -1013,7 +982,6 @@ namespace ObsMCLauncher.Pages
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] 加载Quilt版本失败: {ex.Message}");
                 
                 _ = Dispatcher.BeginInvoke(new Action(() =>
                 {
@@ -1103,7 +1071,6 @@ namespace ObsMCLauncher.Pages
                         OptiFineDescriptionText.Text = $"{loaderName} 不支持与 OptiFine 一起安装";
                     }
                     
-                    System.Diagnostics.Debug.WriteLine($"[VersionDetailPage] OptiFine 已禁用（选择了不兼容的加载器）");
                 }
             }
 
@@ -1449,7 +1416,6 @@ namespace ObsMCLauncher.Pages
             var config = LauncherConfig.Load();
             var gameDirectory = config.GameDirectory;
 
-            System.Diagnostics.Debug.WriteLine($"开始下载版本 {currentVersion} (安装名称: {customVersionName}) 到目录 {gameDirectory}");
 
             // 显示进度面板，隐藏安装按钮和加载器选择（带动画）
             ShowDownloadPanel();
@@ -1534,7 +1500,6 @@ namespace ObsMCLauncher.Pages
                         // 检查是否需要下载Assets资源文件
                         if (config.DownloadAssetsWithGame)
                         {
-                            System.Diagnostics.Debug.WriteLine("配置已启用，开始下载Assets资源文件...");
                             
                             // Assets 阶段进度从 60% 开始，占剩余的 40%
                             const double assetsBaseProgress = 60.0;
@@ -1587,7 +1552,6 @@ namespace ObsMCLauncher.Pages
 
                             if (!assetsResult.Success)
                             {
-                                System.Diagnostics.Debug.WriteLine($"⚠️ Assets资源下载完成，但有 {assetsResult.FailedAssets} 个文件失败");
                                 
                                 if (assetsResult.FailedAssets > 0)
                                 {
@@ -1601,7 +1565,6 @@ namespace ObsMCLauncher.Pages
                             }
                             else
                             {
-                                System.Diagnostics.Debug.WriteLine("✅ Assets资源下载完成");
                             }
                             
                             // Assets 下载完成，确保进度条到达 100%
@@ -1679,7 +1642,6 @@ namespace ObsMCLauncher.Pages
             }
             catch (OperationCanceledException)
             {
-                System.Diagnostics.Debug.WriteLine($"下载已被用户取消");
                 
                 // 标记任务已取消 (由 DownloadTaskManager 的 CancelTask 自动处理)
                 _currentDownloadTaskId = null;
@@ -1692,9 +1654,7 @@ namespace ObsMCLauncher.Pages
                     {
                         if (Directory.Exists(versionDirToDelete))
                         {
-                            System.Diagnostics.Debug.WriteLine($"正在后台删除已下载的文件夹: {versionDirToDelete}");
                             Directory.Delete(versionDirToDelete, true); // 递归删除
-                            System.Diagnostics.Debug.WriteLine($"✅ 已删除文件夹: {versionDirToDelete}");
                             
                             // 删除完成后在UI线程显示通知
                             Dispatcher.BeginInvoke(new Action(() =>
@@ -1710,13 +1670,11 @@ namespace ObsMCLauncher.Pages
                     }
                     catch (Exception deleteEx)
                     {
-                        System.Diagnostics.Debug.WriteLine($"删除文件夹失败: {deleteEx.Message}");
                     }
                 });
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"下载出错: {ex.Message}");
                 
                 // 标记任务失败
                 if (_currentDownloadTaskId != null)
@@ -1852,7 +1810,6 @@ namespace ObsMCLauncher.Pages
                 // 解析libraries数组
                 if (!root.TryGetProperty("libraries", out var librariesElement))
                 {
-                    System.Diagnostics.Debug.WriteLine("[Forge] version.json中没有libraries字段");
                     return;
                 }
                 
@@ -1889,7 +1846,6 @@ namespace ObsMCLauncher.Pages
                 
                 if (libraries.Count == 0)
                 {
-                    System.Diagnostics.Debug.WriteLine("[Forge] 没有库文件需要下载");
                     return;
                 }
                 
@@ -1913,11 +1869,9 @@ namespace ObsMCLauncher.Pages
 
                 if (forgeLibs.Count == 0)
                 {
-                    System.Diagnostics.Debug.WriteLine("[Forge] 没有Forge库文件需要下载");
                     return;
                 }
 
-                System.Diagnostics.Debug.WriteLine($"[Forge] 检测到 {forgeLibs.Count} 个Forge库文件");
 
                 var downloadService = DownloadSourceManager.Instance.CurrentService;
                 
@@ -1981,7 +1935,6 @@ namespace ObsMCLauncher.Pages
                         // 跳过无法构建URL或路径的库
                         if (string.IsNullOrEmpty(downloadUrl) || string.IsNullOrEmpty(savePath))
                         {
-                            System.Diagnostics.Debug.WriteLine($"[Forge] ⚠️ 跳过库（无URL）: {lib.Name}");
                             skipCount++;
                             continue;
                         }
@@ -1989,7 +1942,6 @@ namespace ObsMCLauncher.Pages
                         // 检查文件是否已存在
                         if (File.Exists(savePath))
                         {
-                            System.Diagnostics.Debug.WriteLine($"[Forge] ✓ 库已存在: {lib.Name}");
                             successCount++;
                             continue;
                         }
@@ -2002,7 +1954,6 @@ namespace ObsMCLauncher.Pages
                         }
 
                         // 下载文件
-                        System.Diagnostics.Debug.WriteLine($"[Forge] 📥 下载: {lib.Name}");
                         System.Diagnostics.Debug.WriteLine($"[Forge]    URL: {downloadUrl}");
                         
                         var response = await _httpClient.GetAsync(downloadUrl, _downloadCancellationToken!.Token);

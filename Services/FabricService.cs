@@ -96,7 +96,7 @@ namespace ObsMCLauncher.Services
         // Fabric Meta API
         private const string FABRIC_META_URL = "https://meta.fabricmc.net";
         
-        // BMCLAPI镜像源
+        // 使用镜像源获取Fabric元数据
         private const string BMCL_FABRIC_META_URL = "https://bmclapi2.bangbang93.com/fabric-meta";
         private const string BMCL_MAVEN_URL = "https://bmclapi2.bangbang93.com/maven";
 
@@ -471,7 +471,7 @@ namespace ObsMCLauncher.Services
                                     {
                                         writer.WritePropertyName("assetIndex");
                                         assetIndex.WriteTo(writer);
-                                        Debug.WriteLine($"[Fabric] ✅ 已从原版JSON复制assetIndex: {assetIndex.GetProperty("id").GetString()}");
+                                        Debug.WriteLine($"[Fabric] 已从原版JSON复制assetIndex: {assetIndex.GetProperty("id").GetString()}");
                                     }
                                 }
                             }

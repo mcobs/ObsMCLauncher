@@ -173,7 +173,6 @@ namespace ObsMCLauncher.Pages
                     {
                         InstalledVersionComboBox.SelectedIndex = i;
                         _selectedVersionId = item.Tag as string;
-                        Debug.WriteLine($"[ResourcesPage] 默认选择版本: {_selectedVersionId}");
                         break;
                     }
                 }
@@ -186,7 +185,6 @@ namespace ObsMCLauncher.Pages
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[ResourcesPage] 加载版本列表失败: {ex.Message}");
                 InstalledVersionComboBox.Items.Add(new ComboBoxItem 
                 { 
                     Content = "加载失败", 
@@ -230,14 +228,12 @@ namespace ObsMCLauncher.Pages
                 if (item.Tag is string versionId)
                 {
                     _selectedVersionId = versionId;
-                    Debug.WriteLine($"[ResourcesPage] 选择的版本: {versionId}");
                     SavePageState(); // 保存选择
                 }
                 else
                 {
                     // 选中的是不可用项（如"未找到已安装的版本"）
                     _selectedVersionId = null;
-                    Debug.WriteLine($"[ResourcesPage] 未选择有效版本");
                 }
             }
         }
@@ -259,7 +255,6 @@ namespace ObsMCLauncher.Pages
                 _currentResourceType = tag;
                 PageState.CurrentResourceType = tag;
                 
-                Debug.WriteLine($"[ResourcesPage] 切换到资源类型: {tag}");
                 
                 // 立即清空列表，避免显示旧内容
                 ResourceListPanel.Children.Clear();
@@ -311,7 +306,6 @@ namespace ObsMCLauncher.Pages
                     .ToList();
             }
 
-            Debug.WriteLine($"[ResourcesPage] 保存 {_currentResourceType} 状态: {state.CachedCurseForgeMods?.Count ?? 0} CF资源, {state.CachedModrinthMods?.Count ?? 0} Modrinth资源");
         }
 
         /// <summary>
@@ -322,7 +316,6 @@ namespace ObsMCLauncher.Pages
             if (!PageState.ResourceStates.ContainsKey(_currentResourceType))
             {
                 // 首次访问该资源类型，加载默认数据
-                Debug.WriteLine($"[ResourcesPage] {_currentResourceType} 首次访问，异步加载数据");
                 _ = LoadDefaultResourcesAsync();
                 return;
             }
@@ -341,17 +334,14 @@ namespace ObsMCLauncher.Pages
             if (_currentSource == ResourceSource.CurseForge && state.CachedCurseForgeMods != null && state.CachedCurseForgeMods.Count > 0)
             {
                 DisplayCurseForgeMods(state.CachedCurseForgeMods, clearList: false);
-                Debug.WriteLine($"[ResourcesPage] 恢复 {_currentResourceType} CurseForge资源: {state.CachedCurseForgeMods.Count} 个");
             }
             else if (_currentSource == ResourceSource.Modrinth && state.CachedModrinthMods != null && state.CachedModrinthMods.Count > 0)
             {
                 DisplayModrinthMods(state.CachedModrinthMods, clearList: false);
-                Debug.WriteLine($"[ResourcesPage] 恢复 {_currentResourceType} Modrinth资源: {state.CachedModrinthMods.Count} 个");
             }
             else
             {
                 // 缓存为空，重新加载
-                Debug.WriteLine($"[ResourcesPage] {_currentResourceType} 缓存为空，异步加载数据");
                 _ = LoadDefaultResourcesAsync();
             }
         }
@@ -370,7 +360,6 @@ namespace ObsMCLauncher.Pages
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[ResourcesPage] 加载默认资源失败: {ex.Message}");
                 ShowEmptyState();
             }
         }
@@ -400,7 +389,6 @@ namespace ObsMCLauncher.Pages
                 _currentSource = tag == "Modrinth" ? ResourceSource.Modrinth : ResourceSource.CurseForge;
                 _currentPage = 0;
                 
-                Debug.WriteLine($"[ResourcesPage] 切换下载源: {_currentSource}");
                 
                 // 清空当前搜索结果
                 if (ResourceListPanel != null)
@@ -458,7 +446,6 @@ namespace ObsMCLauncher.Pages
                 int.TryParse(sortTag, out sortField);
             }
 
-            Debug.WriteLine($"[ResourcesPage] 搜索MOD - 来源: {_currentSource}, 关键词: '{searchText}', 中文搜索: {isChineseSearch}, 版本: '{gameVersion}', 排序: {sortField}");
 
             ShowLoading();
 
@@ -475,7 +462,6 @@ namespace ObsMCLauncher.Pages
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[ResourcesPage] ❌ 搜索失败: {ex.Message}");
                 NotificationManager.Instance.ShowNotification("错误", $"搜索失败: {ex.Message}", NotificationType.Error);
                 ShowEmptyState();
             }
@@ -535,7 +521,6 @@ namespace ObsMCLauncher.Pages
             if (isChineseSearch)
             {
                 // 中文搜索：先获取更多结果，然后在本地过滤
-                Debug.WriteLine("[ResourcesPage] 执行CurseForge中文搜索，获取更多结果进行过滤");
                 
                 var result = await CurseForgeService.SearchModsAsync(
                     searchFilter: "",  // 不使用英文搜索词
@@ -562,7 +547,6 @@ namespace ObsMCLauncher.Pages
                         return ModTranslationService.Instance.MatchesSearch(mod.Name, translation, searchText);
                     }).ToList();
 
-                    Debug.WriteLine($"[ResourcesPage] 中文搜索匹配到 {mods.Count} 个MOD");
                 }
                 else
                 {
@@ -589,12 +573,10 @@ namespace ObsMCLauncher.Pages
             if (mods.Count > 0)
                 {
                 DisplayCurseForgeMods(mods);
-                Debug.WriteLine($"[ResourcesPage] ✅ 显示 {mods.Count} 个CurseForge MOD");
                 }
                 else
                 {
                     ShowNoResults();
-                Debug.WriteLine($"[ResourcesPage] ⚠️ 没有找到匹配的CurseForge MOD");
             }
         }
 
@@ -609,7 +591,6 @@ namespace ObsMCLauncher.Pages
             if (isChineseSearch)
             {
                 // 中文搜索：先获取更多结果，然后在本地过滤
-                Debug.WriteLine("[ResourcesPage] 执行Modrinth中文搜索，获取更多结果进行过滤");
                 
                 var result = await modrinthService.SearchModsAsync(
                     searchQuery: "",
@@ -634,7 +615,6 @@ namespace ObsMCLauncher.Pages
                         return ModTranslationService.Instance.MatchesSearch(mod.Title, translation, searchText);
                     }).ToList();
 
-                    Debug.WriteLine($"[ResourcesPage] 中文搜索匹配到 {filteredMods.Count} 个Modrinth MOD");
                     
                     if (filteredMods.Count > 0)
                     {
@@ -665,12 +645,10 @@ namespace ObsMCLauncher.Pages
                 if (result?.Hits != null && result.Hits.Count > 0)
                 {
                     DisplayModrinthMods(result.Hits);
-                    Debug.WriteLine($"[ResourcesPage] ✅ 显示 {result.Hits.Count} 个Modrinth MOD");
                 }
                 else
                 {
                     ShowNoResults();
-                    Debug.WriteLine($"[ResourcesPage] ⚠️ 没有找到匹配的Modrinth MOD");
                 }
             }
         }
@@ -827,7 +805,6 @@ namespace ObsMCLauncher.Pages
             // 调试：输出翻译查找结果
             if (translation != null)
             {
-                Debug.WriteLine($"[ResourcesPage] 找到翻译: {mod.Name} -> {translation.ChineseName} (slug={mod.Slug}, id={mod.Id})");
             }
             
             var displayName = ModTranslationService.Instance.GetDisplayName(mod.Name, translation);
@@ -1177,7 +1154,6 @@ namespace ObsMCLauncher.Pages
         {
             if (sender is Border border && border.Tag is ModrinthMod mod)
             {
-                Debug.WriteLine($"[ResourcesPage] 点击Modrinth资源: {mod.Title} (ID={mod.ProjectId}, 类型: {_currentResourceType})");
                 
                 // 检查是否选择了版本（整合包除外）
                 if (_currentResourceType != "Modpacks" && string.IsNullOrEmpty(_selectedVersionId))
@@ -1246,7 +1222,6 @@ namespace ObsMCLauncher.Pages
         {
             if (sender is Border border && border.Tag is CurseForgeMod mod)
             {
-                Debug.WriteLine($"[ResourcesPage] 打开资源详情: {mod.Name} (类型: {_currentResourceType})");
                 
                 // 检查是否选择了版本（整合包除外）
                 if (_currentResourceType != "Modpacks" && string.IsNullOrEmpty(_selectedVersionId))

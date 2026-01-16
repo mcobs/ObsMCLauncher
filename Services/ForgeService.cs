@@ -466,7 +466,7 @@ namespace ObsMCLauncher.Services
                 }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine($"[Forge] ⚠️ processor 依赖下载失败: {maven} - {ex.Message}");
+                    Debug.WriteLine($"[Forge] processor 依赖下载失败: {maven} - {ex.Message}");
                 }
                 finally
                 {
@@ -533,7 +533,7 @@ namespace ObsMCLauncher.Services
 
                     if (string.IsNullOrWhiteSpace(downloadUrl) || string.IsNullOrWhiteSpace(savePath))
                     {
-                        Debug.WriteLine($"[Forge] ⚠️ 跳过 install_profile 库（无法构建URL）: {lib.Name}");
+                        Debug.WriteLine($"[Forge] 跳过 install_profile 库（无法构建URL）: {lib.Name}");
                         return;
                     }
 
@@ -552,7 +552,7 @@ namespace ObsMCLauncher.Services
                 }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine($"[Forge] ⚠️ install_profile 库下载失败: {lib.Name} - {ex.Message}");
+                    Debug.WriteLine($"[Forge] install_profile 库下载失败: {lib.Name} - {ex.Message}");
                 }
                 finally
                 {
@@ -882,7 +882,7 @@ namespace ObsMCLauncher.Services
                 string vanillaJsonPath = Path.Combine(gameDirectory, "versions", vanillaVersion, $"{vanillaVersion}.json");
                 if (!File.Exists(vanillaJsonPath))
                 {
-                    Debug.WriteLine($"[Forge] ⚠️ 原版JSON不存在，保留inheritsFrom: {vanillaVersion}");
+                    Debug.WriteLine($"[Forge] 原版JSON不存在，保留inheritsFrom: {vanillaVersion}");
                     forgeJson["inheritsFrom"] = vanillaVersion;
                     await File.WriteAllTextAsync(forgeJsonPath, forgeJson.ToJsonString(new JsonSerializerOptions { WriteIndented = true }), cancellationToken);
                     return;
@@ -942,11 +942,11 @@ namespace ObsMCLauncher.Services
 
                 await File.WriteAllTextAsync(forgeJsonPath, forgeJson.ToJsonString(new JsonSerializerOptions { WriteIndented = true }), cancellationToken);
 
-                Debug.WriteLine($"[Forge] ✅ MergeVanillaIntoForgeJson 完成，新增库 {addedCount} 个");
+                Debug.WriteLine($"[Forge] MergeVanillaIntoForgeJson 完成，新增库 {addedCount} 个");
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[Forge] ❌ MergeVanillaIntoForgeJson 失败: {ex.Message}");
+                Debug.WriteLine($"[Forge] MergeVanillaIntoForgeJson 失败: {ex.Message}");
                 throw;
             }
         }
@@ -979,7 +979,7 @@ namespace ObsMCLauncher.Services
                 var profileEntry = zip.GetEntry("install_profile.json");
                 if (profileEntry == null)
                 {
-                    Debug.WriteLine("[Forge] ❌ 安装器中找不到 install_profile.json");
+                    Debug.WriteLine("[Forge] 安装器中找不到 install_profile.json");
                     return false;
                 }
 
@@ -1016,7 +1016,7 @@ namespace ObsMCLauncher.Services
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[Forge] ❌ 手动安装旧版Forge失败: {ex.Message}");
+                Debug.WriteLine($"[Forge] 手动安装旧版Forge失败: {ex.Message}");
                 return false;
             }
         }
@@ -1082,29 +1082,29 @@ namespace ObsMCLauncher.Services
                     if (File.Exists(jarInForgeDir))
                     {
                         File.Copy(jarInForgeDir, customJar, true);
-                        Debug.WriteLine($"[Forge] ✅ 已从Forge目录内复制主JAR: {gameVersion}.jar -> {customVersionName}.jar");
+                        Debug.WriteLine($"[Forge] 已从Forge目录内复制主JAR: {gameVersion}.jar -> {customVersionName}.jar");
                     }
                     else if (File.Exists(jarInVanillaDir))
                     {
                         File.Copy(jarInVanillaDir, customJar, true);
-                        Debug.WriteLine($"[Forge] ✅ 已从原版目录复制主JAR: {gameVersion}.jar -> {customVersionName}.jar");
+                        Debug.WriteLine($"[Forge] 已从原版目录复制主JAR: {gameVersion}.jar -> {customVersionName}.jar");
                     }
                     else
                     {
-                        Debug.WriteLine($"[Forge] ⚠️ 未找到可复制的原版JAR（{gameVersion}.jar），新版Forge可能不需要独立JAR");
+                        Debug.WriteLine($"[Forge] 未找到可复制的原版JAR（{gameVersion}.jar），新版Forge可能不需要独立JAR");
                     }
                 }
                 catch (Exception jarEx)
                 {
-                    Debug.WriteLine($"[Forge] ⚠️ 复制主JAR失败: {jarEx.Message}");
+                    Debug.WriteLine($"[Forge] 复制主JAR失败: {jarEx.Message}");
                 }
             }
         }
         
-        // BMCLAPI镜像源
+        // 使用镜像源获取Forge支持版本列表
         private const string BMCL_FORGE_SUPPORT = "https://bmclapi2.bangbang93.com/forge/minecraft";
         private const string BMCL_FORGE_LIST = "https://bmclapi2.bangbang93.com/forge/minecraft/{0}";
-        // BMCLAPI的Forge下载使用Maven格式
+        // Forge下载使用Maven格式
         private const string BMCL_FORGE_DOWNLOAD = "https://bmclapi2.bangbang93.com/maven/net/minecraftforge/forge/{0}/forge-{0}-installer.jar";
         
         // 官方源（Forge官方文件服务器）
@@ -1123,14 +1123,14 @@ namespace ObsMCLauncher.Services
                 
                 if (config.DownloadSource == DownloadSource.BMCLAPI)
                 {
-                    // 使用BMCLAPI镜像源
+                    // 使用镜像源
                     var response = await _httpClient.GetAsync(BMCL_FORGE_SUPPORT);
                     response.EnsureSuccessStatusCode();
 
                     var json = await response.Content.ReadAsStringAsync();
                     var versions = JsonSerializer.Deserialize<List<string>>(json);
 
-                    Debug.WriteLine($"[ForgeService] 从BMCLAPI获取到 {versions?.Count ?? 0} 个支持的MC版本");
+                    Debug.WriteLine($"[ForgeService] 从镜像源获取到 {versions?.Count ?? 0} 个支持的MC版本");
                     return versions ?? new List<string>();
                 }
                 else
@@ -1180,7 +1180,7 @@ namespace ObsMCLauncher.Services
                 
                 if (config.DownloadSource == DownloadSource.BMCLAPI)
                 {
-                    // 使用BMCLAPI镜像源
+                    // 使用镜像源
                     var url = string.Format(BMCL_FORGE_LIST, mcVersion);
                     var response = await _httpClient.GetAsync(url);
                     response.EnsureSuccessStatusCode();
@@ -1192,7 +1192,7 @@ namespace ObsMCLauncher.Services
                     {
                         // 按build号降序排序（最新的在前）
                         forgeList = forgeList.OrderByDescending(f => f.Build).ToList();
-                        Debug.WriteLine($"[ForgeService] 从BMCLAPI获取到 {forgeList.Count} 个Forge版本");
+                        Debug.WriteLine($"[ForgeService] 从镜像源获取到 {forgeList.Count} 个Forge版本");
                     }
 
                     return forgeList ?? new List<ForgeVersion>();
@@ -1310,7 +1310,7 @@ namespace ObsMCLauncher.Services
                 
                 if (config.DownloadSource == DownloadSource.BMCLAPI)
                 {
-                    // 使用BMCLAPI镜像源 - Maven格式
+                    // 使用镜像源 - Maven格式
                     if (isOldVersion)
                     {
                         // 旧版本格式：1.8.9-11.15.1.2318-1.8.9
@@ -1348,7 +1348,7 @@ namespace ObsMCLauncher.Services
                     urlsToTry.Add($"{OFFICIAL_FORGE_MAVEN}{forgeVersion}/forge-{forgeVersion}-installer.jar");
                     // 格式3: files.minecraftforge.net (标准格式)
                     urlsToTry.Add($"https://files.minecraftforge.net/maven/net/minecraftforge/forge/{forgeVersion}/forge-{forgeVersion}-installer.jar");
-                    // 格式4: BMCLAPI 作为最终备用
+                    // 格式4: 镜像源作为最终备用
                     if (isOldVersion)
                     {
                         string oldFormatVersion = $"{forgeVersion}-{mcVersion}";
@@ -1472,7 +1472,7 @@ namespace ObsMCLauncher.Services
                 
                 if (config.DownloadSource == DownloadSource.BMCLAPI)
                 {
-                    // 使用BMCLAPI镜像源 - Maven格式
+                    // 使用镜像源 - Maven格式
                     if (isOldVersion)
                     {
                         // 旧版本格式：1.8.9-11.15.1.2318-1.8.9
@@ -1513,7 +1513,7 @@ namespace ObsMCLauncher.Services
                     urlsToTry.Add($"{OFFICIAL_FORGE_MAVEN}{forgeVersion}/forge-{forgeVersion}-installer.jar");
                     // 格式4: files.minecraftforge.net (标准格式)
                     urlsToTry.Add($"https://files.minecraftforge.net/maven/net/minecraftforge/forge/{forgeVersion}/forge-{forgeVersion}-installer.jar");
-                    // 格式5: BMCLAPI 作为最终备用
+                    // 格式5: 镜像源作为最终备用
                     if (isOldVersion)
                     {
                         string oldFormatVersion = $"{forgeVersion}-{mcVersion}";

@@ -227,7 +227,6 @@ namespace ObsMCLauncher.Pages
             if (VersionComboBox.SelectedItem is ComboBoxItem item && item.Tag is string versionId)
             {
                 LocalVersionService.SetSelectedVersion(versionId);
-                System.Diagnostics.Debug.WriteLine($"版本已切换到: {versionId}");
             }
         }
 
@@ -244,8 +243,7 @@ namespace ObsMCLauncher.Pages
                 // 1. 检查是否选择了版本
                 if (VersionComboBox.SelectedItem is not ComboBoxItem versionItem || versionItem.Tag is not string versionId)
                 {
-                    Debug.WriteLine("⚠️ 请先选择一个游戏版本！");
-                    Console.WriteLine("⚠️ 请先选择一个游戏版本！");
+                    Console.WriteLine("请先选择一个游戏版本！");
                     return;
                 }
 
@@ -259,8 +257,7 @@ namespace ObsMCLauncher.Pages
 
                 if (account == null)
                 {
-                    Debug.WriteLine("⚠️ 未找到游戏账号，请前往账号管理添加账号");
-                    Console.WriteLine("⚠️ 未找到游戏账号，请前往账号管理添加账号");
+                    Console.WriteLine("未找到游戏账号，请前往账号管理添加账号");
                     return;
                 }
 
@@ -279,15 +276,11 @@ namespace ObsMCLauncher.Pages
                     durationSeconds: null,
                     onCancel: () => 
                     {
-                        Debug.WriteLine("[HomePage] 用户取消了游戏启动");
                     },
                     cancellationTokenSource: launchCts
                 );
 
                 // 5. 先检查游戏完整性（不启动游戏）
-                Debug.WriteLine($"========== 准备启动游戏 ==========");
-                Debug.WriteLine($"版本: {versionId}");
-                Debug.WriteLine($"账号: {account.Username} ({account.Type})");
                 
                 LaunchButton.Content = "检查依赖中...";
                 bool hasIntegrityIssue = await GameLauncher.CheckGameIntegrityAsync(versionId, config, (progress) =>
@@ -299,7 +292,6 @@ namespace ObsMCLauncher.Pages
                 // 6. 如果检测到缺失的必需库文件，自动下载
                 if (hasIntegrityIssue && GameLauncher.MissingLibraries.Count > 0)
                 {
-                    Debug.WriteLine($"检测到 {GameLauncher.MissingLibraries.Count} 个缺失的必需依赖库，开始自动补全...");
                     Console.WriteLine($"检测到 {GameLauncher.MissingLibraries.Count} 个缺失的必需依赖库，开始自动补全...");
                     
                     // 更新启动通知
@@ -347,8 +339,7 @@ namespace ObsMCLauncher.Pages
                     }
                     else
                     {
-                        Debug.WriteLine("❌ 必需依赖库下载失败！");
-                        Console.WriteLine("❌ 必需依赖库下载失败！");
+                        Console.WriteLine("必需依赖库下载失败！");
                         
                         // 显示下载失败通知
                         NotificationManager.Instance.ShowNotification(
@@ -367,21 +358,15 @@ namespace ObsMCLauncher.Pages
                 // 6.5 静默尝试下载可选库（natives、Twitch等），失败不影响启动
                 if (!hasIntegrityIssue && GameLauncher.MissingOptionalLibraries.Count > 0)
                 {
-                    Debug.WriteLine($"检测到 {GameLauncher.MissingOptionalLibraries.Count} 个缺失的可选库，静默尝试下载...");
                     Console.WriteLine($"检测到 {GameLauncher.MissingOptionalLibraries.Count} 个缺失的可选库，静默尝试下载...");
                     
                     // 静默下载可选库文件（失败不阻止启动，不显示任何用户通知）
                     bool optionalSuccess = await DownloadMissingLibraries(versionId, config, notificationId: null, isOptional: true, launchCts.Token);
                     
-                    // 只在调试日志中记录结果
-                    if (optionalSuccess)
+                    // 只在控制台记录结果
+                    if (!optionalSuccess)
                     {
-                        Debug.WriteLine($"✅ 可选库下载成功");
-                    }
-                    else
-                    {
-                        Debug.WriteLine("⚠️ 部分可选库下载失败（不影响游戏启动）");
-                        Console.WriteLine("⚠️ 部分可选库下载失败（不影响游戏启动）");
+                        Console.WriteLine("部分可选库下载失败（不影响游戏启动）");
                     }
                 }
 
@@ -395,8 +380,6 @@ namespace ObsMCLauncher.Pages
                     
                     if (isVeryOldVersion)
                     {
-                        Debug.WriteLine($"========== 跳过Assets资源检查 ==========");
-                        Debug.WriteLine($"版本 {versionId} 不使用现代资源系统，跳过资源检查");
                         Console.WriteLine($"[{versionId}] 使用传统资源系统，跳过现代资源检查");
                     }
                     else
@@ -408,8 +391,6 @@ namespace ObsMCLauncher.Pages
                         );
                         LaunchButton.Content = "检查资源中...";
 
-                        Debug.WriteLine("========== 开始检查Assets资源 ==========");
-                        
                         var assetsResult = await AssetsDownloadService.DownloadAndCheckAssetsAsync(
                         config.GameDirectory,
                         versionId,
@@ -429,8 +410,6 @@ namespace ObsMCLauncher.Pages
 
                     if (!assetsResult.Success)
                     {
-                        Debug.WriteLine($"⚠️ Assets资源下载完成，但有 {assetsResult.FailedAssets} 个文件失败");
-                        
                         // 只在失败文件数量较多时才显示通知（避免与启动成功通知冲突）
                         if (assetsResult.FailedAssets > 50)
                         {
@@ -455,9 +434,6 @@ namespace ObsMCLauncher.Pages
                             );
                         }
                     }
-                    else
-                    {
-                        Debug.WriteLine("✅ Assets资源检查完成");
                     }
                     } // ⭐ 结束 else (!isVeryOldVersion) 块
                     
@@ -505,8 +481,7 @@ namespace ObsMCLauncher.Pages
                         // 更新账号最后使用时间
                         AccountService.Instance.UpdateLastUsed(account.Id);
 
-                        Debug.WriteLine($"✅ 游戏已启动！版本: {versionId}, 账号: {account.Username}");
-                        Console.WriteLine($"✅ 游戏已启动！版本: {versionId}, 账号: {account.Username}");
+                        Console.WriteLine($"游戏已启动！版本: {versionId}, 账号: {account.Username}");
                         
                         // 显示启动成功通知
                         NotificationManager.Instance.ShowNotification(
@@ -536,8 +511,7 @@ namespace ObsMCLauncher.Pages
                             "\n2. 游戏文件是否完整（重新下载版本）" +
                             "\n3. 查看调试输出窗口（Debug）获取详细日志";
                         
-                        Debug.WriteLine($"❌ {errorMessage}");
-                        Console.WriteLine($"❌ {errorMessage}");
+                        Console.WriteLine($"{errorMessage}");
                         
                         // 显示启动失败通知
                         NotificationManager.Instance.ShowNotification(
@@ -551,8 +525,7 @@ namespace ObsMCLauncher.Pages
             }
             catch (OperationCanceledException)
             {
-                Debug.WriteLine($"❌ 游戏启动已取消");
-                Console.WriteLine($"❌ 游戏启动已取消");
+                Console.WriteLine($"游戏启动已取消");
                 
                 // 显示取消通知
                 NotificationManager.Instance.ShowNotification(
@@ -564,8 +537,7 @@ namespace ObsMCLauncher.Pages
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"❌ 启动游戏异常: {ex.Message}");
-                Console.WriteLine($"❌ 启动游戏异常: {ex.Message}\n{ex.StackTrace}");
+                Console.WriteLine($"启动游戏异常: {ex.Message}\n{ex.StackTrace}");
                 
                 // 显示异常通知
                 NotificationManager.Instance.ShowNotification(
@@ -602,7 +574,6 @@ namespace ObsMCLauncher.Pages
                 
                 if (targetLibraries.Count == 0)
                 {
-                    Debug.WriteLine($"没有需要下载的{(isOptional ? "可选" : "必需")}库");
                     return true;
                 }
                 
@@ -610,7 +581,6 @@ namespace ObsMCLauncher.Pages
                 var versionJsonPath = Path.Combine(config.GameDirectory, "versions", versionId, $"{versionId}.json");
                 if (!File.Exists(versionJsonPath))
                 {
-                    Debug.WriteLine($"❌ 版本JSON不存在: {versionJsonPath}");
                     return false;
                 }
 
@@ -622,7 +592,6 @@ namespace ObsMCLauncher.Pages
 
                 if (versionDetail?.Libraries == null)
                 {
-                    Debug.WriteLine($"❌ 无法解析版本JSON或没有库");
                     return false;
                 }
 
@@ -635,7 +604,6 @@ namespace ObsMCLauncher.Pages
                 int successfullyDownloaded = 0;  // 成功下载的库数量
                 int skippedLibs = 0;          // 跳过的库（没有URL等）
 
-                Debug.WriteLine($"开始下载 {totalLibs} 个缺失的{(isOptional ? "可选" : "必需")}库文件...");
 
                 foreach (var lib in versionDetail.Libraries)
                 {
@@ -649,7 +617,6 @@ namespace ObsMCLauncher.Pages
                     // 检查操作系统规则
                     if (!IsLibraryAllowedForOS(lib))
                     {
-                        Debug.WriteLine($"⏭️ 跳过不适用的库: {lib.Name}");
                         skippedLibs++;
                         continue;
                     }
@@ -693,10 +660,7 @@ namespace ObsMCLauncher.Pages
                                         var downloadSource = DownloadSourceManager.Instance.CurrentService;
                                         string url = downloadSource.GetLibraryUrl(nativeArtifact.Path);
                                         
-                                        Debug.WriteLine($"📥 下载natives: {lib.Name} -> {nativesKey}");
-                                        Debug.WriteLine($"   URL: {url}");
-                                        Debug.WriteLine($"   保存到: {nativesPath}");
-                                        Console.WriteLine($"📥 [{processedLibs}/{totalLibs}] {lib.Name} (natives)");
+                                        Console.WriteLine($"[{processedLibs}/{totalLibs}] {lib.Name} (natives)");
                                         
                                         var response = await httpClient.GetAsync(url, cancellationToken);
                                         response.EnsureSuccessStatusCode();
@@ -708,13 +672,11 @@ namespace ObsMCLauncher.Pages
                                             var fileInfo = new FileInfo(nativesPath);
                                             successfullyDownloaded++;
                                             downloaded = true;
-                                            Debug.WriteLine($"✅ 已下载natives: {lib.Name} ({fileInfo.Length} 字节)");
-                                            Console.WriteLine($"✅ 已下载natives: {lib.Name} ({fileInfo.Length / 1024.0:F2} KB)");
+                                            Console.WriteLine($"已下载natives: {lib.Name} ({fileInfo.Length / 1024.0:F2} KB)");
                                         }
                                         else
                                         {
-                                            Debug.WriteLine($"❌ natives下载后文件不存在: {nativesPath}");
-                                            Console.WriteLine($"❌ natives下载后文件不存在: {lib.Name}");
+                                            Console.WriteLine($"natives下载后文件不存在: {lib.Name}");
                                         }
                                     }
                                 }
@@ -728,8 +690,7 @@ namespace ObsMCLauncher.Pages
                             
                             if (string.IsNullOrEmpty(libPath))
                             {
-                                Debug.WriteLine($"⚠️ 无法获取库路径: {lib.Name}");
-                                Console.WriteLine($"⚠️ 无法获取库路径: {lib.Name}");
+                                Console.WriteLine($"无法获取库路径: {lib.Name}");
                                 continue;
                             }
                             
@@ -747,24 +708,19 @@ namespace ObsMCLauncher.Pages
                                 {
                                     // 优先使用下载源镜像（如BMCLAPI的maven端点）
                                     url = downloadSource.GetLibraryUrl(lib.Downloads.Artifact.Path);
-                                    Debug.WriteLine($"📥 下载: {lib.Name} (使用下载源: {config.DownloadSource})");
                                 }
                                 else if (!string.IsNullOrEmpty(lib.Downloads?.Artifact?.Url))
                                 {
                                     // 备用方案：使用version.json中的URL
                                     url = lib.Downloads.Artifact.Url;
-                                    Debug.WriteLine($"📥 下载: {lib.Name} (使用原始URL)");
                                 }
                                 else
                                 {
-                                    Debug.WriteLine($"⚠️ 无法获取下载URL: {lib.Name}");
-                                    Console.WriteLine($"⚠️ 无法获取下载URL: {lib.Name}");
+                                    Console.WriteLine($"无法获取下载URL: {lib.Name}");
                                     continue;
                                 }
                                 
-                                Debug.WriteLine($"   URL: {url}");
-                                Debug.WriteLine($"   保存到: {libPath}");
-                                Console.WriteLine($"📥 [{processedLibs}/{totalLibs}] {lib.Name}");
+                                Console.WriteLine($"[{processedLibs}/{totalLibs}] {lib.Name}");
                                 
                                 // 使用HttpClient下载
                                 var response = await httpClient.GetAsync(url, cancellationToken);
@@ -774,8 +730,7 @@ namespace ObsMCLauncher.Pages
                                 {
                                     if (lib.Name != null && (lib.Name.Contains("forge") && (lib.Name.Contains(":client") || lib.Name.Contains(":server"))))
                                     {
-                                        Debug.WriteLine($"⚠️ 跳过库（Forge特殊库，不存在但可忽略）: {lib.Name}");
-                                        Console.WriteLine($"⚠️ 跳过: {lib.Name} (Forge特殊库)");
+                                        Console.WriteLine($"跳过: {lib.Name} (Forge特殊库)");
                                         skippedLibs++;
                                         downloaded = true; // 标记为已处理，避免计入失败
                                         continue;
@@ -792,30 +747,24 @@ namespace ObsMCLauncher.Pages
                                     var fileInfo = new FileInfo(libPath);
                                     successfullyDownloaded++;  // 成功计数
                                     downloaded = true;
-                                    Debug.WriteLine($"✅ 已下载: {lib.Name} ({fileInfo.Length} 字节)");
-                                    Console.WriteLine($"✅ 已下载: {lib.Name} ({fileInfo.Length / 1024.0:F2} KB)");
+                                    Console.WriteLine($"已下载: {lib.Name} ({fileInfo.Length / 1024.0:F2} KB)");
                                 }
                                 else
                                 {
-                                    Debug.WriteLine($"❌ 下载后文件不存在: {libPath}");
-                                    Console.WriteLine($"❌ 下载后文件不存在: {lib.Name}");
+                                    Console.WriteLine($"下载后文件不存在: {lib.Name}");
                                 }
                             }
                         }
                         // 3. 如果既没有下载成功，跳过
                         if (!downloaded)
                         {
-                            Debug.WriteLine($"⚠️ 库没有下载URL或不适用于当前平台: {lib.Name}");
-                            Console.WriteLine($"⚠️ 跳过: {lib.Name}");
+                            Console.WriteLine($"跳过: {lib.Name}");
                             skippedLibs++;  // 跳过计数
                         }
                     }
                     catch (Exception ex)
                     {
-                        Debug.WriteLine($"❌ 下载失败: {lib.Name}");
-                        Debug.WriteLine($"   错误: {ex.Message}");
-                        Debug.WriteLine($"   堆栈: {ex.StackTrace}");
-                        Console.WriteLine($"❌ 下载失败: {lib.Name} - {ex.Message}");
+                        Console.WriteLine($"下载失败: {lib.Name} - {ex.Message}");
                         // 继续下载其他库
                     }
                 }
@@ -823,11 +772,6 @@ namespace ObsMCLauncher.Pages
                 httpClient.Dispose();
                 
                 // 显示下载结果统计
-                Debug.WriteLine($"========== 库文件下载结果 ==========");
-                Debug.WriteLine($"总计: {totalLibs} 个");
-                Debug.WriteLine($"成功: {successfullyDownloaded} 个");
-                Debug.WriteLine($"跳过: {skippedLibs} 个（无下载URL或不适用）");
-                Debug.WriteLine($"失败: {totalLibs - successfullyDownloaded - skippedLibs} 个");
                 
                 // 只有当所有需要下载的库都成功时才返回true
                 // 跳过的库（无URL）不影响成功判定，因为这些库可能不是必需的
@@ -835,24 +779,20 @@ namespace ObsMCLauncher.Pages
                 
                 if (successfullyDownloaded > 0)
                 {
-                    Debug.WriteLine($"✅ 成功下载 {successfullyDownloaded} 个库文件");
                 }
                 
                 if (skippedLibs > 0)
                 {
-                    Debug.WriteLine($"⚠️ 跳过 {skippedLibs} 个库（这些库可能不是必需的或无下载源）");
                 }
                 
                 return allSuccessful;
             }
             catch (OperationCanceledException)
             {
-                Debug.WriteLine($"❌ 库文件下载已取消");
                 return false;
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"❌ 下载库文件时发生错误: {ex.Message}");
                 return false;
             }
         }
@@ -1011,7 +951,6 @@ namespace ObsMCLauncher.Pages
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[HomePage] 加载皮肤头像失败: {ex.Message}");
                 return null;
             }
         }
@@ -1033,7 +972,6 @@ namespace ObsMCLauncher.Pages
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[HomePage] 异步加载皮肤失败: {ex.Message}");
             }
         }
 

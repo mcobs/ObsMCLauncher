@@ -189,7 +189,7 @@ namespace ObsMCLauncher.Services
         private static async Task<List<NeoForgeVersion>> GetVersionsFromBMCLAPIAsync(string minecraftVersion)
         {
             var url = string.Format(BMCL_NEOFORGE_LIST, minecraftVersion);
-            Debug.WriteLine($"[NeoForgeService] 从BMCLAPI获取版本列表: {url}");
+            Debug.WriteLine($"[NeoForgeService] 从镜像源获取版本列表: {url}");
             
             var response = await _httpClient.GetStringAsync(url);
             var versions = JsonSerializer.Deserialize<List<NeoForgeVersion>>(response) ?? new List<NeoForgeVersion>();
@@ -200,7 +200,7 @@ namespace ObsMCLauncher.Services
                 .OrderByDescending(v => ParseVersionForSorting(v.Version))
                     .ToList();
                 
-            Debug.WriteLine($"[NeoForgeService] 从BMCLAPI获取到 {sortedVersions.Count} 个版本");
+            Debug.WriteLine($"[NeoForgeService] 从镜像源获取到 {sortedVersions.Count} 个版本");
             return sortedVersions;
         }
 
@@ -509,11 +509,11 @@ namespace ObsMCLauncher.Services
                     
                     if (!assetsResult.Success)
                     {
-                        Debug.WriteLine($"[NeoForgeService] ⚠️ Assets下载失败，但NeoForge已成功安装");
+                        Debug.WriteLine($"[NeoForgeService] Assets下载失败，但NeoForge已成功安装");
                     }
                     else
                     {
-                        Debug.WriteLine($"[NeoForgeService] ✅ Assets资源补全完成");
+                        Debug.WriteLine($"[NeoForgeService] Assets资源补全完成");
                         Debug.WriteLine($"[NeoForgeService]    总资源: {assetsResult.TotalAssets}");
                         Debug.WriteLine($"[NeoForgeService]    已下载: {assetsResult.DownloadedAssets}");
                         if (assetsResult.FailedAssets > 0)
