@@ -50,6 +50,25 @@ namespace ObsMCLauncher.Utils.Converters
         }
     }
 
+    public class InverseBoolToVisibilityConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            if (value is bool b && b)
+                return Visibility.Collapsed;
+
+            return Visibility.Visible;
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            if (value is Visibility v)
+                return v != Visibility.Visible;
+
+            return false;
+        }
+    }
+
     /// <summary>
     /// 空值到可见性的转换器
     /// </summary>
@@ -57,8 +76,8 @@ namespace ObsMCLauncher.Utils.Converters
     {
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
-            return value != null && !string.IsNullOrWhiteSpace(value.ToString()) 
-                ? Visibility.Visible 
+            return value != null && !string.IsNullOrWhiteSpace(value.ToString())
+                ? Visibility.Visible
                 : Visibility.Collapsed;
         }
 
@@ -68,4 +87,3 @@ namespace ObsMCLauncher.Utils.Converters
         }
     }
 }
-

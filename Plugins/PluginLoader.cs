@@ -40,15 +40,18 @@ namespace ObsMCLauncher.Plugins
         public void LoadAllPlugins()
         {
             Debug.WriteLine("[PluginLoader] 开始扫描插件...");
-            
+
             try
             {
+                // 重复调用时先清空，避免列表累加导致重复显示/重复热加载
+                _loadedPlugins.Clear();
+
                 // 先处理待删除的插件
                 CleanupMarkedPlugins();
-                
+
                 var pluginDirs = Directory.GetDirectories(_pluginsDirectory);
                 Debug.WriteLine($"[PluginLoader] 发现 {pluginDirs.Length} 个插件文件夹");
-                
+
                 foreach (var pluginDir in pluginDirs)
                 {
                     try
@@ -60,7 +63,7 @@ namespace ObsMCLauncher.Plugins
                         Debug.WriteLine($"[PluginLoader] 加载插件失败 [{Path.GetFileName(pluginDir)}]: {ex.Message}");
                     }
                 }
-                
+
                 Debug.WriteLine($"[PluginLoader] 插件加载完成，成功加载 {_loadedPlugins.Count(p => p.IsLoaded)} 个插件");
             }
             catch (Exception ex)
