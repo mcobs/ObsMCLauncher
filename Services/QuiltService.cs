@@ -309,19 +309,20 @@ namespace ObsMCLauncher.Services
                     throw new Exception($"下载Quilt配置文件失败: {lastException?.Message ?? "未知错误"}");
                 }
 
-                // 2. 创建Quilt版本目录
-                var quiltVersionPath = Path.Combine(gameDirectory, "versions", customVersionName);
-                Directory.CreateDirectory(quiltVersionPath);
+                // 2. 创建临时gameDirectory结构（.temp/versions/ 和 .temp/libraries/）
+                var tempGameDir = Path.Combine(gameDirectory, ".temp");
+                var tempVersionsDir = Path.Combine(tempGameDir, "versions");
+                var tempLibrariesDir = Path.Combine(tempGameDir, "libraries");
+                Directory.CreateDirectory(tempVersionsDir);
+                Directory.CreateDirectory(tempLibrariesDir);
+                var tempVanillaDir = Path.Combine(tempVersionsDir, mcVersion);
+                Directory.CreateDirectory(tempVanillaDir);
 
-                // 3. 下载原版文件到Quilt目录
-                var quiltJarPath = Path.Combine(quiltVersionPath, $"{customVersionName}.jar");
-                var quiltJsonPath = Path.Combine(quiltVersionPath, $"{customVersionName}.json");
-                var vanillaJsonPath = Path.Combine(quiltVersionPath, $"{mcVersion}.json");
-
+                // 3. 下载原版文件到临时目录（所有操作都在.temp中）
                 progressCallback?.Invoke($"正在下载基础版本 {mcVersion}...", 0, 0, 100);
-                Debug.WriteLine($"[QuiltService] 开始下载基础MC版本到Quilt目录");
+                Debug.WriteLine($"[QuiltService] 开始下载基础MC版本到临时目录: {tempGameDir}");
 
-                // 下载基础MC版本到Quilt目录
+                // 下载基础MC版本到临时gameDirectory（版本文件到.temp/versions/，库文件到.temp/libraries/）
                 var downloadProgressReporter = new System.Progress<ObsMCLauncher.Services.DownloadProgress>(p =>
                 {
                     progressCallback?.Invoke(
@@ -332,47 +333,127 @@ namespace ObsMCLauncher.Services
                     );
                 });
 
+                // 使用临时gameDirectory下载原版（所有文件都在.temp中）
                 var downloadSuccess = await DownloadService.DownloadMinecraftVersion(
                     mcVersion,
-                    gameDirectory,
-                    customVersionName, // 直接下载到Quilt版本目录
+                    tempGameDir, // 使用临时gameDirectory，所有操作都在.temp中
+                    mcVersion, // 使用原版版本名
                     downloadProgressReporter,
                     cancellationToken
                 );
 
                 if (!downloadSuccess)
                 {
+                    // 清理临时目录
+                    if (Directory.Exists(tempGameDir))
+                    {
+                        try { Directory.Delete(tempGameDir, true); } catch { }
+                    }
                     throw new Exception($"下载基础版本 {mcVersion} 失败");
                 }
 
-                Debug.WriteLine($"[QuiltService] 基础MC版本已下载到Quilt目录");
+                Debug.WriteLine($"[QuiltService] 基础MC版本已下载到临时目录");
+
+                // 将库文件从临时目录移动到真实的libraries目录（如果不存在）
+                if (Directory.Exists(tempLibrariesDir))
+                {
+                    await MoveLibrariesToRealDirectory(tempLibrariesDir, Path.Combine(gameDirectory, "libraries"));
+                }
+
+                // 获取临时目录中的原版文件路径
+                var tempVanillaJarPath = Path.Combine(tempVanillaDir, $"{mcVersion}.jar");
+                var tempVanillaJsonPath = Path.Combine(tempVanillaDir, $"{mcVersion}.json");
+
+                // 获取临时目录路径
+                var tempQuiltVersionPath = Path.Combine(tempVersionsDir, customVersionName);
+                Directory.CreateDirectory(tempQuiltVersionPath);
+                
+                // 从临时原版目录复制文件到Quilt版本目录
+                var tempQuiltJarPath = Path.Combine(tempQuiltVersionPath, $"{customVersionName}.jar");
+                var tempQuiltJsonPath = Path.Combine(tempQuiltVersionPath, $"{customVersionName}.json");
+                
+                // 复制原版JAR和JSON
+                if (File.Exists(tempVanillaJarPath))
+                {
+                    File.Copy(tempVanillaJarPath, tempQuiltJarPath, true);
+                    Debug.WriteLine($"[QuiltService] ✅ 已复制原版JAR: {tempVanillaJarPath} -> {tempQuiltJarPath}");
+                }
+                else
+                {
+                    Debug.WriteLine($"[QuiltService] ⚠️ 原版JAR不存在: {tempVanillaJarPath}");
+                }
+                if (File.Exists(tempVanillaJsonPath))
+                {
+                    File.Copy(tempVanillaJsonPath, tempQuiltJsonPath, true);
+                    Debug.WriteLine($"[QuiltService] ✅ 已复制原版JSON: {tempVanillaJsonPath} -> {tempQuiltJsonPath}");
+                }
+                else
+                {
+                    Debug.WriteLine($"[QuiltService] ⚠️ 原版JSON不存在: {tempVanillaJsonPath}");
+                }
 
                 progressCallback?.Invoke("正在安装Quilt配置文件...", 50, 0, 100);
 
                 // 4. 备份原版JSON
-                if (File.Exists(quiltJsonPath))
+                var savedVanillaJsonPath = Path.Combine(tempQuiltVersionPath, $"{mcVersion}.json");
+                if (File.Exists(tempVanillaJsonPath))
                 {
-                    File.Copy(quiltJsonPath, vanillaJsonPath, true);
-                    Debug.WriteLine($"[QuiltService] 已备份原版JSON到: {vanillaJsonPath}");
+                    File.Copy(tempVanillaJsonPath, savedVanillaJsonPath, true);
+                    Debug.WriteLine($"[QuiltService] 已备份原版JSON到: {savedVanillaJsonPath}");
                 }
 
                 // 5. 修改Quilt profile JSON
                 var profileObj = JsonSerializer.Deserialize<JsonElement>(profileJson);
-                var modifiedProfile = ModifyQuiltProfile(profileObj, customVersionName, mcVersion, vanillaJsonPath);
+                var modifiedProfile = ModifyQuiltProfile(profileObj, customVersionName, mcVersion, savedVanillaJsonPath);
 
                 // 6. 保存Quilt版本JSON
-                await File.WriteAllTextAsync(quiltJsonPath, modifiedProfile, cancellationToken);
-                Debug.WriteLine($"[QuiltService] Quilt配置文件已保存: {quiltJsonPath}");
+                await File.WriteAllTextAsync(tempQuiltJsonPath, modifiedProfile, cancellationToken);
+                Debug.WriteLine($"[QuiltService] Quilt配置文件已保存: {tempQuiltJsonPath}");
 
-                // 7. 下载Quilt库文件
+                // 7. 下载Quilt库文件（使用真实gameDirectory，因为libraries是共享的）
                 progressCallback?.Invoke("正在下载Quilt库文件...", 70, 0, 100);
                 await DownloadQuiltLibrariesAsync(
                     modifiedProfile,
-                    gameDirectory,
+                    gameDirectory, // libraries目录使用真实gameDirectory
                     config.DownloadSource,
                     progressCallback,
                     cancellationToken
                 );
+
+                // 8. 原版文件保留在.temp中，不移动到标准位置（所有操作都在.temp中）
+                // 如果需要合并父版本信息，将从.temp读取原版JSON
+                Debug.WriteLine($"[QuiltService] ✅ 原版文件保留在临时目录: {tempVanillaDir}");
+
+                // 9. 将临时目录移动到最终位置
+                progressCallback?.Invoke("正在完成安装...", 95, 0, 100);
+                var finalQuiltVersionPath = Path.Combine(gameDirectory, "versions", customVersionName);
+                
+                // 如果最终位置已存在，先删除
+                if (Directory.Exists(finalQuiltVersionPath))
+                {
+                    try { Directory.Delete(finalQuiltVersionPath, true); } catch { }
+                }
+                
+                // 移动临时目录到最终位置
+                // 确保jar文件存在
+                var finalJarPath = Path.Combine(tempQuiltVersionPath, $"{customVersionName}.jar");
+                if (!File.Exists(finalJarPath))
+                {
+                    Debug.WriteLine($"[QuiltService] ⚠️ 警告：JAR文件不存在: {finalJarPath}");
+                }
+                else
+                {
+                    Debug.WriteLine($"[QuiltService] ✅ JAR文件已确认存在: {finalJarPath}");
+                }
+                
+                Directory.Move(tempQuiltVersionPath, finalQuiltVersionPath);
+                Debug.WriteLine($"[QuiltService] ✅ 已移动Quilt版本到最终位置: {finalQuiltVersionPath}");
+
+                // 10. 清理临时目录
+                if (Directory.Exists(tempGameDir))
+                {
+                    try { Directory.Delete(tempGameDir, true); } catch { }
+                }
 
                 progressCallback?.Invoke("Quilt安装完成！", 100, 0, 100);
                 Debug.WriteLine($"[QuiltService] Quilt安装完成: {customVersionName}");
@@ -390,6 +471,57 @@ namespace ObsMCLauncher.Services
                 Debug.WriteLine($"[QuiltService] 堆栈跟踪: {ex.StackTrace}");
                 throw;
             }
+        }
+
+        /// <summary>
+        /// 将库文件从临时目录移动到真实的libraries目录（如果不存在）
+        /// </summary>
+        private static Task MoveLibrariesToRealDirectory(string tempLibrariesDir, string realLibrariesDir)
+        {
+            return Task.Run(() =>
+            {
+                try
+                {
+                    if (!Directory.Exists(tempLibrariesDir))
+                        return;
+
+                    Directory.CreateDirectory(realLibrariesDir);
+
+                    var tempLibFiles = Directory.GetFiles(tempLibrariesDir, "*.*", SearchOption.AllDirectories);
+                    int movedCount = 0;
+
+                    foreach (var tempFile in tempLibFiles)
+                    {
+                        var relativePath = Path.GetRelativePath(tempLibrariesDir, tempFile);
+                        var realFile = Path.Combine(realLibrariesDir, relativePath);
+
+                        // 如果真实位置已存在，跳过
+                        if (File.Exists(realFile))
+                            continue;
+
+                        // 确保目标目录存在
+                        Directory.CreateDirectory(Path.GetDirectoryName(realFile)!);
+
+                        // 移动文件（如果失败则复制）
+                        try
+                        {
+                            File.Move(tempFile, realFile, true);
+                        }
+                        catch
+                        {
+                            File.Copy(tempFile, realFile, true);
+                        }
+
+                        movedCount++;
+                    }
+
+                    Debug.WriteLine($"[QuiltService] ✅ 已移动 {movedCount} 个库文件到真实libraries目录");
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[QuiltService] ⚠️ 移动库文件失败: {ex.Message}");
+                }
+            });
         }
 
         /// <summary>

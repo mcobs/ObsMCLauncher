@@ -2288,8 +2288,11 @@ namespace ObsMCLauncher.Pages
                     _downloadCancellationToken!.Token))
                     throw new Exception("Forge安装器下载失败");
 
-                // 3. 下载原版文件到标准位置（Forge安装器期望文件在这里）
-                string standardVanillaDir = Path.Combine(gameDirectory, "versions", currentVersion);
+                // 3. 创建临时gameDirectory结构，所有操作都在.temp中进行
+                string tempGameDir = Path.Combine(gameDirectory, ".temp");
+                string tempVersionsDir = Path.Combine(tempGameDir, "versions");
+                string tempVanillaDir = Path.Combine(tempVersionsDir, currentVersion);
+                Directory.CreateDirectory(tempVersionsDir);
                 
                 // 创建进度回调，将原版下载进度映射到40%-50%
                 var vanillaProgress = new Progress<DownloadProgress>(p => {
@@ -2316,9 +2319,10 @@ namespace ObsMCLauncher.Pages
                     });
                 });
                 
-                await DownloadVanillaForForge(gameDirectory, currentVersion, standardVanillaDir, vanillaProgress);
+                // 下载原版到临时gameDirectory
+                await DownloadVanillaForForge(tempGameDir, currentVersion, tempVanillaDir, vanillaProgress);
 
-                // 4. 运行官方安装器（带进度模拟）
+                // 4. 运行官方安装器（使用临时gameDirectory）
                 progress?.Report(new DownloadProgress
                 {
                     Status = "执行Forge安装...",
@@ -2329,54 +2333,148 @@ namespace ObsMCLauncher.Pages
                     TotalFiles = 3
                 });
 
-                // 创建一个进度模拟器（因为Forge安装器不提供进度）
-                progressSimulator = SimulateForgeInstallerProgress(progress);
-
-                bool installSuccess = await RunForgeInstallerAsync(installerPath, gameDirectory, currentVersion, forgeVersion, config);
-                
-                // 停止进度模拟
-                progressSimulator.Dispose();
-                progressSimulator = null;
-                
-                if (!installSuccess)
-                    throw new Exception("Forge安装器执行失败，请查看日志");
-                
-                // 安装完成，设置为70%
-                progress?.Report(new DownloadProgress
+                try
                 {
-                    Status = "Forge安装完成",
-                    CurrentFileBytes = 70,
-                    CurrentFileTotalBytes = 100,
-                    CompletedFiles = 2,
-                    TotalFiles = 3
-                });
-
-                // 4. 重命名官方生成的版本到自定义名称
-                progress?.Report(new DownloadProgress
-                {
-                    Status = "配置版本信息...",
-                    CurrentFile = "正在重命名版本文件",
-                    CurrentFileBytes = 75,
-                    CurrentFileTotalBytes = 100,
-                    CompletedFiles = 2,
-                    TotalFiles = 3
-                });
-                
-                await RenameForgeVersionAsync(gameDirectory, currentVersion, forgeVersion, customVersionName);
-
-                // 4.5. 清理原版文件夹（在复制完JAR之后）
-                string vanillaDir = Path.Combine(gameDirectory, "versions", currentVersion);
-                if (Directory.Exists(vanillaDir))
-                {
-                    try
+                    // 确保临时gameDirectory有必要的文件（如launcher_profiles.json）
+                    string tempProfilesPath = Path.Combine(tempGameDir, "launcher_profiles.json");
+                    if (!File.Exists(tempProfilesPath))
                     {
-                        await Task.Run(() => Directory.Delete(vanillaDir, true));
-                        System.Diagnostics.Debug.WriteLine($"[Forge] 🗑️ 已清理原版文件夹: {currentVersion}");
+                        string realProfilesPath = Path.Combine(gameDirectory, "launcher_profiles.json");
+                        if (File.Exists(realProfilesPath))
+                        {
+                            File.Copy(realProfilesPath, tempProfilesPath, true);
+                        }
+                        else
+                        {
+                            var defaultProfiles = new
+                            {
+                                profiles = new { },
+                                selectedProfile = (string?)null,
+                                clientToken = Guid.NewGuid().ToString(),
+                                authenticationDatabase = new { },
+                                launcherVersion = new { name = "ObsMCLauncher", format = 21 }
+                            };
+                            await File.WriteAllTextAsync(tempProfilesPath, System.Text.Json.JsonSerializer.Serialize(defaultProfiles, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+                        }
                     }
-                    catch (Exception ex)
+                    
+                    // 创建一个进度模拟器（因为Forge安装器不提供进度）
+                    progressSimulator = SimulateForgeInstallerProgress(progress);
+
+                    // 使用临时gameDirectory运行安装器
+                    bool installSuccess = await RunForgeInstallerAsync(installerPath, tempGameDir, currentVersion, forgeVersion, config);
+                    
+                    // 停止进度模拟
+                    progressSimulator.Dispose();
+                    progressSimulator = null;
+                    
+                    if (!installSuccess)
+                        throw new Exception("Forge安装器执行失败，请查看日志");
+                    
+                    // 安装完成，设置为70%
+                    progress?.Report(new DownloadProgress
                     {
-                        System.Diagnostics.Debug.WriteLine($"[Forge] ⚠️ 清理原版文件夹失败: {ex.Message}");
+                        Status = "Forge安装完成",
+                        CurrentFileBytes = 70,
+                        CurrentFileTotalBytes = 100,
+                        CompletedFiles = 2,
+                        TotalFiles = 3
+                    });
+
+                    // 5. 将临时目录中的Forge版本移动到最终位置并重命名
+                    progress?.Report(new DownloadProgress
+                    {
+                        Status = "配置版本信息...",
+                        CurrentFile = "正在重命名版本文件",
+                        CurrentFileBytes = 75,
+                        CurrentFileTotalBytes = 100,
+                        CompletedFiles = 2,
+                        TotalFiles = 3
+                    });
+                    
+                    string officialForgeId = $"{currentVersion}-forge-{forgeVersion}";
+                    string tempForgeDir = Path.Combine(tempVersionsDir, officialForgeId);
+                    string finalVersionDir = Path.Combine(gameDirectory, "versions", customVersionName);
+                    
+                    if (Directory.Exists(finalVersionDir))
+                        Directory.Delete(finalVersionDir, true);
+                    
+                    if (Directory.Exists(tempForgeDir))
+                    {
+                        Directory.Move(tempForgeDir, finalVersionDir);
+                        
+                        // 重命名json和jar文件
+                        string oldJson = Path.Combine(finalVersionDir, $"{officialForgeId}.json");
+                        string newJson = Path.Combine(finalVersionDir, $"{customVersionName}.json");
+                        if (File.Exists(oldJson)) File.Move(oldJson, newJson, true);
+
+                        string oldJar = Path.Combine(finalVersionDir, $"{officialForgeId}.jar");
+                        string newJar = Path.Combine(finalVersionDir, $"{customVersionName}.jar");
+                        if (File.Exists(oldJar)) File.Move(oldJar, newJar, true);
+
+                        // 修正json内的id字段
+                        if (File.Exists(newJson))
+                        {
+                            try
+                            {
+                                var jsonText = await File.ReadAllTextAsync(newJson);
+                                var node = System.Text.Json.Nodes.JsonNode.Parse(jsonText) as System.Text.Json.Nodes.JsonObject;
+                                if (node != null)
+                                {
+                                    node["id"] = customVersionName;
+                                    await File.WriteAllTextAsync(newJson, node.ToJsonString(new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+                                }
+                            }
+                            catch { }
+                        }
                     }
+                    
+                    // 将原版文件复制到标准位置（如果不存在），供合并父版本信息使用
+                    string standardVanillaDir = Path.Combine(gameDirectory, "versions", currentVersion);
+                    if (Directory.Exists(tempVanillaDir) && !Directory.Exists(standardVanillaDir))
+                    {
+                        Directory.CreateDirectory(standardVanillaDir);
+                        string tempVanillaJson = Path.Combine(tempVanillaDir, $"{currentVersion}.json");
+                        string tempVanillaJar = Path.Combine(tempVanillaDir, $"{currentVersion}.jar");
+                        string standardVanillaJson = Path.Combine(standardVanillaDir, $"{currentVersion}.json");
+                        string standardVanillaJar = Path.Combine(standardVanillaDir, $"{currentVersion}.jar");
+                        
+                        if (File.Exists(tempVanillaJson))
+                            File.Copy(tempVanillaJson, standardVanillaJson, true);
+                        if (File.Exists(tempVanillaJar))
+                            File.Copy(tempVanillaJar, standardVanillaJar, true);
+                        
+                        System.Diagnostics.Debug.WriteLine($"[Forge] ✅ 已复制原版文件到标准位置: {standardVanillaDir}");
+                    }
+                    
+                    // 合并父版本信息（需要原版JSON存在）
+                    string finalJsonPath = Path.Combine(finalVersionDir, $"{customVersionName}.json");
+                    if (File.Exists(finalJsonPath))
+                    {
+                        try
+                        {
+                            await MergeVanillaIntoForgeJson(finalJsonPath, customVersionName, gameDirectory, currentVersion);
+                        }
+                        catch (Exception mergeEx)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[Forge] ⚠️ 合并父版本信息失败: {mergeEx.Message}");
+                        }
+                    }
+                    
+                    // 清理临时目录
+                    if (Directory.Exists(tempGameDir))
+                    {
+                        try { Directory.Delete(tempGameDir, true); } catch { }
+                    }
+                }
+                catch
+                {
+                    // 清理临时目录
+                    if (Directory.Exists(tempGameDir))
+                    {
+                        try { Directory.Delete(tempGameDir, true); } catch { }
+                    }
+                    throw;
                 }
 
                 // 5. 下载Assets (如果需要)
@@ -4347,18 +4445,20 @@ namespace ObsMCLauncher.Pages
                 // 1. 更新ID
                 forgeJson["id"] = customVersionName;
                 
-                // 读取原版JSON（现在应该在标准位置）
-                string vanillaJsonPath = Path.Combine(gameDirectory, "versions", vanillaVersion, $"{vanillaVersion}.json");
+                // 读取原版JSON（优先从.temp读取，如果不存在则从标准位置读取）
+                string tempVanillaJsonPath = Path.Combine(gameDirectory, ".temp", "versions", vanillaVersion, $"{vanillaVersion}.json");
+                string standardVanillaJsonPath = Path.Combine(gameDirectory, "versions", vanillaVersion, $"{vanillaVersion}.json");
+                string vanillaJsonPath = File.Exists(tempVanillaJsonPath) ? tempVanillaJsonPath : standardVanillaJsonPath;
                 
                 if (!File.Exists(vanillaJsonPath))
                 {
-                    System.Diagnostics.Debug.WriteLine($"[Forge] ⚠️ 原版JSON不存在，保留inheritsFrom");
+                    System.Diagnostics.Debug.WriteLine($"[Forge] ⚠️ 原版JSON不存在（.temp和标准位置都未找到），保留inheritsFrom");
                     forgeJson["inheritsFrom"] = vanillaVersion;
                     await File.WriteAllTextAsync(forgeJsonPath, forgeJson.ToJsonString(new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
                     return;
                 }
                 
-                System.Diagnostics.Debug.WriteLine($"[Forge] 从标准位置读取原版JSON: {vanillaJsonPath}");
+                System.Diagnostics.Debug.WriteLine($"[Forge] 从{(vanillaJsonPath == tempVanillaJsonPath ? "临时目录" : "标准位置")}读取原版JSON: {vanillaJsonPath}");
 
                 var vanillaJsonContent = await File.ReadAllTextAsync(vanillaJsonPath);
                 var vanillaJson = System.Text.Json.Nodes.JsonNode.Parse(vanillaJsonContent)!.AsObject();

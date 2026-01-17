@@ -254,19 +254,20 @@ namespace ObsMCLauncher.Services
                     throw new Exception("下载Fabric配置文件失败");
                 }
 
-                // 2. 创建Fabric版本目录
-                var fabricVersionPath = Path.Combine(gameDirectory, "versions", customVersionName);
-                Directory.CreateDirectory(fabricVersionPath);
+                // 2. 创建临时gameDirectory结构（.temp/versions/ 和 .temp/libraries/）
+                var tempGameDir = Path.Combine(gameDirectory, ".temp");
+                var tempVersionsDir = Path.Combine(tempGameDir, "versions");
+                var tempLibrariesDir = Path.Combine(tempGameDir, "libraries");
+                Directory.CreateDirectory(tempVersionsDir);
+                Directory.CreateDirectory(tempLibrariesDir);
+                var tempVanillaDir = Path.Combine(tempVersionsDir, mcVersion);
+                Directory.CreateDirectory(tempVanillaDir);
 
-                // 3. 下载原版文件到Fabric目录（不创建单独的原版文件夹）
-                var fabricJarPath = Path.Combine(fabricVersionPath, $"{customVersionName}.jar");
-                var fabricJsonPath = Path.Combine(fabricVersionPath, $"{customVersionName}.json");
-                var vanillaJsonPath = Path.Combine(fabricVersionPath, $"{mcVersion}.json"); // 临时保存原版JSON用于获取时间信息
-
+                // 3. 下载原版文件到临时目录（所有操作都在.temp中）
                 progressCallback?.Invoke($"正在下载基础版本 {mcVersion}...", 0, 0, 100);
-                Debug.WriteLine($"[FabricService] 开始下载基础MC版本到Fabric目录");
+                Debug.WriteLine($"[FabricService] 开始下载基础MC版本到临时目录: {tempGameDir}");
 
-                // 下载基础MC版本到Fabric目录
+                // 下载基础MC版本到临时gameDirectory（版本文件到.temp/versions/，库文件到.temp/libraries/）
                 var downloadProgressReporter = new System.Progress<ObsMCLauncher.Services.DownloadProgress>(p =>
                 {
                     progressCallback?.Invoke(
@@ -277,52 +278,127 @@ namespace ObsMCLauncher.Services
                     );
                 });
 
+                // 使用临时gameDirectory下载原版（所有文件都在.temp中）
                 var downloadSuccess = await DownloadService.DownloadMinecraftVersion(
                     mcVersion,
-                    gameDirectory,
-                    customVersionName, // 直接下载到Fabric版本目录
+                    tempGameDir, // 使用临时gameDirectory，所有操作都在.temp中
+                    mcVersion, // 使用原版版本名
                     downloadProgressReporter,
                     cancellationToken
                 );
 
                 if (!downloadSuccess)
                 {
+                    // 清理临时目录
+                    if (Directory.Exists(tempGameDir))
+                    {
+                        try { Directory.Delete(tempGameDir, true); } catch { }
+                    }
                     throw new Exception($"下载基础版本 {mcVersion} 失败");
                 }
 
-                Debug.WriteLine($"[FabricService] 基础MC版本已下载到Fabric目录");
+                Debug.WriteLine($"[FabricService] 基础MC版本已下载到临时目录");
+
+                // 将库文件从临时目录移动到真实的libraries目录（如果不存在）
+                if (Directory.Exists(tempLibrariesDir))
+                {
+                    await MoveLibrariesToRealDirectory(tempLibrariesDir, Path.Combine(gameDirectory, "libraries"));
+                }
+
+                // 获取临时目录中的原版文件路径
+                var tempVanillaJarPath = Path.Combine(tempVanillaDir, $"{mcVersion}.jar");
+                var tempVanillaJsonPath = Path.Combine(tempVanillaDir, $"{mcVersion}.json");
+
+                // 获取临时目录路径
+                var tempFabricVersionPath = Path.Combine(tempVersionsDir, customVersionName);
+                Directory.CreateDirectory(tempFabricVersionPath);
+                
+                // 从临时原版目录复制文件到Fabric版本目录
+                var tempFabricJarPath = Path.Combine(tempFabricVersionPath, $"{customVersionName}.jar");
+                var tempFabricJsonPath = Path.Combine(tempFabricVersionPath, $"{customVersionName}.json");
+                
+                // 复制原版JAR和JSON
+                if (File.Exists(tempVanillaJarPath))
+                {
+                    File.Copy(tempVanillaJarPath, tempFabricJarPath, true);
+                    Debug.WriteLine($"[FabricService] ✅ 已复制原版JAR: {tempVanillaJarPath} -> {tempFabricJarPath}");
+                }
+                else
+                {
+                    Debug.WriteLine($"[FabricService] ⚠️ 原版JAR不存在: {tempVanillaJarPath}");
+                }
+                if (File.Exists(tempVanillaJsonPath))
+                {
+                    File.Copy(tempVanillaJsonPath, tempFabricJsonPath, true);
+                    Debug.WriteLine($"[FabricService] ✅ 已复制原版JSON: {tempVanillaJsonPath} -> {tempFabricJsonPath}");
+                }
+                else
+                {
+                    Debug.WriteLine($"[FabricService] ⚠️ 原版JSON不存在: {tempVanillaJsonPath}");
+                }
 
                 progressCallback?.Invoke("正在安装Fabric配置文件...", 50, 0, 100);
 
                 // 4. 备份原版JSON（用于获取releaseTime）
-                if (File.Exists(fabricJsonPath))
+                var savedVanillaJsonPath = Path.Combine(tempFabricVersionPath, $"{mcVersion}.json");
+                if (File.Exists(tempVanillaJsonPath))
                 {
-                    File.Copy(fabricJsonPath, vanillaJsonPath, true);
-                    Debug.WriteLine($"[FabricService] 已备份原版JSON到: {vanillaJsonPath}");
+                    File.Copy(tempVanillaJsonPath, savedVanillaJsonPath, true);
+                    Debug.WriteLine($"[FabricService] 已备份原版JSON到: {savedVanillaJsonPath}");
                 }
 
                 // 5. 修改Fabric profile JSON
                 var profileObj = JsonSerializer.Deserialize<JsonElement>(profileJson);
-                var modifiedProfile = ModifyFabricProfile(profileObj, customVersionName, mcVersion, vanillaJsonPath);
+                var modifiedProfile = ModifyFabricProfile(profileObj, customVersionName, mcVersion, savedVanillaJsonPath);
 
-                // 6. 保存Fabric版本JSON（覆盖原版JSON）
-                await File.WriteAllTextAsync(fabricJsonPath, modifiedProfile, cancellationToken);
-                Debug.WriteLine($"[FabricService] Fabric配置文件已保存: {fabricJsonPath}");
+                // 6. 保存Fabric版本JSON
+                await File.WriteAllTextAsync(tempFabricJsonPath, modifiedProfile, cancellationToken);
+                Debug.WriteLine($"[FabricService] Fabric配置文件已保存: {tempFabricJsonPath}");
 
-                // 7. 下载Fabric库文件
+                // 7. 下载Fabric库文件（使用真实gameDirectory，因为libraries是共享的）
                 progressCallback?.Invoke("正在下载Fabric库文件...", 70, 0, 100);
                 await DownloadFabricLibrariesAsync(
                     modifiedProfile,
-                    gameDirectory,
+                    gameDirectory, // libraries目录使用真实gameDirectory
                     config.DownloadSource,
                     progressCallback,
                     cancellationToken
                 );
 
-                // 8. 清理临时文件 - 删除临时保存的原版JSON（启动器会在运行时从这里读取）
-                // 注意：保留这个文件，因为启动器需要从中读取父版本信息进行合并
-                // 只在成功安装后删除其他可能的临时文件
-                Debug.WriteLine($"[FabricService] 保留原版JSON文件用于启动时合并: {vanillaJsonPath}");
+                // 8. 原版文件保留在.temp中，不移动到标准位置（所有操作都在.temp中）
+                // 如果需要合并父版本信息，将从.temp读取原版JSON
+                Debug.WriteLine($"[FabricService] ✅ 原版文件保留在临时目录: {tempVanillaDir}");
+
+                // 9. 将临时目录移动到最终位置
+                progressCallback?.Invoke("正在完成安装...", 95, 0, 100);
+                var finalFabricVersionPath = Path.Combine(gameDirectory, "versions", customVersionName);
+                
+                // 如果最终位置已存在，先删除
+                if (Directory.Exists(finalFabricVersionPath))
+                {
+                    try { Directory.Delete(finalFabricVersionPath, true); } catch { }
+                }
+                
+                // 移动临时目录到最终位置
+                // 确保jar文件存在
+                var finalJarPath = Path.Combine(tempFabricVersionPath, $"{customVersionName}.jar");
+                if (!File.Exists(finalJarPath))
+                {
+                    Debug.WriteLine($"[FabricService] ⚠️ 警告：JAR文件不存在: {finalJarPath}");
+                }
+                else
+                {
+                    Debug.WriteLine($"[FabricService] ✅ JAR文件已确认存在: {finalJarPath}");
+                }
+                
+                Directory.Move(tempFabricVersionPath, finalFabricVersionPath);
+                Debug.WriteLine($"[FabricService] ✅ 已移动Fabric版本到最终位置: {finalFabricVersionPath}");
+
+                // 10. 清理临时目录
+                if (Directory.Exists(tempGameDir))
+                {
+                    try { Directory.Delete(tempGameDir, true); } catch { }
+                }
 
                 progressCallback?.Invoke("Fabric安装完成！", 100, 0, 100);
                 Debug.WriteLine($"[FabricService] Fabric安装完成: {customVersionName}");
@@ -340,6 +416,57 @@ namespace ObsMCLauncher.Services
                 Debug.WriteLine($"[FabricService] 堆栈跟踪: {ex.StackTrace}");
                 throw;
             }
+        }
+
+        /// <summary>
+        /// 将库文件从临时目录移动到真实的libraries目录（如果不存在）
+        /// </summary>
+        private static Task MoveLibrariesToRealDirectory(string tempLibrariesDir, string realLibrariesDir)
+        {
+            return Task.Run(() =>
+            {
+                try
+                {
+                    if (!Directory.Exists(tempLibrariesDir))
+                        return;
+
+                    Directory.CreateDirectory(realLibrariesDir);
+
+                    var tempLibFiles = Directory.GetFiles(tempLibrariesDir, "*.*", SearchOption.AllDirectories);
+                    int movedCount = 0;
+
+                    foreach (var tempFile in tempLibFiles)
+                    {
+                        var relativePath = Path.GetRelativePath(tempLibrariesDir, tempFile);
+                        var realFile = Path.Combine(realLibrariesDir, relativePath);
+
+                        // 如果真实位置已存在，跳过
+                        if (File.Exists(realFile))
+                            continue;
+
+                        // 确保目标目录存在
+                        Directory.CreateDirectory(Path.GetDirectoryName(realFile)!);
+
+                        // 移动文件（如果失败则复制）
+                        try
+                        {
+                            File.Move(tempFile, realFile, true);
+                        }
+                        catch
+                        {
+                            File.Copy(tempFile, realFile, true);
+                        }
+
+                        movedCount++;
+                    }
+
+                    Debug.WriteLine($"[FabricService] ✅ 已移动 {movedCount} 个库文件到真实libraries目录");
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[FabricService] ⚠️ 移动库文件失败: {ex.Message}");
+                }
+            });
         }
 
         /// <summary>

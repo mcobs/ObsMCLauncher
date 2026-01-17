@@ -142,7 +142,7 @@ namespace ObsMCLauncher.Services
             var minecraftVersion = string.IsNullOrWhiteSpace(manifest.Minecraft?.Version) ? "1.20.1" : manifest.Minecraft.Version;
             Debug.WriteLine($"[ModpackInstall] CurseForge 整合包: {manifest.Name}, Minecraft {minecraftVersion}");
 
-            // 1. 先下载Minecraft核心版本 (5-35%)
+            // 1. 先下载Minecraft核心版本到临时目录（使用.temp，所有操作都在.temp中）
             progressCallback?.Invoke($"正在下载 Minecraft {minecraftVersion}...", 10);
             
             var downloadProgress = new Progress<DownloadProgress>(p =>
@@ -152,10 +152,12 @@ namespace ObsMCLauncher.Services
                 progressCallback?.Invoke($"正在下载 Minecraft {minecraftVersion}... {p.OverallPercentage:F0}%", overallProgress);
             });
 
+            // 使用临时gameDirectory下载原版（所有操作都在.temp中）
+            var tempGameDir = Path.Combine(gameDirectory, ".temp");
             bool mcDownloaded = await DownloadService.DownloadMinecraftVersion(
                 minecraftVersion,
-                gameDirectory,
-                versionName,
+                tempGameDir, // 使用临时gameDirectory
+                minecraftVersion, // 使用原版版本名，不是整合包名称
                 downloadProgress
             );
 
@@ -164,7 +166,15 @@ namespace ObsMCLauncher.Services
                 throw new Exception($"下载 Minecraft {minecraftVersion} 失败");
             }
 
+            // 将库文件从临时目录移动到真实的libraries目录（如果不存在）
+            var tempLibrariesDir = Path.Combine(tempGameDir, "libraries");
+            if (Directory.Exists(tempLibrariesDir))
+            {
+                await MoveLibrariesToRealDirectory(tempLibrariesDir, Path.Combine(gameDirectory, "libraries"));
+            }
+
             // 2. 安装加载器（使用 manifest 中的 primary loader）
+            // 加载器安装会使用.temp，最终版本会移动到versions/{versionName}/
             await InstallCurseForgeModLoaderAsync(manifest, gameDirectory, versionName, progressCallback);
 
             // 3. 批量下载资源（CurseForge manifest.files）
@@ -609,7 +619,7 @@ namespace ObsMCLauncher.Services
             var minecraftVersion = index.Dependencies?.Minecraft ?? "1.20.1";
             Debug.WriteLine($"[ModpackInstall] Modrinth 整合包: {index.Name}, Minecraft {minecraftVersion}");
 
-            // 1. 先下载Minecraft核心版本 (5-35%)
+            // 1. 先下载Minecraft核心版本到临时目录（使用.temp，所有操作都在.temp中）
             progressCallback?.Invoke($"正在下载 Minecraft {minecraftVersion}...", 10);
             
             var downloadProgress = new Progress<DownloadProgress>(p =>
@@ -619,10 +629,12 @@ namespace ObsMCLauncher.Services
                 progressCallback?.Invoke($"正在下载 Minecraft {minecraftVersion}... {p.OverallPercentage:F0}%", overallProgress);
             });
 
+            // 使用临时gameDirectory下载原版（所有操作都在.temp中）
+            var tempGameDir = Path.Combine(gameDirectory, ".temp");
             bool mcDownloaded = await DownloadService.DownloadMinecraftVersion(
                 minecraftVersion,
-                gameDirectory,
-                versionName,
+                tempGameDir, // 使用临时gameDirectory
+                minecraftVersion, // 使用原版版本名，不是整合包名称
                 downloadProgress
             );
 
@@ -631,7 +643,15 @@ namespace ObsMCLauncher.Services
                 throw new Exception($"下载 Minecraft {minecraftVersion} 失败");
             }
 
+            // 将库文件从临时目录移动到真实的libraries目录（如果不存在）
+            var tempLibrariesDir = Path.Combine(tempGameDir, "libraries");
+            if (Directory.Exists(tempLibrariesDir))
+            {
+                await MoveLibrariesToRealDirectory(tempLibrariesDir, Path.Combine(gameDirectory, "libraries"));
+            }
+
             // 2. 安装加载器（如果有）
+            // 加载器安装会使用.temp，最终版本会移动到versions/{versionName}/
             await InstallModrinthModLoaderAsync(index.Dependencies, gameDirectory, versionName, minecraftVersion, progressCallback);
 
             // 3. 下载文件（MODS、资源包、光影包）
@@ -1153,6 +1173,57 @@ namespace ObsMCLauncher.Services
             
             [JsonPropertyName("neoforge")]
             public string? NeoForge { get; set; }
+        }
+
+        /// <summary>
+        /// 将库文件从临时目录移动到真实的libraries目录（如果不存在）
+        /// </summary>
+        private static Task MoveLibrariesToRealDirectory(string tempLibrariesDir, string realLibrariesDir)
+        {
+            return Task.Run(() =>
+            {
+                try
+                {
+                    if (!Directory.Exists(tempLibrariesDir))
+                        return;
+
+                    Directory.CreateDirectory(realLibrariesDir);
+
+                    var tempLibFiles = Directory.GetFiles(tempLibrariesDir, "*.*", SearchOption.AllDirectories);
+                    int movedCount = 0;
+
+                    foreach (var tempFile in tempLibFiles)
+                    {
+                        var relativePath = Path.GetRelativePath(tempLibrariesDir, tempFile);
+                        var realFile = Path.Combine(realLibrariesDir, relativePath);
+
+                        // 如果真实位置已存在，跳过
+                        if (File.Exists(realFile))
+                            continue;
+
+                        // 确保目标目录存在
+                        Directory.CreateDirectory(Path.GetDirectoryName(realFile)!);
+
+                        // 移动文件（如果失败则复制）
+                        try
+                        {
+                            File.Move(tempFile, realFile, true);
+                        }
+                        catch
+                        {
+                            File.Copy(tempFile, realFile, true);
+                        }
+
+                        movedCount++;
+                    }
+
+                    Debug.WriteLine($"[ModpackInstall] ✅ 已移动 {movedCount} 个库文件到真实libraries目录");
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[ModpackInstall] ⚠️ 移动库文件失败: {ex.Message}");
+                }
+            });
         }
         
         private class ModrinthIndexFile

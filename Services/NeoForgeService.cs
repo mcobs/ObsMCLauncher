@@ -427,18 +427,19 @@ namespace ObsMCLauncher.Services
                 
                 UpdateProgress("安装器下载完成", 5);
                 
-                // 清理旧的最终输出文件
-                CleanFinalOutputs(gameDirectory, mcVersion, neoforgeVersion);
+                // 创建临时gameDirectory结构（.temp/versions/）
+                var tempGameDir = Path.Combine(gameDirectory, ".temp");
+                var tempVersionsDir = Path.Combine(tempGameDir, "versions");
+                Directory.CreateDirectory(tempVersionsDir);
                 
-                // 创建版本目录
                 var customVersionName = $"Minecraft-{mcVersion}-neoforge-{neoforgeVersion}";
-                var versionDir = Path.Combine(gameDirectory, "versions", customVersionName);
-                Directory.CreateDirectory(versionDir);
+                var tempVersionDir = Path.Combine(tempVersionsDir, customVersionName);
+                Directory.CreateDirectory(tempVersionDir);
                 
                 // ============================================================
-                // 阶段2: 下载原版Minecraft (5-35%)
+                // 阶段2: 下载原版Minecraft到临时目录 (5-35%)
                 // ============================================================
-                await DownloadVanillaMinecraftAsync(mcVersion, versionDir, customVersionName, 
+                await DownloadVanillaMinecraftAsync(mcVersion, tempVersionDir, customVersionName, 
                     (status, current, total, bytes, totalBytes) =>
                     {
                         var progress = total > 0 ? (current / total) : 0;
@@ -458,10 +459,12 @@ namespace ObsMCLauncher.Services
                 bool success;
                 if (installType == NeoForgeInstallType.OldNeoForge || installType == NeoForgeInstallType.NewNeoForge)
                 {
+                    // ProcessInstallProfileAsync需要真实的gameDirectory来访问libraries（共享目录）
+                    // 但版本目录在临时gameDirectory中
                     success = await ProcessInstallProfileAsync(
                         installerPath, 
-                        gameDirectory, 
-                        versionDir,
+                        gameDirectory, // libraries使用真实gameDirectory（共享）
+                        tempVersionDir, // 版本目录在临时gameDirectory中
                         customVersionName,
                         mcVersion,
                         neoforgeVersion,
@@ -480,10 +483,49 @@ namespace ObsMCLauncher.Services
                 
                 if (!success)
                 {
+                    // 清理临时目录
+                    if (Directory.Exists(tempGameDir))
+                    {
+                        try { Directory.Delete(tempGameDir, true); } catch { }
+                    }
                     return false;
                 }
                 
                 UpdateProgress("NeoForge安装完成", 75);
+                
+                // 将原版文件复制到标准位置（如果不存在），供合并父版本信息使用
+                var standardVanillaDir = Path.Combine(gameDirectory, "versions", mcVersion);
+                var tempVanillaDir = Path.Combine(tempVersionsDir, mcVersion);
+                if (Directory.Exists(tempVanillaDir) && !Directory.Exists(standardVanillaDir))
+                {
+                    Directory.CreateDirectory(standardVanillaDir);
+                    var tempVanillaJson = Path.Combine(tempVanillaDir, $"{mcVersion}.json");
+                    var tempVanillaJar = Path.Combine(tempVanillaDir, $"{mcVersion}.jar");
+                    if (File.Exists(tempVanillaJson))
+                        File.Copy(tempVanillaJson, Path.Combine(standardVanillaDir, $"{mcVersion}.json"), true);
+                    if (File.Exists(tempVanillaJar))
+                        File.Copy(tempVanillaJar, Path.Combine(standardVanillaDir, $"{mcVersion}.jar"), true);
+                    Debug.WriteLine($"[NeoForgeService] ✅ 已复制原版文件到标准位置: {standardVanillaDir}");
+                }
+                
+                // 将临时目录移动到最终位置
+                UpdateProgress("正在完成安装...", 76);
+                var finalVersionDir = Path.Combine(gameDirectory, "versions", customVersionName);
+                
+                // 如果最终位置已存在，先删除
+                if (Directory.Exists(finalVersionDir))
+                {
+                    try { Directory.Delete(finalVersionDir, true); } catch { }
+                }
+                
+                // 移动临时目录到最终位置
+                Directory.Move(tempVersionDir, finalVersionDir);
+                
+                // 清理临时目录
+                if (Directory.Exists(tempGameDir))
+                {
+                    try { Directory.Delete(tempGameDir, true); } catch { }
+                }
                 
                 // ============================================================
                 // 阶段4: 下载Assets资源补全 (75-100%)
