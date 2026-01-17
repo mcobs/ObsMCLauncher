@@ -126,6 +126,11 @@ namespace ObsMCLauncher.Models
         public string? SelectedVersion { get; set; }
 
         /// <summary>
+        /// 侧边导航栏是否折叠
+        /// </summary>
+        public bool IsNavCollapsed { get; set; } = false;
+
+        /// <summary>
         /// 服务器收藏列表
         /// </summary>
         public List<ServerInfo> Servers { get; set; } = new List<ServerInfo>();

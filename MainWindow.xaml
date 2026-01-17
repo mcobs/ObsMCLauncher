@@ -38,7 +38,7 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="200"/>
+            <ColumnDefinition x:Name="NavColumn" Width="200"/>
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
@@ -130,8 +130,8 @@
             </Grid>
         </Border>
 
-        <!-- 左侧导航栏 - WinUI 3 风格 -->
-        <Border Grid.Row="1"
+        <!-- 左侧导航栏 -->
+        <Border x:Name="NavBorder" Grid.Row="1"
                 Grid.Column="0" 
                 Background="{DynamicResource SurfaceBrush}"
                 BorderBrush="{DynamicResource BorderBrush}"
@@ -143,8 +143,21 @@
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-                <!-- Logo 区域 - 带呼吸动画 -->
-                <StackPanel Grid.Row="0" Margin="20,30,20,30">
+                <!-- 顶部：折叠按钮 + Logo 区域 -->
+                <StackPanel Grid.Row="0" Margin="12,12,12,12">
+                    <Button x:Name="NavToggleButton"
+                            Width="36"
+                            Height="36"
+                            Margin="0,0,0,10"
+                            HorizontalAlignment="Left"
+                            Style="{StaticResource MaterialDesignIconButton}"
+                            ToolTip="折叠/展开"
+                            Click="NavToggleButton_Click">
+                        <materialDesign:PackIcon Kind="Menu" Width="20" Height="20"/>
+                    </Button>
+
+                    <!-- Logo 区域 - 带呼吸动画 -->
+                    <StackPanel Margin="8,8,8,8">
                     <svgc:SvgViewbox x:Name="LogoIcon"
                                      Source="/Assets/logo.svg" 
                                      Width="60" 
@@ -166,7 +179,7 @@
                             </EventTrigger>
                         </svgc:SvgViewbox.Triggers>
                     </svgc:SvgViewbox>
-                    <TextBlock Text="Obs MC启动器" 
+                    <TextBlock x:Name="NavTitleText" Text="Obs MC启动器" 
                              FontSize="16" 
                              FontWeight="SemiBold"
                              HorizontalAlignment="Center"
@@ -178,10 +191,11 @@
                              HorizontalAlignment="Center"
                              Foreground="{DynamicResource TextSecondaryBrush}"
                              Margin="0,5,0,0"/>
+                    </StackPanel>
                 </StackPanel>
 
                 <!-- 导航菜单 -->
-                <StackPanel Grid.Row="1" Margin="10,0">
+                <StackPanel x:Name="NavMenuPanel" Grid.Row="1" Margin="10,0">
                     <RadioButton x:Name="HomeButton"
                                Style="{StaticResource MaterialDesignTabRadioButton}"
                                Content="主页"
@@ -193,12 +207,12 @@
                         <RadioButton.ContentTemplate>
                             <DataTemplate>
                                 <StackPanel Orientation="Horizontal">
-                                    <materialDesign:PackIcon Kind="Home" 
+                                    <materialDesign:PackIcon x:Name="HomeIcon" Kind="Home" 
                                                            Width="24" 
                                                            Height="24" 
                                                            VerticalAlignment="Center"
                                                            Margin="10,0"/>
-                                    <TextBlock Text="{Binding}" 
+                                    <TextBlock x:Name="HomeText" Text="{Binding}" 
                                              VerticalAlignment="Center" 
                                              FontSize="14"
                                              Margin="15,0"/>
@@ -217,12 +231,12 @@
                         <RadioButton.ContentTemplate>
                             <DataTemplate>
                                 <StackPanel Orientation="Horizontal">
-                                    <materialDesign:PackIcon Kind="AccountMultiple" 
+                                    <materialDesign:PackIcon x:Name="AccountIcon" Kind="AccountMultiple" 
                                                            Width="24" 
                                                            Height="24" 
                                                            VerticalAlignment="Center"
                                                            Margin="10,0"/>
-                                    <TextBlock Text="{Binding}" 
+                                    <TextBlock x:Name="AccountText" Text="{Binding}" 
                                              VerticalAlignment="Center" 
                                              FontSize="14"
                                              Margin="15,0"/>
@@ -241,12 +255,12 @@
                         <RadioButton.ContentTemplate>
                             <DataTemplate>
                                 <StackPanel Orientation="Horizontal">
-                                    <materialDesign:PackIcon Kind="Download" 
+                                    <materialDesign:PackIcon x:Name="VersionIcon" Kind="Download" 
                                                            Width="24" 
                                                            Height="24" 
                                                            VerticalAlignment="Center"
                                                            Margin="10,0"/>
-                                    <TextBlock Text="{Binding}" 
+                                    <TextBlock x:Name="VersionText" Text="{Binding}" 
                                              VerticalAlignment="Center" 
                                              FontSize="14"
                                              Margin="15,0"/>
@@ -265,12 +279,12 @@
                         <RadioButton.ContentTemplate>
                             <DataTemplate>
                                 <StackPanel Orientation="Horizontal">
-                                    <materialDesign:PackIcon Kind="Package" 
+                                    <materialDesign:PackIcon x:Name="ResourcesIcon" Kind="Package" 
                                                            Width="24" 
                                                            Height="24" 
                                                            VerticalAlignment="Center"
                                                            Margin="10,0"/>
-                                    <TextBlock Text="{Binding}" 
+                                    <TextBlock x:Name="ResourcesText" Text="{Binding}" 
                                              VerticalAlignment="Center" 
                                              FontSize="14"
                                              Margin="15,0"/>
@@ -289,12 +303,12 @@
                         <RadioButton.ContentTemplate>
                             <DataTemplate>
                                 <StackPanel Orientation="Horizontal">
-                                    <materialDesign:PackIcon Kind="Settings" 
+                                    <materialDesign:PackIcon x:Name="SettingsIcon" Kind="Settings" 
                                                            Width="24" 
                                                            Height="24" 
                                                            VerticalAlignment="Center"
                                                            Margin="10,0"/>
-                                    <TextBlock Text="{Binding}" 
+                                    <TextBlock x:Name="SettingsText" Text="{Binding}" 
                                              VerticalAlignment="Center" 
                                              FontSize="14"
                                              Margin="15,0"/>
@@ -313,12 +327,12 @@
                         <RadioButton.ContentTemplate>
                             <DataTemplate>
                                 <StackPanel Orientation="Horizontal">
-                                    <materialDesign:PackIcon Kind="DotsHorizontal" 
+                                    <materialDesign:PackIcon x:Name="MoreIcon" Kind="DotsHorizontal" 
                                                            Width="24" 
                                                            Height="24" 
                                                            VerticalAlignment="Center"
                                                            Margin="10,0"/>
-                                    <TextBlock Text="{Binding}" 
+                                    <TextBlock x:Name="MoreText" Text="{Binding}" 
                                              VerticalAlignment="Center" 
                                              FontSize="14"
                                              Margin="15,0"/>
@@ -329,7 +343,7 @@
                 </StackPanel>
 
                 <!-- 底部信息 -->
-                <StackPanel Grid.Row="2" Margin="20,20">
+                <StackPanel x:Name="NavFooterPanel" Grid.Row="2" Margin="20,20">
                     <TextBlock Text="© 2025 ObsMCLauncher" 
                              FontSize="10" 
                              HorizontalAlignment="Center"

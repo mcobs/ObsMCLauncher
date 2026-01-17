@@ -24,6 +24,173 @@ namespace ObsMCLauncher
 
         // 页面实例缓存 - 实现状态保持（按需创建）
         private readonly Dictionary<string, Page> _pageCache = new Dictionary<string, Page>();
+
+        private bool _isNavCollapsed;
+
+        // 辅助方法：在可视化树中查找子元素
+        private static T? FindVisualChild<T>(DependencyObject? parent) where T : DependencyObject
+        {
+            if (parent == null) return null;
+
+            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+            {
+                var child = VisualTreeHelper.GetChild(parent, i);
+                if (child is T t)
+                {
+                    return t;
+                }
+
+                var childOfChild = FindVisualChild<T>(child);
+                if (childOfChild != null)
+                {
+                    return childOfChild;
+                }
+            }
+            return null;
+        }
+
+        private void NavToggleButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                ApplyNavCollapsed(!_isNavCollapsed, animate: true);
+
+                var cfg = LauncherConfig.Load();
+                cfg.IsNavCollapsed = _isNavCollapsed;
+                cfg.Save();
+            }
+            catch
+            {
+            }
+        }
+
+        private void ApplyNavCollapsed(bool collapsed, bool animate)
+        {
+            _isNavCollapsed = collapsed;
+
+            var targetWidth = collapsed ? 72 : 200;
+
+            try
+            {
+                if (NavMenuPanel != null)
+                {
+                    NavMenuPanel.Margin = collapsed ? new Thickness(0, 0, 0, 0) : new Thickness(10, 0, 10, 0);
+                }
+
+                if (NavFooterPanel != null)
+                {
+                    NavFooterPanel.Visibility = collapsed ? Visibility.Collapsed : Visibility.Visible;
+                }
+
+                if (LogoIcon != null)
+                {
+                    LogoIcon.Width = collapsed ? 28 : 60;
+                    LogoIcon.Height = collapsed ? 28 : 60;
+                }
+
+                if (NavVersionText != null)
+                {
+                    NavVersionText.Visibility = collapsed ? Visibility.Collapsed : Visibility.Visible;
+                }
+
+                if (NavTitleText != null)
+                {
+                    NavTitleText.Visibility = collapsed ? Visibility.Collapsed : Visibility.Visible;
+                }
+
+                UpdateNavItemVisuals(collapsed);
+            }
+            catch { }
+
+            if (!animate)
+            {
+                if (NavColumn != null)
+                {
+                    NavColumn.Width = new GridLength(targetWidth);
+                }
+                return;
+            }
+
+            try
+            {
+                var from = NavColumn != null ? NavColumn.Width.Value : 200;
+                var anim = new GridLengthAnimation
+                {
+                    From = new GridLength(from),
+                    To = new GridLength(targetWidth),
+                    Duration = TimeSpan.FromMilliseconds(200),
+                    EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+                };
+
+                if (NavColumn != null)
+                {
+                    NavColumn.BeginAnimation(ColumnDefinition.WidthProperty, anim);
+                }
+            }
+            catch
+            {
+                if (NavColumn != null)
+                {
+                    NavColumn.Width = new GridLength(targetWidth);
+                }
+            }
+        }
+
+        private void UpdateNavItemVisuals(bool collapsed)
+        {
+            try
+            {
+                UpdateSingleNavItemVisual(HomeButton, collapsed);
+                UpdateSingleNavItemVisual(AccountButton, collapsed);
+                UpdateSingleNavItemVisual(VersionButton, collapsed);
+                UpdateSingleNavItemVisual(ResourcesButton, collapsed);
+                UpdateSingleNavItemVisual(SettingsButton, collapsed);
+                UpdateSingleNavItemVisual(MoreButton, collapsed);
+            }
+            catch
+            {
+            }
+        }
+
+        private void UpdateSingleNavItemVisual(RadioButton? button, bool collapsed)
+        {
+            if (button == null) return;
+
+            // 折叠时：居中图标 + 隐藏文字 + tooltip 显示原文
+            // 展开时：恢复左对齐 + 显示文字 + 移除 tooltip
+            try
+            {
+                button.ToolTip = collapsed ? (button.Content?.ToString() ?? string.Empty) : null;
+                button.HorizontalContentAlignment = collapsed ? HorizontalAlignment.Center : HorizontalAlignment.Left;
+            }
+            catch { }
+
+            try
+            {
+                var presenter = FindVisualChild<ContentPresenter>(button);
+                if (presenter == null) return;
+
+                presenter.ApplyTemplate();
+                if (VisualTreeHelper.GetChildrenCount(presenter) == 0) return;
+
+                var root = VisualTreeHelper.GetChild(presenter, 0);
+
+                var text = FindVisualChild<TextBlock>(root);
+                if (text != null)
+                {
+                    text.Visibility = collapsed ? Visibility.Collapsed : Visibility.Visible;
+                }
+
+                var icon = FindVisualChild<MaterialDesignThemes.Wpf.PackIcon>(root);
+                if (icon != null)
+                {
+                    icon.Margin = collapsed ? new Thickness(0) : new Thickness(10, 0, 0, 0);
+                }
+            }
+            catch
+            {
+            }
+        }
         
         // 插件加载器
         private PluginLoader? _pluginLoader;
@@ -33,6 +200,14 @@ namespace ObsMCLauncher
             InitializeComponent();
             
             ThemeTransitionManager.Initialize(GlobalThemeTransitionOverlay);
+
+            // 还原侧边栏折叠状态
+            try
+            {
+                var cfg = LauncherConfig.Load();
+                ApplyNavCollapsed(cfg.IsNavCollapsed, animate: false);
+            }
+            catch { }
 
             // 初始化版本信息显示
             InitializeVersionInfo();
@@ -422,6 +597,12 @@ namespace ObsMCLauncher
                 
                 // 应用页面切换动画
                 AnimatePageTransition(targetPage);
+
+                // 折叠状态下，点击导航后自动收起（更像 WinUI 的体验）
+                if (_isNavCollapsed)
+                {
+                    ApplyNavCollapsed(true, animate: true);
+                }
             }
         }
         
