@@ -76,14 +76,26 @@ ObsMCLauncher/
 │   ├── VersionDetailPage.xaml       # 版本详情页（安装Forge/Fabric等）
 │   ├── ResourcesPage.xaml           # 资源中心（MOD/材质包等）
 │   ├── ModDetailPage.xaml           # 资源详情页
-│   ├── MorePage.xaml                # 更多功能页面
+│   ├── MorePage.xaml                # 更多功能页面（插件市场/已安装已迁移到 MVVM）
 │   └── SettingsPage.xaml            # 设置页面
+├── ViewModels/                      # MVVM 视图模型（逐步迁移中）
+│   └── PluginsViewModel.cs          # 更多-插件区 ViewModel（市场/已安装/详情/命令）
+├── Plugins/                         # 启动器插件系统
+│   ├── PluginLoader.cs              # 插件加载器（扫描/加载/启用禁用/卸载）
+│   ├── PluginMarketService.cs       # 插件市场服务（索引/分类/下载安装）
+│   ├── PluginContext.cs             # 插件上下文实现
+│   ├── IPluginContext.cs            # 插件上下文接口
+│   ├── ILauncherPlugin.cs           # 插件接口
+│   └── PluginMetadata.cs            # plugin.json 元数据模型
 ├── Models/                          # 数据模型
-│   ├── CurseForgeModels.cs          # CurseForge API模型
-│   ├── ModrinthModels.cs            # Modrinth API模型
-│   ├── GameAccount.cs               # 游戏账号模型
 │   ├── LauncherConfig.cs            # 启动器配置模型
 │   ├── GameDirectoryType.cs         # 版本隔离类型
+│   ├── GameAccount.cs               # 游戏账号模型
+│   ├── ServerInfo.cs                # 服务器信息模型
+│   ├── ScreenshotInfo.cs            # 截图信息模型
+│   ├── WorldInfo.cs                 # 世界信息模型
+│   ├── CurseForgeModels.cs          # CurseForge API模型
+│   ├── ModrinthModels.cs            # Modrinth API模型
 │   └── ModTranslation.cs            # MOD翻译模型
 ├── Services/                        # 服务层
 │   ├── MinecraftVersionService.cs   # Minecraft版本管理
@@ -104,8 +116,13 @@ ObsMCLauncher/
 │   ├── MicrosoftAuthService.cs      # 微软账号登录
 │   └── AccountService.cs            # 账号管理服务
 └── Utils/                           # 工具类
+    ├── Converters/                  # XAML 转换器
+    │   ├── ValueConverters.cs       # 常用转换器（Bool/Null -> Visibility 等）
+    │   ├── PluginTabToBoolConverter.cs # 插件子标签页转换器
+    │   └── EnumEqualsConverter.cs   # 枚举比较转换器
     ├── DialogManager.cs             # 对话框管理器
     ├── NotificationManager.cs       # 通知管理器
+    ├── ThemeTransitionManager.cs    # 主题切换过渡遮罩
     ├── SystemInfo.cs                # 系统信息
     ├── VersionInfo.cs               # 版本信息
     ├── GameVersionNumber.cs         # 游戏版本号解析
