@@ -63,6 +63,35 @@ namespace ObsMCLauncher
             }
         }
 
+        /// <summary>
+        /// 确保OMCL目录存在
+        /// </summary>
+        private static void EnsureOMCLDirectories()
+        {
+            try
+            {
+                var baseDir = AppDomain.CurrentDomain.BaseDirectory;
+                var configDir = Path.Combine(baseDir, "OMCL", "config");
+                var pluginsDir = Path.Combine(baseDir, "OMCL", "plugins");
+
+                if (!Directory.Exists(configDir))
+                {
+                    Directory.CreateDirectory(configDir);
+                    System.Diagnostics.Debug.WriteLine($"✅ 已创建配置目录: {configDir}");
+                }
+
+                if (!Directory.Exists(pluginsDir))
+                {
+                    Directory.CreateDirectory(pluginsDir);
+                    System.Diagnostics.Debug.WriteLine($"✅ 已创建插件目录: {pluginsDir}");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"⚠️ 创建OMCL目录失败: {ex.Message}");
+            }
+        }
+
         protected override void OnStartup(StartupEventArgs e)
         {
             try
@@ -84,6 +113,9 @@ namespace ObsMCLauncher
                     // WPF应用可能没有控制台窗口，忽略此错误
                 }
 
+                // 确保OMCL目录存在
+                EnsureOMCLDirectories();
+                
                 // 加载配置并初始化下载源
                 var config = LauncherConfig.Load();
                 DownloadSourceManager.Instance.SetDownloadSource(config.DownloadSource);

@@ -99,7 +99,6 @@ ObsMCLauncher/                           # 启动器运行目录
 │           ├── plugin.json
 │           ├── icon.png
 │           └── settings.json            # 插件自定义的配置文件
-├── OMCL.ini                             # 引导配置文件
 └── (其他启动器文件)
 ```
 

@@ -62,38 +62,6 @@ namespace ObsMCLauncher.Models
             }
         }
 
-        /// <summary>
-        /// 配置文件位置类型
-        /// </summary>
-        [JsonConverter(typeof(JsonStringEnumConverter))]
-        public DirectoryLocation ConfigFileLocation { get; set; } = DirectoryLocation.AppData;
-
-        /// <summary>
-        /// 自定义配置文件路径
-        /// </summary>
-        public string CustomConfigPath { get; set; } = "";
-
-        /// <summary>
-        /// 账号文件位置类型
-        /// </summary>
-        [JsonConverter(typeof(JsonStringEnumConverter))]
-        public DirectoryLocation AccountFileLocation { get; set; } = DirectoryLocation.AppData;
-
-        /// <summary>
-        /// 自定义账号文件路径
-        /// </summary>
-        public string CustomAccountPath { get; set; } = "";
-
-        /// <summary>
-        /// 插件目录位置类型
-        /// </summary>
-        [JsonConverter(typeof(JsonStringEnumConverter))]
-        public DirectoryLocation PluginDirectoryLocation { get; set; } = DirectoryLocation.RunningDirectory;
-
-        /// <summary>
-        /// 自定义插件目录路径
-        /// </summary>
-        public string CustomPluginDirectory { get; set; } = "";
 
         /// <summary>
         /// Java选择模式：0=自动选择，1=指定路径，2=自定义路径
@@ -157,33 +125,21 @@ namespace ObsMCLauncher.Models
         public string? SelectedVersion { get; set; }
 
         /// <summary>
-        /// 获取配置文件路径（静态方法，根据临时配置决定）
+        /// 获取配置文件路径（固定路径：当前目录\OMCL\config\config.json）
         /// </summary>
-        public static string GetConfigFilePath(DirectoryLocation location = DirectoryLocation.AppData, string customPath = "")
+        public static string GetConfigFilePath()
         {
-            return location switch
-            {
-                DirectoryLocation.AppData => Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                    "ObsMCLauncher",
-                    "config",
-                    "config.json"),
-                DirectoryLocation.RunningDirectory => Path.Combine(
-                    AppDomain.CurrentDomain.BaseDirectory,
-                    "OMCL",
-                    "config",
-                    "config.json"),
-                DirectoryLocation.Custom => string.IsNullOrEmpty(customPath)
-                    ? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "OMCL", "config", "config.json")
-                    : customPath,
-                _ => Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "OMCL", "config", "config.json")
-            };
+            return Path.Combine(
+                AppDomain.CurrentDomain.BaseDirectory,
+                "OMCL",
+                "config",
+                "config.json");
         }
 
         /// <summary>
         /// 当前使用的配置文件路径
         /// </summary>
-        private static string _currentConfigPath = GetConfigFilePath(DirectoryLocation.AppData);
+        private static string _currentConfigPath = GetConfigFilePath();
 
         /// <summary>
         /// 保存配置
@@ -192,10 +148,11 @@ namespace ObsMCLauncher.Models
         {
             try
             {
-                // 计算新的配置文件路径
-                var newConfigPath = GetConfigFilePath(ConfigFileLocation, CustomConfigPath);
+                // 使用固定路径
+                var configPath = GetConfigFilePath();
                 
-                var directory = Path.GetDirectoryName(newConfigPath);
+                // 确保目录存在
+                var directory = Path.GetDirectoryName(configPath);
                 if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
                 {
                     Directory.CreateDirectory(directory);
@@ -208,29 +165,31 @@ namespace ObsMCLauncher.Models
                 };
 
                 var json = JsonSerializer.Serialize(this, options);
-                File.WriteAllText(newConfigPath, json);
+                File.WriteAllText(configPath, json);
 
-                System.Diagnostics.Debug.WriteLine($"✅ 配置已保存到: {newConfigPath}");
+                System.Diagnostics.Debug.WriteLine($"✅ 配置已保存到: {configPath}");
 
-                // 保存引导配置文件（固定位置，记录真实配置文件位置）
-                SaveBootstrapConfig(newConfigPath);
-
-                // 如果配置路径变了，删除旧的配置文件
-                if (newConfigPath != _currentConfigPath && File.Exists(_currentConfigPath))
+                // 如果配置路径变了，尝试迁移旧配置文件
+                if (configPath != _currentConfigPath && File.Exists(_currentConfigPath))
                 {
                     try
                     {
-                        File.Delete(_currentConfigPath);
-                        System.Diagnostics.Debug.WriteLine($"✅ 已删除旧配置文件: {_currentConfigPath}");
+                        // 迁移旧配置文件到新位置
+                        var oldConfigDir = Path.GetDirectoryName(_currentConfigPath);
+                        if (!string.IsNullOrEmpty(oldConfigDir) && Directory.Exists(oldConfigDir))
+                        {
+                            System.Diagnostics.Debug.WriteLine($"⚠️ 检测到旧配置文件位置: {_currentConfigPath}");
+                            System.Diagnostics.Debug.WriteLine($"✅ 配置文件已迁移到新位置: {configPath}");
+                        }
                     }
                     catch (Exception ex)
                     {
-                        System.Diagnostics.Debug.WriteLine($"删除旧配置文件失败: {ex.Message}");
+                        System.Diagnostics.Debug.WriteLine($"迁移旧配置文件时出错: {ex.Message}");
                     }
                 }
 
                 // 更新当前配置路径
-                _currentConfigPath = newConfigPath;
+                _currentConfigPath = configPath;
             }
             catch (Exception ex)
             {
@@ -239,202 +198,172 @@ namespace ObsMCLauncher.Models
             }
         }
 
-        /// <summary>
-        /// 引导配置文件路径（固定在运行目录，用于记录真实配置文件位置）
-        /// </summary>
-        private static readonly string BootstrapConfigPath = Path.Combine(
-            AppDomain.CurrentDomain.BaseDirectory,
-            "OMCL.ini");
 
         /// <summary>
         /// 加载配置
         /// </summary>
         public static LauncherConfig Load()
         {
-            // 1. 首先尝试从引导配置文件读取真实配置文件位置
-            string? actualConfigPath = null;
-            try
+            // 固定路径：当前目录\OMCL\config\config.json
+            var configPath = GetConfigFilePath();
+            
+            // 确保目录存在
+            var directory = Path.GetDirectoryName(configPath);
+            if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
             {
-                if (File.Exists(BootstrapConfigPath))
-                {
-                    var bootstrapData = File.ReadAllText(BootstrapConfigPath);
-                    var bootstrapInfo = JsonSerializer.Deserialize<BootstrapConfig>(bootstrapData);
-                    if (bootstrapInfo != null && File.Exists(bootstrapInfo.ConfigFilePath))
-                    {
-                        actualConfigPath = bootstrapInfo.ConfigFilePath;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"读取引导配置失败: {ex.Message}");
+                Directory.CreateDirectory(directory);
             }
 
-            // 2. 如果引导配置有效，从指定位置加载
-            if (!string.IsNullOrEmpty(actualConfigPath))
+            // 尝试从固定路径加载
+            if (File.Exists(configPath))
             {
                 try
                 {
-                    var json = File.ReadAllText(actualConfigPath);
+                    var json = File.ReadAllText(configPath);
                     var config = JsonSerializer.Deserialize<LauncherConfig>(json);
                     if (config != null)
                     {
-                        _currentConfigPath = actualConfigPath;
-                        System.Diagnostics.Debug.WriteLine($"✅ 从引导配置指定的位置加载: {actualConfigPath}");
+                        _currentConfigPath = configPath;
+                        System.Diagnostics.Debug.WriteLine($"✅ 从固定路径加载配置: {configPath}");
+                        
+                        // 迁移旧配置文件（如果存在）
+                        MigrateOldConfigFiles(config);
+                        
                         return config;
                     }
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"从引导配置指定位置 {actualConfigPath} 加载失败: {ex.Message}");
+                    System.Diagnostics.Debug.WriteLine($"从固定路径 {configPath} 加载配置失败: {ex.Message}");
                 }
             }
 
-            // 3. 如果引导配置失败，按优先级尝试从默认位置加载
-            var locations = new[]
+            // 尝试从旧位置迁移配置
+            var oldLocations = new[]
             {
-                GetConfigFilePath(DirectoryLocation.RunningDirectory),
-                GetConfigFilePath(DirectoryLocation.AppData)
+                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "OMCL", "config", "config.json"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "ObsMCLauncher", "config", "config.json")
             };
 
-            foreach (var path in locations)
+            foreach (var oldPath in oldLocations)
             {
-                try
+                if (File.Exists(oldPath) && oldPath != configPath)
                 {
-                    if (File.Exists(path))
+                    try
                     {
-                        var json = File.ReadAllText(path);
+                        var json = File.ReadAllText(oldPath);
                         var config = JsonSerializer.Deserialize<LauncherConfig>(json);
                         if (config != null)
                         {
-                            _currentConfigPath = path;
-                            System.Diagnostics.Debug.WriteLine($"✅ 从默认位置加载: {path}");
+                            System.Diagnostics.Debug.WriteLine($"✅ 从旧位置迁移配置: {oldPath} -> {configPath}");
                             
-                            // 保存引导配置，下次直接从这里加载
-                            SaveBootstrapConfig(path);
+                            // 保存到新位置
+                            var newDir = Path.GetDirectoryName(configPath);
+                            if (!string.IsNullOrEmpty(newDir) && !Directory.Exists(newDir))
+                            {
+                                Directory.CreateDirectory(newDir);
+                            }
+                            
+                            var options = new JsonSerializerOptions
+                            {
+                                WriteIndented = true,
+                                Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+                            };
+                            File.WriteAllText(configPath, JsonSerializer.Serialize(config, options));
+                            
+                            _currentConfigPath = configPath;
+                            
+                            // 迁移账号文件
+                            MigrateAccountFile(oldPath, configPath);
                             
                             return config;
                         }
                     }
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"从 {path} 加载配置失败: {ex.Message}");
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"从旧位置 {oldPath} 迁移配置失败: {ex.Message}");
+                    }
                 }
             }
 
             System.Diagnostics.Debug.WriteLine("⚠️ 未找到配置文件，使用默认配置");
-            return new LauncherConfig();
+            var defaultConfig = new LauncherConfig();
+            _currentConfigPath = configPath;
+            return defaultConfig;
         }
 
         /// <summary>
-        /// 保存引导配置文件
+        /// 迁移旧配置文件
         /// </summary>
-        private static void SaveBootstrapConfig(string configPath)
+        private static void MigrateOldConfigFiles(LauncherConfig config)
+        {
+            // 如果配置中有旧的文件存储设置，清理它们（向后兼容）
+            // 这些属性已经不存在了，但JSON中可能还有，会被忽略
+        }
+
+        /// <summary>
+        /// 迁移账号文件
+        /// </summary>
+        private static void MigrateAccountFile(string oldConfigPath, string newConfigPath)
         {
             try
             {
-                // 检查是否存在旧的引导配置
-                BootstrapConfig? existingBootstrap = null;
-                if (File.Exists(BootstrapConfigPath))
+                var oldConfigDir = Path.GetDirectoryName(oldConfigPath);
+                var newConfigDir = Path.GetDirectoryName(newConfigPath);
+                
+                if (string.IsNullOrEmpty(oldConfigDir) || string.IsNullOrEmpty(newConfigDir))
+                    return;
+
+                var oldAccountPath = Path.Combine(oldConfigDir, "accounts.json");
+                var newAccountPath = Path.Combine(newConfigDir, "accounts.json");
+
+                // 如果新位置已有账号文件，不覆盖
+                if (File.Exists(newAccountPath))
                 {
-                    try
-                    {
-                        var existingData = File.ReadAllText(BootstrapConfigPath);
-                        existingBootstrap = JsonSerializer.Deserialize<BootstrapConfig>(existingData);
-                    }
-                    catch
-                    {
-                        // 忽略解析错误，使用新配置
-                    }
+                    System.Diagnostics.Debug.WriteLine($"账号文件已存在于新位置: {newAccountPath}");
+                    return;
                 }
 
-                var bootstrap = new BootstrapConfig 
-                { 
-                    ConfigFilePath = configPath,
-                    Version = VersionInfo.Version,
-                    CreatedAt = existingBootstrap?.CreatedAt ?? DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
-                    LastModified = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
-                };
-
-                var options = new JsonSerializerOptions 
-                { 
-                    WriteIndented = true,
-                    Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-                };
-                var json = JsonSerializer.Serialize(bootstrap, options);
-                File.WriteAllText(BootstrapConfigPath, json);
-                System.Diagnostics.Debug.WriteLine($"✅ 引导配置已保存: {BootstrapConfigPath} -> {configPath} (Version: {VersionInfo.Version})");
+                // 如果旧位置有账号文件，迁移它
+                if (File.Exists(oldAccountPath))
+                {
+                    if (!Directory.Exists(newConfigDir))
+                    {
+                        Directory.CreateDirectory(newConfigDir);
+                    }
+                    File.Copy(oldAccountPath, newAccountPath, true);
+                    System.Diagnostics.Debug.WriteLine($"✅ 账号文件已迁移: {oldAccountPath} -> {newAccountPath}");
+                }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"保存引导配置失败: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"迁移账号文件失败: {ex.Message}");
             }
         }
 
-        /// <summary>
-        /// 引导配置类
-        /// </summary>
-        private class BootstrapConfig
-        {
-            [JsonPropertyName("configFilePath")]
-            public string ConfigFilePath { get; set; } = string.Empty;
-
-            [JsonPropertyName("version")]
-            public string Version { get; set; } = string.Empty;
-
-            [JsonPropertyName("createdAt")]
-            public string CreatedAt { get; set; } = string.Empty;
-
-            [JsonPropertyName("lastModified")]
-            public string LastModified { get; set; } = string.Empty;
-        }
 
 
         /// <summary>
-        /// 获取账号文件路径
+        /// 获取账号文件路径（固定路径：当前目录\OMCL\config\accounts.json）
         /// </summary>
         public string GetAccountFilePath()
         {
-            return AccountFileLocation switch
-            {
-                DirectoryLocation.AppData => Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                    "ObsMCLauncher",
-                    "config",
-                    "accounts.json"),
-                DirectoryLocation.RunningDirectory => Path.Combine(
-                    AppDomain.CurrentDomain.BaseDirectory,
-                    "OMCL",
-                    "config",
-                    "accounts.json"),
-                DirectoryLocation.Custom => string.IsNullOrEmpty(CustomAccountPath)
-                    ? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "OMCL", "config", "accounts.json")
-                    : CustomAccountPath,
-                _ => Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "OMCL", "config", "accounts.json")
-            };
+            return Path.Combine(
+                AppDomain.CurrentDomain.BaseDirectory,
+                "OMCL",
+                "config",
+                "accounts.json");
         }
 
         /// <summary>
-        /// 获取插件目录路径
+        /// 获取插件目录路径（固定路径：当前目录\OMCL\plugins\）
         /// </summary>
         public string GetPluginDirectory()
         {
-            return PluginDirectoryLocation switch
-            {
-                DirectoryLocation.AppData => Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                    "ObsMCLauncher",
-                    "plugins"),
-                DirectoryLocation.RunningDirectory => Path.Combine(
-                    AppDomain.CurrentDomain.BaseDirectory,
-                    "OMCL",
-                    "plugins"),
-                DirectoryLocation.Custom => string.IsNullOrEmpty(CustomPluginDirectory)
-                    ? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "OMCL", "plugins")
-                    : CustomPluginDirectory,
-                _ => Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "OMCL", "plugins")
-            };
+            return Path.Combine(
+                AppDomain.CurrentDomain.BaseDirectory,
+                "OMCL",
+                "plugins");
         }
 
         /// <summary>
