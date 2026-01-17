@@ -5,6 +5,8 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using ObsMCLauncher.Models;
@@ -24,6 +26,10 @@ namespace ObsMCLauncher.Pages
         private bool _isUpdatingMemory = false; // 防止TextBox和Slider相互触发
         private List<JavaInfo> _detectedJavaList = new List<JavaInfo>(); // 检测到的Java列表
         private bool _isLoadingJava = false; // 标记是否正在加载Java
+
+        // 主页卡片拖拽排序
+        private Point _homeCardsDragStartPoint;
+        private HomeCardViewModel? _draggingHomeCard;
 
         public SettingsPage()
         {
@@ -802,7 +808,40 @@ namespace ObsMCLauncher.Pages
                     .ToList();
             }
             
+            // 为了稳定排序与按钮上下移/拖拽，先对列表重新编号
+            for (int i = 0; i < cardViewModels.Count; i++)
+            {
+                cardViewModels[i].Order = i;
+            }
+
             HomeCardsListControl.ItemsSource = cardViewModels;
+
+            // 同步回配置（避免后续仅靠config排序导致标题回退到ID）
+            var changed = false;
+            foreach (var vm in cardViewModels)
+            {
+                var cc = config.HomeCards.FirstOrDefault(h => h.CardId == vm.CardId);
+                if (cc == null)
+                {
+                    config.HomeCards.Add(new HomeCardConfig
+                    {
+                        CardId = vm.CardId,
+                        IsEnabled = vm.IsEnabled,
+                        Order = vm.Order
+                    });
+                    changed = true;
+                }
+                else if (cc.Order != vm.Order)
+                {
+                    cc.Order = vm.Order;
+                    changed = true;
+                }
+            }
+
+            if (changed)
+            {
+                config.Save();
+            }
         }
         
         /// <summary>
@@ -845,26 +884,16 @@ namespace ObsMCLauncher.Pages
         private void HomeCardMoveUp_Click(object sender, RoutedEventArgs e)
         {
             if (sender is not Button button || button.DataContext is not HomeCardViewModel viewModel) return;
-            
-            var config = LauncherConfig.Load();
-            var cardConfig = config.HomeCards.FirstOrDefault(hc => hc.CardId == viewModel.CardId);
-            if (cardConfig == null) return;
-            
-            // 找到上一个卡片并交换顺序
-            var previousCard = config.HomeCards
-                .Where(hc => hc.Order < cardConfig.Order)
-                .OrderByDescending(hc => hc.Order)
-                .FirstOrDefault();
-            
-            if (previousCard != null)
-            {
-                var tempOrder = cardConfig.Order;
-                cardConfig.Order = previousCard.Order;
-                previousCard.Order = tempOrder;
-                config.Save();
-                LoadHomeCards();
-                RefreshHomePageCards();
-            }
+
+            if (HomeCardsListControl.ItemsSource is not IList<HomeCardViewModel> list) return;
+
+            var index = list.IndexOf(viewModel);
+            if (index <= 0) return;
+
+            list.RemoveAt(index);
+            list.Insert(index - 1, viewModel);
+
+            ApplyHomeCardsOrder(list);
         }
         
         /// <summary>
@@ -873,28 +902,116 @@ namespace ObsMCLauncher.Pages
         private void HomeCardMoveDown_Click(object sender, RoutedEventArgs e)
         {
             if (sender is not Button button || button.DataContext is not HomeCardViewModel viewModel) return;
-            
-            var config = LauncherConfig.Load();
-            var cardConfig = config.HomeCards.FirstOrDefault(hc => hc.CardId == viewModel.CardId);
-            if (cardConfig == null) return;
-            
-            // 找到下一个卡片并交换顺序
-            var nextCard = config.HomeCards
-                .Where(hc => hc.Order > cardConfig.Order)
-                .OrderBy(hc => hc.Order)
-                .FirstOrDefault();
-            
-            if (nextCard != null)
-            {
-                var tempOrder = cardConfig.Order;
-                cardConfig.Order = nextCard.Order;
-                nextCard.Order = tempOrder;
-                config.Save();
-                LoadHomeCards();
-                RefreshHomePageCards();
-            }
+
+            if (HomeCardsListControl.ItemsSource is not IList<HomeCardViewModel> list) return;
+
+            var index = list.IndexOf(viewModel);
+            if (index < 0 || index >= list.Count - 1) return;
+
+            list.RemoveAt(index);
+            list.Insert(index + 1, viewModel);
+
+            ApplyHomeCardsOrder(list);
         }
         
+        private void ApplyHomeCardsOrder(IList<HomeCardViewModel> list)
+        {
+            for (int i = 0; i < list.Count; i++)
+            {
+                list[i].Order = i;
+            }
+
+            HomeCardsListControl.ItemsSource = null;
+            HomeCardsListControl.ItemsSource = list;
+
+            var config = LauncherConfig.Load();
+            foreach (var vm in list)
+            {
+                var cc = config.HomeCards.FirstOrDefault(h => h.CardId == vm.CardId);
+                if (cc == null)
+                {
+                    config.HomeCards.Add(new HomeCardConfig { CardId = vm.CardId, IsEnabled = vm.IsEnabled, Order = vm.Order });
+                }
+                else
+                {
+                    cc.Order = vm.Order;
+                    cc.IsEnabled = vm.IsEnabled;
+                }
+            }
+            config.Save();
+
+            RefreshHomePageCards();
+        }
+
+        private void HomeCardsList_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            _homeCardsDragStartPoint = e.GetPosition(null);
+            _draggingHomeCard = GetHomeCardItemUnderMouse(e.GetPosition(HomeCardsListControl));
+        }
+
+        private void HomeCardsList_PreviewMouseMove(object sender, MouseEventArgs e)
+        {
+            if (e.LeftButton != MouseButtonState.Pressed)
+            {
+                return;
+            }
+
+            if (_draggingHomeCard == null)
+            {
+                return;
+            }
+
+            var position = e.GetPosition(null);
+            if (Math.Abs(position.X - _homeCardsDragStartPoint.X) < SystemParameters.MinimumHorizontalDragDistance &&
+                Math.Abs(position.Y - _homeCardsDragStartPoint.Y) < SystemParameters.MinimumVerticalDragDistance)
+            {
+                return;
+            }
+
+            DragDrop.DoDragDrop(HomeCardsListControl, _draggingHomeCard, DragDropEffects.Move);
+        }
+
+        private void HomeCardsList_DragOver(object sender, DragEventArgs e)
+        {
+            e.Effects = e.Data.GetDataPresent(typeof(HomeCardViewModel)) ? DragDropEffects.Move : DragDropEffects.None;
+            e.Handled = true;
+        }
+
+        private void HomeCardsList_Drop(object sender, DragEventArgs e)
+        {
+            if (!e.Data.GetDataPresent(typeof(HomeCardViewModel))) return;
+
+            var droppedData = e.Data.GetData(typeof(HomeCardViewModel)) as HomeCardViewModel;
+            if (droppedData == null) return;
+
+            if (HomeCardsListControl.ItemsSource is not IList<HomeCardViewModel> list) return;
+
+            var target = GetHomeCardItemUnderMouse(e.GetPosition(HomeCardsListControl));
+            if (target == null || ReferenceEquals(target, droppedData)) return;
+
+            var removedIdx = list.IndexOf(droppedData);
+            var targetIdx = list.IndexOf(target);
+            if (removedIdx < 0 || targetIdx < 0) return;
+
+            list.RemoveAt(removedIdx);
+            list.Insert(targetIdx, droppedData);
+
+            ApplyHomeCardsOrder(list);
+
+            _draggingHomeCard = null;
+        }
+
+        private HomeCardViewModel? GetHomeCardItemUnderMouse(Point position)
+        {
+            var element = HomeCardsListControl.InputHitTest(position) as DependencyObject;
+            while (element != null && element is not ListBoxItem)
+            {
+                element = VisualTreeHelper.GetParent(element);
+            }
+
+            return (element as ListBoxItem)?.DataContext as HomeCardViewModel;
+        }
+
         /// <summary>
         /// 刷新HomePage的卡片显示
         /// </summary>

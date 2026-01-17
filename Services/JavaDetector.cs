@@ -24,11 +24,24 @@ namespace ObsMCLauncher.Services
     /// </summary>
     public static class JavaDetector
     {
+        private static readonly object _cacheLock = new object();
+        private static List<JavaInfo>? _cachedJavaList;
+        private static DateTime _cachedAt;
+        private static readonly TimeSpan CacheTtl = TimeSpan.FromMinutes(5);
+
         /// <summary>
         /// 检测所有可用的Java安装
         /// </summary>
         public static List<JavaInfo> DetectAllJava()
         {
+            lock (_cacheLock)
+            {
+                if (_cachedJavaList != null && (DateTime.Now - _cachedAt) < CacheTtl)
+                {
+                    return _cachedJavaList;
+                }
+            }
+
             var javaList = new List<JavaInfo>();
             var foundPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
@@ -53,7 +66,15 @@ namespace ObsMCLauncher.Services
             Debug.WriteLine("========== Java检测完成 ==========");
 
             // 按版本号降序排序
-            return javaList.OrderByDescending(j => j.MajorVersion).ToList();
+            var sorted = javaList.OrderByDescending(j => j.MajorVersion).ToList();
+
+            lock (_cacheLock)
+            {
+                _cachedJavaList = sorted;
+                _cachedAt = DateTime.Now;
+            }
+
+            return sorted;
         }
 
         /// <summary>

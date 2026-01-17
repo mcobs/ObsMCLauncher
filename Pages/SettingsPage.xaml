@@ -364,8 +364,15 @@
                                  Margin="0,0,0,16"/>
 
                         <!-- 卡片列表 -->
-                        <ItemsControl x:Name="HomeCardsListControl">
-                            <ItemsControl.ItemTemplate>
+                        <ListBox x:Name="HomeCardsListControl"
+                                 Background="Transparent"
+                                 BorderThickness="0"
+                                 AllowDrop="True"
+                                 PreviewMouseLeftButtonDown="HomeCardsList_PreviewMouseLeftButtonDown"
+                                 PreviewMouseMove="HomeCardsList_PreviewMouseMove"
+                                 DragOver="HomeCardsList_DragOver"
+                                 Drop="HomeCardsList_Drop">
+                            <ListBox.ItemTemplate>
                                 <DataTemplate>
                                     <Border Background="{DynamicResource SurfaceElevatedBrush}"
                                            CornerRadius="8"
@@ -433,8 +440,8 @@
                                         </Grid>
                                     </Border>
                                 </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
                     </StackPanel>
                 </Border>
 

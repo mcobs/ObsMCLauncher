@@ -22,6 +22,7 @@ namespace ObsMCLauncher.Pages
         // 卡片管理
         private readonly Dictionary<string, HomeCardInfo> _registeredCards = new Dictionary<string, HomeCardInfo>();
         private readonly List<HomeCardInfo> _displayedCards = new List<HomeCardInfo>();
+        private bool _builtInCardsRegistered = false;
         
         public HomePage()
         {
@@ -36,6 +37,7 @@ namespace ObsMCLauncher.Pages
 
         private void HomePage_Loaded(object sender, RoutedEventArgs e)
         {
+            RegisterBuiltInCards();
             LoadAccounts();
             LoadVersions();
             LoadGameLogCheckBoxState();
@@ -465,7 +467,10 @@ namespace ObsMCLauncher.Pages
                         logWindow.Show();
                     }
                     
-                    bool finalLaunchSuccess = await GameLauncher.LaunchGameAsync(
+                    // 记录启动事件（用于主页“最近启动记录”卡片）
+                HomeLaunchHistoryService.Instance.RecordLaunchStart(versionId, account.DisplayName);
+
+                bool finalLaunchSuccess = await GameLauncher.LaunchGameAsync(
                         versionId, 
                         account, 
                         config, 
@@ -483,6 +488,10 @@ namespace ObsMCLauncher.Pages
                         {
                             // 游戏退出回调
                             logWindow?.OnGameExit(exitCode);
+                            
+                            // 记录退出事件
+                            HomeLaunchHistoryService.Instance.RecordLaunchEnd(exitCode);
+                            RefreshCards();
                         },
                         launchCts.Token);
                     
@@ -1102,6 +1111,352 @@ namespace ObsMCLauncher.Pages
         }
         
         #region 主页卡片管理
+        
+        private void RegisterBuiltInCards()
+        {
+            if (_builtInCardsRegistered)
+            {
+                return;
+            }
+
+            _builtInCardsRegistered = true;
+
+            RegisterBuiltInLaunchStatusCard();
+            RegisterBuiltInVersionShortcutCard();
+            RegisterBuiltInLaunchHistoryCard();
+            RegisterBuiltInUpdateNoticeCard();
+
+            EnsureBuiltInCardDefaults();
+        }
+
+        private void RegisterBuiltInLaunchStatusCard()
+        {
+            var cardId = "builtin.launch-status";
+            var title = "启动状态";
+            var description = "当前账号、版本与运行环境概览";
+
+            var content = new StackPanel { Orientation = Orientation.Vertical };
+
+            var accountText = new TextBlock { FontSize = 13, Margin = new Thickness(0, 0, 0, 6), TextWrapping = TextWrapping.Wrap };
+            accountText.SetResourceReference(TextBlock.ForegroundProperty, "TextBrush");
+
+            var versionText = new TextBlock { FontSize = 13, Margin = new Thickness(0, 0, 0, 6), TextWrapping = TextWrapping.Wrap };
+            versionText.SetResourceReference(TextBlock.ForegroundProperty, "TextBrush");
+
+            var javaText = new TextBlock { FontSize = 12, Margin = new Thickness(0, 0, 0, 10), TextWrapping = TextWrapping.Wrap };
+            javaText.SetResourceReference(TextBlock.ForegroundProperty, "TextSecondaryBrush");
+
+            void Refresh()
+            {
+                var config = LauncherConfig.Load();
+
+                var accountName = "未选择";
+                if (AccountComboBox.SelectedItem is ComboBoxItem aItem)
+                {
+                    if (aItem.Content is StackPanel sp && sp.Children.OfType<TextBlock>().FirstOrDefault() is TextBlock tb)
+                    {
+                        accountName = tb.Text;
+                    }
+                    else if (aItem.Content is string s)
+                    {
+                        accountName = s;
+                    }
+                }
+
+                var versionId = "未选择";
+                if (VersionComboBox.SelectedItem is ComboBoxItem vItem && vItem.Tag is string vid)
+                {
+                    versionId = vid;
+                }
+
+                accountText.Text = $"账号：{accountName}";
+                versionText.Text = $"版本：{versionId}";
+                javaText.Text = $"Java：{config.GetActualJavaPath(versionId)}\n内存：{config.MinMemory}~{config.MaxMemory} MB";
+            }
+
+            Refresh();
+
+            AccountComboBox.SelectionChanged += (_, __) => Refresh();
+            VersionComboBox.SelectionChanged += (_, __) => Refresh();
+
+            content.Children.Add(accountText);
+            content.Children.Add(versionText);
+            content.Children.Add(javaText);
+
+            _registeredCards[cardId] = new HomeCardInfo
+            {
+                CardId = cardId,
+                Title = title,
+                Description = description,
+                Content = CreateCardContent(title, description, content, "InformationOutline", null),
+                Icon = "InformationOutline",
+                IsPluginCard = false
+            };
+        }
+
+        private void RegisterBuiltInVersionShortcutCard()
+        {
+            var cardId = "builtin.version-shortcut";
+            var title = "版本快捷";
+            var description = "快速进入当前版本实例管理";
+
+            var content = new StackPanel { Orientation = Orientation.Vertical };
+
+            var loaderText = new TextBlock { FontSize = 13, Margin = new Thickness(0, 0, 0, 10), TextWrapping = TextWrapping.Wrap };
+            loaderText.SetResourceReference(TextBlock.ForegroundProperty, "TextSecondaryBrush");
+
+            void Refresh()
+            {
+                var versionId = (VersionComboBox.SelectedItem as ComboBoxItem)?.Tag as string;
+                if (string.IsNullOrEmpty(versionId))
+                {
+                    loaderText.Text = "未选择版本";
+                    return;
+                }
+
+                var config = LauncherConfig.Load();
+                var installedVersions = LocalVersionService.GetInstalledVersions(config.GameDirectory);
+                var version = installedVersions.FirstOrDefault(v => v.Id == versionId);
+                if (version == null)
+                {
+                    loaderText.Text = $"版本 {versionId} 不存在";
+                    return;
+                }
+
+                var icon = GetVersionLoaderIcon(version);
+                var kind = icon?.Kind.ToString() ?? "Minecraft";
+                loaderText.Text = $"加载器：{kind}\n实例：{version.Id}";
+            }
+
+            Refresh();
+            VersionComboBox.SelectionChanged += (_, __) => Refresh();
+
+            var btn = new Button
+            {
+                Content = "打开实例管理",
+                Height = 34,
+                HorizontalAlignment = HorizontalAlignment.Left,
+                Padding = new Thickness(12, 0, 12, 0),
+                Style = (Style)Application.Current.Resources["MaterialDesignOutlinedButton"]
+            };
+            btn.Click += (_, __) => ManageVersionButton_Click(btn, new RoutedEventArgs());
+
+            content.Children.Add(loaderText);
+            content.Children.Add(btn);
+
+            _registeredCards[cardId] = new HomeCardInfo
+            {
+                CardId = cardId,
+                Title = title,
+                Description = description,
+                Content = CreateCardContent(title, description, content, "RocketLaunchOutline", null),
+                Icon = "RocketLaunchOutline",
+                IsPluginCard = false
+            };
+        }
+
+        private void RegisterBuiltInLaunchHistoryCard()
+        {
+            var cardId = "builtin.launch-history";
+            var title = "最近启动";
+            var description = "最近几次启动记录与退出状态";
+
+            var content = new StackPanel { Orientation = Orientation.Vertical };
+
+            void Refresh()
+            {
+                content.Children.Clear();
+                var entries = HomeLaunchHistoryService.Instance.GetRecentEntries(5);
+
+                if (entries.Count == 0)
+                {
+                    var empty = new TextBlock { Text = "暂无记录", FontSize = 13 };
+                    empty.SetResourceReference(TextBlock.ForegroundProperty, "TextSecondaryBrush");
+                    content.Children.Add(empty);
+                    return;
+                }
+
+                foreach (var e in entries)
+                {
+                    var row = new Grid { Margin = new Thickness(0, 0, 0, 8) };
+                    row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                    row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+                    var left = new StackPanel { Orientation = Orientation.Vertical };
+                    var line1 = new TextBlock { Text = $"{e.VersionId} / {e.AccountName}", FontSize = 13 };
+                    line1.SetResourceReference(TextBlock.ForegroundProperty, "TextBrush");
+
+                    var line2 = new TextBlock { Text = e.StartTime.ToString("yyyy-MM-dd HH:mm"), FontSize = 11 };
+                    line2.SetResourceReference(TextBlock.ForegroundProperty, "TextTertiaryBrush");
+
+                    left.Children.Add(line1);
+                    left.Children.Add(line2);
+                    Grid.SetColumn(left, 0);
+
+                    var status = new TextBlock { FontSize = 12, VerticalAlignment = VerticalAlignment.Top };
+                    status.SetResourceReference(TextBlock.ForegroundProperty, "TextSecondaryBrush");
+                    if (e.EndTime == null)
+                    {
+                        status.Text = "运行中";
+                    }
+                    else if (e.ExitCode == 0)
+                    {
+                        status.Text = "正常退出";
+                    }
+                    else
+                    {
+                        status.Text = $"异常({e.ExitCode})";
+                    }
+                    Grid.SetColumn(status, 1);
+
+                    row.Children.Add(left);
+                    row.Children.Add(status);
+                    content.Children.Add(row);
+                }
+            }
+
+            Refresh();
+
+            _registeredCards[cardId] = new HomeCardInfo
+            {
+                CardId = cardId,
+                Title = title,
+                Description = description,
+                Content = CreateCardContent(title, description, content, "History", null),
+                Icon = "History",
+                IsPluginCard = false,
+                OnClick = () =>
+                {
+                    Refresh();
+                }
+            };
+        }
+
+        private void RegisterBuiltInUpdateNoticeCard()
+        {
+            var cardId = "builtin.update-notice";
+            var title = "公告 / 更新";
+            var description = "检查启动器新版本与更新摘要";
+
+            var content = new StackPanel { Orientation = Orientation.Vertical };
+
+            var statusText = new TextBlock { FontSize = 13, Margin = new Thickness(0, 0, 0, 8), TextWrapping = TextWrapping.Wrap };
+            statusText.SetResourceReference(TextBlock.ForegroundProperty, "TextSecondaryBrush");
+
+            var bodyText = new TextBlock { FontSize = 12, Margin = new Thickness(0, 0, 0, 10), TextWrapping = TextWrapping.Wrap };
+            bodyText.SetResourceReference(TextBlock.ForegroundProperty, "TextTertiaryBrush");
+
+            var openBtn = new Button
+            {
+                Content = "打开发布页",
+                Height = 34,
+                HorizontalAlignment = HorizontalAlignment.Left,
+                Padding = new Thickness(12, 0, 12, 0),
+                Style = (Style)Application.Current.Resources["MaterialDesignOutlinedButton"],
+                IsEnabled = false
+            };
+
+            async Task RefreshAsync()
+            {
+                try
+                {
+                    statusText.Text = "检查更新中...";
+                    bodyText.Text = string.Empty;
+                    openBtn.IsEnabled = false;
+
+                    var release = await UpdateService.CheckForUpdatesAsync(includePrerelease: false);
+                    if (release == null)
+                    {
+                        statusText.Text = "当前已是最新版本";
+                        return;
+                    }
+
+                    statusText.Text = $"发现新版本：{release.TagName}";
+
+                    var lines = (release.Body ?? string.Empty)
+                        .Split(new[] { "\r\n", "\n" }, StringSplitOptions.None)
+                        .Where(l => !string.IsNullOrWhiteSpace(l))
+                        .Take(6)
+                        .ToList();
+
+                    bodyText.Text = lines.Count > 0 ? string.Join("\n", lines) : "（无更新摘要）";
+
+                    openBtn.IsEnabled = !string.IsNullOrEmpty(release.HtmlUrl);
+                    if (openBtn.IsEnabled)
+                    {
+                        openBtn.Click += (_, __) =>
+                        {
+                            try
+                            {
+                                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                                {
+                                    FileName = release.HtmlUrl,
+                                    UseShellExecute = true
+                                });
+                            }
+                            catch { }
+                        };
+                    }
+                }
+                catch
+                {
+                    statusText.Text = "检查更新失败";
+                }
+            }
+
+            openBtn.Click += async (_, __) => await RefreshAsync();
+
+            content.Children.Add(statusText);
+            content.Children.Add(bodyText);
+            content.Children.Add(openBtn);
+
+            // 首次加载异步刷新
+            _ = RefreshAsync();
+
+            _registeredCards[cardId] = new HomeCardInfo
+            {
+                CardId = cardId,
+                Title = title,
+                Description = description,
+                Content = CreateCardContent(title, description, content, "BullhornOutline", null),
+                Icon = "BullhornOutline",
+                IsPluginCard = false
+            };
+        }
+
+        private void EnsureBuiltInCardDefaults()
+        {
+            var config = LauncherConfig.Load();
+
+            var builtIns = new[]
+            {
+                ("builtin.launch-status", true),
+                ("builtin.version-shortcut", false),
+                ("builtin.launch-history", true),
+                ("builtin.update-notice", false)
+            };
+
+            var changed = false;
+            foreach (var (id, enabled) in builtIns)
+            {
+                if (!config.HomeCards.Any(h => h.CardId == id))
+                {
+                    config.HomeCards.Add(new HomeCardConfig
+                    {
+                        CardId = id,
+                        IsEnabled = enabled,
+                        Order = config.HomeCards.Count
+                    });
+                    changed = true;
+                }
+            }
+
+            if (changed)
+            {
+                config.Save();
+            }
+        }
+
         
         /// <summary>
         /// 加载主页卡片
