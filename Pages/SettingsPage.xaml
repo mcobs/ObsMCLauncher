@@ -12,6 +12,36 @@
       TextOptions.TextFormattingMode="Display"
       TextOptions.TextRenderingMode="ClearType">
 
+    <Page.Resources>
+        <Style x:Key="HomeCardsListItemStyle" TargetType="ListBoxItem">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="VerticalContentAlignment" Value="Stretch"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="ItemRoot" Background="Transparent">
+                            <Border x:Name="SelectionBorder" CornerRadius="8" BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
+                                <ContentPresenter RecognizesAccessKey="True"/>
+                            </Border>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="SelectionBorder" Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="SelectionBorder" Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
+                                <Setter TargetName="SelectionBorder" Property="BorderThickness" Value="2"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Page.Resources>
+
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -367,6 +397,7 @@
                         <ListBox x:Name="HomeCardsListControl"
                                  Background="Transparent"
                                  BorderThickness="0"
+                                 ItemContainerStyle="{StaticResource HomeCardsListItemStyle}"
                                  AllowDrop="True"
                                  PreviewMouseLeftButtonDown="HomeCardsList_PreviewMouseLeftButtonDown"
                                  PreviewMouseMove="HomeCardsList_PreviewMouseMove"
@@ -566,4 +597,3 @@
 
     </Grid>
 </Page>
-
