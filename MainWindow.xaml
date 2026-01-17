@@ -366,6 +366,18 @@
             <!-- 对话框将动态添加到这里 -->
         </Grid>
 
+        <!-- 全局：主题切换遮罩（用于深/浅色切换淡入淡出，避免闪烁） -->
+        <Border x:Name="GlobalThemeTransitionOverlay"
+                Grid.Row="0"
+                Grid.Column="0"
+                Grid.RowSpan="2"
+                Grid.ColumnSpan="2"
+                Background="{DynamicResource BackgroundBrush}"
+                Opacity="0"
+                Visibility="Collapsed"
+                IsHitTestVisible="False"
+                Panel.ZIndex="2000"/>
+
         <!-- 下载管理器按钮（右下角） -->
         <Button x:Name="DownloadManagerButton"
                 Grid.Row="1"

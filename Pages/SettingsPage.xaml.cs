@@ -676,8 +676,8 @@ namespace ObsMCLauncher.Pages
             var themeMode = ThemeModeComboBox.SelectedIndex;
             _config.ThemeMode = themeMode;
             
-            // 应用主题
-            App.ApplyTheme(themeMode);
+            // 应用主题（带全局遮罩淡入淡出，避免闪烁）
+            _ = ThemeTransitionManager.RunAsync(() => App.ApplyTheme(themeMode));
             
             // 保存配置
             AutoSaveSettingsImmediately("主题模式");

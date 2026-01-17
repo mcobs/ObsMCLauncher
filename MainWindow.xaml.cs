@@ -32,6 +32,8 @@ namespace ObsMCLauncher
         {
             InitializeComponent();
             
+            ThemeTransitionManager.Initialize(GlobalThemeTransitionOverlay);
+
             // 初始化版本信息显示
             InitializeVersionInfo();
             

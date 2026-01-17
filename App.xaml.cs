@@ -3,6 +3,7 @@ using System.IO;
 using System.Text;
 using System.Windows;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using MaterialDesignThemes.Wpf;
 using ObsMCLauncher.Models;
 using ObsMCLauncher.Services;
@@ -123,9 +124,6 @@ namespace ObsMCLauncher
                 // 释放MOD翻译文件到运行目录
                 ExtractModTranslations();
                 
-                // 初始化动态主题资源（确保它们是可变的，非冻结的）
-                InitializeDynamicBrushes();
-                
                 // 应用主题
                 ApplyTheme(config.ThemeMode);
                 
@@ -234,8 +232,12 @@ namespace ObsMCLauncher
                 theme.SetBaseTheme(isDark ? Theme.Dark : Theme.Light);
                 paletteHelper.SetTheme(theme);
 
-                // 更新动态资源 - 更新Color属性而不是替换整个Brush对象
-                // 这样使用SetResourceReference的元素会自动响应变化
+                // MaterialDesign 可能会冻结/密封资源，这里重新确保动态Brush为可变对象
+                // 注意：调用后需要重新从 Resources 取一次引用，避免拿到旧实例
+                InitializeDynamicBrushes();
+
+                // 主题资源更新：MaterialDesign 会冻结/密封部分 Brush，导致 ColorAnimation 不稳定
+                // 主题切换动画已改由全局遮罩（ThemeTransitionManager）负责，这里只做无动画的资源同步
                 if (isDark)
                 {
                     UpdateBrushColor("BackgroundBrush", "DarkBackgroundBrush");
@@ -252,12 +254,10 @@ namespace ObsMCLauncher
                     UpdateBrushColor("TooltipBackgroundBrush", "DarkTooltipBackgroundBrush");
                     UpdateBrushColor("TooltipForegroundBrush", "DarkTextBrush");
                     UpdateBrushColor("TooltipBorderBrush", "DarkBorderBrush");
-                    
-                    // 更新玻璃态效果资源（深色主题：基于DarkSurfaceBrush的半透明）
+
                     UpdateGlassmorphismBrush("GlassmorphismBackgroundBrush", "DarkSurfaceBrush", 224);
                     UpdateGlassmorphismBorderBrush("GlassmorphismBorderBrush", true);
-                    
-                    // 更新骨架屏资源（深色主题）
+
                     UpdateSkeletonBrushes(true);
                 }
                 else
@@ -276,16 +276,12 @@ namespace ObsMCLauncher
                     UpdateBrushColor("TooltipBackgroundBrush", "LightTooltipBackgroundBrush");
                     UpdateBrushColor("TooltipForegroundBrush", "LightTextBrush");
                     UpdateBrushColor("TooltipBorderBrush", "LightBorderBrush");
-                    
-                    // 更新玻璃态效果资源（浅色主题：基于LightSurfaceBrush的半透明）
+
                     UpdateGlassmorphismBrush("GlassmorphismBackgroundBrush", "LightSurfaceBrush", 224);
                     UpdateGlassmorphismBorderBrush("GlassmorphismBorderBrush", false);
-                    
-                    // 更新骨架屏资源（浅色主题）
+
                     UpdateSkeletonBrushes(false);
                 }
-
-                // System.Diagnostics.Debug.WriteLine("[App] ✅ 主题切换完成"); 
             }
             catch (Exception ex)
             {
@@ -297,7 +293,7 @@ namespace ObsMCLauncher
         /// 初始化动态Brush资源，确保它们是可变的（非冻结的）
         /// 这样在主题切换时，更新Color属性会自动触发所有使用DynamicResource的元素更新
         /// </summary>
-        private static void InitializeDynamicBrushes()
+        public static void InitializeDynamicBrushes()
         {
             try
             {
@@ -320,12 +316,9 @@ namespace ObsMCLauncher
                 {
                     if (app.Resources[key] is SolidColorBrush brush)
                     {
-                        // 如果是冻结的，创建一个可变的副本
-                        if (brush.IsFrozen)
-                        {
-                            var mutableBrush = new SolidColorBrush(brush.Color);
-                            app.Resources[key] = mutableBrush;
-                        }
+                        // 始终替换为新的可变Brush，避免被第三方主题库密封/冻结后无法再次动画
+                        // 保留当前颜色（而不是回退到某个默认色），确保切换过程连续
+                        app.Resources[key] = new SolidColorBrush(brush.Color);
                     }
                 }
 
@@ -378,6 +371,189 @@ namespace ObsMCLauncher
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[App] ❌ 更新Brush颜色失败 ({targetKey}): {ex.Message}");
+            }
+        }
+
+        private static Duration GetThemeTransitionDuration(Application app)
+        {
+            try
+            {
+                // 兼容系统“减少动画/减少动态效果”设置：开启时直接禁用过渡
+                // WPF 对应系统参数：ClientAreaAnimation
+                if (!SystemParameters.ClientAreaAnimation)
+                {
+                    return new Duration(TimeSpan.Zero);
+                }
+
+                if (app.Resources["AnimationDuration"] is Duration d)
+                {
+                    return d;
+                }
+            }
+            catch
+            {
+            }
+
+            return new Duration(TimeSpan.FromMilliseconds(200));
+        }
+
+        private static void AnimateBrushColor(string targetKey, string sourceKey, Duration duration)
+        {
+            try
+            {
+                var app = Application.Current;
+                if (app == null) return;
+
+                var sourceBrush = app.Resources[sourceKey] as SolidColorBrush;
+                if (sourceBrush == null) return;
+
+                // 每次都重新获取最新的资源实例，因为它可能已被第三方库替换
+                var targetBrush = app.Resources[targetKey] as SolidColorBrush;
+                if (targetBrush == null) return;
+
+                // 某些第三方主题库会让Brush处于 sealed 状态（并不一定 IsFrozen==true）
+                // 对 sealed/frozen 的 Brush，必须先替换为新的可变实例
+                if (targetBrush.IsFrozen || targetBrush.IsSealed)
+                {
+                    app.Resources[targetKey] = new SolidColorBrush(targetBrush.Color);
+                    targetBrush = (SolidColorBrush)app.Resources[targetKey];
+                }
+
+                if (duration.TimeSpan == TimeSpan.Zero)
+                {
+                    targetBrush.Color = sourceBrush.Color;
+                    return;
+                }
+
+                var animation = new ColorAnimation
+                {
+                    To = sourceBrush.Color,
+                    Duration = duration,
+                    EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+                };
+
+                // 直接对 Brush 做 BeginAnimation，避免创建/管理全局 Storyboard
+                targetBrush.BeginAnimation(SolidColorBrush.ColorProperty, animation, HandoffBehavior.SnapshotAndReplace);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[App] ❌ 动画更新Brush颜色失败 ({targetKey}): {ex.Message}");
+            }
+        }
+
+        private static void AnimateGlassmorphismBrush(string targetKey, string sourceKey, byte alpha, Duration duration)
+        {
+            try
+            {
+                var app = Application.Current;
+                if (app == null) return;
+
+                var sourceBrush = app.Resources[sourceKey] as SolidColorBrush;
+                if (sourceBrush == null) return;
+
+                var targetBrush = app.Resources[targetKey] as SolidColorBrush;
+                if (targetBrush == null) return;
+
+                if (targetBrush.IsFrozen || targetBrush.IsSealed)
+                {
+                    app.Resources[targetKey] = new SolidColorBrush(targetBrush.Color);
+                    targetBrush = (SolidColorBrush)app.Resources[targetKey];
+                }
+
+                var toColor = Color.FromArgb(alpha, sourceBrush.Color.R, sourceBrush.Color.G, sourceBrush.Color.B);
+
+                if (duration.TimeSpan == TimeSpan.Zero)
+                {
+                    targetBrush.Color = toColor;
+                    return;
+                }
+
+                if (targetBrush.IsFrozen || targetBrush.IsSealed)
+                {
+                    app.Resources[targetKey] = new SolidColorBrush(targetBrush.Color);
+                    targetBrush = (SolidColorBrush)app.Resources[targetKey];
+                }
+
+                var animation = new ColorAnimation
+                {
+                    To = toColor,
+                    Duration = duration,
+                    EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+                };
+
+                targetBrush.BeginAnimation(SolidColorBrush.ColorProperty, animation, HandoffBehavior.SnapshotAndReplace);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[App] ❌ 动画更新玻璃态Brush失败 ({targetKey}): {ex.Message}");
+            }
+        }
+
+        private static void AnimateGlassmorphismBorderBrush(string targetKey, bool isDark, Duration duration)
+        {
+            try
+            {
+                var app = Application.Current;
+                if (app == null) return;
+
+                var targetBrush = app.Resources[targetKey] as SolidColorBrush;
+                if (targetBrush == null) return;
+
+                if (targetBrush.IsFrozen || targetBrush.IsSealed)
+                {
+                    app.Resources[targetKey] = new SolidColorBrush(targetBrush.Color);
+                    targetBrush = (SolidColorBrush)app.Resources[targetKey];
+                }
+
+                var toColor = isDark
+                    ? Color.FromArgb(128, 255, 255, 255)
+                    : Color.FromArgb(76, 0, 0, 0);
+
+                if (duration.TimeSpan == TimeSpan.Zero)
+                {
+                    targetBrush.Color = toColor;
+                    return;
+                }
+
+                if (targetBrush.IsFrozen)
+                {
+                    app.Resources[targetKey] = new SolidColorBrush(targetBrush.Color);
+                    targetBrush = (SolidColorBrush)app.Resources[targetKey];
+                }
+
+                var animation = new ColorAnimation
+                {
+                    To = toColor,
+                    Duration = duration,
+                    EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+                };
+
+                targetBrush.BeginAnimation(SolidColorBrush.ColorProperty, animation, HandoffBehavior.SnapshotAndReplace);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[App] ❌ 动画更新玻璃态边框Brush失败 ({targetKey}): {ex.Message}");
+            }
+        }
+
+        private static void AnimateSkeletonBrushes(bool isDark, Duration duration)
+        {
+            try
+            {
+                if (isDark)
+                {
+                    AnimateBrushColor("SkeletonBackgroundBrush", "DarkSurfaceHoverBrush", duration);
+                    AnimateBrushColor("SkeletonFillBrush", "DarkSurfaceHoverBrush", duration);
+                }
+                else
+                {
+                    AnimateBrushColor("SkeletonBackgroundBrush", "LightSurfaceHoverBrush", duration);
+                    AnimateBrushColor("SkeletonFillBrush", "LightSurfaceHoverBrush", duration);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[App] ❌ 动画更新骨架屏资源失败: {ex.Message}");
             }
         }
 
