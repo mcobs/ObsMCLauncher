@@ -1,38 +1,49 @@
 using System;
-using System.Reflection;
 
 namespace ObsMCLauncher.Utils
 {
+    /// <summary>
+    /// 版本状态枚举
+    /// </summary>
+    public enum VersionStatus
+    {
+        /// <summary>
+        /// 测试版
+        /// </summary>
+        Testing,
+        
+        /// <summary>
+        /// 预发布版本
+        /// </summary>
+        PreRelease,
+        
+        /// <summary>
+        /// 正式版
+        /// </summary>
+        Release
+    }
+
     /// <summary>
     /// 全局版本信息
     /// </summary>
     public static class VersionInfo
     {
         /// <summary>
-        /// 产品版本号（面向用户）
-        /// 格式：主版本.次版本.修订号 (Major.Minor.Patch)
+        /// 产品版本号
+        /// 格式：主版本.次版本.修订版本 (Major.Minor.Patch)
         /// 示例：1.0.0, 1.2.3, 2.0.0
         /// </summary>
         public static readonly string Version = "1.0.0";
 
         /// <summary>
-        /// 内部版本号（构建号）
-        /// 格式：日期.构建次数 (yyyyMMdd.build)
-        /// 示例：20250108.1, 20250108.2
+        /// 版本代号（可选，用于重大版本）
         /// </summary>
-        public static readonly string BuildVersion = "20251116.2";
+        public static readonly string CodeName = "GrassBlock";
 
         /// <summary>
-        /// 完整版本号（组合显示）
-        /// 格式：版本号 (内部版本号)
-        /// 示例：1.0.0 (20250108.1)
+        /// 版本状态
         /// </summary>
-        public static string FullVersion => $"{Version} (Build {BuildVersion})";
-
-        /// <summary>
-        /// 短版本号（仅显示版本号）
-        /// </summary>
-        public static string ShortVersion => Version;
+        public static readonly VersionStatus Status = VersionStatus.Testing;
 
         /// <summary>
         /// 产品名称
@@ -45,78 +56,44 @@ namespace ObsMCLauncher.Utils
         public static readonly string FullProductName = "黑曜石MC启动器";
 
         /// <summary>
-        /// 版本代号（可选，用于重大版本）
-        /// </summary>
-        public static readonly string CodeName = "Obsidian";
-
-        /// <summary>
         /// 发布日期
         /// </summary>
-        public static readonly DateTime ReleaseDate = new DateTime(2025, 11, 16);
+        public static readonly DateTime ReleaseDate = new DateTime(2026, 01, 17);
 
         /// <summary>
-        /// 是否为预发布版本
+        /// 短版本号（仅显示版本号）
         /// </summary>
-        public static readonly bool IsPreRelease = true;
+        public static string ShortVersion => Version;
 
         /// <summary>
-        /// 预发布版本类型（alpha, beta, rc）
-        /// </summary>
-        public static readonly string PreReleaseType = "beta";
-
-        /// <summary>
-        /// 预发布版本序号
-        /// </summary>
-        public static readonly int PreReleaseNumber = 1;
-
-        /// <summary>
-        /// 显示版本（包含预发布信息）
-        /// 示例：1.0.0-beta.1, 1.0.0 (正式版)
+        /// 显示版本（包含版本号和状态信息）
+        /// 示例：1.0.0 (预发布版本), 1.0.0 (正式版)
         /// </summary>
         public static string DisplayVersion
         {
             get
             {
-                if (IsPreRelease)
+                var statusText = Status switch
                 {
-                    return $"{Version}-{PreReleaseType}.{PreReleaseNumber}";
-                }
-                return Version;
+                    VersionStatus.Testing => "测试版",
+                    VersionStatus.PreRelease => "预发布版本",
+                    VersionStatus.Release => "正式版",
+                    _ => "未知"
+                };
+                return $"{Version} ({statusText})";
             }
         }
 
         /// <summary>
-        /// 版本状态描述
+        /// 版本状态描述（中文）
         /// </summary>
-        public static string VersionStatus
+        public static string VersionStatusText => Status switch
         {
-            get
-            {
-                if (IsPreRelease)
-                {
-                    return PreReleaseType.ToUpper() switch
-                    {
-                        "ALPHA" => "内测版",
-                        "BETA" => "公测版",
-                        "RC" => "候选版",
-                        _ => "测试版"
-                    };
-                }
-                return "正式版";
-            }
-        }
-
-        /// <summary>
-        /// 获取程序集版本（从AssemblyInfo读取，作为备用）
-        /// </summary>
-        public static string AssemblyVersion
-        {
-            get
-            {
-                var version = Assembly.GetExecutingAssembly().GetName().Version;
-                return version != null ? $"{version.Major}.{version.Minor}.{version.Build}" : "Unknown";
-            }
-        }
+            VersionStatus.Testing => "测试版",
+            VersionStatus.PreRelease => "预发布版本",
+            VersionStatus.Release => "正式版",
+            _ => "未知"
+        };
 
         /// <summary>
         /// 版权信息
@@ -130,12 +107,10 @@ namespace ObsMCLauncher.Utils
         {
             return $@"
 产品名称: {FullProductName}
-版本号: {DisplayVersion}
-内部版本号: {BuildVersion}
-程序集版本: {AssemblyVersion}
-发布日期: {ReleaseDate:yyyy-MM-dd}
-版本状态: {VersionStatus}
+版本号: {Version}
+版本状态: {VersionStatusText}
 版本代号: {CodeName}
+发布日期: {ReleaseDate:yyyy-MM-dd}
             ".Trim();
         }
     }

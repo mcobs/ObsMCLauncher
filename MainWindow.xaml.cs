@@ -125,7 +125,7 @@ namespace ObsMCLauncher
                 Title = $"{VersionInfo.FullProductName} - {VersionInfo.DisplayVersion}";
                 
                 // 输出版本信息到调试控制台
-                System.Diagnostics.Debug.WriteLine($"[启动器] {VersionInfo.FullProductName} {VersionInfo.DisplayVersion} (Build {VersionInfo.BuildVersion})");
+                System.Diagnostics.Debug.WriteLine($"[启动器] {VersionInfo.FullProductName} {VersionInfo.DisplayVersion}");
             }
             catch (Exception ex)
             {
