@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using ObsMCLauncher.Models;
@@ -400,12 +402,196 @@ namespace ObsMCLauncher
             return _pageCache[pageTag];
         }
 
+        // 当前页面切换动画的Storyboard引用，用于取消正在进行的动画
+        private Storyboard? _currentPageTransitionStoryboard;
+        
         private void NavigationButton_Click(object sender, RoutedEventArgs e)
         {
             if (sender is RadioButton button && button.Tag is string tag)
             {
                 // 使用缓存的页面实例，保持状态（按需创建）
-                MainFrame.Navigate(GetOrCreatePage(tag));
+                var targetPage = GetOrCreatePage(tag);
+                
+                // 如果点击的是当前页面，不执行切换
+                if (MainFrame.Content == targetPage)
+                {
+                    return;
+                }
+                
+                // 应用页面切换动画
+                AnimatePageTransition(targetPage);
+            }
+        }
+        
+        /// <summary>
+        /// 页面切换动画（淡入+滑动+缩放）
+        /// 优化：处理动画进行中再次点击的情况
+        /// </summary>
+        private void AnimatePageTransition(Page targetPage)
+        {
+            // 停止当前正在进行的动画（如果存在）
+            if (_currentPageTransitionStoryboard != null)
+            {
+                _currentPageTransitionStoryboard.Stop();
+                _currentPageTransitionStoryboard = null;
+            }
+            
+            // 先淡出当前页面
+            if (MainFrame.Content is Page currentPage)
+            {
+                // 停止当前页面的所有动画
+                currentPage.BeginAnimation(UIElement.OpacityProperty, null);
+                if (currentPage.RenderTransform is TransformGroup transformGroup)
+                {
+                    foreach (var transform in transformGroup.Children)
+                    {
+                        if (transform is ScaleTransform scaleTransform)
+                        {
+                            scaleTransform.BeginAnimation(ScaleTransform.ScaleXProperty, null);
+                            scaleTransform.BeginAnimation(ScaleTransform.ScaleYProperty, null);
+                        }
+                        else if (transform is TranslateTransform translateTransform)
+                        {
+                            translateTransform.BeginAnimation(TranslateTransform.YProperty, null);
+                        }
+                    }
+                }
+                
+                // 确保当前页面状态正确（如果动画被中断，可能状态不正确）
+                currentPage.Opacity = 1.0;
+                
+                // 创建淡出动画
+                var fadeOut = AnimationHelper.CreateFadeOutAnimation(
+                    currentPage,
+                    AnimationHelper.FastDuration,
+                    onCompleted: (s, e) =>
+                    {
+                        // 淡出完成后导航到新页面
+                        NavigateToPage(targetPage);
+                    }
+                );
+                
+                _currentPageTransitionStoryboard = fadeOut;
+                fadeOut.Begin();
+            }
+            else
+            {
+                // 如果没有当前页面，直接导航
+                NavigateToPage(targetPage);
+            }
+        }
+        
+        /// <summary>
+        /// 导航到目标页面并应用淡入动画
+        /// </summary>
+        private void NavigateToPage(Page targetPage)
+        {
+            // 重置目标页面的状态，确保动画能正常播放
+            targetPage.Opacity = 0;
+            if (targetPage.RenderTransform is TransformGroup transformGroup)
+            {
+                var scaleTransform = transformGroup.Children.OfType<ScaleTransform>().FirstOrDefault();
+                var translateTransform = transformGroup.Children.OfType<TranslateTransform>().FirstOrDefault();
+                
+                if (scaleTransform != null)
+                {
+                    scaleTransform.ScaleX = 0.95;
+                    scaleTransform.ScaleY = 0.95;
+                }
+                if (translateTransform != null)
+                {
+                    translateTransform.Y = 20;
+                }
+            }
+            else
+            {
+                // 如果还没有TransformGroup，创建一个
+                targetPage.RenderTransform = new TransformGroup
+                {
+                    Children = new TransformCollection
+                    {
+                        new ScaleTransform(0.95, 0.95),
+                        new TranslateTransform(0, 20)
+                    }
+                };
+                targetPage.RenderTransformOrigin = new Point(0.5, 0.5);
+            }
+            
+            // 导航到新页面
+            MainFrame.Navigate(targetPage);
+            
+            // 等待页面加载完成后应用淡入动画
+            targetPage.Loaded += OnTargetPageLoaded;
+        }
+        
+        /// <summary>
+        /// 目标页面加载完成后的处理
+        /// </summary>
+        private void OnTargetPageLoaded(object sender, RoutedEventArgs e)
+        {
+            if (sender is Page targetPage)
+            {
+                targetPage.Loaded -= OnTargetPageLoaded;
+                
+                // 确保状态正确
+                targetPage.Opacity = 0;
+                if (targetPage.RenderTransform is TransformGroup transformGroup)
+                {
+                    var scaleTransform = transformGroup.Children.OfType<ScaleTransform>().FirstOrDefault();
+                    var translateTransform = transformGroup.Children.OfType<TranslateTransform>().FirstOrDefault();
+                    
+                    if (scaleTransform != null)
+                    {
+                        scaleTransform.ScaleX = 0.95;
+                        scaleTransform.ScaleY = 0.95;
+                    }
+                    if (translateTransform != null)
+                    {
+                        translateTransform.Y = 20;
+                    }
+                }
+                
+                // 应用淡入+滑动+缩放动画
+                var fadeIn = AnimationHelper.CreateFadeInAnimation(
+                    targetPage,
+                    AnimationHelper.DefaultDuration
+                );
+                
+                var scaleAnim = AnimationHelper.CreateScaleAnimation(
+                    targetPage,
+                    0.95,
+                    1.0,
+                    AnimationHelper.DefaultDuration
+                );
+                
+                // 滑动动画
+                if (targetPage.RenderTransform is TransformGroup tg)
+                {
+                    var translateTransform = tg.Children.OfType<TranslateTransform>().FirstOrDefault();
+                    if (translateTransform != null)
+                    {
+                        var slideYAnim = new DoubleAnimation
+                        {
+                            From = 20,
+                            To = 0,
+                            Duration = AnimationHelper.DefaultDuration,
+                            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+                        };
+                        translateTransform.BeginAnimation(TranslateTransform.YProperty, slideYAnim);
+                    }
+                }
+                
+                // 同时执行淡入和缩放动画
+                AnimationHelper.ExecuteParallelAnimations(
+                    new List<Storyboard> { fadeIn, scaleAnim },
+                    (s, args) =>
+                    {
+                        // 动画完成后清理引用
+                        _currentPageTransitionStoryboard = null;
+                    }
+                );
+                
+                _currentPageTransitionStoryboard = fadeIn; // 使用淡入动画作为当前动画引用
             }
         }
 

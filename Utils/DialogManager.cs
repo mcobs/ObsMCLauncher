@@ -157,23 +157,25 @@ namespace ObsMCLauncher.Utils
                 };
                 Panel.SetZIndex(_overlay, 9); // 设置 ZIndex 为 9
 
-                // 创建对话框
+                // 创建对话框（应用玻璃态效果，使用动态资源）
                 var dialogBorder = new Border
                 {
                     MinWidth = 420,
                     MaxWidth = 550,
-                    Background = (Brush)Application.Current.FindResource("SurfaceBrush"),
-                    CornerRadius = new CornerRadius(12),
+                    Background = (Brush)Application.Current.FindResource("GlassmorphismBackgroundBrush"),
+                    CornerRadius = new CornerRadius(16),
                     Padding = new Thickness(0),
                     HorizontalAlignment = HorizontalAlignment.Center,
                     VerticalAlignment = VerticalAlignment.Center,
                     Opacity = 0,
+                    BorderBrush = (Brush)Application.Current.FindResource("GlassmorphismBorderBrush"),
+                    BorderThickness = new Thickness(1),
                     Effect = new DropShadowEffect
                     {
                         Color = Colors.Black,
-                        BlurRadius = 30,
+                        BlurRadius = 40,
                         ShadowDepth = 0,
-                        Opacity = 0.5
+                        Opacity = 0.6
                     }
                 };
 
@@ -393,23 +395,26 @@ namespace ObsMCLauncher.Utils
         /// </summary>
         private Border CreateDialogElement(string title, string message, DialogType type, DialogButtons buttons)
         {
+            // 应用玻璃态效果（使用动态资源，支持主题切换）
             var border = new Border
             {
                 MinWidth = 420,
                 MaxWidth = 650,
                 MaxHeight = 600, // 限制最大高度，避免对话框过高
-                Background = (Brush)Application.Current.FindResource("SurfaceBrush"),
-                CornerRadius = new CornerRadius(12),
+                Background = (Brush)Application.Current.FindResource("GlassmorphismBackgroundBrush"),
+                CornerRadius = new CornerRadius(16),
                 Padding = new Thickness(0),
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
                 Opacity = 0,
+                BorderBrush = (Brush)Application.Current.FindResource("GlassmorphismBorderBrush"),
+                BorderThickness = new Thickness(1),
                 Effect = new DropShadowEffect
                 {
                     Color = Colors.Black,
-                    BlurRadius = 30,
+                    BlurRadius = 40,
                     ShadowDepth = 0,
-                    Opacity = 0.5
+                    Opacity = 0.6
                 }
             };
 
@@ -672,12 +677,13 @@ namespace ObsMCLauncher.Utils
                 };
                 Panel.SetZIndex(overlay, 9); // 设置 ZIndex 为 9
 
+                // 应用玻璃态效果（使用动态资源）
                 var dialogBorder = new Border
                 {
-                    Background = (SolidColorBrush)Application.Current.Resources["SurfaceBrush"],
-                    BorderBrush = (SolidColorBrush)Application.Current.Resources["BorderBrush"],
-                    BorderThickness = new Thickness(1, 1, 1, 1),
-                    CornerRadius = new CornerRadius(12),
+                    Background = (Brush)Application.Current.FindResource("GlassmorphismBackgroundBrush"),
+                    BorderBrush = (Brush)Application.Current.FindResource("GlassmorphismBorderBrush"),
+                    BorderThickness = new Thickness(1),
+                    CornerRadius = new CornerRadius(16),
                     MaxWidth = 600,
                     MaxHeight = 700,
                     Padding = new Thickness(30, 25, 30, 25),
@@ -687,8 +693,8 @@ namespace ObsMCLauncher.Utils
                     {
                         Color = Colors.Black,
                         BlurRadius = 40,
-                        Opacity = 0.5,
-                        ShadowDepth = 4
+                        Opacity = 0.6,
+                        ShadowDepth = 0
                     }
                 };
 

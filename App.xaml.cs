@@ -252,6 +252,10 @@ namespace ObsMCLauncher
                     UpdateBrushColor("TooltipBackgroundBrush", "DarkTooltipBackgroundBrush");
                     UpdateBrushColor("TooltipForegroundBrush", "DarkTextBrush");
                     UpdateBrushColor("TooltipBorderBrush", "DarkBorderBrush");
+                    
+                    // 更新玻璃态效果资源（深色主题：基于DarkSurfaceBrush的半透明）
+                    UpdateGlassmorphismBrush("GlassmorphismBackgroundBrush", "DarkSurfaceBrush", 224);
+                    UpdateGlassmorphismBorderBrush("GlassmorphismBorderBrush", true);
                 }
                 else
                 {
@@ -269,6 +273,10 @@ namespace ObsMCLauncher
                     UpdateBrushColor("TooltipBackgroundBrush", "LightTooltipBackgroundBrush");
                     UpdateBrushColor("TooltipForegroundBrush", "LightTextBrush");
                     UpdateBrushColor("TooltipBorderBrush", "LightBorderBrush");
+                    
+                    // 更新玻璃态效果资源（浅色主题：基于LightSurfaceBrush的半透明）
+                    UpdateGlassmorphismBrush("GlassmorphismBackgroundBrush", "LightSurfaceBrush", 224);
+                    UpdateGlassmorphismBorderBrush("GlassmorphismBorderBrush", false);
                 }
 
                 // System.Diagnostics.Debug.WriteLine("[App] ✅ 主题切换完成"); 
@@ -297,7 +305,8 @@ namespace ObsMCLauncher
                     "TextBrush", "TextSecondaryBrush", "TextTertiaryBrush",
                     "BorderBrush", "DividerBrush",
                     "InputBackgroundBrush", "InputForegroundBrush",
-                    "TooltipBackgroundBrush", "TooltipForegroundBrush", "TooltipBorderBrush"
+                    "TooltipBackgroundBrush", "TooltipForegroundBrush", "TooltipBorderBrush",
+                    "GlassmorphismBackgroundBrush", "GlassmorphismBorderBrush" // 玻璃态效果资源
                 };
 
                 foreach (var key in dynamicBrushKeys)
@@ -362,6 +371,90 @@ namespace ObsMCLauncher
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[App] ❌ 更新Brush颜色失败 ({targetKey}): {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 更新玻璃态背景Brush（基于SurfaceBrush的半透明版本）
+        /// </summary>
+        private static void UpdateGlassmorphismBrush(string targetKey, string sourceKey, byte alpha)
+        {
+            try
+            {
+                var app = Application.Current;
+                if (app == null) return;
+
+                var sourceBrush = app.Resources[sourceKey] as SolidColorBrush;
+                if (sourceBrush == null)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[App] ⚠️ 源Brush不存在: {sourceKey}");
+                    return;
+                }
+
+                var targetBrush = app.Resources[targetKey] as SolidColorBrush;
+                if (targetBrush == null)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[App] ⚠️ 目标Brush不存在: {targetKey}");
+                    return;
+                }
+
+                // 创建半透明颜色（保持RGB，修改Alpha）
+                var glassColor = Color.FromArgb(alpha, sourceBrush.Color.R, sourceBrush.Color.G, sourceBrush.Color.B);
+
+                // 检查是否被冻结
+                if (targetBrush.IsFrozen)
+                {
+                    var newBrush = new SolidColorBrush(glassColor);
+                    app.Resources[targetKey] = newBrush;
+                }
+                else
+                {
+                    targetBrush.Color = glassColor;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[App] ❌ 更新玻璃态Brush失败 ({targetKey}): {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 更新玻璃态边框Brush（根据主题调整高光效果）
+        /// </summary>
+        private static void UpdateGlassmorphismBorderBrush(string targetKey, bool isDark)
+        {
+            try
+            {
+                var app = Application.Current;
+                if (app == null) return;
+
+                var targetBrush = app.Resources[targetKey] as SolidColorBrush;
+                if (targetBrush == null)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[App] ⚠️ 目标Brush不存在: {targetKey}");
+                    return;
+                }
+
+                // 深色主题：白色高光（50%不透明度）
+                // 浅色主题：深色高光（30%不透明度）
+                var borderColor = isDark 
+                    ? Color.FromArgb(128, 255, 255, 255)  // 深色：白色高光
+                    : Color.FromArgb(76, 0, 0, 0);         // 浅色：深色高光（30%不透明度）
+
+                // 检查是否被冻结
+                if (targetBrush.IsFrozen)
+                {
+                    var newBrush = new SolidColorBrush(borderColor);
+                    app.Resources[targetKey] = newBrush;
+                }
+                else
+                {
+                    targetBrush.Color = borderColor;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[App] ❌ 更新玻璃态边框Brush失败 ({targetKey}): {ex.Message}");
             }
         }
 

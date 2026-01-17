@@ -22,7 +22,7 @@
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-            <!-- 欢迎横幅 -->
+            <!-- 欢迎横幅（增强渐变和光效） -->
             <Border Grid.Row="0"
                     CornerRadius="16"
                     Margin="0,0,0,16"
@@ -33,6 +33,9 @@
                         <GradientStop Color="#059669" Offset="1"/>
                     </LinearGradientBrush>
                 </Border.Background>
+                <Border.Effect>
+                    <DropShadowEffect Color="#10B981" BlurRadius="30" ShadowDepth="0" Opacity="0.3"/>
+                </Border.Effect>
                 
                 <Grid>
                     <!-- 装饰性背景图案 -->
