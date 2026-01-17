@@ -83,20 +83,20 @@
                             
                             <Button Grid.Column="1"
                                   x:Name="RefreshInstalledButton"
-                                  Click="RefreshInstalledButton_Click"
-                                  Style="{StaticResource MaterialDesignOutlinedButton}"
-                                  Height="30"
-                                  FontSize="12"
-                                  Padding="12,0">
-                                <StackPanel Orientation="Horizontal">
-                                    <materialDesign:PackIcon Kind="Refresh" 
-                                                           Width="14" 
-                                                           Height="14"
-                                                           VerticalAlignment="Center"
-                                                           Margin="0,0,6,0"/>
-                                    <TextBlock Text="刷新" VerticalAlignment="Center"/>
-                                </StackPanel>
-                            </Button>
+                                      Click="RefreshInstalledButton_Click"
+                                      Style="{StaticResource MaterialDesignOutlinedButton}"
+                                      Height="30"
+                                      FontSize="12"
+                                      Padding="12,0">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="Refresh" 
+                                                               Width="14" 
+                                                               Height="14"
+                                                               VerticalAlignment="Center"
+                                                               Margin="0,0,6,0"/>
+                                        <TextBlock Text="刷新" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
                         </Grid>
                     </Border>
 

@@ -1,8 +1,10 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using MaterialDesignThemes.Wpf;
 using ObsMCLauncher.Models;
@@ -16,6 +18,8 @@ namespace ObsMCLauncher.Pages
     {
         private InstalledVersion? _version;
         private string _versionPath;
+        private List<WorldInfo> _allWorlds = new List<WorldInfo>();
+        private string _backupDirectory = "";
         public Action? OnBackRequested { get; set; }
 
         public VersionInstancePage(InstalledVersion version)
@@ -24,6 +28,26 @@ namespace ObsMCLauncher.Pages
             _version = version;
             _versionPath = version.Path;
             Loaded += VersionInstancePage_Loaded;
+            InitializeBackupDirectory();
+        }
+
+        /// <summary>
+        /// 初始化备份目录
+        /// </summary>
+        private void InitializeBackupDirectory()
+        {
+            var appDataDir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "ObsMCLauncher",
+                "backups",
+                "worlds"
+            );
+            _backupDirectory = appDataDir;
+            
+            if (!Directory.Exists(_backupDirectory))
+            {
+                Directory.CreateDirectory(_backupDirectory);
+            }
         }
 
         private void VersionInstancePage_Loaded(object sender, RoutedEventArgs e)
@@ -564,5 +588,228 @@ namespace ObsMCLauncher.Pages
 
             LocalVersionService.OpenVersionFolder(savesPath);
         }
+
+        #region 世界管理功能
+
+        /// <summary>
+        /// 管理世界按钮点击
+        /// </summary>
+        private void ManageWorldsButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_version == null) return;
+
+            // 显示世界管理卡片
+            WorldsManagementCard.Visibility = Visibility.Visible;
+            
+            // 加载世界列表
+            LoadWorlds();
+        }
+
+        /// <summary>
+        /// 关闭世界管理卡片
+        /// </summary>
+        private void CloseWorldsButton_Click(object sender, RoutedEventArgs e)
+        {
+            WorldsManagementCard.Visibility = Visibility.Collapsed;
+        }
+
+        /// <summary>
+        /// 加载世界列表
+        /// </summary>
+        private void LoadWorlds()
+        {
+            if (_version == null) return;
+
+            try
+            {
+                var config = LauncherConfig.Load();
+                
+                // 根据版本隔离设置获取正确的Saves目录
+                var savesPath = config.GetSavesDirectory(_version.Id);
+                
+                // WorldManager.GetWorlds 可以接受 saves 目录路径
+                _allWorlds = WorldManager.Instance.GetWorlds(savesPath);
+                FilterWorlds();
+            }
+            catch (Exception ex)
+            {
+                NotificationManager.Instance.ShowNotification("错误", $"加载世界列表失败: {ex.Message}", NotificationType.Error);
+                ShowWorldsEmptyState();
+            }
+        }
+
+        /// <summary>
+        /// 筛选世界
+        /// </summary>
+        private void FilterWorlds()
+        {
+            var searchText = WorldSearchBox?.Text?.Trim() ?? "";
+            var filteredWorlds = _allWorlds;
+
+            if (!string.IsNullOrEmpty(searchText))
+            {
+                filteredWorlds = _allWorlds
+                    .Where(w => w.Name.Contains(searchText, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+            }
+
+            WorldsList.ItemsSource = filteredWorlds;
+
+            // 显示/隐藏空状态
+            if (filteredWorlds.Count == 0)
+            {
+                ShowWorldsEmptyState();
+            }
+            else
+            {
+                HideWorldsEmptyState();
+            }
+        }
+
+        /// <summary>
+        /// 显示空状态
+        /// </summary>
+        private void ShowWorldsEmptyState()
+        {
+            WorldsEmptyState.Visibility = Visibility.Visible;
+            WorldsList.Visibility = Visibility.Collapsed;
+        }
+
+        /// <summary>
+        /// 隐藏空状态
+        /// </summary>
+        private void HideWorldsEmptyState()
+        {
+            WorldsEmptyState.Visibility = Visibility.Collapsed;
+            WorldsList.Visibility = Visibility.Visible;
+        }
+
+        /// <summary>
+        /// 世界搜索框按键事件
+        /// </summary>
+        private void WorldSearchBox_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter)
+            {
+                FilterWorlds();
+            }
+        }
+
+        /// <summary>
+        /// 刷新世界列表
+        /// </summary>
+        private void RefreshWorldsButton_Click(object sender, RoutedEventArgs e)
+        {
+            LoadWorlds();
+        }
+
+        /// <summary>
+        /// 打开备份目录
+        /// </summary>
+        private void OpenBackupFolderButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (Directory.Exists(_backupDirectory))
+                {
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = _backupDirectory,
+                        UseShellExecute = true
+                    });
+                }
+                else
+                {
+                    NotificationManager.Instance.ShowNotification("提示", "备份目录不存在", NotificationType.Info);
+                }
+            }
+            catch (Exception ex)
+            {
+                NotificationManager.Instance.ShowNotification("错误", $"打开备份目录失败: {ex.Message}", NotificationType.Error);
+            }
+        }
+
+        /// <summary>
+        /// 备份世界
+        /// </summary>
+        private void BackupWorld_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button button && button.Tag is WorldInfo world)
+            {
+                try
+                {
+                    var result = WorldManager.Instance.BackupWorld(world, _backupDirectory);
+                    if (result)
+                    {
+                        NotificationManager.Instance.ShowNotification("成功", $"世界 \"{world.Name}\" 已备份", NotificationType.Success);
+                    }
+                    else
+                    {
+                        NotificationManager.Instance.ShowNotification("错误", "备份失败", NotificationType.Error);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    NotificationManager.Instance.ShowNotification("错误", $"备份失败: {ex.Message}", NotificationType.Error);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 查看世界详情
+        /// </summary>
+        private async void ViewWorldDetails_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button button && button.Tag is WorldInfo world)
+            {
+                var details = $@"世界名称: {world.Name}
+路径: {world.FullPath}
+大小: {world.FormattedSize}
+最后游玩: {world.FormattedLastPlayed}
+游戏模式: {world.GameMode ?? "未知"}
+难度: {world.Difficulty ?? "未知"}
+种子: {world.Seed?.ToString() ?? "未知"}
+游戏版本: {world.GameVersion ?? "未知"}";
+
+                await DialogManager.Instance.ShowInfo("世界详情", details);
+            }
+        }
+
+        /// <summary>
+        /// 删除世界
+        /// </summary>
+        private async void DeleteWorld_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button button && button.Tag is WorldInfo world)
+            {
+                var confirmed = await DialogManager.Instance.Confirm(
+                    "确认删除",
+                    $"确定要删除世界 \"{world.Name}\" 吗？\n\n此操作不可恢复！"
+                );
+
+                if (confirmed)
+                {
+                    try
+                    {
+                        var deleteResult = WorldManager.Instance.DeleteWorld(world);
+                        if (deleteResult)
+                        {
+                            NotificationManager.Instance.ShowNotification("成功", $"世界 \"{world.Name}\" 已删除", NotificationType.Success);
+                            LoadWorlds(); // 重新加载列表
+                        }
+                        else
+                        {
+                            NotificationManager.Instance.ShowNotification("错误", "删除失败", NotificationType.Error);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        NotificationManager.Instance.ShowNotification("错误", $"删除失败: {ex.Message}", NotificationType.Error);
+                    }
+                }
+            }
+        }
+
+        #endregion
     }
 }

@@ -313,7 +313,8 @@
                 <!-- 游戏配置卡片 -->
                 <Border Background="{DynamicResource SurfaceBrush}"
                         CornerRadius="10"
-                        Padding="20">
+                        Padding="20"
+                        Margin="0,0,0,16">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
@@ -370,6 +371,7 @@
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
                                 <TextBlock x:Name="SavesCountText"
                                          Grid.Column="0"
@@ -378,6 +380,23 @@
                                          Foreground="{DynamicResource TextSecondaryBrush}"
                                          VerticalAlignment="Center"/>
                                 <Button Grid.Column="1"
+                                      x:Name="ManageWorldsButton"
+                                      Click="ManageWorldsButton_Click"
+                                      Style="{StaticResource MaterialDesignOutlinedButton}"
+                                      Height="32"
+                                      FontSize="12"
+                                      Padding="12,0"
+                                      Margin="0,0,8,0">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="Map" 
+                                                               Width="14" 
+                                                               Height="14"
+                                                               VerticalAlignment="Center"
+                                                               Margin="0,0,6,0"/>
+                                        <TextBlock Text="管理世界" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button Grid.Column="2"
                                       x:Name="OpenSavesFolderButton"
                                       Click="OpenSavesFolderButton_Click"
                                       Style="{StaticResource MaterialDesignOutlinedButton}"
@@ -394,6 +413,256 @@
                                     </StackPanel>
                                 </Button>
                             </Grid>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- 世界管理卡片（可展开） -->
+                <Border x:Name="WorldsManagementCard"
+                        Background="{DynamicResource SurfaceBrush}"
+                        CornerRadius="10"
+                        Padding="20"
+                        Visibility="Collapsed">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- 标题栏 -->
+                        <Grid Grid.Row="0" Margin="0,0,0,12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            
+                            <TextBlock Grid.Column="0"
+                                     Text="世界管理"
+                                     FontSize="18"
+                                     FontWeight="SemiBold"
+                                     VerticalAlignment="Center"/>
+                            
+                            <Button Grid.Column="1"
+                                  x:Name="CloseWorldsButton"
+                                  Click="CloseWorldsButton_Click"
+                                  Style="{StaticResource MaterialDesignIconButton}"
+                                  Width="32"
+                                  Height="32"
+                                  ToolTip="收起">
+                                <materialDesign:PackIcon Kind="ChevronUp" Width="20" Height="20"/>
+                            </Button>
+                        </Grid>
+
+                        <!-- 搜索和操作栏 -->
+                        <Grid Grid.Row="1" Margin="0,0,0,12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBox x:Name="WorldSearchBox"
+                                   Grid.Column="0"
+                                   materialDesign:HintAssist.Hint="搜索世界..."
+                                   Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                   Margin="0,0,8,0"
+                                   KeyDown="WorldSearchBox_KeyDown"/>
+
+                            <Button Grid.Column="1"
+                                  x:Name="RefreshWorldsButton"
+                                  Click="RefreshWorldsButton_Click"
+                                  Style="{StaticResource MaterialDesignOutlinedButton}"
+                                  Height="32"
+                                  FontSize="12"
+                                  Padding="12,0"
+                                  Margin="0,0,8,0">
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="Refresh" 
+                                                           Width="14" 
+                                                           Height="14"
+                                                           VerticalAlignment="Center"
+                                                           Margin="0,0,6,0"/>
+                                    <TextBlock Text="刷新" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+
+                            <Button Grid.Column="2"
+                                  x:Name="OpenBackupFolderButton"
+                                  Click="OpenBackupFolderButton_Click"
+                                  Style="{StaticResource MaterialDesignOutlinedButton}"
+                                  Height="32"
+                                  FontSize="12"
+                                  Padding="12,0">
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="Folder" 
+                                                           Width="14" 
+                                                           Height="14"
+                                                           VerticalAlignment="Center"
+                                                           Margin="0,0,6,0"/>
+                                    <TextBlock Text="备份目录" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                        </Grid>
+
+                        <!-- 世界列表 -->
+                        <ScrollViewer Grid.Row="2" 
+                                    VerticalScrollBarVisibility="Auto"
+                                    MaxHeight="400">
+                            <ItemsControl x:Name="WorldsList">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel Orientation="Horizontal"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Background="{DynamicResource BackgroundBrush}"
+                                              CornerRadius="8"
+                                              Padding="12"
+                                              Margin="0,0,12,12"
+                                              Width="240"
+                                              MinHeight="180">
+                                            <Border.Effect>
+                                                <DropShadowEffect Color="Black" 
+                                                                BlurRadius="8" 
+                                                                ShadowDepth="2" 
+                                                                Opacity="0.15"/>
+                                            </Border.Effect>
+                                            
+                                            <Grid>
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto"/>
+                                                    <RowDefinition Height="Auto"/>
+                                                    <RowDefinition Height="*"/>
+                                                    <RowDefinition Height="Auto"/>
+                                                </Grid.RowDefinitions>
+
+                                                <!-- 缩略图 -->
+                                                <Border Grid.Row="0"
+                                                      Width="216"
+                                                      Height="120"
+                                                      CornerRadius="6"
+                                                      Background="#2C2C2C"
+                                                      Margin="0,0,0,8">
+                                                    <Grid>
+                                                        <Image Source="{Binding ThumbnailPath}"
+                                                             Stretch="UniformToFill"
+                                                             HorizontalAlignment="Center"
+                                                             VerticalAlignment="Center">
+                                                            <Image.Style>
+                                                                <Style TargetType="Image">
+                                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding ThumbnailPath}" Value="{x:Null}">
+                                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </Image.Style>
+                                                        </Image>
+                                                        <materialDesign:PackIcon Kind="Map"
+                                                                               Width="48"
+                                                                               Height="48"
+                                                                               Foreground="{DynamicResource TextSecondaryBrush}"
+                                                                               HorizontalAlignment="Center"
+                                                                               VerticalAlignment="Center">
+                                                            <materialDesign:PackIcon.Style>
+                                                                <Style TargetType="materialDesign:PackIcon">
+                                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding ThumbnailPath}" Value="{x:Null}">
+                                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </materialDesign:PackIcon.Style>
+                                                        </materialDesign:PackIcon>
+                                                    </Grid>
+                                                </Border>
+
+                                                <!-- 世界名称 -->
+                                                <TextBlock Grid.Row="1"
+                                                         Text="{Binding Name}"
+                                                         FontSize="15"
+                                                         FontWeight="SemiBold"
+                                                         TextTrimming="CharacterEllipsis"
+                                                         Margin="0,0,0,6"/>
+
+                                                <!-- 世界信息 -->
+                                                <StackPanel Grid.Row="2" Margin="0,0,0,8">
+                                                    <TextBlock FontSize="11"
+                                                             Foreground="{DynamicResource TextSecondaryBrush}"
+                                                             Margin="0,0,0,3">
+                                                        <Run Text="大小: "/>
+                                                        <Run Text="{Binding FormattedSize, Mode=OneWay}"/>
+                                                    </TextBlock>
+                                                    <TextBlock FontSize="11"
+                                                             Foreground="{DynamicResource TextSecondaryBrush}"
+                                                             Margin="0,0,0,3">
+                                                        <Run Text="最后游玩: "/>
+                                                        <Run Text="{Binding FormattedLastPlayed, Mode=OneWay}"/>
+                                                    </TextBlock>
+                                                </StackPanel>
+
+                                                <!-- 操作按钮 -->
+                                                <StackPanel Grid.Row="3"
+                                                          Orientation="Horizontal"
+                                                          HorizontalAlignment="Right">
+                                                    <Button Content="备份"
+                                                          Style="{StaticResource MaterialDesignOutlinedButton}"
+                                                          Padding="10,4"
+                                                          Margin="0,0,6,0"
+                                                          FontSize="11"
+                                                          Click="BackupWorld_Click"
+                                                          Tag="{Binding}"/>
+                                                    <Button Content="详情"
+                                                          Style="{StaticResource MaterialDesignOutlinedButton}"
+                                                          Padding="10,4"
+                                                          Margin="0,0,6,0"
+                                                          FontSize="11"
+                                                          Click="ViewWorldDetails_Click"
+                                                          Tag="{Binding}"/>
+                                                    <Button Content="删除"
+                                                          Padding="10,4"
+                                                          FontSize="11"
+                                                          Click="DeleteWorld_Click"
+                                                          Tag="{Binding}">
+                                                        <Button.Style>
+                                                            <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignOutlinedButton}">
+                                                                <Setter Property="Foreground" Value="#DC3545"/>
+                                                                <Style.Triggers>
+                                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                                        <Setter Property="Background" Value="#DC354520"/>
+                                                                    </Trigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </Button.Style>
+                                                    </Button>
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+
+                        <!-- 空状态 -->
+                        <StackPanel x:Name="WorldsEmptyState"
+                                  Grid.Row="2"
+                                  VerticalAlignment="Center"
+                                  HorizontalAlignment="Center"
+                                  Visibility="Collapsed">
+                            <materialDesign:PackIcon Kind="MapOutline"
+                                                   Width="48"
+                                                   Height="48"
+                                                   Foreground="{DynamicResource TextSecondaryBrush}"
+                                                   Margin="0,0,0,12"/>
+                            <TextBlock Text="暂无世界"
+                                     FontSize="16"
+                                     FontWeight="SemiBold"
+                                     Foreground="{DynamicResource TextSecondaryBrush}"
+                                     HorizontalAlignment="Center"/>
                         </StackPanel>
                     </Grid>
                 </Border>
