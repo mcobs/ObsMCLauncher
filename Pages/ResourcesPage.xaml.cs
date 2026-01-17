@@ -229,6 +229,12 @@ namespace ObsMCLauncher.Pages
                 {
                     _selectedVersionId = versionId;
                     SavePageState(); // 保存选择
+                    
+                    // 如果已经有搜索结果，切换版本时重新搜索
+                    if (IsLoaded && ResourceListPanel != null && ResourceListPanel.Children.Count > 0)
+                    {
+                        _ = SearchModsAsync();
+                    }
                 }
                 else
                 {
@@ -389,12 +395,25 @@ namespace ObsMCLauncher.Pages
                 _currentSource = tag == "Modrinth" ? ResourceSource.Modrinth : ResourceSource.CurseForge;
                 _currentPage = 0;
                 
-                
                 // 清空当前搜索结果
                 if (ResourceListPanel != null)
                 {
                     ResourceListPanel.Children.Clear();
-                    ShowEmptyState();
+                }
+                
+                // 切换下载源时重新搜索
+                if (ResourceListPanel != null && ResourceListPanel.Children.Count == 0)
+                {
+                    // 如果有搜索关键词或已显示结果，重新搜索
+                    var hasSearchText = !string.IsNullOrWhiteSpace(SearchBox?.Text);
+                    if (hasSearchText)
+                    {
+                        _ = SearchModsAsync();
+                    }
+                    else
+                    {
+                        ShowEmptyState();
+                    }
                 }
             }
         }
@@ -429,12 +448,24 @@ namespace ObsMCLauncher.Pages
         /// </summary>
         private async System.Threading.Tasks.Task SearchModsAsync()
         {
+            // 从SourceComboBox读取当前选中的下载源
+            if (SourceComboBox.SelectedItem is ComboBoxItem sourceItem && sourceItem.Tag is string sourceTag)
+            {
+                _currentSource = sourceTag == "Modrinth" ? ResourceSource.Modrinth : ResourceSource.CurseForge;
+            }
+
             var searchText = SearchBox.Text?.Trim() ?? "";
             bool isChineseSearch = !string.IsNullOrEmpty(searchText) && ContainsChinese(searchText);
             
-            // 获取版本筛选
+            // 从已安装版本选择器获取MC版本号
             string gameVersion = "";
-            if (VersionFilterComboBox.SelectedItem is ComboBoxItem versionItem && versionItem.Tag is string version)
+            if (!string.IsNullOrEmpty(_selectedVersionId))
+            {
+                gameVersion = ExtractMinecraftVersionFromVersionId(_selectedVersionId);
+            }
+            
+            // 如果从版本ID中提取失败，尝试从版本筛选下拉框获取（作为备用）
+            if (string.IsNullOrEmpty(gameVersion) && VersionFilterComboBox.SelectedItem is ComboBoxItem versionItem && versionItem.Tag is string version)
             {
                 gameVersion = version;
             }
@@ -445,7 +476,6 @@ namespace ObsMCLauncher.Pages
             {
                 int.TryParse(sortTag, out sortField);
             }
-
 
             ShowLoading();
 
@@ -476,6 +506,32 @@ namespace ObsMCLauncher.Pages
                 return false;
 
             return text.Any(c => c >= 0x4E00 && c <= 0x9FA5);
+        }
+
+        /// <summary>
+        /// 从版本ID中提取Minecraft版本号
+        /// 例如：从 "1.20.1-forge-47.1.0" 提取 "1.20.1"
+        /// </summary>
+        private string ExtractMinecraftVersionFromVersionId(string versionId)
+        {
+            if (string.IsNullOrWhiteSpace(versionId))
+                return "";
+
+            // 尝试匹配标准格式：MC版本-加载器-加载器版本
+            // 例如：1.20.1-forge-47.1.0, 1.19.2-fabric-0.14.21
+            var match = System.Text.RegularExpressions.Regex.Match(versionId, @"^(\d+\.\d+(?:\.\d+)?)");
+            if (match.Success)
+            {
+                return match.Groups[1].Value;
+            }
+
+            // 如果版本ID本身就是MC版本号（不包含加载器），直接返回
+            if (VersionUtils.IsMinecraftVersion(versionId))
+            {
+                return versionId;
+            }
+
+            return "";
         }
 
         /// <summary>
