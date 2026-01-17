@@ -2,6 +2,8 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
+using System.Runtime.InteropServices;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
@@ -240,6 +242,92 @@ namespace ObsMCLauncher.Services
         }
 
         /// <summary>
+        /// 获取当前系统架构
+        /// </summary>
+        private static string GetCurrentArchitecture()
+        {
+            var arch = RuntimeInformation.ProcessArchitecture;
+            return arch switch
+            {
+                Architecture.X64 => "x64",
+                Architecture.X86 => "x86",
+                Architecture.Arm64 => "arm64",
+                Architecture.Arm => "arm",
+                _ => "x64" // 默认使用x64
+            };
+        }
+
+        /// <summary>
+        /// 根据架构匹配下载文件
+        /// </summary>
+        private static GitHubAsset? FindMatchingAsset(GitHubRelease release, string architecture)
+        {
+            // 优先级匹配规则：
+            // 1. 精确匹配架构（如 ObsMCLauncher-1.0.0-x64.exe）
+            // 2. 包含架构名称（如 ObsMCLauncher-1.0.0-win-x64.exe）
+            // 3. 通用Windows文件（如 ObsMCLauncher-1.0.0.exe，通常默认为x64）
+            // 4. 任何.exe或.msi文件（降级方案）
+
+            GitHubAsset? exactMatch = null;
+            GitHubAsset? containsMatch = null;
+            GitHubAsset? genericMatch = null;
+            GitHubAsset? fallbackMatch = null;
+
+            foreach (var asset in release.Assets)
+            {
+                var name = asset.Name.ToLowerInvariant();
+                
+                // 必须是Windows可执行文件
+                if (!name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) &&
+                    !name.EndsWith(".msi", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                // 必须包含Windows相关标识（可选，但推荐）
+                if (!name.Contains("win") && !name.Contains("windows") && 
+                    !name.Contains(architecture.ToLowerInvariant()) &&
+                    !name.Contains("setup") && !name.Contains("installer"))
+                {
+                    // 如果没有明确标识，可能是通用文件，继续检查
+                }
+
+                // 1. 精确匹配：文件名包含架构标识（如 -x64.exe, -x86.exe, -arm64.exe）
+                if (name.Contains($"-{architecture.ToLowerInvariant()}.") ||
+                    name.Contains($"_{architecture.ToLowerInvariant()}."))
+                {
+                    exactMatch = asset;
+                    Debug.WriteLine($"[UpdateService] 找到精确架构匹配: {asset.Name}");
+                    break; // 找到精确匹配，直接返回
+                }
+
+                // 2. 包含匹配：文件名包含架构名称（如 win-x64, windows-x64）
+                if (name.Contains(architecture.ToLowerInvariant()) && 
+                    (name.Contains("win") || name.Contains("windows")))
+                {
+                    containsMatch ??= asset;
+                    Debug.WriteLine($"[UpdateService] 找到包含架构匹配: {asset.Name}");
+                }
+
+                // 3. 通用匹配：Windows文件但没有架构标识（通常默认为x64）
+                if ((name.Contains("win") || name.Contains("windows") || 
+                     name.Contains("setup") || name.Contains("installer")) &&
+                    !name.Contains("x86") && !name.Contains("x64") && 
+                    !name.Contains("arm") && !name.Contains("arm64"))
+                {
+                    genericMatch ??= asset;
+                    Debug.WriteLine($"[UpdateService] 找到通用Windows文件: {asset.Name}");
+                }
+
+                // 4. 降级匹配：任何.exe或.msi文件
+                fallbackMatch ??= asset;
+            }
+
+            // 返回优先级最高的匹配
+            return exactMatch ?? containsMatch ?? genericMatch ?? fallbackMatch;
+        }
+
+        /// <summary>
         /// 下载并安装更新
         /// </summary>
         private static async Task DownloadUpdateAsync(GitHubRelease release)
@@ -248,32 +336,39 @@ namespace ObsMCLauncher.Services
             
             try
             {
-                // 查找Windows安装包
-                GitHubAsset? installer = null;
-                foreach (var asset in release.Assets)
-                {
-                    if (asset.Name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) ||
-                        asset.Name.EndsWith(".msi", StringComparison.OrdinalIgnoreCase) ||
-                        asset.Name.Contains("win", StringComparison.OrdinalIgnoreCase))
-                    {
-                        installer = asset;
-                        break;
-                    }
-                }
+                // 获取当前系统架构
+                var currentArch = GetCurrentArchitecture();
+                Debug.WriteLine($"[UpdateService] 当前系统架构: {currentArch}");
+
+                // 根据架构查找匹配的安装包
+                var installer = FindMatchingAsset(release, currentArch);
 
                 if (installer == null)
                 {
                     Debug.WriteLine("[UpdateService] 未找到安装包，打开Release页面");
+                    await Application.Current.Dispatcher.InvokeAsync(() =>
+                    {
+                        NotificationManager.Instance.ShowNotification(
+                            "未找到安装包",
+                            $"未找到适合 {currentArch} 架构的安装包，正在打开Release页面...",
+                            NotificationType.Warning,
+                            3
+                        );
+                    });
                     // 没有找到安装包，打开Release页面
+                    await Task.Delay(1000);
                     OpenReleasePage(release.HtmlUrl);
                     return;
                 }
+
+                Debug.WriteLine($"[UpdateService] 选择安装包: {installer.Name} (架构: {currentArch})");
 
                 // 使用镜像加速下载（如果URL是GitHub）
                 string downloadUrl = UseProxyIfNeeded(installer.BrowserDownloadUrl);
 
                 Debug.WriteLine($"[UpdateService] 开始下载: {installer.Name}");
                 Debug.WriteLine($"[UpdateService] 下载地址: {downloadUrl}");
+                Debug.WriteLine($"[UpdateService] 文件大小: {installer.Size / 1024.0 / 1024.0:F2} MB");
 
                 // 保存到临时目录
                 string tempPath = Path.Combine(Path.GetTempPath(), installer.Name);
@@ -281,9 +376,12 @@ namespace ObsMCLauncher.Services
                 // 显示进度通知
                 await Application.Current.Dispatcher.InvokeAsync(() =>
                 {
+                    var fileSizeText = installer.Size > 0 
+                        ? $" ({installer.Size / 1024.0 / 1024.0:F2} MB)" 
+                        : "";
                     notificationId = NotificationManager.Instance.ShowNotification(
                         "正在下载更新",
-                        $"下载文件: {installer.Name}",
+                        $"下载文件: {installer.Name}{fileSizeText}",
                         NotificationType.Progress,
                         null
                     );
@@ -343,25 +441,92 @@ namespace ObsMCLauncher.Services
                     // 延迟1秒
                     await Task.Delay(1000);
 
+                    // 获取当前exe路径
+                    var currentExePath = Process.GetCurrentProcess().MainModule?.FileName;
+                    if (string.IsNullOrEmpty(currentExePath))
+                    {
+                        currentExePath = System.Reflection.Assembly.GetExecutingAssembly().Location;
+                    }
+                    
+                    if (string.IsNullOrEmpty(currentExePath) || !File.Exists(currentExePath))
+                    {
+                        throw new Exception("无法获取当前程序路径");
+                    }
+
+                    Debug.WriteLine($"[UpdateService] 当前程序路径: {currentExePath}");
+
                     // 关闭通知（通过显示一个新的成功通知来替代）
                     await Application.Current.Dispatcher.InvokeAsync(() =>
                     {
                         NotificationManager.Instance.ShowNotification(
-                            "准备安装",
-                            "即将启动安装程序...",
+                            "准备更新",
+                            "即将替换程序文件并重启...",
                             NotificationType.Success,
                             2
                         );
                     });
 
-                    // 启动安装程序
-                    Process.Start(new ProcessStartInfo
-                    {
-                        FileName = tempPath,
-                        UseShellExecute = true
-                    });
+                    // 获取当前exe的文件名（用于重命名）
+                    var currentExeFileName = Path.GetFileName(currentExePath);
+                    var currentExeDirectory = Path.GetDirectoryName(currentExePath);
+                    
+                    // 创建更新脚本（批处理文件）
+                    var updateScriptPath = Path.Combine(Path.GetTempPath(), $"ObsMCLauncher_Update_{Guid.NewGuid():N}.bat");
+                    var scriptContent = $@"@echo off
+chcp 65001 >nul
+echo 正在更新 ObsMCLauncher...
+timeout /t 2 /nobreak >nul
 
-                    Debug.WriteLine("[UpdateService] 安装程序已启动");
+:wait
+tasklist /FI ""IMAGENAME eq {currentExeFileName}"" 2>NUL | find /I /N ""{currentExeFileName}"">NUL
+if ""%ERRORLEVEL%""==""0"" (
+    timeout /t 1 /nobreak >nul
+    goto wait
+)
+
+echo 正在替换程序文件...
+REM 先删除旧文件（如果存在）
+if exist ""{currentExePath}"" (
+    del /F /Q ""{currentExePath}"" >nul 2>&1
+)
+
+REM 将下载的新版本文件复制并重命名为旧版本的名字
+copy /Y ""{tempPath}"" ""{currentExePath}"" >nul
+if %ERRORLEVEL% NEQ 0 (
+    echo 更新失败！无法替换程序文件。
+    pause
+    exit /b 1
+)
+
+REM 删除临时下载文件
+if exist ""{tempPath}"" (
+    del /F /Q ""{tempPath}"" >nul 2>&1
+)
+
+echo 启动新版本...
+start """" ""{currentExePath}""
+
+echo 更新完成！
+timeout /t 2 /nobreak >nul
+del ""{updateScriptPath}""
+";
+
+                    File.WriteAllText(updateScriptPath, scriptContent, Encoding.UTF8);
+                    Debug.WriteLine($"[UpdateService] 创建更新脚本: {updateScriptPath}");
+
+                    // 启动更新脚本（隐藏窗口）
+                    var scriptProcess = new Process
+                    {
+                        StartInfo = new ProcessStartInfo
+                        {
+                            FileName = updateScriptPath,
+                            UseShellExecute = true,
+                            WindowStyle = ProcessWindowStyle.Hidden,
+                            CreateNoWindow = true
+                        }
+                    };
+                    scriptProcess.Start();
+                    Debug.WriteLine("[UpdateService] 更新脚本已启动");
 
                     // 延迟后关闭启动器
                     await Task.Delay(1000);
