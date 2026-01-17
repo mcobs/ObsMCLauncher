@@ -19,15 +19,22 @@ namespace ObsMCLauncher.Plugins
         // 插件标签页注册回调
         public static Action<string, string, object, string?>? OnTabRegistered { get; set; }
         
+        // 主页卡片注册回调
+        public static Action<string, string, string, System.Windows.UIElement, string?, Action?>? OnHomeCardRegistered { get; set; }
+        
+        // 主页卡片注销回调
+        public static Action<string>? OnHomeCardUnregistered { get; set; }
+        
         public PluginContext(string pluginId)
         {
             _pluginId = pluginId;
             
             // 插件数据目录就是插件自己的目录
-            // 位于：运行目录/plugins/插件ID/
+            // 位于：运行目录/OMCL/plugins/插件ID/
             // 不自动创建，由开发者根据需要自行创建子目录和文件
             _pluginDataDir = Path.Combine(
                 AppDomain.CurrentDomain.BaseDirectory,
+                "OMCL",
                 "plugins",
                 pluginId
             );
@@ -72,6 +79,20 @@ namespace ObsMCLauncher.Plugins
                     }
                 }
             }
+        }
+        
+        public void RegisterHomeCard(string cardId, string title, string description, 
+                                     System.Windows.UIElement content, string? icon = null, Action? onClick = null)
+        {
+            // 使用插件ID作为前缀，确保卡片ID唯一
+            var fullCardId = $"{_pluginId}.{cardId}";
+            OnHomeCardRegistered?.Invoke(fullCardId, title, description, content, icon, onClick);
+        }
+        
+        public void UnregisterHomeCard(string cardId)
+        {
+            var fullCardId = $"{_pluginId}.{cardId}";
+            OnHomeCardUnregistered?.Invoke(fullCardId);
         }
         
         /// <summary>

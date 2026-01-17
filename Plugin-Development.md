@@ -61,22 +61,22 @@ ObsMCLauncher 采用基于 .NET Assembly 的插件系统，支持开发者使用
 
 ### 插件安装目录
 
-ObsMCLauncher 支持三种插件目录位置（可在设置中配置）：
+ObsMCLauncher 的插件目录是**固定的**，位于启动器运行目录下的 `OMCL\plugins\` 文件夹：
 
-1. **运行目录\OMCL\plugins\** （默认，便携模式）
-   ```
-   启动器目录\OMCL\plugins\
-   ```
-   示例：`C:\Program Files\ObsMCLauncher\OMCL\plugins\`
+```
+运行目录\OMCL\plugins\
+```
 
-2. **%APPDATA%\ObsMCLauncher\plugins\** （系统目录）
-   ```
-   C:\Users\[用户名]\AppData\Roaming\ObsMCLauncher\plugins\
-   ```
+**示例路径**：
+- 开发环境：`H:\projects\ObsMCLauncher\bin\Debug\net8.0-windows\OMCL\plugins\`
+- 安装后：`C:\Program Files\ObsMCLauncher\OMCL\plugins\`
+- 便携版：`D:\ObsMCLauncher\OMCL\plugins\`
 
-3. **自定义目录** （用户指定的任意位置）
-
-**默认使用运行目录，适合便携使用。** 用户可以在"设置 - 文件存储设置 - 插件目录位置"中更改。
+**说明**：
+- 插件目录位置是固定的，不支持自定义
+- 所有插件都安装在同一个 `OMCL\plugins\` 目录下
+- 每个插件有自己独立的子文件夹（文件夹名必须与插件ID一致）
+- 这种设计便于便携使用和备份
 
 ### 目录结构
 
@@ -103,9 +103,10 @@ ObsMCLauncher/                           # 启动器运行目录
 ```
 
 **说明**：
-- 插件的所有文件（程序、配置、数据）都在同一个目录下
+- 插件的所有文件（程序、配置、数据）都在插件自己的目录下
 - 插件可以在自己的目录下创建任何配置文件或子文件夹
-- `PluginDataDirectory` 返回的就是插件自己的目录
+- `PluginDataDirectory` 返回的就是插件自己的目录路径：`运行目录\OMCL\plugins\{插件ID}\`
+- 插件目录会在首次加载插件时自动创建（如果不存在）
 
 ### 插件命名规范
 
@@ -277,6 +278,24 @@ namespace ObsMCLauncher.Plugins
         /// <param name="eventName">事件名称</param>
         /// <param name="eventData">事件数据</param>
         void PublishEvent(string eventName, object eventData);
+        
+        /// <summary>
+        /// 注册主页卡片
+        /// </summary>
+        /// <param name="cardId">卡片唯一标识符</param>
+        /// <param name="title">卡片标题</param>
+        /// <param name="description">卡片描述</param>
+        /// <param name="content">卡片内容（WPF UIElement，如Grid、StackPanel等）</param>
+        /// <param name="icon">图标名称（MaterialDesign图标，可选）</param>
+        /// <param name="onClick">点击事件处理器（可选）</param>
+        void RegisterHomeCard(string cardId, string title, string description, 
+                              System.Windows.UIElement content, string? icon = null, Action? onClick = null);
+        
+        /// <summary>
+        /// 注销主页卡片
+        /// </summary>
+        /// <param name="cardId">卡片唯一标识符</param>
+        void UnregisterHomeCard(string cardId);
     }
 }
 ```
@@ -386,15 +405,97 @@ public void OnLoad(IPluginContext context)
 - `"Puzzle"` - 拼图图标
 - 更多图标参考：[Material Design Icons](https://pictogrammers.com/library/mdi/)
 
-### 5. 插件数据目录
+### 5. 注册主页卡片
+
+插件可以在主页添加自定义卡片，显示在快速启动区域下方：
+
+```csharp
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Media;
+
+public void OnLoad(IPluginContext context)
+{
+    // 创建卡片内容（可以是任何 WPF UIElement）
+    var cardContent = new StackPanel
+    {
+        Orientation = Orientation.Vertical,
+        Margin = new Thickness(0, 8, 0, 0)
+    };
+    
+    // 添加一些内容
+    var textBlock = new TextBlock
+    {
+        Text = "这是插件卡片的内容",
+        FontSize = 14,
+        Margin = new Thickness(0, 0, 0, 8)
+    };
+    cardContent.Children.Add(textBlock);
+    
+    var button = new Button
+    {
+        Content = "点击我",
+        Width = 120,
+        Height = 32
+    };
+    button.Click += (s, e) =>
+    {
+        context.NotificationManager.ShowNotification(
+            "卡片点击",
+            "您点击了插件卡片！",
+            NotificationType.Info
+        );
+    };
+    cardContent.Children.Add(button);
+    
+    // 注册主页卡片
+    context.RegisterHomeCard(
+        "my-card",                    // 卡片ID（在插件内唯一）
+        "我的插件卡片",                // 卡片标题
+        "这是一个示例卡片，显示在主页", // 卡片描述
+        cardContent,                   // 卡片内容（UIElement）
+        "Star",                        // MaterialDesign图标（可选）
+        () =>                          // 点击事件（可选）
+        {
+            context.NotificationManager.ShowNotification(
+                "卡片点击",
+                "您点击了卡片！",
+                NotificationType.Info
+            );
+        }
+    );
+}
+
+public void OnUnload()
+{
+    // 卸载时注销卡片（可选，启动器会自动清理）
+    // context.UnregisterHomeCard("my-card");
+}
+```
+
+**卡片特性**：
+- 卡片显示在主页的卡片区域（2列网格布局）
+- 支持自定义 UI 内容（任何 WPF UIElement）
+- 支持图标显示（MaterialDesign 图标）
+- 支持点击事件处理
+- 用户可以在设置页面管理卡片（启用/禁用、排序）
+- 卡片配置会自动保存到启动器配置
+
+**注意事项**：
+- 卡片 ID 在插件内必须唯一，建议使用有意义的名称
+- 卡片内容应该保持简洁，避免过于复杂
+- 卡片会自动应用主题样式（深色/浅色）
+- 如果插件卸载，卡片会自动从主页移除
+
+### 6. 插件数据目录
 
 插件数据目录就是插件自己的安装目录：
 
 ```csharp
 // 获取插件数据目录（返回插件自己的目录路径）
 string dataDir = context.PluginDataDirectory;
-// 返回：运行目录/plugins/my-plugin/
-// 示例：C:\Program Files\ObsMCLauncher\plugins\my-plugin\
+// 返回：运行目录\OMCL\plugins\my-plugin\
+// 示例：C:\Program Files\ObsMCLauncher\OMCL\plugins\my-plugin\
 
 // 保存配置文件到插件目录（直接创建文件，无需手动创建目录）
 var configPath = Path.Combine(dataDir, "config.json");
@@ -424,7 +525,7 @@ var dataFile = Path.Combine(dataFolder, "cache.db");
 - 插件的所有文件（DLL、配置、数据）都在同一个目录下
 - 便于备份和迁移（复制整个插件文件夹即可）
 
-### 6. 启动器版本信息
+### 7. 启动器版本信息
 
 获取启动器版本：
 
@@ -488,8 +589,8 @@ namespace YourPlugin
                 NotificationType.Success
             );
             
-            // 注册菜单项
-            context.RegisterMenuItem("Your Plugin Settings", OnSettingsClick);
+            // 注册主页卡片
+            RegisterHomeCard(context);
             
             // 订阅事件
             context.SubscribeEvent("GameLaunching", OnGameLaunching);
@@ -507,18 +608,35 @@ namespace YourPlugin
             File.WriteAllText(configPath, "{}");
         }
         
-        private void OnSettingsClick()
-        {
-            _context?.NotificationManager.ShowNotification(
-                Name,
-                "打开设置页面...",
-                NotificationType.Info
-            );
-        }
-        
         private void OnGameLaunching(object args)
         {
             // 游戏启动前的处理
+        }
+        
+        private void RegisterHomeCard(IPluginContext context)
+        {
+            // 创建简单的卡片内容
+            var content = new System.Windows.Controls.StackPanel
+            {
+                Orientation = System.Windows.Controls.Orientation.Vertical
+            };
+            
+            var text = new System.Windows.Controls.TextBlock
+            {
+                Text = "这是一个示例卡片",
+                FontSize = 14,
+                Margin = new System.Windows.Thickness(0, 0, 0, 8)
+            };
+            content.Children.Add(text);
+            
+            // 注册卡片
+            context.RegisterHomeCard(
+                "example-card",
+                "示例卡片",
+                "这是一个插件主页卡片示例",
+                content,
+                "Star"
+            );
         }
     }
 }
@@ -547,21 +665,21 @@ dotnet build -c Release
    - 开发环境：`H:\projects\ObsMCLauncher\bin\Debug\net8.0-windows\`
    - 发布后：启动器的安装目录
 
-2. **创建 plugins 文件夹**（如果不存在）
+2. **确认 OMCL\plugins 文件夹存在**（如果不存在，启动器会自动创建）
    ```
-   启动器目录/plugins/
+   启动器目录\OMCL\plugins\
    ```
 
 3. **创建插件文件夹**（与插件 ID 同名）
    ```
-   启动器目录/plugins/your-plugin-id/
+   启动器目录\OMCL\plugins\your-plugin-id\
    ```
 
 4. **复制插件文件**
-   - `YourPlugin.dll`（插件主文件）
-   - `plugin.json`（元数据）
-   - `icon.png`（可选）
-   - 其他依赖的 DLL 文件
+   - `YourPlugin.dll`（插件主文件，建议命名为 `{插件ID}.dll`）
+   - `plugin.json`（元数据，必需）
+   - `icon.png`（可选，插件图标）
+   - 其他依赖的 DLL 文件（如有）
 
 5. **重启启动器**
 
@@ -570,11 +688,12 @@ dotnet build -c Release
 ```
 ObsMCLauncher/
 ├── ObsMCLauncher.exe          # 启动器主程序
-└── plugins/                    # 插件目录
-    └── your-plugin-id/         # 插件文件夹
-        ├── YourPlugin.dll      # 插件程序集
-        ├── plugin.json         # 元数据
-        └── icon.png            # 图标（可选）
+└── OMCL/                      # 启动器数据目录
+    └── plugins/               # 插件目录
+        └── your-plugin-id/    # 插件文件夹（文件夹名必须与插件ID一致）
+            ├── your-plugin-id.dll  # 插件程序集（建议命名）
+            ├── plugin.json         # 元数据（必需）
+            └── icon.png            # 图标（可选）
 ```
 ### 调试
 
@@ -596,7 +715,7 @@ hello-plugin.zip
 解压到：
 
 ```
-C:\Program Files\ObsMCLauncher\plugins\hello-plugin\
+C:\Program Files\ObsMCLauncher\OMCL\plugins\hello-plugin\
 ├── hello-plugin.dll
 ├── plugin.json
 └── icon.png
@@ -607,11 +726,12 @@ C:\Program Files\ObsMCLauncher\plugins\hello-plugin\
 ```
 C:\Program Files\ObsMCLauncher\
 ├── ObsMCLauncher.exe        # 启动器主程序
-├── plugins\                  # 插件目录
-│   └── hello-plugin\         # 插件文件夹
-│       ├── hello-plugin.dll
-│       ├── plugin.json
-│       └── icon.png
+├── OMCL\                    # 启动器数据目录
+│   └── plugins\             # 插件目录
+│       └── hello-plugin\    # 插件文件夹（文件夹名必须与插件ID一致）
+│           ├── hello-plugin.dll
+│           ├── plugin.json
+│           └── icon.png
 └── (其他启动器文件)
 ```
 
@@ -633,11 +753,13 @@ C:\Program Files\ObsMCLauncher\
 ### 卸载插件
 
 1. 关闭启动器
-2. 打开启动器安装目录下的 `plugins` 文件夹
-3. 删除对应的插件文件夹
+2. 打开启动器运行目录下的 `OMCL\plugins` 文件夹
+3. 删除对应的插件文件夹（文件夹名就是插件ID）
 4. 重启启动器
 
 **注意**：删除插件文件夹会完全删除插件的所有文件（程序、配置、数据），请在删除前备份重要数据。
+
+**提示**：也可以在启动器的"更多"页面中，进入"插件"标签页，使用界面卸载插件（会热卸载并删除文件）。
 
 ---
 
@@ -787,7 +909,7 @@ your-plugin.zip
     └── icon.png
 ```
 
-**说明**：启动器会将ZIP包直接解压到 `plugins/your-plugin-id/` 目录，因此ZIP包内的文件必须直接放在根目录，不要额外嵌套文件夹。
+**说明**：启动器会将ZIP包直接解压到 `OMCL\plugins\{your-plugin-id}\` 目录，因此ZIP包内的文件必须直接放在根目录，不要额外嵌套文件夹。
 
 #### 方式一：提交 PR 到插件索引仓库
 
@@ -851,7 +973,109 @@ namespace HelloPlugin
     }
 }
 ```
+
+### 主页卡片插件示例
+
+```csharp
+using ObsMCLauncher.Plugins;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Media;
+
+namespace HomeCardPlugin
+{
+    public class Plugin : ILauncherPlugin
+    {
+        public string Id => "home-card-example";
+        public string Name => "主页卡片示例";
+        public string Version => "1.0.0";
+        public string Author => "Your Name";
+        public string Description => "演示如何在主页添加自定义卡片";
+        
+        private IPluginContext? _context;
+        
+        public void OnLoad(IPluginContext context)
+        {
+            _context = context;
+            
+            // 创建卡片内容
+            var cardContent = CreateCardContent();
+            
+            // 注册主页卡片
+            context.RegisterHomeCard(
+                "example-card",              // 卡片ID
+                "示例卡片",                   // 标题
+                "这是一个插件主页卡片示例",    // 描述
+                cardContent,                  // 内容
+                "Star",                       // 图标
+                OnCardClick                   // 点击事件
+            );
+            
+            context.NotificationManager.ShowNotification(
+                "插件加载",
+                "主页卡片已添加！",
+                NotificationType.Success
+            );
+        }
+        
+        private UIElement CreateCardContent()
+        {
+            var panel = new StackPanel
+            {
+                Orientation = Orientation.Vertical
+            };
+            
+            // 添加文本
+            var text = new TextBlock
+            {
+                Text = "点击下方按钮查看效果",
+                FontSize = 13,
+                Margin = new Thickness(0, 0, 0, 12),
+                TextWrapping = TextWrapping.Wrap
+            };
+            panel.Children.Add(text);
+            
+            // 添加按钮
+            var button = new Button
+            {
+                Content = "点击我",
+                Width = 120,
+                Height = 32,
+                HorizontalAlignment = HorizontalAlignment.Left
+            };
+            button.Click += (s, e) =>
+            {
+                _context?.NotificationManager.ShowNotification(
+                    "按钮点击",
+                    "您点击了卡片中的按钮！",
+                    NotificationType.Info
+                );
+            };
+            panel.Children.Add(button);
+            
+            return panel;
+        }
+        
+        private void OnCardClick()
+        {
+            _context?.NotificationManager.ShowNotification(
+                "卡片点击",
+                "您点击了主页卡片！",
+                NotificationType.Info
+            );
+        }
+        
+        public void OnUnload()
+        {
+            // 可选：卸载时注销卡片
+            // _context?.UnregisterHomeCard("example-card");
+        }
+        
+        public void OnShutdown() { }
+    }
+}
 ```
+
 ---
 
 ## ❓ 常见问题
@@ -861,10 +1085,8 @@ namespace HelloPlugin
 A: 插件通过 `IPluginContext` 可以访问：
 - 通知系统
 - 对话框系统
-- 版本管理
-- 下载管理
-- 事件订阅
-- UI 扩展
+- 事件订阅和发布
+- UI 扩展（标签页、主页卡片）
 
 ### Q: 插件如何保存数据？
 
@@ -872,7 +1094,7 @@ A: 使用 `context.PluginDataDirectory` 获取专属数据目录，在该目录�
 
 ### Q: 插件可以添加新的 UI 页面吗？
 
-A: 可以，使用 `context.RegisterSettingsPage()` 注册设置页面，或通过菜单项打开自定义窗口。
+A: 可以，使用 `context.RegisterTab()` 在"更多"页面注册标签页，或使用 `context.RegisterHomeCard()` 在主页添加卡片。
 
 ### Q: 如何处理插件依赖？
 

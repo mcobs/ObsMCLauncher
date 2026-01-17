@@ -129,6 +129,11 @@ namespace ObsMCLauncher.Models
         /// 服务器收藏列表
         /// </summary>
         public List<ServerInfo> Servers { get; set; } = new List<ServerInfo>();
+        
+        /// <summary>
+        /// 主页卡片配置列表
+        /// </summary>
+        public List<HomeCardConfig> HomeCards { get; set; } = new List<HomeCardConfig>();
 
         /// <summary>
         /// 获取配置文件路径（固定路径：当前目录\OMCL\config\config.json）

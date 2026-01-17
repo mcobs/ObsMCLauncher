@@ -13,16 +13,25 @@ using MaterialDesignThemes.Wpf;
 using ObsMCLauncher.Services;
 using ObsMCLauncher.Models;
 using ObsMCLauncher.Utils;
+using ObsMCLauncher.Plugins;
 
 namespace ObsMCLauncher.Pages
 {
     public partial class HomePage : Page
     {
+        // 卡片管理
+        private readonly Dictionary<string, HomeCardInfo> _registeredCards = new Dictionary<string, HomeCardInfo>();
+        private readonly List<HomeCardInfo> _displayedCards = new List<HomeCardInfo>();
+        
         public HomePage()
         {
             InitializeComponent();
             Loaded += HomePage_Loaded;
             Unloaded += HomePage_Unloaded;
+            
+            // 注册插件卡片回调
+            PluginContext.OnHomeCardRegistered += OnPluginCardRegistered;
+            PluginContext.OnHomeCardUnregistered += OnPluginCardUnregistered;
         }
 
         private void HomePage_Loaded(object sender, RoutedEventArgs e)
@@ -30,6 +39,7 @@ namespace ObsMCLauncher.Pages
             LoadAccounts();
             LoadVersions();
             LoadGameLogCheckBoxState();
+            LoadHomeCards();
         }
 
         private void HomePage_Unloaded(object sender, RoutedEventArgs e)
@@ -39,6 +49,10 @@ namespace ObsMCLauncher.Pages
             {
                 VersionComboBox.SelectionChanged -= VersionComboBox_SelectionChanged;
             }
+            
+            // 取消注册插件卡片回调
+            PluginContext.OnHomeCardRegistered -= OnPluginCardRegistered;
+            PluginContext.OnHomeCardUnregistered -= OnPluginCardUnregistered;
         }
 
         private void LoadAccounts()
@@ -1086,6 +1100,228 @@ namespace ObsMCLauncher.Pages
             config.ShowGameLogOnLaunch = ShowGameLogCheckBox.IsChecked == true;
             config.Save();
         }
+        
+        #region 主页卡片管理
+        
+        /// <summary>
+        /// 加载主页卡片
+        /// </summary>
+        private void LoadHomeCards()
+        {
+            var config = LauncherConfig.Load();
+            
+            // 获取所有已注册的卡片（包括插件卡片）
+            var allCards = _registeredCards.Values.ToList();
+            
+            // 根据配置筛选和排序
+            var enabledCards = allCards
+                .Where(card =>
+                {
+                    var cardConfig = config.HomeCards.FirstOrDefault(hc => hc.CardId == card.CardId);
+                    return cardConfig?.IsEnabled ?? true; // 默认启用
+                })
+                .OrderBy(card =>
+                {
+                    var cardConfig = config.HomeCards.FirstOrDefault(hc => hc.CardId == card.CardId);
+                    return cardConfig?.Order ?? int.MaxValue; // 未配置的排在最后
+                })
+                .ToList();
+            
+            // 更新显示的卡片
+            _displayedCards.Clear();
+            _displayedCards.AddRange(enabledCards);
+            
+            // 更新UI
+            RefreshCardsDisplay();
+        }
+        
+        /// <summary>
+        /// 刷新卡片显示
+        /// </summary>
+        private void RefreshCardsDisplay()
+        {
+            Dispatcher.Invoke(() =>
+            {
+                HomeCardsContainer.ItemsSource = null;
+                HomeCardsContainer.ItemsSource = _displayedCards;
+            });
+        }
+        
+        /// <summary>
+        /// 插件卡片注册回调
+        /// </summary>
+        private void OnPluginCardRegistered(string cardId, string title, string description, 
+                                            UIElement content, string? icon, Action? onClick)
+        {
+            var cardInfo = new HomeCardInfo
+            {
+                CardId = cardId,
+                Title = title,
+                Description = description,
+                Content = CreateCardContent(title, description, content, icon, onClick),
+                Icon = icon,
+                OnClick = onClick,
+                IsPluginCard = true,
+                PluginId = cardId.Split('.').FirstOrDefault() // 提取插件ID
+            };
+            
+            _registeredCards[cardId] = cardInfo;
+            
+            // 如果是首次注册，添加到配置中
+            var config = LauncherConfig.Load();
+            if (!config.HomeCards.Any(hc => hc.CardId == cardId))
+            {
+                config.HomeCards.Add(new HomeCardConfig
+                {
+                    CardId = cardId,
+                    IsEnabled = true,
+                    Order = config.HomeCards.Count
+                });
+                config.Save();
+            }
+            
+            // 重新加载卡片
+            LoadHomeCards();
+        }
+        
+        /// <summary>
+        /// 插件卡片注销回调
+        /// </summary>
+        private void OnPluginCardUnregistered(string cardId)
+        {
+            if (_registeredCards.Remove(cardId))
+            {
+                // 从配置中移除
+                var config = LauncherConfig.Load();
+                var cardConfig = config.HomeCards.FirstOrDefault(hc => hc.CardId == cardId);
+                if (cardConfig != null)
+                {
+                    config.HomeCards.Remove(cardConfig);
+                    config.Save();
+                }
+                
+                // 重新加载卡片
+                LoadHomeCards();
+            }
+        }
+        
+        /// <summary>
+        /// 创建卡片内容UI
+        /// </summary>
+        private UIElement CreateCardContent(string title, string description, 
+                                           UIElement? customContent, string? icon, Action? onClick)
+        {
+            var mainPanel = new StackPanel
+            {
+                Orientation = Orientation.Vertical
+            };
+            
+            // 标题和图标行
+            var headerPanel = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Margin = new Thickness(0, 0, 0, 8)
+            };
+            
+            if (!string.IsNullOrEmpty(icon))
+            {
+                try
+                {
+                    var iconKind = Enum.Parse<PackIconKind>(icon);
+                    var iconControl = new PackIcon
+                    {
+                        Kind = iconKind,
+                        Width = 24,
+                        Height = 24,
+                        VerticalAlignment = VerticalAlignment.Center,
+                        Margin = new Thickness(0, 0, 12, 0)
+                    };
+                    iconControl.SetResourceReference(FrameworkElement.StyleProperty, "PrimaryBrush");
+                    iconControl.Foreground = (Brush)Application.Current.Resources["PrimaryBrush"];
+                    headerPanel.Children.Add(iconControl);
+                }
+                catch
+                {
+                    // 图标解析失败，忽略
+                }
+            }
+            
+            var titleBlock = new TextBlock
+            {
+                Text = title,
+                FontSize = 18,
+                FontWeight = FontWeights.Bold,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            titleBlock.SetResourceReference(TextBlock.ForegroundProperty, "TextBrush");
+            headerPanel.Children.Add(titleBlock);
+            
+            mainPanel.Children.Add(headerPanel);
+            
+            // 描述
+            if (!string.IsNullOrEmpty(description))
+            {
+                var descBlock = new TextBlock
+                {
+                    Text = description,
+                    FontSize = 13,
+                    Margin = new Thickness(0, 0, 0, 12),
+                    TextWrapping = TextWrapping.Wrap
+                };
+                descBlock.SetResourceReference(TextBlock.ForegroundProperty, "TextSecondaryBrush");
+                mainPanel.Children.Add(descBlock);
+            }
+            
+            // 自定义内容
+            if (customContent != null)
+            {
+                mainPanel.Children.Add(customContent);
+            }
+            
+            // 如果有点击事件，添加点击处理
+            if (onClick != null)
+            {
+                var border = new Border
+                {
+                    Child = mainPanel,
+                    Cursor = System.Windows.Input.Cursors.Hand
+                };
+                
+                border.MouseLeftButtonDown += (s, e) =>
+                {
+                    try
+                    {
+                        onClick();
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[HomePage] 卡片点击事件异常: {ex.Message}");
+                    }
+                };
+                
+                return border;
+            }
+            
+            return mainPanel;
+        }
+        
+        /// <summary>
+        /// 获取已注册的卡片列表（供SettingsPage使用）
+        /// </summary>
+        public List<HomeCardInfo> GetRegisteredCards()
+        {
+            return _registeredCards.Values.ToList();
+        }
+        
+        /// <summary>
+        /// 刷新卡片显示（供SettingsPage调用）
+        /// </summary>
+        public void RefreshCards()
+        {
+            LoadHomeCards();
+        }
+        
+        #endregion
     }
 }
 

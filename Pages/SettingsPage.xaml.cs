@@ -35,6 +35,7 @@ namespace ObsMCLauncher.Pages
             
             LoadSettings();
             LoadJavaOptions(); // 加载Java选项
+            LoadHomeCards(); // 加载主页卡片配置
             _isInitialized = true; // 初始化完成后才允许自动保存
         }
 
@@ -748,7 +749,178 @@ namespace ObsMCLauncher.Pages
         {
             AutoSaveSettingsImmediately("下载资源文件设置");
         }
-
+        
+        #region 主页卡片管理
+        
+        /// <summary>
+        /// 加载主页卡片配置
+        /// </summary>
+        private void LoadHomeCards()
+        {
+            var config = LauncherConfig.Load();
+            
+            // 获取所有已注册的卡片（从HomePage获取）
+            var homePage = Application.Current.Windows.OfType<MainWindow>()
+                .FirstOrDefault()?.FindName("MainFrame") is System.Windows.Controls.Frame frame
+                && frame.Content is HomePage hp ? hp : null;
+            
+            List<HomeCardViewModel> cardViewModels;
+            
+            if (homePage == null)
+            {
+                // 如果HomePage未加载，使用配置中的卡片列表
+                cardViewModels = config.HomeCards
+                    .OrderBy(hc => hc.Order)
+                    .Select(hc => new HomeCardViewModel
+                    {
+                        CardId = hc.CardId,
+                        Title = hc.CardId, // 临时使用CardId作为标题
+                        Description = "卡片",
+                        IsEnabled = hc.IsEnabled,
+                        Order = hc.Order
+                    })
+                    .ToList();
+            }
+            else
+            {
+                // 从HomePage获取已注册的卡片
+                var registeredCards = homePage.GetRegisteredCards();
+                cardViewModels = registeredCards
+                    .Select(card =>
+                    {
+                        var cardConfig = config.HomeCards.FirstOrDefault(hc => hc.CardId == card.CardId);
+                        return new HomeCardViewModel
+                        {
+                            CardId = card.CardId,
+                            Title = card.Title,
+                            Description = card.Description,
+                            IsEnabled = cardConfig?.IsEnabled ?? true,
+                            Order = cardConfig?.Order ?? int.MaxValue
+                        };
+                    })
+                    .OrderBy(cvm => cvm.Order)
+                    .ToList();
+            }
+            
+            HomeCardsListControl.ItemsSource = cardViewModels;
+        }
+        
+        /// <summary>
+        /// 主页卡片开关切换
+        /// </summary>
+        private void HomeCardToggle_Changed(object sender, RoutedEventArgs e)
+        {
+            if (!_isInitialized) return;
+            
+            var toggle = sender as System.Windows.Controls.Primitives.ToggleButton;
+            if (toggle?.DataContext is not HomeCardViewModel viewModel) return;
+            
+            var config = LauncherConfig.Load();
+            var cardConfig = config.HomeCards.FirstOrDefault(hc => hc.CardId == viewModel.CardId);
+            
+            if (cardConfig == null)
+            {
+                cardConfig = new HomeCardConfig
+                {
+                    CardId = viewModel.CardId,
+                    IsEnabled = toggle.IsChecked == true,
+                    Order = config.HomeCards.Count
+                };
+                config.HomeCards.Add(cardConfig);
+            }
+            else
+            {
+                cardConfig.IsEnabled = toggle.IsChecked == true;
+            }
+            
+            config.Save();
+            
+            // 刷新HomePage的卡片显示
+            RefreshHomePageCards();
+        }
+        
+        /// <summary>
+        /// 上移卡片
+        /// </summary>
+        private void HomeCardMoveUp_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not Button button || button.DataContext is not HomeCardViewModel viewModel) return;
+            
+            var config = LauncherConfig.Load();
+            var cardConfig = config.HomeCards.FirstOrDefault(hc => hc.CardId == viewModel.CardId);
+            if (cardConfig == null) return;
+            
+            // 找到上一个卡片并交换顺序
+            var previousCard = config.HomeCards
+                .Where(hc => hc.Order < cardConfig.Order)
+                .OrderByDescending(hc => hc.Order)
+                .FirstOrDefault();
+            
+            if (previousCard != null)
+            {
+                var tempOrder = cardConfig.Order;
+                cardConfig.Order = previousCard.Order;
+                previousCard.Order = tempOrder;
+                config.Save();
+                LoadHomeCards();
+                RefreshHomePageCards();
+            }
+        }
+        
+        /// <summary>
+        /// 下移卡片
+        /// </summary>
+        private void HomeCardMoveDown_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not Button button || button.DataContext is not HomeCardViewModel viewModel) return;
+            
+            var config = LauncherConfig.Load();
+            var cardConfig = config.HomeCards.FirstOrDefault(hc => hc.CardId == viewModel.CardId);
+            if (cardConfig == null) return;
+            
+            // 找到下一个卡片并交换顺序
+            var nextCard = config.HomeCards
+                .Where(hc => hc.Order > cardConfig.Order)
+                .OrderBy(hc => hc.Order)
+                .FirstOrDefault();
+            
+            if (nextCard != null)
+            {
+                var tempOrder = cardConfig.Order;
+                cardConfig.Order = nextCard.Order;
+                nextCard.Order = tempOrder;
+                config.Save();
+                LoadHomeCards();
+                RefreshHomePageCards();
+            }
+        }
+        
+        /// <summary>
+        /// 刷新HomePage的卡片显示
+        /// </summary>
+        private void RefreshHomePageCards()
+        {
+            var mainWindow = Application.Current.MainWindow as MainWindow;
+            if (mainWindow?.FindName("MainFrame") is System.Windows.Controls.Frame frame
+                && frame.Content is HomePage homePage)
+            {
+                homePage.RefreshCards();
+            }
+        }
+        
+        /// <summary>
+        /// 主页卡片视图模型
+        /// </summary>
+        private class HomeCardViewModel
+        {
+            public string CardId { get; set; } = string.Empty;
+            public string Title { get; set; } = string.Empty;
+            public string Description { get; set; } = string.Empty;
+            public bool IsEnabled { get; set; } = true;
+            public int Order { get; set; } = 0;
+        }
+        
+        #endregion
     }
 }
 

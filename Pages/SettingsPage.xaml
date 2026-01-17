@@ -348,6 +348,96 @@
                     </StackPanel>
                 </Border>
 
+                <!-- 主页卡片管理 -->
+                <Border Background="{DynamicResource SurfaceBrush}"
+                        CornerRadius="10"
+                        Padding="20"
+                        Margin="0,0,0,16">
+                    <StackPanel>
+                        <TextBlock Text="主页卡片管理" 
+                                 FontSize="17" 
+                                 FontWeight="SemiBold"
+                                 Margin="0,0,0,8"/>
+                        <TextBlock Text="管理主页显示的卡片，可以启用/禁用和调整顺序" 
+                                 FontSize="12" 
+                                 Foreground="{DynamicResource TextSecondaryBrush}"
+                                 Margin="0,0,0,16"/>
+
+                        <!-- 卡片列表 -->
+                        <ItemsControl x:Name="HomeCardsListControl">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Background="{DynamicResource SurfaceElevatedBrush}"
+                                           CornerRadius="8"
+                                           Padding="12"
+                                           Margin="0,0,0,8"
+                                           BorderThickness="1"
+                                           BorderBrush="{DynamicResource BorderBrush}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            
+                                            <!-- 拖拽手柄 -->
+                                            <materialDesign:PackIcon Grid.Column="0"
+                                                                  Kind="Drag"
+                                                                  Width="20"
+                                                                  Height="20"
+                                                                  VerticalAlignment="Center"
+                                                                  Margin="0,0,12,0"
+                                                                  Foreground="{DynamicResource TextSecondaryBrush}"
+                                                                  Cursor="SizeAll"/>
+                                            
+                                            <!-- 卡片信息 -->
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding Title}"
+                                                         FontSize="14"
+                                                         FontWeight="SemiBold"
+                                                         Margin="0,0,0,4"/>
+                                                <TextBlock Text="{Binding Description}"
+                                                         FontSize="12"
+                                                         Foreground="{DynamicResource TextSecondaryBrush}"
+                                                         TextWrapping="Wrap"/>
+                                            </StackPanel>
+                                            
+                                            <!-- 启用/禁用开关 -->
+                                            <ToggleButton Grid.Column="2"
+                                                        IsChecked="{Binding IsEnabled}"
+                                                        Checked="HomeCardToggle_Changed"
+                                                        Unchecked="HomeCardToggle_Changed"
+                                                        Style="{StaticResource MaterialDesignSwitchToggleButton}"
+                                                        VerticalAlignment="Center"
+                                                        Margin="0,0,12,0"/>
+                                            
+                                            <!-- 上移/下移按钮 -->
+                                            <StackPanel Grid.Column="3" Orientation="Horizontal">
+                                                <Button Click="HomeCardMoveUp_Click"
+                                                      Style="{StaticResource MaterialDesignIconButton}"
+                                                      Width="32"
+                                                      Height="32"
+                                                      Margin="0,0,4,0"
+                                                      ToolTip="上移">
+                                                    <materialDesign:PackIcon Kind="ChevronUp" Width="16" Height="16"/>
+                                                </Button>
+                                                <Button Click="HomeCardMoveDown_Click"
+                                                      Style="{StaticResource MaterialDesignIconButton}"
+                                                      Width="32"
+                                                      Height="32"
+                                                      ToolTip="下移">
+                                                    <materialDesign:PackIcon Kind="ChevronDown" Width="16" Height="16"/>
+                                                </Button>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+
                 <!-- 下载设置 -->
                 <Border Background="{DynamicResource SurfaceBrush}"
                         CornerRadius="10"

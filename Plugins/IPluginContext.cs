@@ -51,6 +51,24 @@ namespace ObsMCLauncher.Plugins
         /// <param name="eventName">事件名称</param>
         /// <param name="eventData">事件数据</param>
         void PublishEvent(string eventName, object eventData);
+        
+        /// <summary>
+        /// 注册主页卡片
+        /// </summary>
+        /// <param name="cardId">卡片唯一标识符</param>
+        /// <param name="title">卡片标题</param>
+        /// <param name="description">卡片描述</param>
+        /// <param name="content">卡片内容（WPF UIElement，如Grid、StackPanel等）</param>
+        /// <param name="icon">图标名称（MaterialDesign图标，可选）</param>
+        /// <param name="onClick">点击事件处理器（可选）</param>
+        void RegisterHomeCard(string cardId, string title, string description, 
+                              System.Windows.UIElement content, string? icon = null, Action? onClick = null);
+        
+        /// <summary>
+        /// 注销主页卡片
+        /// </summary>
+        /// <param name="cardId">卡片唯一标识符</param>
+        void UnregisterHomeCard(string cardId);
     }
 }
 
