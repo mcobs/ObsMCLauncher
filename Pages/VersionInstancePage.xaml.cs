@@ -54,6 +54,41 @@ namespace ObsMCLauncher.Pages
         {
             LoadVersionInfo();
             CheckGameFolders();
+            
+            // 查找ScrollViewer并监听滚动事件
+            var scrollViewer = FindVisualChild<ScrollViewer>(this);
+            if (scrollViewer != null)
+            {
+                scrollViewer.ScrollChanged += ScrollViewer_ScrollChanged;
+            }
+        }
+
+        /// <summary>
+        /// 查找视觉子元素
+        /// </summary>
+        private static T? FindVisualChild<T>(DependencyObject parent) where T : DependencyObject
+        {
+            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+            {
+                var child = VisualTreeHelper.GetChild(parent, i);
+                if (child is T result)
+                    return result;
+                var childOfChild = FindVisualChild<T>(child);
+                if (childOfChild != null)
+                    return childOfChild;
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// 滚动时关闭Popup
+        /// </summary>
+        private void ScrollViewer_ScrollChanged(object sender, ScrollChangedEventArgs e)
+        {
+            if (MoreActionsPopup.IsOpen)
+            {
+                MoreActionsPopup.IsOpen = false;
+            }
         }
 
         /// <summary>
@@ -72,6 +107,12 @@ namespace ObsMCLauncher.Pages
             ActualVersionText.Text = _version.ActualVersionId;
             LastPlayedText.Text = _version.LastPlayed.ToString("yyyy-MM-dd HH:mm:ss");
             PathText.Text = _version.Path;
+
+            // 计算版本大小
+            CalculateVersionSize();
+
+            // 获取安装日期
+            GetInstallDate();
 
             // 设置版本隔离状态
             var config = LauncherConfig.Load();
@@ -130,31 +171,15 @@ namespace ObsMCLauncher.Pages
                 LoaderIcon.Visibility = Visibility.Collapsed;
             }
 
-            // 检查是否是当前版本
+            // 检查是否是当前版本，更新按钮状态
             if (_version.Id == config.SelectedVersion)
             {
-                SetAsCurrentButton.IsEnabled = false;
-                SetAsCurrentButton.Content = new StackPanel
+                SetAsCurrentMenuItem.IsEnabled = false;
+                var stackPanel = SetAsCurrentMenuItem.Content as StackPanel;
+                if (stackPanel != null && stackPanel.Children.Count > 1 && stackPanel.Children[1] is TextBlock textBlock)
                 {
-                    Orientation = Orientation.Horizontal,
-                    Children =
-                    {
-                        new PackIcon
-                        {
-                            Kind = PackIconKind.CheckCircle,
-                            Width = 20,
-                            Height = 20,
-                            VerticalAlignment = VerticalAlignment.Center,
-                            Margin = new Thickness(0, 0, 10, 0)
-                        },
-                        new TextBlock
-                        {
-                            Text = "当前版本",
-                            FontSize = 14,
-                            VerticalAlignment = VerticalAlignment.Center
-                        }
-                    }
-                };
+                    textBlock.Text = "当前版本（已选中）";
+                }
             }
         }
 
@@ -402,11 +427,23 @@ namespace ObsMCLauncher.Pages
         }
 
         /// <summary>
+        /// 更多操作按钮点击
+        /// </summary>
+        private void MoreActionsButton_Click(object sender, RoutedEventArgs e)
+        {
+            // 切换Popup显示状态
+            MoreActionsPopup.IsOpen = !MoreActionsPopup.IsOpen;
+        }
+
+        /// <summary>
         /// 设为当前版本按钮点击
         /// </summary>
         private void SetAsCurrentButton_Click(object sender, RoutedEventArgs e)
         {
             if (_version == null) return;
+
+            // 关闭Popup
+            MoreActionsPopup.IsOpen = false;
 
             LocalVersionService.SetSelectedVersion(_version.Id);
 
@@ -417,28 +454,12 @@ namespace ObsMCLauncher.Pages
             );
 
             // 更新按钮状态
-            SetAsCurrentButton.IsEnabled = false;
-            SetAsCurrentButton.Content = new StackPanel
+            SetAsCurrentMenuItem.IsEnabled = false;
+            var stackPanel = SetAsCurrentMenuItem.Content as StackPanel;
+            if (stackPanel != null && stackPanel.Children.Count > 1 && stackPanel.Children[1] is TextBlock textBlock)
             {
-                Orientation = Orientation.Horizontal,
-                Children =
-                {
-                    new PackIcon
-                    {
-                        Kind = PackIconKind.CheckCircle,
-                        Width = 20,
-                        Height = 20,
-                        VerticalAlignment = VerticalAlignment.Center,
-                        Margin = new Thickness(0, 0, 10, 0)
-                    },
-                    new TextBlock
-                    {
-                        Text = "当前版本",
-                        FontSize = 14,
-                        VerticalAlignment = VerticalAlignment.Center
-                    }
-                }
-            };
+                textBlock.Text = "当前版本（已选中）";
+            }
         }
 
         /// <summary>
@@ -519,6 +540,9 @@ namespace ObsMCLauncher.Pages
         {
             if (_version == null) return;
 
+            // 关闭Popup
+            MoreActionsPopup.IsOpen = false;
+
             var result = await DialogManager.Instance.ShowWarning(
                 "确认删除",
                 $"确定要删除版本 {_version.Id} 吗？\n\n此操作不可恢复！",
@@ -598,19 +622,80 @@ namespace ObsMCLauncher.Pages
         {
             if (_version == null) return;
 
-            // 显示世界管理卡片
-            WorldsManagementCard.Visibility = Visibility.Visible;
+            // 展开世界管理Expander
+            WorldsManagementExpander.IsExpanded = true;
             
             // 加载世界列表
             LoadWorlds();
         }
 
         /// <summary>
-        /// 关闭世界管理卡片
+        /// 计算版本大小
         /// </summary>
-        private void CloseWorldsButton_Click(object sender, RoutedEventArgs e)
+        private void CalculateVersionSize()
         {
-            WorldsManagementCard.Visibility = Visibility.Collapsed;
+            try
+            {
+                if (string.IsNullOrEmpty(_versionPath) || !Directory.Exists(_versionPath))
+                {
+                    VersionSizeText.Text = "未知";
+                    return;
+                }
+
+                long totalSize = 0;
+                var files = Directory.GetFiles(_versionPath, "*.*", SearchOption.AllDirectories);
+                foreach (var file in files)
+                {
+                    try
+                    {
+                        totalSize += new FileInfo(file).Length;
+                    }
+                    catch { /* 忽略无法访问的文件 */ }
+                }
+
+                // 格式化大小
+                string formattedSize;
+                if (totalSize < 1024)
+                    formattedSize = $"{totalSize} B";
+                else if (totalSize < 1024 * 1024)
+                    formattedSize = $"{totalSize / 1024.0:F2} KB";
+                else if (totalSize < 1024 * 1024 * 1024)
+                    formattedSize = $"{totalSize / (1024.0 * 1024.0):F2} MB";
+                else
+                    formattedSize = $"{totalSize / (1024.0 * 1024.0 * 1024.0):F2} GB";
+
+                VersionSizeText.Text = formattedSize;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[VersionInstancePage] 计算版本大小失败: {ex.Message}");
+                VersionSizeText.Text = "计算失败";
+            }
+        }
+
+        /// <summary>
+        /// 获取安装日期
+        /// </summary>
+        private void GetInstallDate()
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(_versionPath) || !Directory.Exists(_versionPath))
+                {
+                    InstallDateText.Text = "未知";
+                    return;
+                }
+
+                // 使用版本文件夹的创建时间作为安装日期
+                var directoryInfo = new DirectoryInfo(_versionPath);
+                var installDate = directoryInfo.CreationTime;
+                InstallDateText.Text = installDate.ToString("yyyy-MM-dd HH:mm:ss");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[VersionInstancePage] 获取安装日期失败: {ex.Message}");
+                InstallDateText.Text = "未知";
+            }
         }
 
         /// <summary>
