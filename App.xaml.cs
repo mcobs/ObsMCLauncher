@@ -8,6 +8,7 @@ using MaterialDesignThemes.Wpf;
 using ObsMCLauncher.Models;
 using ObsMCLauncher.Services;
 using ObsMCLauncher.Utils;
+using ObsMCLauncher.Windows;
 
 namespace ObsMCLauncher
 {
@@ -165,44 +166,109 @@ namespace ObsMCLauncher
 
         private void App_DispatcherUnhandledException(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
         {
-            var errorMsg = $"发生未处理的异常:\n{e.Exception.Message}\n\n堆栈跟踪:\n{e.Exception.StackTrace}";
-            
             try
             {
-                Console.WriteLine($"❌ {errorMsg}");
+                var ex = e.Exception;
+                var (summary, report) = BuildCrashReport("运行时未处理异常", ex);
+
+                ShowCrashWindow(summary, report);
             }
-            catch { }
-            
-            // 写入错误日志文件
-            try
+            catch
             {
-                File.WriteAllText("runtime_error.log", $"{DateTime.Now}\n{errorMsg}\n\n{e.Exception}");
+                // 如果崩溃窗口本身也异常，回退到系统 MessageBox
+                try
+                {
+                    MessageBox.Show(e.Exception.ToString(), "运行时错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+                catch { }
             }
-            catch { }
-            
-            MessageBox.Show(errorMsg, "运行时错误", MessageBoxButton.OK, MessageBoxImage.Error);
-            e.Handled = true; // 防止应用崩溃
+            finally
+            {
+                e.Handled = true;
+            }
         }
 
         private void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
         {
-            var ex = e.ExceptionObject as Exception;
-            var errorMsg = $"发生致命错误:\n{ex?.Message ?? "未知错误"}\n\n堆栈跟踪:\n{ex?.StackTrace ?? "无"}";
-            
             try
             {
-                Console.WriteLine($"❌ {errorMsg}");
+                var ex = e.ExceptionObject as Exception;
+                var (summary, report) = BuildCrashReport("致命未处理异常", ex);
+
+                ShowCrashWindow(summary, report);
             }
-            catch { }
-            
-            // 写入错误日志文件
+            catch
+            {
+                try
+                {
+                    MessageBox.Show(e.ExceptionObject?.ToString() ?? "未知错误", "致命错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+                catch { }
+            }
+        }
+
+        private static void ShowCrashWindow(string summary, string report)
+        {
             try
             {
-                File.WriteAllText("fatal_error.log", $"{DateTime.Now}\n{errorMsg}\n\n{ex}");
+                if (Application.Current != null)
+                {
+                    if (!Application.Current.Dispatcher.CheckAccess())
+                    {
+                        Application.Current.Dispatcher.Invoke(() => ShowCrashWindow(summary, report));
+                        return;
+                    }
+                }
+
+                var win = new CrashWindow(summary, report)
+                {
+                    Topmost = true
+                };
+
+                // 尝试关闭主窗口，避免用户继续操作导致更多异常
+                try
+                {
+                    if (Application.Current?.MainWindow != null && Application.Current.MainWindow.IsVisible)
+                    {
+                        Application.Current.MainWindow.Close();
+                    }
+                }
+                catch { }
+
+                win.ShowDialog();
+            }
+            catch
+            {
+            }
+        }
+
+        private static (string Summary, string Report) BuildCrashReport(string title, Exception? ex)
+        {
+            var now = DateTime.Now;
+            var summary = $"{title}: {ex?.Message ?? "未知错误"}";
+
+            var report = new StringBuilder();
+            report.AppendLine("========== ObsMCLauncher 崩溃报告 ==========");
+            report.AppendLine($"时间: {now:yyyy-MM-dd HH:mm:ss}");
+            report.AppendLine($"标题: {title}");
+            report.AppendLine($"版本: {VersionInfo.DisplayVersion}");
+            report.AppendLine($"系统: {System.Runtime.InteropServices.RuntimeInformation.OSDescription}");
+            report.AppendLine($"架构: {System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture}");
+            report.AppendLine($"运行目录: {AppDomain.CurrentDomain.BaseDirectory}");
+            report.AppendLine();
+
+            report.AppendLine("---------- 异常信息 ----------");
+            report.AppendLine(ex?.ToString() ?? "无异常对象（可能是非托管异常）");
+
+            var text = report.ToString();
+
+            try
+            {
+                Console.WriteLine(text);
             }
             catch { }
-            
-            MessageBox.Show(errorMsg, "致命错误", MessageBoxButton.OK, MessageBoxImage.Error);
+
+            return (summary, text);
         }
 
         /// <summary>
