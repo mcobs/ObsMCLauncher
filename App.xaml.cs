@@ -207,7 +207,7 @@ namespace ObsMCLauncher
             }
         }
 
-        private static void ShowCrashWindow(string summary, string report)
+        public static void ShowCrashWindow(string summary, string report)
         {
             try
             {

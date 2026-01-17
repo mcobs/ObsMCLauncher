@@ -9,6 +9,7 @@ using ObsMCLauncher.Plugins;
 using ObsMCLauncher.Services;
 using ObsMCLauncher.Utils;
 using ObsMCLauncher.ViewModels;
+using ObsMCLauncher.Windows;
 
 namespace ObsMCLauncher.Pages
 {
@@ -378,12 +379,23 @@ namespace ObsMCLauncher.Pages
 
                 if (result)
                 {
-                    NotificationManager.Instance.ShowNotification(
-                        "开发者模式",
-                        "调试控制台功能在此版本中已简化，后续可迁移到独立窗口。",
-                        NotificationType.Info,
-                        3
-                    );
+                    try
+                    {
+                        var win = new DevConsoleWindow
+                        {
+                            Owner = Window.GetWindow(this)
+                        };
+                        win.Show();
+                    }
+                    catch (Exception ex)
+                    {
+                        NotificationManager.Instance.ShowNotification(
+                            "开发者模式",
+                            $"打开调试控制台失败: {ex.Message}",
+                            NotificationType.Error,
+                            4
+                        );
+                    }
                 }
             }
             catch { }
