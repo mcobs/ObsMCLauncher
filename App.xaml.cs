@@ -256,6 +256,9 @@ namespace ObsMCLauncher
                     // 更新玻璃态效果资源（深色主题：基于DarkSurfaceBrush的半透明）
                     UpdateGlassmorphismBrush("GlassmorphismBackgroundBrush", "DarkSurfaceBrush", 224);
                     UpdateGlassmorphismBorderBrush("GlassmorphismBorderBrush", true);
+                    
+                    // 更新骨架屏资源（深色主题）
+                    UpdateSkeletonBrushes(true);
                 }
                 else
                 {
@@ -277,6 +280,9 @@ namespace ObsMCLauncher
                     // 更新玻璃态效果资源（浅色主题：基于LightSurfaceBrush的半透明）
                     UpdateGlassmorphismBrush("GlassmorphismBackgroundBrush", "LightSurfaceBrush", 224);
                     UpdateGlassmorphismBorderBrush("GlassmorphismBorderBrush", false);
+                    
+                    // 更新骨架屏资源（浅色主题）
+                    UpdateSkeletonBrushes(false);
                 }
 
                 // System.Diagnostics.Debug.WriteLine("[App] ✅ 主题切换完成"); 
@@ -306,7 +312,8 @@ namespace ObsMCLauncher
                     "BorderBrush", "DividerBrush",
                     "InputBackgroundBrush", "InputForegroundBrush",
                     "TooltipBackgroundBrush", "TooltipForegroundBrush", "TooltipBorderBrush",
-                    "GlassmorphismBackgroundBrush", "GlassmorphismBorderBrush" // 玻璃态效果资源
+                    "GlassmorphismBackgroundBrush", "GlassmorphismBorderBrush", // 玻璃态效果资源
+                    "SkeletonBackgroundBrush", "SkeletonFillBrush" // 骨架屏资源
                 };
 
                 foreach (var key in dynamicBrushKeys)
@@ -455,6 +462,35 @@ namespace ObsMCLauncher
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[App] ❌ 更新玻璃态边框Brush失败 ({targetKey}): {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 更新骨架屏资源（根据主题设置颜色）
+        /// </summary>
+        private static void UpdateSkeletonBrushes(bool isDark)
+        {
+            try
+            {
+                var app = Application.Current;
+                if (app == null) return;
+
+                if (isDark)
+                {
+                    // 深色主题：使用深色
+                    UpdateBrushColor("SkeletonBackgroundBrush", "DarkSurfaceHoverBrush");
+                    UpdateBrushColor("SkeletonFillBrush", "DarkSurfaceHoverBrush");
+                }
+                else
+                {
+                    // 浅色主题：使用浅色
+                    UpdateBrushColor("SkeletonBackgroundBrush", "LightSurfaceHoverBrush");
+                    UpdateBrushColor("SkeletonFillBrush", "LightSurfaceHoverBrush");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[App] ❌ 更新骨架屏资源失败: {ex.Message}");
             }
         }
 

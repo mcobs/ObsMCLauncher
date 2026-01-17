@@ -163,10 +163,10 @@ namespace ObsMCLauncher.Pages
                 System.Diagnostics.Debug.WriteLine($"   最新正式版: {manifest?.Latest?.Release ?? "未知"}");
                 System.Diagnostics.Debug.WriteLine($"   最新快照版: {manifest?.Latest?.Snapshot ?? "未知"}");
                 
-                // 应用筛选并显示版本列表
+                // 应用筛选并显示版本列表（异步，不阻塞UI）
                 UpdateLoadingText("正在生成版本列表...");
                 await System.Threading.Tasks.Task.Delay(100); // 让UI有时间更新
-                ApplyFilters();
+                ApplyFilters(); // 现在是异步方法，不会阻塞
             }
             catch (Exception ex)
             {
@@ -193,7 +193,7 @@ namespace ObsMCLauncher.Pages
         /// <summary>
         /// 应用筛选条件
         /// </summary>
-        private void ApplyFilters()
+        private async void ApplyFilters()
         {
             if (_allVersions == null || _allVersions.Count == 0)
                 return;
@@ -201,74 +201,102 @@ namespace ObsMCLauncher.Pages
             var searchText = SearchBox?.Text?.ToLower() ?? "";
             var selectedType = (VersionTypeComboBox?.SelectedIndex ?? 0);
 
-            // 筛选版本
-            _filteredVersions = _allVersions.Where(v =>
+            // 在后台线程执行筛选（避免阻塞UI）
+            var filteredVersions = await System.Threading.Tasks.Task.Run(() =>
             {
-                // 搜索过滤
-                if (!string.IsNullOrEmpty(searchText) && !v.Id.ToLower().Contains(searchText))
-                    return false;
-
-                // 类型过滤
-                if (selectedType == 1 && v.Type != "release") // 正式版
-                    return false;
-                if (selectedType == 2 && v.Type != "snapshot") // 快照版
-                    return false;
-                if (selectedType == 3) // 远古版（包括 old_alpha, old_beta 等，排除 release 和 snapshot）
+                return _allVersions.Where(v =>
                 {
-                    if (v.Type == "release" || v.Type == "snapshot")
+                    // 搜索过滤
+                    if (!string.IsNullOrEmpty(searchText) && !v.Id.ToLower().Contains(searchText))
                         return false;
-                }
 
-                return true;
-            }).ToList();
+                    // 类型过滤
+                    if (selectedType == 1 && v.Type != "release") // 正式版
+                        return false;
+                    if (selectedType == 2 && v.Type != "snapshot") // 快照版
+                        return false;
+                    if (selectedType == 3) // 远古版（包括 old_alpha, old_beta 等，排除 release 和 snapshot）
+                    {
+                        if (v.Type == "release" || v.Type == "snapshot")
+                            return false;
+                    }
 
+                    return true;
+                }).ToList();
+            });
+
+            _filteredVersions = filteredVersions;
             System.Diagnostics.Debug.WriteLine($"筛选后版本数量: {_filteredVersions.Count}");
 
-            // 更新UI
-            DisplayVersions();
+            // 在UI线程更新UI（异步分批渲染，避免阻塞）
+            await DisplayVersionsAsync();
         }
 
         /// <summary>
-        /// 显示版本列表
+        /// 显示版本列表（异步分批渲染，避免阻塞UI）
         /// </summary>
-        private void DisplayVersions()
+        private async System.Threading.Tasks.Task DisplayVersionsAsync()
         {
-            VersionListPanel.Children.Clear();
+            await Dispatcher.InvokeAsync(() =>
+            {
+                VersionListPanel.Children.Clear();
+            });
 
             if (_filteredVersions.Count == 0)
             {
                 // 显示空状态
-                var emptyText = new TextBlock
+                await Dispatcher.InvokeAsync(() =>
                 {
-                    Text = "没有找到匹配的版本",
-                    FontSize = 16,
-                    HorizontalAlignment = HorizontalAlignment.Center,
-                    Margin = new Thickness(0, 50, 0, 0)
-                };
-                emptyText.SetResourceReference(TextBlock.ForegroundProperty, "TextSecondaryBrush");
-                VersionListPanel.Children.Add(emptyText);
+                    var emptyText = new TextBlock
+                    {
+                        Text = "没有找到匹配的版本",
+                        FontSize = 16,
+                        HorizontalAlignment = HorizontalAlignment.Center,
+                        Margin = new Thickness(0, 50, 0, 0)
+                    };
+                    emptyText.SetResourceReference(TextBlock.ForegroundProperty, "TextSecondaryBrush");
+                    VersionListPanel.Children.Add(emptyText);
+                });
                 return;
             }
 
-            // 动态生成版本项
-            foreach (var version in _filteredVersions.Take(50)) // 限制显示前50个
+            // 分批渲染版本项，避免一次性创建太多元素导致UI阻塞
+            const int batchSize = 10; // 每批渲染10个
+            var versionsToShow = _filteredVersions.Take(50).ToList(); // 限制显示前50个
+            
+            for (int i = 0; i < versionsToShow.Count; i += batchSize)
             {
-                var button = CreateVersionButton(version);
-                VersionListPanel.Children.Add(button);
+                var batch = versionsToShow.Skip(i).Take(batchSize).ToList();
+                
+                // 在UI线程上添加这一批
+                await Dispatcher.InvokeAsync(() =>
+                {
+                    foreach (var version in batch)
+                    {
+                        var button = CreateVersionButton(version);
+                        VersionListPanel.Children.Add(button);
+                    }
+                });
+                
+                // 让UI有时间更新，避免阻塞
+                await System.Threading.Tasks.Task.Delay(10);
             }
 
             // 如果版本太多，显示提示
             if (_filteredVersions.Count > 50)
             {
-                var moreText = new TextBlock
+                await Dispatcher.InvokeAsync(() =>
                 {
-                    Text = $"还有 {_filteredVersions.Count - 50} 个版本未显示，请使用搜索功能",
-                    FontSize = 14,
-                    HorizontalAlignment = HorizontalAlignment.Center,
-                    Margin = new Thickness(0, 20, 0, 20)
-                };
-                moreText.SetResourceReference(TextBlock.ForegroundProperty, "TextSecondaryBrush");
-                VersionListPanel.Children.Add(moreText);
+                    var moreText = new TextBlock
+                    {
+                        Text = $"还有 {_filteredVersions.Count - 50} 个版本未显示，请使用搜索功能",
+                        FontSize = 14,
+                        HorizontalAlignment = HorizontalAlignment.Center,
+                        Margin = new Thickness(0, 20, 0, 20)
+                    };
+                    moreText.SetResourceReference(TextBlock.ForegroundProperty, "TextSecondaryBrush");
+                    VersionListPanel.Children.Add(moreText);
+                });
             }
         }
 
@@ -283,7 +311,7 @@ namespace ObsMCLauncher.Pages
                 HorizontalContentAlignment = HorizontalAlignment.Stretch,
                 VerticalContentAlignment = VerticalAlignment.Stretch,
                 Padding = new Thickness(0),
-                Margin = new Thickness(10),
+                Margin = new Thickness(20, 0, 20, 12), // 与骨架屏保持一致
                 Background = Brushes.Transparent,
                 BorderThickness = new Thickness(0),
                 Height = double.NaN  // 自动高度
@@ -473,23 +501,31 @@ namespace ObsMCLauncher.Pages
         }
 
         /// <summary>
-        /// 显示/隐藏加载指示器
+        /// 显示/隐藏加载指示器（使用骨架屏）
         /// </summary>
         private void ShowLoading(bool show)
         {
-            LoadingPanel.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
-            VersionScrollViewer.Visibility = show ? Visibility.Collapsed : Visibility.Visible;
+            if (show)
+            {
+                // 显示骨架屏，隐藏版本列表
+                SkeletonLoadingPanel.Visibility = Visibility.Visible;
+                VersionListPanel.Visibility = Visibility.Collapsed;
+            }
+            else
+            {
+                // 隐藏骨架屏，显示版本列表
+                SkeletonLoadingPanel.Visibility = Visibility.Collapsed;
+                VersionListPanel.Visibility = Visibility.Visible;
+            }
         }
 
         /// <summary>
-        /// 更新加载文本
+        /// 更新加载文本（骨架屏模式下不需要显示文本）
         /// </summary>
         private void UpdateLoadingText(string text)
         {
-            if (LoadingDetailText != null)
-            {
-                LoadingDetailText.Text = text;
-            }
+            // 骨架屏模式下不显示文本，保留方法以保持兼容性
+            System.Diagnostics.Debug.WriteLine($"[VersionDownloadPage] {text}");
         }
 
         private void RefreshButton_Click_SetEnabled(bool enabled)

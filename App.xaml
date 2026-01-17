@@ -87,6 +87,21 @@
                 </SolidColorBrush.Color>
             </SolidColorBrush>
             
+            <!-- 骨架屏资源（支持主题切换） -->
+            <!-- 深色主题骨架屏背景和填充 -->
+            <SolidColorBrush x:Key="SkeletonBackgroundBrush" Color="#3A3A3A"/>
+            <SolidColorBrush x:Key="SkeletonFillBrush" Color="#3A3A3A"/>
+            <!-- 浅色主题骨架屏背景和填充（备用） -->
+            <SolidColorBrush x:Key="SkeletonBackgroundLightBrush" Color="#E0E0E0"/>
+            <SolidColorBrush x:Key="SkeletonFillLightBrush" Color="#E0E0E0"/>
+            
+            <!-- 骨架屏动画颜色范围（深色主题） -->
+            <Color x:Key="SkeletonColorFromDark">#2C2C2C</Color>
+            <Color x:Key="SkeletonColorToDark">#4A4A4A</Color>
+            <!-- 骨架屏动画颜色范围（浅色主题） -->
+            <Color x:Key="SkeletonColorFromLight">#D0D0D0</Color>
+            <Color x:Key="SkeletonColorToLight">#F0F0F0</Color>
+            
             <!-- 层次色 -->
             <SolidColorBrush x:Key="LayerFillColorDefaultBrush" Color="#2C2C2C" Opacity="0.5"/>
             <SolidColorBrush x:Key="LayerOnMicaBaseAltFillColorDefaultBrush" Color="#333333" Opacity="0.7"/>

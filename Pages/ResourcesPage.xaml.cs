@@ -1310,10 +1310,43 @@ namespace ObsMCLauncher.Pages
         {
             Dispatcher.BeginInvoke(new Action(() =>
             {
-                LoadingIndicator.Visibility = Visibility.Visible;
+                SkeletonLoadingPanel.Visibility = Visibility.Visible;
+                ResourceListPanel.Visibility = Visibility.Collapsed;
                 EmptyStatePanel.Visibility = Visibility.Collapsed;
-                ResourceScrollViewer.Visibility = Visibility.Collapsed;
+                
+                // 确保骨架屏动画开始
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    // 强制重新应用样式以触发动画
+                    foreach (var child in GetVisualChildren<Border>(SkeletonLoadingPanel))
+                    {
+                        if (child.Style != null)
+                        {
+                            var style = child.Style;
+                            child.Style = null;
+                            Dispatcher.BeginInvoke(new Action(() =>
+                            {
+                                child.Style = style;
+                            }), System.Windows.Threading.DispatcherPriority.Loaded);
+                        }
+                    }
+                }), System.Windows.Threading.DispatcherPriority.Loaded);
             }));
+        }
+        
+        /// <summary>
+        /// 获取视觉子元素（辅助方法）
+        /// </summary>
+        private IEnumerable<T> GetVisualChildren<T>(DependencyObject parent) where T : DependencyObject
+        {
+            for (int i = 0; i < System.Windows.Media.VisualTreeHelper.GetChildrenCount(parent); i++)
+            {
+                var child = System.Windows.Media.VisualTreeHelper.GetChild(parent, i);
+                if (child is T t)
+                    yield return t;
+                foreach (var descendant in GetVisualChildren<T>(child))
+                    yield return descendant;
+            }
         }
 
         /// <summary>
@@ -1321,8 +1354,8 @@ namespace ObsMCLauncher.Pages
         /// </summary>
         private void HideLoading()
         {
-            LoadingIndicator.Visibility = Visibility.Collapsed;
-            ResourceScrollViewer.Visibility = Visibility.Visible;
+            SkeletonLoadingPanel.Visibility = Visibility.Collapsed;
+            ResourceListPanel.Visibility = Visibility.Visible;
         }
 
         /// <summary>
@@ -1399,8 +1432,8 @@ namespace ObsMCLauncher.Pages
 
         private void ShowEmptyState()
         {
-            if (LoadingIndicator != null)
-                LoadingIndicator.Visibility = Visibility.Collapsed;
+            if (SkeletonLoadingPanel != null)
+                SkeletonLoadingPanel.Visibility = Visibility.Collapsed;
             
             if (EmptyStatePanel != null)
                 EmptyStatePanel.Visibility = Visibility.Visible;

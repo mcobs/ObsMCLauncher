@@ -167,24 +167,6 @@
 
                 <!-- 资源列表 -->
                 <Grid Grid.Row="1">
-                    <!-- 加载提示 -->
-                    <StackPanel x:Name="LoadingIndicator"
-                               HorizontalAlignment="Center"
-                               VerticalAlignment="Center"
-                               Visibility="Collapsed">
-                        <ProgressBar Style="{StaticResource MaterialDesignCircularProgressBar}"
-                                   Value="0"
-                                   IsIndeterminate="True"
-                                   Width="64"
-                                   Height="64"
-                                   HorizontalAlignment="Center"/>
-                        <TextBlock Text="加载中..."
-                                 FontSize="16"
-                                 Margin="0,20,0,0"
-                                 HorizontalAlignment="Center"
-                                 Foreground="{DynamicResource TextBrush}"/>
-                    </StackPanel>
-
                     <!-- 空状态提示 -->
                     <StackPanel x:Name="EmptyStatePanel"
                                HorizontalAlignment="Center"
@@ -205,8 +187,174 @@
                     <ScrollViewer x:Name="ResourceScrollViewer"
                                  VerticalScrollBarVisibility="Auto"
                                  Visibility="Visible">
-                        <StackPanel x:Name="ResourceListPanel" Margin="20,16,20,20">
-                        <!-- 动态加载MOD列表 -->
+                        <StackPanel Margin="20,16,20,20">
+                            <!-- MOD列表 -->
+                            <StackPanel x:Name="ResourceListPanel">
+                            <!-- 动态加载MOD列表 -->
+                            </StackPanel>
+                            
+                            <!-- 骨架屏加载效果 -->
+                            <StackPanel x:Name="SkeletonLoadingPanel"
+                                       Visibility="Collapsed">
+                            <!-- 显示6个骨架屏MOD卡片 -->
+                            <Border Style="{StaticResource SkeletonCardStyle}" Margin="0,0,0,12">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    
+                                    <!-- 图标占位 -->
+                                    <Rectangle Grid.Column="0" 
+                                              Width="80" Height="80" 
+                                              Style="{StaticResource SkeletonRectangleStyle}"
+                                              RadiusX="8" RadiusY="8"
+                                              Margin="0,0,16,0"/>
+                                    
+                                    <!-- 文本占位 -->
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <Rectangle Width="250" Height="20" 
+                                                   Style="{StaticResource SkeletonRectangleStyle}"
+                                                   Margin="0,0,0,12"/>
+                                        <Rectangle Width="200" Height="16" 
+                                                   Style="{StaticResource SkeletonRectangleStyle}"
+                                                   Margin="0,0,0,8"/>
+                                        <Rectangle Width="180" Height="14" 
+                                                   Style="{StaticResource SkeletonRectangleStyle}"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                            
+                            <Border Style="{StaticResource SkeletonCardStyle}" Margin="0,0,0,12">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    
+                                    <Rectangle Grid.Column="0" 
+                                              Width="80" Height="80" 
+                                              Style="{StaticResource SkeletonRectangleStyle}"
+                                              RadiusX="8" RadiusY="8"
+                                              Margin="0,0,16,0"/>
+                                    
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <Rectangle Width="250" Height="20" 
+                                                   Style="{StaticResource SkeletonRectangleStyle}"
+                                                   Margin="0,0,0,12"/>
+                                        <Rectangle Width="200" Height="16" 
+                                                   Style="{StaticResource SkeletonRectangleStyle}"
+                                                   Margin="0,0,0,8"/>
+                                        <Rectangle Width="180" Height="14" 
+                                                   Style="{StaticResource SkeletonRectangleStyle}"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                            
+                            <Border Style="{StaticResource SkeletonCardStyle}" Margin="0,0,0,12">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    
+                                    <Rectangle Grid.Column="0" 
+                                              Width="80" Height="80" 
+                                              Style="{StaticResource SkeletonRectangleStyle}"
+                                              RadiusX="8" RadiusY="8"
+                                              Margin="0,0,16,0"/>
+                                    
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <Rectangle Width="250" Height="20" 
+                                                   Style="{StaticResource SkeletonRectangleStyle}"
+                                                   Margin="0,0,0,12"/>
+                                        <Rectangle Width="200" Height="16" 
+                                                   Style="{StaticResource SkeletonRectangleStyle}"
+                                                   Margin="0,0,0,8"/>
+                                        <Rectangle Width="180" Height="14" 
+                                                   Style="{StaticResource SkeletonRectangleStyle}"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                            
+                            <Border Style="{StaticResource SkeletonCardStyle}" Margin="0,0,0,12">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    
+                                    <Rectangle Grid.Column="0" 
+                                              Width="80" Height="80" 
+                                              Style="{StaticResource SkeletonRectangleStyle}"
+                                              RadiusX="8" RadiusY="8"
+                                              Margin="0,0,16,0"/>
+                                    
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <Rectangle Width="250" Height="20" 
+                                                   Style="{StaticResource SkeletonRectangleStyle}"
+                                                   Margin="0,0,0,12"/>
+                                        <Rectangle Width="200" Height="16" 
+                                                   Style="{StaticResource SkeletonRectangleStyle}"
+                                                   Margin="0,0,0,8"/>
+                                        <Rectangle Width="180" Height="14" 
+                                                   Style="{StaticResource SkeletonRectangleStyle}"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                            
+                            <Border Style="{StaticResource SkeletonCardStyle}" Margin="0,0,0,12">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    
+                                    <Rectangle Grid.Column="0" 
+                                              Width="80" Height="80" 
+                                              Style="{StaticResource SkeletonRectangleStyle}"
+                                              RadiusX="8" RadiusY="8"
+                                              Margin="0,0,16,0"/>
+                                    
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <Rectangle Width="250" Height="20" 
+                                                   Style="{StaticResource SkeletonRectangleStyle}"
+                                                   Margin="0,0,0,12"/>
+                                        <Rectangle Width="200" Height="16" 
+                                                   Style="{StaticResource SkeletonRectangleStyle}"
+                                                   Margin="0,0,0,8"/>
+                                        <Rectangle Width="180" Height="14" 
+                                                   Style="{StaticResource SkeletonRectangleStyle}"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                            
+                            <Border Style="{StaticResource SkeletonCardStyle}" Margin="0,0,0,12">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    
+                                    <Rectangle Grid.Column="0" 
+                                              Width="80" Height="80" 
+                                              Style="{StaticResource SkeletonRectangleStyle}"
+                                              RadiusX="8" RadiusY="8"
+                                              Margin="0,0,16,0"/>
+                                    
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <Rectangle Width="250" Height="20" 
+                                                   Style="{StaticResource SkeletonRectangleStyle}"
+                                                   Margin="0,0,0,12"/>
+                                        <Rectangle Width="200" Height="16" 
+                                                   Style="{StaticResource SkeletonRectangleStyle}"
+                                                   Margin="0,0,0,8"/>
+                                        <Rectangle Width="180" Height="14" 
+                                                   Style="{StaticResource SkeletonRectangleStyle}"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                            </StackPanel>
                         </StackPanel>
                     </ScrollViewer>
                 </Grid>
