@@ -386,13 +386,20 @@ namespace ObsMCLauncher.Pages
         /// </summary>
         private void RestorePageState()
         {
-            if (PageState.SelectedTab == "Plugins")
+            switch (PageState.SelectedTab)
             {
-                PluginsTab.IsChecked = true;
-            }
-            else
-            {
-                AboutTab.IsChecked = true;
+                case "Plugins":
+                    PluginsTab.IsChecked = true;
+                    break;
+                case "Screenshots":
+                    ScreenshotsTab.IsChecked = true;
+                    break;
+                case "Servers":
+                    ServersTab.IsChecked = true;
+                    break;
+                default:
+                    AboutTab.IsChecked = true;
+                    break;
             }
             
             // 强制触发Tab_Checked以更新UI
@@ -419,6 +426,16 @@ namespace ObsMCLauncher.Pages
                     // 切换到插件页面时，刷新插件列表
                     RefreshPluginList();
                 }
+                else if (radioButton == ScreenshotsTab)
+                {
+                    SwitchTab("Screenshots");
+                    PageState.SelectedTab = "Screenshots";
+                }
+                else if (radioButton == ServersTab)
+                {
+                    SwitchTab("Servers");
+                    PageState.SelectedTab = "Servers";
+                }
             }
         }
         
@@ -430,25 +447,52 @@ namespace ObsMCLauncher.Pages
             if (AboutContent == null || PluginsContent == null)
                 return;
                 
+            // 隐藏所有内容
+            AboutContent.Visibility = Visibility.Collapsed;
+            PluginsContent.Visibility = Visibility.Collapsed;
+            if (ScreenshotsContent != null)
+                ScreenshotsContent.Visibility = Visibility.Collapsed;
+            if (ServersContent != null)
+                ServersContent.Visibility = Visibility.Collapsed;
+            
+            // 隐藏所有插件标签页
+            HideAllPluginTabs();
+                
             if (tabName == "About")
             {
                 AboutContent.Visibility = Visibility.Visible;
-                PluginsContent.Visibility = Visibility.Collapsed;
-                
-                // 隐藏所有插件标签页
-                HideAllPluginTabs();
-                
                 Debug.WriteLine("[MorePage] 切换到关于页面");
             }
             else if (tabName == "Plugins")
             {
-                AboutContent.Visibility = Visibility.Collapsed;
                 PluginsContent.Visibility = Visibility.Visible;
-                
-                // 隐藏所有插件标签页
-                HideAllPluginTabs();
-                
                 Debug.WriteLine("[MorePage] 切换到插件页面");
+            }
+            else if (tabName == "Screenshots")
+            {
+                if (ScreenshotsContent != null)
+                {
+                    ScreenshotsContent.Visibility = Visibility.Visible;
+                    // 首次加载时导航到截图页面
+                    if (ScreenshotsContent.Content == null)
+                    {
+                        ScreenshotsContent.Navigate(new ScreenshotsPage());
+                    }
+                }
+                Debug.WriteLine("[MorePage] 切换到截图管理页面");
+            }
+            else if (tabName == "Servers")
+            {
+                if (ServersContent != null)
+                {
+                    ServersContent.Visibility = Visibility.Visible;
+                    // 首次加载时导航到服务器页面
+                    if (ServersContent.Content == null)
+                    {
+                        ServersContent.Navigate(new ServersPage());
+                    }
+                }
+                Debug.WriteLine("[MorePage] 切换到服务器收藏页面");
             }
         }
         

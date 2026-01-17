@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -123,6 +124,11 @@ namespace ObsMCLauncher.Models
         /// 当前选中的版本
         /// </summary>
         public string? SelectedVersion { get; set; }
+
+        /// <summary>
+        /// 服务器收藏列表
+        /// </summary>
+        public List<ServerInfo> Servers { get; set; } = new List<ServerInfo>();
 
         /// <summary>
         /// 获取配置文件路径（固定路径：当前目录\OMCL\config\config.json）
