@@ -153,18 +153,6 @@ namespace ObsMCLauncher.ViewModels
         [RelayCommand]
         private Task RefreshInstalledAsync()
         {
-            if (_pluginLoader != null)
-            {
-                try
-                {
-                    _pluginLoader.LoadAllPlugins();
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine($"[PluginsVM] RefreshInstalled failed: {ex.Message}");
-                }
-            }
-
             return RefreshLeftAsync();
         }
 

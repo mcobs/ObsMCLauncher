@@ -730,10 +730,12 @@
                                                     Background="Transparent"
                                                     BorderThickness="0"
                                                     Margin="-8,0,-8,-8"
-                                                    FontSize="12">
+                                                    FontSize="12"
+                                                    VerticalContentAlignment="Stretch">
                                             <TabItem Header="详情"
                                                      Padding="8,2">
-                                                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                                                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                                                              MaxHeight="420">
                                                     <Grid>
                                                         <TextBlock Text="{Binding Detail.Description}"
                                                                    TextWrapping="Wrap"
@@ -759,7 +761,8 @@
                                             <TabItem Header="输出"
                                                      Padding="8,2"
                                                      Visibility="{Binding Detail.OutputVisible, Converter={StaticResource BoolToVis}}">
-                                                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                                                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                                                              MaxHeight="420">
                                                     <TextBox Text="{Binding Detail.Output}"
                                                              IsReadOnly="True"
                                                              BorderThickness="0"

@@ -27,6 +27,7 @@ namespace ObsMCLauncher.Pages
         }
 
         private static readonly System.Collections.Generic.Dictionary<string, (RadioButton tab, ScrollViewer content)> _pluginTabs = new();
+        private static readonly System.Collections.Generic.Dictionary<string, (string title, object content, string? icon)> _pendingPluginTabs = new();
         private static MorePage? _instance;
 
         public static void SetPluginLoader(PluginLoader pluginLoader)
@@ -37,6 +38,10 @@ namespace ObsMCLauncher.Pages
         public static void RegisterPluginTab(string pluginId, string title, object content, string? icon)
         {
             Debug.WriteLine($"[MorePage] 静态方法：注册插件标签页: {pluginId} - {title}");
+
+            // MorePage 可能尚未创建：先缓存，等页面初始化后再补注册
+            _pendingPluginTabs[pluginId] = (title, content, icon);
+
             _instance?.RegisterPluginTabInstance(pluginId, title, content);
         }
 
@@ -162,6 +167,22 @@ namespace ObsMCLauncher.Pages
         {
             InitializeComponent();
             _instance = this;
+
+            // 补注册：在 MorePage 创建后，把之前缓存的插件标签页一次性挂上来
+            try
+            {
+                foreach (var kv in _pendingPluginTabs)
+                {
+                    if (!_pluginTabs.ContainsKey(kv.Key))
+                    {
+                        RegisterPluginTabInstance(kv.Key, kv.Value.title, kv.Value.content);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[MorePage] 补注册插件标签页失败: {ex.Message}");
+            }
 
             Loaded += MorePage_Loaded;
             Unloaded += MorePage_Unloaded;
