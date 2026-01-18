@@ -569,6 +569,7 @@ namespace ObsMCLauncher
                     "Resources" => new ResourcesPage(),
                     "Settings" => new SettingsPage(),
                     "More" => CreateMorePage(),
+                    "Multiplayer" => new MultiplayerPage(),
                     _ => throw new ArgumentException($"未知的页面标签: {pageTag}")
                 };
                 

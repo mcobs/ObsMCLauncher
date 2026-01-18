@@ -1001,7 +1001,7 @@ namespace ObsMCLauncher.Pages
         /// 管理版本按钮点击事件
         /// </summary>
         private void ManageVersionButton_Click(object sender, RoutedEventArgs e)
-        {
+        {            
             // 获取当前选中的版本
             if (VersionComboBox.SelectedItem is not ComboBoxItem versionItem || versionItem.Tag is not string versionId)
             {

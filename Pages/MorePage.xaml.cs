@@ -318,6 +318,7 @@ namespace ObsMCLauncher.Pages
         private void OpenForum_Click(object sender, RoutedEventArgs e) => OpenUrl("https://mcobs.cn/");
         private void OpenBangBang93_Click(object sender, RoutedEventArgs e) => OpenUrl("https://afdian.com/a/bangbang93");
         private void OpenAuthlibInjector_Click(object sender, RoutedEventArgs e) => OpenUrl("https://github.com/yushijinhun/authlib-injector");
+        private void OpenMciLmLink_Click(object sender, RoutedEventArgs e) => OpenUrl("https://link.mcilm.top/");
 
         private void OpenUrl(string url)
         {
