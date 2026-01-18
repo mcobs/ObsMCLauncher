@@ -54,11 +54,13 @@ namespace ObsMCLauncher.Plugins
         public string Description { get; set; } = string.Empty;
         public string DirectoryPath { get; set; } = string.Empty;
         public string? IconPath { get; set; }
+        public string? ReadmePath { get; set; }
         public PluginMetadata Metadata { get; set; } = new();
         public ILauncherPlugin? Instance { get; set; }
         public bool IsLoaded { get; set; }
         public string? ErrorMessage { get; set; }
         public string? ErrorOutput { get; set; }
+        public string? ReadmeMarkdown { get; set; }
     }
 }
 

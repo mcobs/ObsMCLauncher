@@ -130,7 +130,7 @@ YourPlugin/
 ├── Plugin.cs                  # 插件主类（实现 ILauncherPlugin）
 ├── plugin.json                # 插件元数据
 ├── icon.png                   # 插件图标（可选，128x128）
-├── README.md                  # 插件说明
+├── README.md                  # 插件说明（必需）
 └── LICENSE                    # 开源协议
 ```
 
@@ -820,7 +820,7 @@ obsmclauncher
    - `plugin.json` - 元数据文件
    - `icon.png` - 图标（可选）
    - 其他依赖的 DLL 文件（如有）
-   - `README.md`（可选）
+   - `README.md`（必需）
    - `LICENSE`（可选）
    
    ⚠️ **重要**：确保文件直接在ZIP根目录，而不是嵌套在文件夹中！
@@ -848,6 +848,7 @@ obsmclauncher
       "name": "Your Plugin Name",
       "author": "Your Name",
       "description": "Plugin description",
+      "readme": "https://raw.githubusercontent.com/yourusername/your-plugin/main/README.md",
       "version": "1.0.0",
       "category": "工具",
       "icon": "https://raw.githubusercontent.com/yourusername/your-plugin/main/icon.png",
@@ -868,6 +869,7 @@ obsmclauncher
 - `name`: 插件显示名称
 - `author`: 作者名称
 - `description`: 插件描述
+- `readme`: README.md 的在线直链（markdown 文件内容），用于在启动器内展示插件说明（必需）
 - `version`: 当前版本号
 - `category`: 分类ID（使用英文ID，参考下方分类表）
 - `icon`: 图标URL（建议使用GitHub raw链接或其他CDN）

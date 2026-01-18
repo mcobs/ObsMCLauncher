@@ -69,6 +69,9 @@ namespace ObsMCLauncher.Plugins
         
         [JsonPropertyName("description")]
         public string Description { get; set; } = string.Empty;
+
+        [JsonPropertyName("readme")]
+        public string? Readme { get; set; }
         
         [JsonPropertyName("version")]
         public string Version { get; set; } = string.Empty;
@@ -114,7 +117,7 @@ namespace ObsMCLauncher.Plugins
         /// <summary>
         /// 为GitHub URL添加镜像代理
         /// </summary>
-        private static string UseProxyIfNeeded(string url)
+        public static string UseProxyIfNeeded(string url)
         {
             // 如果是GitHub相关的URL，使用镜像源
             if (url.Contains("github.com") || url.Contains("githubusercontent.com"))

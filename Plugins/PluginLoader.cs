@@ -158,6 +158,33 @@ namespace ObsMCLauncher.Plugins
                 return;
             }
             
+            // README.md 必须存在
+            var readmePath = Path.Combine(pluginDirectory, "README.md");
+            if (!File.Exists(readmePath))
+            {
+                Debug.WriteLine($"[PluginLoader] 插件缺少 README.md: {pluginDirName}");
+
+                var missingReadme = new LoadedPlugin
+                {
+                    Id = metadata.Id,
+                    Name = metadata.Name,
+                    Version = metadata.Version,
+                    Author = metadata.Author,
+                    Description = metadata.Description,
+                    DirectoryPath = pluginDirectory,
+                    IconPath = null,
+                    ReadmePath = null,
+                    Metadata = metadata,
+                    IsLoaded = false,
+                    ErrorMessage = "缺少 README.md",
+                    ErrorOutput = "缺少 README.md：插件必须在根目录提供 README.md 以显示说明文档。"
+                };
+
+                CreateDisabledMarker(pluginDirectory);
+                _loadedPlugins.Add(missingReadme);
+                return;
+            }
+
             // 查找DLL文件（优先查找与插件ID同名的DLL）
             var dllPath = Path.Combine(pluginDirectory, $"{metadata.Id}.dll");
             if (!File.Exists(dllPath))
@@ -189,6 +216,7 @@ namespace ObsMCLauncher.Plugins
                 Description = metadata.Description,
                 DirectoryPath = pluginDirectory,
                 IconPath = iconPath,
+                ReadmePath = readmePath,
                 Metadata = metadata,
                 IsLoaded = false
             };
@@ -377,6 +405,20 @@ namespace ObsMCLauncher.Plugins
                     return false;
                 }
                 
+                // 缺少 README.md 不允许启用
+                var readmePath = Path.Combine(plugin.DirectoryPath, "README.md");
+                if (!File.Exists(readmePath))
+                {
+                    errorMessage = "缺少 README.md，无法启用该插件";
+                    plugin.ErrorMessage = errorMessage;
+                    plugin.ErrorOutput = "缺少 README.md：插件必须在根目录提供 README.md 以显示说明文档。";
+                    plugin.IsLoaded = false;
+                    CreateDisabledMarker(plugin.DirectoryPath);
+                    return false;
+                }
+
+                plugin.ReadmePath = readmePath;
+
                 // 删除禁用标记文件
                 var disabledMarkerPath = Path.Combine(plugin.DirectoryPath, ".disabled");
                 if (File.Exists(disabledMarkerPath))
@@ -441,7 +483,8 @@ namespace ObsMCLauncher.Plugins
                     plugin.Instance = pluginInstance;
                     plugin.IsLoaded = true;
                     plugin.ErrorMessage = null;
-                    
+                    plugin.ErrorOutput = null;
+
                     Debug.WriteLine($"[PluginLoader] ✅ 已热启用插件: {plugin.Name}");
                     return true;
                 }

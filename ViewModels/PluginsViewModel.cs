@@ -79,6 +79,59 @@ namespace ObsMCLauncher.ViewModels
         partial void OnSelectedItemChanged(PluginListItemViewModel? value)
         {
             Detail = value?.ToDetail(_pluginLoader) ?? new PluginDetailViewModel();
+            _ = LoadReadmeForDetailAsync(value);
+        }
+
+        private async Task LoadReadmeForDetailAsync(PluginListItemViewModel? item)
+        {
+            try
+            {
+                if (item == null)
+                    return;
+
+                if (item.Source == PluginItemSource.Installed && item.Installed != null)
+                {
+                    var readmePath = item.Installed.ReadmePath;
+                    if (!string.IsNullOrWhiteSpace(readmePath) && System.IO.File.Exists(readmePath))
+                    {
+                        Detail.Markdown = await System.IO.File.ReadAllTextAsync(readmePath);
+                        Detail.MarkdownVisible = !string.IsNullOrWhiteSpace(Detail.Markdown);
+                    }
+                    else
+                    {
+                        Detail.Markdown = "";
+                        Detail.MarkdownVisible = false;
+                    }
+
+                    return;
+                }
+
+                if (item.Source == PluginItemSource.Market && item.Market != null)
+                {
+                    var readmeUrl = item.Market.Readme;
+                    Detail.ReadmeUrl = readmeUrl;
+
+                    if (string.IsNullOrWhiteSpace(readmeUrl))
+                    {
+                        Detail.Markdown = "";
+                        Detail.MarkdownVisible = false;
+                        return;
+                    }
+
+                    var url = ObsMCLauncher.Plugins.PluginMarketService.UseProxyIfNeeded(readmeUrl);
+
+                    using var http = new System.Net.Http.HttpClient();
+                    var content = await http.GetStringAsync(url);
+                    Detail.Markdown = content;
+                    Detail.MarkdownVisible = !string.IsNullOrWhiteSpace(Detail.Markdown);
+                    return;
+                }
+            }
+            catch
+            {
+                Detail.Markdown = "";
+                Detail.MarkdownVisible = false;
+            }
         }
 
         public async Task InitializeAsync()
@@ -518,10 +571,10 @@ namespace ObsMCLauncher.ViewModels
         }
 
         public static PluginListItemViewModel FromMarket(MarketPlugin p, bool isInstalled)
-            => new(PluginItemSource.Market, p.Name, $"v{p.Version} · {p.Author}", false, p, null, isInstalled ? "已安装" : "下载", !isInstalled);
+            => new(PluginItemSource.Market, p.Name, p.Description ?? string.Empty, false, p, null, isInstalled ? "已安装" : "下载", !isInstalled);
 
         public static PluginListItemViewModel FromInstalled(LoadedPlugin p)
-            => new(PluginItemSource.Installed, p.Name, $"v{p.Version} · {p.Author}", !string.IsNullOrEmpty(p.ErrorOutput), null, p, string.Empty, false);
+            => new(PluginItemSource.Installed, p.Name, p.Description ?? string.Empty, !string.IsNullOrEmpty(p.ErrorOutput), null, p, string.Empty, false);
 
         public PluginDetailViewModel ToDetail(PluginLoader? pluginLoader)
         {
@@ -623,6 +676,11 @@ namespace ObsMCLauncher.ViewModels
 
         [ObservableProperty] private string output = string.Empty;
         [ObservableProperty] private bool outputVisible;
+
+        [ObservableProperty] private string markdown = string.Empty;
+        [ObservableProperty] private bool markdownVisible;
+
+        [ObservableProperty] private string? readmeUrl;
 
         public PluginDetailViewModel()
         {
