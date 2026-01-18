@@ -16,6 +16,23 @@ namespace ObsMCLauncher.Plugins
     {
         private readonly string _pluginsDirectory;
         private readonly List<LoadedPlugin> _loadedPlugins = new();
+
+        private static void CreateDisabledMarker(string pluginDirectory)
+        {
+            try
+            {
+                var disabledMarkerPath = Path.Combine(pluginDirectory, ".disabled");
+
+                if (!File.Exists(disabledMarkerPath))
+                {
+                    File.WriteAllText(disabledMarkerPath, DateTime.Now.ToString());
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[PluginLoader] 写入禁用标记失败: {ex.Message}");
+            }
+        }
         
         public PluginLoader(string pluginsDirectory)
         {
@@ -198,7 +215,9 @@ namespace ObsMCLauncher.Plugins
                 if (pluginType == null)
                 {
                     loadedPlugin.ErrorMessage = "未找到实现 ILauncherPlugin 接口的类";
+                    loadedPlugin.ErrorOutput = loadedPlugin.ErrorMessage;
                     Debug.WriteLine($"[PluginLoader] {loadedPlugin.ErrorMessage}: {metadata.Name}");
+                    CreateDisabledMarker(pluginDirectory);
                     _loadedPlugins.Add(loadedPlugin);
                     return;
                 }
@@ -208,7 +227,9 @@ namespace ObsMCLauncher.Plugins
                 if (pluginInstance == null)
                 {
                     loadedPlugin.ErrorMessage = "无法创建插件实例";
+                    loadedPlugin.ErrorOutput = loadedPlugin.ErrorMessage;
                     Debug.WriteLine($"[PluginLoader] {loadedPlugin.ErrorMessage}: {metadata.Name}");
+                    CreateDisabledMarker(pluginDirectory);
                     _loadedPlugins.Add(loadedPlugin);
                     return;
                 }
@@ -221,14 +242,20 @@ namespace ObsMCLauncher.Plugins
                 
                 loadedPlugin.Instance = pluginInstance;
                 loadedPlugin.IsLoaded = true;
+                loadedPlugin.ErrorMessage = null;
+                loadedPlugin.ErrorOutput = null;
                 
                 Debug.WriteLine($"[PluginLoader] ✅ 插件加载成功: {metadata.Name} v{metadata.Version}");
             }
             catch (Exception ex)
             {
                 loadedPlugin.ErrorMessage = ex.Message;
+                loadedPlugin.ErrorOutput = ex.ToString();
                 Debug.WriteLine($"[PluginLoader] ❌ 插件加载失败 [{metadata.Name}]: {ex.Message}");
                 Debug.WriteLine($"[PluginLoader] 堆栈跟踪: {ex.StackTrace}");
+
+                // 自动禁用：避免每次启动重复报错
+                CreateDisabledMarker(pluginDirectory);
             }
             
             _loadedPlugins.Add(loadedPlugin);
@@ -318,8 +345,7 @@ namespace ObsMCLauncher.Plugins
                 }
                 
                 // 创建禁用标记文件
-                var disabledMarkerPath = Path.Combine(plugin.DirectoryPath, ".disabled");
-                File.WriteAllText(disabledMarkerPath, DateTime.Now.ToString());
+                CreateDisabledMarker(plugin.DirectoryPath);
                 
                 // 立即更新插件状态
                 plugin.IsLoaded = false;

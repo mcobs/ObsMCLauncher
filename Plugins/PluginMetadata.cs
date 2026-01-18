@@ -58,6 +58,7 @@ namespace ObsMCLauncher.Plugins
         public ILauncherPlugin? Instance { get; set; }
         public bool IsLoaded { get; set; }
         public string? ErrorMessage { get; set; }
+        public string? ErrorOutput { get; set; }
     }
 }
 

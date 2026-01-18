@@ -521,7 +521,7 @@ namespace ObsMCLauncher.ViewModels
             => new(PluginItemSource.Market, p.Name, $"v{p.Version} · {p.Author}", false, p, null, isInstalled ? "已安装" : "下载", !isInstalled);
 
         public static PluginListItemViewModel FromInstalled(LoadedPlugin p)
-            => new(PluginItemSource.Installed, p.Name, $"v{p.Version} · {p.Author}", !p.IsLoaded && !string.IsNullOrEmpty(p.ErrorMessage), null, p, string.Empty, false);
+            => new(PluginItemSource.Installed, p.Name, $"v{p.Version} · {p.Author}", !string.IsNullOrEmpty(p.ErrorOutput), null, p, string.Empty, false);
 
         public PluginDetailViewModel ToDetail(PluginLoader? pluginLoader)
         {
@@ -558,11 +558,15 @@ namespace ObsMCLauncher.ViewModels
                     status = $"异常: {Installed.ErrorMessage}";
                 }
 
+                var outputText = string.IsNullOrWhiteSpace(Installed.ErrorOutput) ? "运行正常" : Installed.ErrorOutput;
+
                 var detail = new PluginDetailViewModel
                 {
                     Title = Installed.Name,
                     Meta = $"v{Installed.Version} · {Installed.Author} · {status}",
                     Description = Installed.Description ?? string.Empty,
+                    Output = outputText,
+                    OutputVisible = true,
                     PrimaryActionText = Installed.IsLoaded ? "禁用" : "启用",
                     PrimaryActionEnabled = true,
                     PrimaryActionVisible = true,
@@ -616,6 +620,9 @@ namespace ObsMCLauncher.ViewModels
 
         [ObservableProperty] private string? repoUrl;
         [ObservableProperty] private bool repoVisible;
+
+        [ObservableProperty] private string output = string.Empty;
+        [ObservableProperty] private bool outputVisible;
 
         public PluginDetailViewModel()
         {

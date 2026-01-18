@@ -726,11 +726,38 @@
                                                   Visibility="{Binding Detail.RepoVisible, Converter={StaticResource BoolToVis}}"/>
                                         </StackPanel>
 
-                                        <TextBlock Grid.Row="3"
-                                                 Text="{Binding Detail.Description}"
-                                                 TextWrapping="Wrap"
-                                                 Foreground="{DynamicResource TextSecondaryBrush}"
-                                                 FontSize="13"/>
+                                        <TabControl Grid.Row="3"
+                                                    Background="Transparent"
+                                                    BorderThickness="0"
+                                                    Margin="-8,0,-8,-8"
+                                                    FontSize="12">
+                                            <TabItem Header="详情"
+                                                     Padding="8,2">
+                                                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                                                    <TextBlock Text="{Binding Detail.Description}"
+                                                             TextWrapping="Wrap"
+                                                             Foreground="{DynamicResource TextSecondaryBrush}"
+                                                             FontSize="13"
+                                                             Margin="8,0,8,8"/>
+                                                </ScrollViewer>
+                                            </TabItem>
+
+                                            <TabItem Header="输出"
+                                                     Padding="8,2"
+                                                     Visibility="{Binding Detail.OutputVisible, Converter={StaticResource BoolToVis}}">
+                                                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                                                    <TextBox Text="{Binding Detail.Output}"
+                                                             IsReadOnly="True"
+                                                             BorderThickness="0"
+                                                             Background="Transparent"
+                                                             Foreground="{DynamicResource TextSecondaryBrush}"
+                                                             FontSize="12"
+                                                             Margin="8,0,8,8"
+                                                             TextWrapping="Wrap"
+                                                             VerticalScrollBarVisibility="Disabled"/>
+                                                </ScrollViewer>
+                                            </TabItem>
+                                        </TabControl>
                                     </Grid>
                                 </Border>
                             </Grid>
