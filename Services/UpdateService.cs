@@ -445,9 +445,10 @@ namespace ObsMCLauncher.Services
                     var currentExePath = Process.GetCurrentProcess().MainModule?.FileName;
                     if (string.IsNullOrEmpty(currentExePath))
                     {
-                        currentExePath = System.Reflection.Assembly.GetExecutingAssembly().Location;
+                        var exeName = System.Diagnostics.Process.GetCurrentProcess().ProcessName + ".exe";
+                        currentExePath = Path.Combine(AppContext.BaseDirectory, exeName);
                     }
-                    
+
                     if (string.IsNullOrEmpty(currentExePath) || !File.Exists(currentExePath))
                     {
                         throw new Exception("无法获取当前程序路径");
