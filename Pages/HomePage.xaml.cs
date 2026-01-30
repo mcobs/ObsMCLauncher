@@ -23,6 +23,17 @@ namespace ObsMCLauncher.Pages
         private readonly Dictionary<string, HomeCardInfo> _registeredCards = new Dictionary<string, HomeCardInfo>();
         private readonly List<HomeCardInfo> _displayedCards = new List<HomeCardInfo>();
         private bool _builtInCardsRegistered = false;
+
+        // 卡片分页
+        private const int MinRowsPerPage = 1;
+        private const int MaxRowsPerPage = 4;
+        private const double EstimatedCardRowHeight = 172; // 经验值：单行两张卡片的大致高度（含Margin）
+        private const double EstimatedPaginationHeight = 50;
+
+        private int _rowsPerPage = 2;
+        private int _cardsPerPage = 4;
+        private int _currentPage = 1;
+        private int _totalPages = 1;
         
         public HomePage()
         {
@@ -33,6 +44,13 @@ namespace ObsMCLauncher.Pages
             // 注册插件卡片回调
             PluginContext.OnHomeCardRegistered += OnPluginCardRegistered;
             PluginContext.OnHomeCardUnregistered += OnPluginCardUnregistered;
+
+            // 注册分页按钮事件
+            HomeCardsPrevButton.Click += (_, __) => ChangeCardPage(-1);
+            HomeCardsNextButton.Click += (_, __) => ChangeCardPage(1);
+
+            // 窗口尺寸变化时，动态调整每页卡片数（节流，避免频繁刷新）
+            SizeChanged += HomePage_SizeChanged;
         }
 
         private void HomePage_Loaded(object sender, RoutedEventArgs e)
@@ -51,6 +69,8 @@ namespace ObsMCLauncher.Pages
             {
                 VersionComboBox.SelectionChanged -= VersionComboBox_SelectionChanged;
             }
+
+            SizeChanged -= HomePage_SizeChanged;
             
             // 取消注册插件卡片回调
             PluginContext.OnHomeCardRegistered -= OnPluginCardRegistered;
@@ -1497,8 +1517,24 @@ namespace ObsMCLauncher.Pages
         {
             Dispatcher.Invoke(() =>
             {
+                // 计算总页数
+                var totalCards = _displayedCards.Count;
+                _totalPages = Math.Max(1, (int)Math.Ceiling(totalCards / (double)_cardsPerPage));
+
+                // 确保当前页在合法范围内
+                if (_currentPage < 1) _currentPage = 1;
+                if (_currentPage > _totalPages) _currentPage = _totalPages;
+
+                // 取当前页数据
+                var pageCards = _displayedCards
+                    .Skip((_currentPage - 1) * _cardsPerPage)
+                    .Take(_cardsPerPage)
+                    .ToList();
+
                 HomeCardsContainer.ItemsSource = null;
-                HomeCardsContainer.ItemsSource = _displayedCards;
+                HomeCardsContainer.ItemsSource = pageCards;
+
+                UpdatePaginationUI(totalCards);
             });
         }
         
@@ -1676,6 +1712,90 @@ namespace ObsMCLauncher.Pages
             LoadHomeCards();
         }
         
+        private DispatcherTimer? _pageRecalcTimer;
+
+        private void HomePage_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            // 节流：拖拽缩放窗口时避免每次都重算+刷新
+            if (_pageRecalcTimer == null)
+            {
+                _pageRecalcTimer = new DispatcherTimer
+                {
+                    Interval = TimeSpan.FromMilliseconds(120)
+                };
+                _pageRecalcTimer.Tick += (_, __) =>
+                {
+                    _pageRecalcTimer?.Stop();
+                    RecalculateCardsPerPageAndRefresh();
+                };
+            }
+
+            _pageRecalcTimer.Stop();
+            _pageRecalcTimer.Start();
+        }
+
+        private void RecalculateCardsPerPageAndRefresh()
+        {
+            // 根据页面实际高度估算卡片区域可用高度
+            // 主页结构：上方Banner(200) + 间距(16) + 卡片区 + 间距(16) + 快速启动区(约120) + Margin(24*2)
+            var pageHeight = ActualHeight;
+            if (pageHeight <= 0)
+            {
+                pageHeight = 700; // 设计期兜底
+            }
+
+            var estimatedQuickLaunchArea = 160;
+            var reserved = 200 + 16 + 16 + estimatedQuickLaunchArea + 48;
+            var availableHeight = Math.Max(0, pageHeight - reserved);
+
+            // 预留分页控件高度（即使暂时不显示，也避免临界时“跳动”）
+            var effectiveHeight = Math.Max(0, availableHeight - EstimatedPaginationHeight);
+
+            var rows = (int)Math.Floor(effectiveHeight / EstimatedCardRowHeight);
+            rows = Math.Max(MinRowsPerPage, Math.Min(MaxRowsPerPage, rows));
+
+            _rowsPerPage = rows;
+            _cardsPerPage = Math.Max(2, _rowsPerPage * 2); // 两列布局
+
+            RefreshCardsDisplay();
+        }
+
+        private void ChangeCardPage(int delta)
+        {
+            if (_totalPages <= 1)
+            {
+                _currentPage = 1;
+                return;
+            }
+
+            _currentPage += delta;
+            if (_currentPage < 1) _currentPage = 1;
+            if (_currentPage > _totalPages) _currentPage = _totalPages;
+
+            RefreshCardsDisplay();
+        }
+
+        private void UpdatePaginationUI(int totalCards)
+        {
+            if (HomeCardsPaginationPanel == null || HomeCardsPrevButton == null || HomeCardsNextButton == null || HomeCardsPageText == null)
+            {
+                return;
+            }
+
+            var needPagination = totalCards > _cardsPerPage;
+            HomeCardsPaginationPanel.Visibility = needPagination ? Visibility.Visible : Visibility.Collapsed;
+
+            if (!needPagination)
+            {
+                HomeCardsPageText.Text = string.Empty;
+                return;
+            }
+
+            HomeCardsPageText.Text = $"{_currentPage} / {_totalPages}";
+            HomeCardsPrevButton.IsEnabled = _currentPage > 1;
+            HomeCardsNextButton.IsEnabled = _currentPage < _totalPages;
+        }
+
         #endregion
     }
 }
