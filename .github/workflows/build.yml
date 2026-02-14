@@ -9,42 +9,34 @@ on:
 
 jobs:
   build:
-    # 如果提交信息包含 [CI skip] 或 [ci skip]，跳过构建
     if: "!contains(github.event.head_commit.message, '[CI skip]') && !contains(github.event.head_commit.message, '[ci skip]')"
     
     strategy:
       matrix:
         configuration: [Release]
     
-    runs-on: windows-latest  # 在 Windows 环境构建 WPF 应用
+    runs-on: windows-latest
     
     env:
-      Solution_Name: ObsMCLauncher.csproj
+      Project_Path: ObsMCLauncher.Desktop/ObsMCLauncher.Desktop.csproj
       
     steps:
     - name: Checkout
       uses: actions/checkout@v4
       with:
-        fetch-depth: 0  # 获取完整的 git 历史
-      
+        fetch-depth: 0
+    
     - name: Install .NET Core
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: 8.0.x
-    
-    # 添加 MSBuild 到 PATH
-    - name: Setup MSBuild.exe
-      uses: microsoft/setup-msbuild@v2
-        
+
     - name: Restore dependencies
-      run: dotnet restore $env:Solution_Name
+      run: dotnet restore $env:Project_Path
       
     - name: Build application
-      run: dotnet build $env:Solution_Name -c ${{ matrix.configuration }} --no-restore
-      
-    - name: Publish single-file executable
-      run: dotnet publish $env:Solution_Name -c ${{ matrix.configuration }} -r win-x64 --self-contained false -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=false -o ./publish
-      
+      run: dotnet build $env:Project_Path -c ${{ matrix.configuration }} --no-restore
+
     - name: Get version info
       id: version
       shell: pwsh
@@ -54,37 +46,28 @@ jobs:
         $version = "v1.0.0-$date-$shortSha"
         echo "version=$version" >> $env:GITHUB_OUTPUT
         echo "当前版本: $version"
-        
-    - name: Verify and rename executable
+
+    - name: Publish single-file executable
+      run: |
+        dotnet publish $env:Project_Path -c ${{ matrix.configuration }} -r win-x64 --self-contained false -p:PublishSingleFile=true -o ./publish
+
+    - name: Create archive
       shell: pwsh
       run: |
-        $exePath = "./publish/ObsMCLauncher.exe"
-        if (-not (Test-Path $exePath)) {
-          Write-Error "发布文件不存在: $exePath"
-          exit 1
-        }
-        
         $version = "${{ steps.version.outputs.version }}"
-        $exeName = "ObsMCLauncher-$version-win-x64.exe"
-        Copy-Item -Path $exePath -Destination $exeName
+        $archiveName = "ObsMCLauncher-$version-win-x64"
         
-        $fileInfo = Get-Item $exeName
+        Compress-Archive -Path ./publish/* -DestinationPath "$archiveName.zip"
+        
+        $fileInfo = Get-Item "$archiveName.zip"
         $fileSizeMB = [Math]::Round($fileInfo.Length / 1MB, 2)
         
-        Write-Host "✅ 已重命名为: $exeName"
-        Write-Host "📦 文件大小: $fileSizeMB MB"
-        
-        # 验证文件大小合理性（框架依赖发布应该在5-20MB之间）
-        if ($fileSizeMB -gt 50) {
-          Write-Warning "⚠️ 文件大小异常大 ($fileSizeMB MB)，可能配置有误"
-        }
-        
+        Write-Host "已创建: $archiveName.zip"
+        Write-Host "文件大小: $fileSizeMB MB"
+
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
         name: ObsMCLauncher-${{ steps.version.outputs.version }}-win-x64
-        path: ObsMCLauncher-${{ steps.version.outputs.version }}-win-x64.exe
+        path: ObsMCLauncher-${{ steps.version.outputs.version }}-win-x64.zip
         retention-days: 90
-        compression-level: 6
-        if-no-files-found: error
-
