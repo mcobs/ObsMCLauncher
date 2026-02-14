@@ -27,6 +27,15 @@ namespace ObsMCLauncher.Core.Utils
         }
 
         /// <summary>
+        /// 检查URL是否为GitHub API请求
+        /// </summary>
+        public static bool IsApiUrl(string url)
+        {
+            if (string.IsNullOrEmpty(url)) return false;
+            return url.Contains("api.github.com", StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
         /// 为GitHub URL添加镜像代理
         /// </summary>
         /// <param name="url">原始URL</param>
@@ -39,6 +48,13 @@ namespace ObsMCLauncher.Core.Utils
             if (!IsGitHubUrl(url)) return url;
 
             if (url.StartsWith(GITHUB_PROXY, StringComparison.OrdinalIgnoreCase)) return url;
+
+            // API请求不使用代理，代理服务通常不支持API请求
+            if (IsApiUrl(url))
+            {
+                Debug.WriteLine($"[GitHubProxy] API请求不使用代理: {url}");
+                return url;
+            }
 
             var proxyUrl = GITHUB_PROXY + url;
             Debug.WriteLine($"[GitHubProxy] 使用镜像: {url} -> {proxyUrl}");
@@ -61,17 +77,12 @@ namespace ObsMCLauncher.Core.Utils
         }
 
         /// <summary>
-        /// 转换GitHub API URL为镜像URL
+        /// 转换GitHub API URL（不使用代理）
         /// </summary>
         public static string ConvertApiUrl(string apiUrl)
         {
             if (string.IsNullOrEmpty(apiUrl)) return apiUrl;
-
-            if (apiUrl.Contains("api.github.com", StringComparison.OrdinalIgnoreCase))
-            {
-                return WithProxy(apiUrl);
-            }
-
+            // API请求直接返回原URL，不使用代理
             return apiUrl;
         }
 
