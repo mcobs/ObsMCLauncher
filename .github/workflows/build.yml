@@ -49,25 +49,21 @@ jobs:
 
     - name: Publish single-file executable
       run: |
-        dotnet publish $env:Project_Path -c ${{ matrix.configuration }} -r win-x64 --self-contained false -p:PublishSingleFile=true -o ./publish
+        dotnet publish $env:Project_Path -c ${{ matrix.configuration }} -r win-x64 --self-contained false -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=none -p:DebugSymbols=false -o ./publish
 
-    - name: Create archive
+    - name: Verify output
       shell: pwsh
       run: |
-        $version = "${{ steps.version.outputs.version }}"
-        $archiveName = "ObsMCLauncher-$version-win-x64"
+        Write-Host "发布目录内容:"
+        Get-ChildItem ./publish | Format-Table Name, Length
         
-        Compress-Archive -Path ./publish/* -DestinationPath "$archiveName.zip"
-        
-        $fileInfo = Get-Item "$archiveName.zip"
-        $fileSizeMB = [Math]::Round($fileInfo.Length / 1MB, 2)
-        
-        Write-Host "已创建: $archiveName.zip"
-        Write-Host "文件大小: $fileSizeMB MB"
+        $exeFile = Get-Item ./publish/*.exe
+        $fileSizeMB = [Math]::Round($exeFile.Length / 1MB, 2)
+        Write-Host "可执行文件大小: $fileSizeMB MB"
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
         name: ObsMCLauncher-${{ steps.version.outputs.version }}-win-x64
-        path: ObsMCLauncher-${{ steps.version.outputs.version }}-win-x64.zip
+        path: ./publish/*
         retention-days: 90
