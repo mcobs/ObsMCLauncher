@@ -12,11 +12,19 @@ public static class LauncherBootstrap
 
     private static void EnsureOmclDirectories()
     {
-        var baseDir = AppDomain.CurrentDomain.BaseDirectory;
-        var configDir = Path.Combine(baseDir, "OMCL", "config");
-        var pluginsDir = Path.Combine(baseDir, "OMCL", "plugins");
+        try
+        {
+            var baseDir = AppDomain.CurrentDomain.BaseDirectory;
+            var configDir = Path.Combine(baseDir, "OMCL", "config");
+            var pluginsDir = Path.Combine(baseDir, "OMCL", "plugins");
 
-        Directory.CreateDirectory(configDir);
-        Directory.CreateDirectory(pluginsDir);
+            Directory.CreateDirectory(configDir);
+            Directory.CreateDirectory(pluginsDir);
+        }
+        catch (Exception ex)
+        {
+            // 记录错误日志
+            System.Diagnostics.Debug.WriteLine($"创建OMCL目录失败: {ex.Message}");
+        }
     }
 }
