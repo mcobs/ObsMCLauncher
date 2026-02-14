@@ -1,0 +1,224 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ObsMCLauncher.Desktop.ViewModels"
+             xmlns:converters="using:ObsMCLauncher.Desktop.Converters"
+             x:Class="ObsMCLauncher.Desktop.Views.SettingsView"
+             x:DataType="vm:SettingsViewModel">
+
+  <Grid>
+
+    <!-- 主要内容区域 -->
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+      <Grid Margin="24" RowDefinitions="Auto,*">
+
+        <!-- 标题区域 -->
+        <StackPanel Grid.Row="0">
+          <TextBlock Text="设置" FontSize="24" FontWeight="Bold" Margin="0,0,0,8"/>
+          <TextBlock Text="配置启动器和游戏参数（修改后自动保存）" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,12"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="1" Spacing="16">
+
+          <!-- 游戏设置 -->
+          <Border Background="{DynamicResource SurfaceBrush}" CornerRadius="10" Padding="20">
+            <StackPanel Spacing="16">
+              <TextBlock Text="游戏设置" FontSize="17" FontWeight="SemiBold"/>
+
+              <!-- 游戏目录 -->
+              <StackPanel Spacing="8">
+                <TextBlock Text="游戏目录" FontSize="14"/>
+                <ComboBox ItemsSource="{Binding GameDirectoryLocationOptions}" SelectedItem="{Binding GameDirectoryLocation}">
+                  <ComboBox.ItemTemplate>
+                    <DataTemplate>
+                      <TextBlock Text="{Binding Converter={x:Static converters:EnumToChineseTextConverter.Instance}}"/>
+                    </DataTemplate>
+                  </ComboBox.ItemTemplate>
+                </ComboBox>
+
+                <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding IsCustomGameDirectory}">
+                  <TextBox Grid.Column="0" Text="{Binding CustomGameDirectory}" Watermark="自定义游戏目录" Margin="0,0,10,0"/>
+                  <Button Grid.Column="1" Content="浏览" Width="100" Command="{Binding BrowseGameDirectoryCommand}"/>
+                </Grid>
+
+                <TextBlock Text="{Binding GameDirectoryDisplayText}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap"/>
+              </StackPanel>
+
+              <!-- 内存分配 -->
+              <StackPanel Spacing="8">
+                <TextBlock Text="最大内存分配 (最小内存固定为512MB)" FontSize="14"/>
+                <Grid ColumnDefinitions="*,120">
+                  <Slider Grid.Column="0" Minimum="1024" Maximum="65536" Value="{Binding MaxMemory}" Margin="0,0,20,0"/>
+                  <TextBox Grid.Column="1" Text="{Binding MaxMemory}" HorizontalContentAlignment="Right" Watermark="MB"/>
+                </Grid>
+              </StackPanel>
+
+              <!-- 版本隔离 -->
+              <StackPanel Spacing="8">
+                <TextBlock Text="版本隔离" FontSize="14"/>
+                <ComboBox ItemsSource="{Binding GameDirectoryTypeOptions}" SelectedItem="{Binding GameDirectoryType}">
+                  <ComboBox.ItemTemplate>
+                    <DataTemplate>
+                      <TextBlock Text="{Binding Converter={x:Static converters:EnumToChineseTextConverter.Instance}}"/>
+                    </DataTemplate>
+                  </ComboBox.ItemTemplate>
+                </ComboBox>
+                <TextBlock Text="开启后，每个版本将使用独立的mods、saves、resourcepacks等文件夹" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap"/>
+              </StackPanel>
+
+              <!-- Java 路径 -->
+              <StackPanel Spacing="8">
+                <TextBlock Text="Java 路径" FontSize="14"/>
+                <ComboBox ItemsSource="{Binding JavaOptions}" SelectedItem="{Binding SelectedJavaOption}"/>
+
+                <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding IsCustomJava}">
+                  <TextBox Grid.Column="0" Text="{Binding CustomJavaPath}" Watermark="自定义Java路径" Margin="0,0,10,0"/>
+                  <Button Grid.Column="1" Content="浏览" Width="100" Command="{Binding BrowseJavaPathCommand}"/>
+                </Grid>
+              </StackPanel>
+
+              <!-- 高级设置 -->
+              <Expander Header="高级设置">
+                <StackPanel Spacing="8" Margin="0,10,0,0">
+                  <TextBlock Text="JVM 参数" FontSize="14"/>
+                  <TextBox Text="{Binding JvmArguments}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="60"/>
+                </StackPanel>
+              </Expander>
+
+            </StackPanel>
+          </Border>
+
+          <!-- 启动器设置 -->
+          <Border Background="{DynamicResource SurfaceBrush}" CornerRadius="10" Padding="20">
+            <StackPanel Spacing="16">
+              <TextBlock Text="启动器设置" FontSize="17" FontWeight="SemiBold"/>
+
+              <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" Margin="0,0,0,8">
+                <StackPanel>
+                  <TextBlock Text="主题模式" FontSize="14"/>
+                  <TextBlock Text="选择启动器的外观主题" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                </StackPanel>
+                <ComboBox Grid.Column="1" Width="150" SelectedIndex="{Binding ThemeMode}">
+                  <ComboBoxItem Content="深色模式"/>
+                  <ComboBoxItem Content="浅色模式"/>
+                  <ComboBoxItem Content="跟随系统"/>
+                </ComboBox>
+              </Grid>
+
+              <Separator Background="{DynamicResource BorderBrush}"/>
+
+              <Grid ColumnDefinitions="*,Auto">
+                <StackPanel>
+                  <TextBlock Text="自动检查更新" FontSize="14"/>
+                  <TextBlock Text="启动时检查启动器更新" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                </StackPanel>
+                <ToggleSwitch Grid.Column="1" IsChecked="{Binding AutoCheckUpdate}"/>
+              </Grid>
+
+              <Separator Background="{DynamicResource BorderBrush}"/>
+
+              <Grid ColumnDefinitions="*,Auto">
+                <StackPanel>
+                  <TextBlock Text="游戏启动后关闭启动器" FontSize="14"/>
+                  <TextBlock Text="减少内存占用" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                </StackPanel>
+                <ToggleSwitch Grid.Column="1" IsChecked="{Binding CloseAfterLaunch}"/>
+              </Grid>
+
+            </StackPanel>
+          </Border>
+
+          <!-- 下载设置 -->
+          <Border Background="{DynamicResource SurfaceBrush}" CornerRadius="10" Padding="20">
+            <StackPanel Spacing="16">
+              <TextBlock Text="下载设置" FontSize="17" FontWeight="SemiBold"/>
+
+              <Grid ColumnDefinitions="*,Auto">
+                <StackPanel>
+                  <TextBlock Text="下载源" FontSize="14"/>
+                  <TextBlock Text="{Binding DownloadSourceDescription}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap"/>
+                </StackPanel>
+                <ComboBox Grid.Column="1" Width="250" ItemsSource="{Binding DownloadSourceOptions}" SelectedItem="{Binding DownloadSource}"/>
+              </Grid>
+
+              <Separator Background="{DynamicResource BorderBrush}"/>
+
+              <Grid ColumnDefinitions="*,Auto">
+                <StackPanel>
+                  <TextBlock Text="最大下载线程" FontSize="14"/>
+                  <TextBlock Text="同时下载的文件数量" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                </StackPanel>
+                <ComboBox Grid.Column="1" Width="150" 
+                          ItemsSource="{Binding MaxDownloadThreadsOptions}" 
+                          SelectedItem="{Binding MaxDownloadThreads}"/>
+              </Grid>
+
+              <Separator Background="{DynamicResource BorderBrush}"/>
+
+              <Grid ColumnDefinitions="*,Auto">
+                <StackPanel>
+                  <TextBlock Text="下载游戏时完整下载所有资源文件" FontSize="14"/>
+                  <TextBlock Text="下载游戏依赖库、声音、语言、纹理等全部资源文件" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap"/>
+                </StackPanel>
+                <ToggleSwitch Grid.Column="1" IsChecked="{Binding DownloadAssetsWithGame}"/>
+              </Grid>
+
+              <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="15" Margin="0,8,0,0">
+                <Button Content="测试下载源" Width="130" Command="{Binding TestDownloadSourceCommand}"/>
+                <Button Content="恢复默认设置" Width="150" Command="{Binding ResetDefaultsCommand}"/>
+              </StackPanel>
+
+            </StackPanel>
+          </Border>
+
+          <!-- 主页卡片管理 -->
+          <Border Background="{DynamicResource SurfaceBrush}" CornerRadius="10" Padding="20">
+            <StackPanel Spacing="16">
+              <TextBlock Text="主页卡片管理" FontSize="17" FontWeight="SemiBold"/>
+              <TextBlock Text="管理主页显示的卡片，可以启用/禁用和调整顺序" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}"/>
+
+              <ItemsControl ItemsSource="{Binding HomeCards}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <Border Background="{DynamicResource SurfaceElevatedBrush}"
+                            CornerRadius="8" Padding="12" Margin="0,0,0,8"
+                            BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
+                      <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                        <!-- 拖拽提示图标 -->
+                        <TextBlock Grid.Column="0" Text="⋮⋮" FontSize="14" 
+                                   Foreground="{DynamicResource TextSecondaryBrush}"
+                                   VerticalAlignment="Center" Margin="0,0,12,0"/>
+
+                        <!-- 卡片信息 -->
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                          <TextBlock Text="{Binding Title}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                          <TextBlock Text="{Binding Description}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap"/>
+                        </StackPanel>
+
+                        <!-- 启用/禁用开关 -->
+                        <ToggleSwitch Grid.Column="2" IsChecked="{Binding IsEnabled}"
+                                      VerticalAlignment="Center" Margin="0,0,12,0"
+                                      IsCheckedChanged="CardEnabledChanged"/>
+
+                        <!-- 上移/下移按钮 -->
+                        <StackPanel Grid.Column="3" Orientation="Horizontal">
+                          <Button Content="↑" Width="32" Height="32" Margin="0,0,4,0"
+                                  Command="{Binding $parent[ItemsControl].((vm:SettingsViewModel)DataContext).MoveCardUpCommand}"
+                                  CommandParameter="{Binding}"/>
+                          <Button Content="↓" Width="32" Height="32"
+                                  Command="{Binding $parent[ItemsControl].((vm:SettingsViewModel)DataContext).MoveCardDownCommand}"
+                                  CommandParameter="{Binding}"/>
+                        </StackPanel>
+                      </Grid>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </Border>
+
+        </StackPanel>
+      </Grid>
+    </ScrollViewer>
+
+  </Grid>
+</UserControl>

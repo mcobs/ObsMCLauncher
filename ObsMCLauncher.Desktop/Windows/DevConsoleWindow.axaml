@@ -1,0 +1,116 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:ObsMCLauncher.Desktop.ViewModels"
+        x:Class="ObsMCLauncher.Desktop.Windows.DevConsoleWindow"
+        x:DataType="vm:DevConsoleViewModel"
+        Title="开发者控制台"
+        Height="560" Width="880"
+        MinHeight="420" MinWidth="640"
+        WindowStartupLocation="CenterOwner"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaChromeHints="NoChrome"
+        ExtendClientAreaTitleBarHeightHint="-1"
+        Background="{DynamicResource BackgroundBrush}">
+
+<Window.Styles>
+    <Style Selector="TextBox.console-output">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderThickness" Value="0"/>
+    </Style>
+    <Style Selector="TextBox.console-output:pointerover /template/ Border#PART_BorderElement">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderThickness" Value="0"/>
+    </Style>
+    <Style Selector="TextBox.console-output:focus /template/ Border#PART_BorderElement">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderThickness" Value="0"/>
+    </Style>
+
+    <Style Selector="TextBox.console-input /template/ Border#PART_BorderElement">
+      <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+      <Setter Property="Transitions" Value="{x:Null}"/>
+    </Style>
+    <Style Selector="TextBox.console-input:pointerover /template/ Border#PART_BorderElement">
+      <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+    </Style>
+    <Style Selector="TextBox.console-input:focus /template/ Border#PART_BorderElement">
+      <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+    </Style>
+    <Style Selector="TextBox.console-input:focus-within /template/ Border#PART_BorderElement">
+      <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+    </Style>
+  </Window.Styles>
+
+  <Grid RowDefinitions="40,*,Auto">
+    <!-- 标题栏 -->
+    <Border Grid.Row="0"
+            Background="{DynamicResource SurfaceBrush}"
+            BorderBrush="{DynamicResource BorderBrush}"
+            BorderThickness="0,0,0,1"
+            PointerPressed="TitleBar_PointerPressed">
+      <Grid ColumnDefinitions="*,Auto">
+        <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="15,0" VerticalAlignment="Center">
+          <TextBlock Text="🖥" FontSize="16" VerticalAlignment="Center"/>
+          <TextBlock Text="开发者控制台" FontSize="13" FontWeight="SemiBold" Margin="10,0,0,0" VerticalAlignment="Center"/>
+        </StackPanel>
+
+        <Button Grid.Column="1" Command="{Binding CloseCommand}"
+                Width="46" Height="40"
+                Background="Transparent"
+                HorizontalContentAlignment="Center"
+                VerticalContentAlignment="Center">
+          <TextBlock Text="✕" FontSize="14"/>
+        </Button>
+      </Grid>
+    </Border>
+
+    <!-- 输出区 -->
+    <Border Grid.Row="1" Background="#151515" Padding="0">
+      <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+        <TextBox Classes="console-output"
+                 Text="{Binding Output}"
+                 IsReadOnly="True"
+                 Background="Transparent"
+                 BorderThickness="0"
+                 Foreground="#FFFFFF"
+                 FontFamily="Consolas,Courier New"
+                 FontSize="12"
+                 TextWrapping="NoWrap"
+                 AcceptsReturn="True"
+                 Padding="12"/>
+      </ScrollViewer>
+    </Border>
+
+    <!-- 输入区 -->
+    <Border Grid.Row="2"
+            Background="{DynamicResource SurfaceBrush}"
+            BorderBrush="{DynamicResource BorderBrush}"
+            BorderThickness="0,1,0,0"
+            Padding="12,10">
+      <Grid ColumnDefinitions="*,Auto">
+        <TextBox Classes="console-input"
+                 Grid.Column="0"
+                 Text="{Binding Command}"
+                 Height="34"
+                 VerticalContentAlignment="Center"
+                 FontFamily="Consolas,Courier New"
+                 Watermark="输入命令（help 查看可用命令）"
+                 KeyDown="CommandTextBox_KeyDown"/>
+
+        <Button Grid.Column="1"
+                Content="执行"
+                Command="{Binding ExecuteCommand}"
+                Height="34"
+                Margin="10,0,0,0"
+                Padding="14,0"/>
+      </Grid>
+    </Border>
+  </Grid>
+
+</Window>

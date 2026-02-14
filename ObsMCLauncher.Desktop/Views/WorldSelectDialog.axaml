@@ -1,0 +1,46 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:ObsMCLauncher.Desktop.ViewModels"
+        x:Class="ObsMCLauncher.Desktop.Views.WorldSelectDialog"
+        x:DataType="vm:WorldSelectDialogViewModel"
+        Width="520" Height="420"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False"
+        Title="选择存档">
+
+  <Grid RowDefinitions="Auto,*,Auto" Margin="16" RowSpacing="12">
+
+    <StackPanel Grid.Row="0" Spacing="6">
+      <TextBlock Text="选择要安装数据包的存档" FontSize="18" FontWeight="SemiBold" />
+      <TextBlock Text="请选择一个世界（world）文件夹" Opacity="0.75" />
+    </StackPanel>
+
+    <Border Grid.Row="1" CornerRadius="10" BorderThickness="1"
+            BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+            Background="{DynamicResource SystemControlBackgroundBaseHighBrush}">
+      <ListBox ItemsSource="{Binding Worlds}"
+               SelectedItem="{Binding SelectedWorld}"
+               Margin="10"
+               >
+        <ListBox.ItemTemplate>
+          <DataTemplate>
+            <Border CornerRadius="8" Padding="10" Margin="0,0,0,8"
+                    Background="{DynamicResource SystemControlBackgroundAltHighBrush}">
+              <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding Name}" FontWeight="SemiBold" />
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="{Binding Path}" Opacity="0.7" FontSize="11" TextTrimming="CharacterEllipsis" />
+                <TextBlock Grid.RowSpan="2" Grid.Column="1" Text="→" VerticalAlignment="Center" Opacity="0.6" />
+              </Grid>
+            </Border>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+    </Border>
+
+    <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+      <Button Content="取消" Command="{Binding CancelCommand}" />
+      <Button Content="确定" Command="{Binding OkCommand}" IsEnabled="{Binding SelectedWorld, Converter={x:Null}}" />
+    </StackPanel>
+
+  </Grid>
+</Window>

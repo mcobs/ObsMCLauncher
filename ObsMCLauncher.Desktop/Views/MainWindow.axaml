@@ -1,0 +1,511 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:ObsMCLauncher.Desktop.ViewModels"
+        xmlns:converters="using:ObsMCLauncher.Desktop.Converters"
+        xmlns:notif="using:ObsMCLauncher.Desktop.ViewModels.Notifications"
+        xmlns:dialogs="using:ObsMCLauncher.Desktop.ViewModels.Dialogs"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="1100" d:DesignHeight="700"
+        x:Class="ObsMCLauncher.Desktop.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Icon="/Assets/app_icon.ico"
+        Title="ObsMCLauncher"
+        Width="1100"
+        Height="700"
+        MinWidth="900"
+        MinHeight="600"
+        SystemDecorations="None"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaChromeHints="PreferSystemChrome"
+        WindowStartupLocation="CenterScreen">
+
+    <Design.DataContext>
+        <vm:MainWindowViewModel/>
+    </Design.DataContext>
+
+    <Window.Styles>
+        <Style Selector="ListBox#NavListBox ListBoxItem">
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Margin" Value="0,4" />
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+
+        <Style Selector="ListBox#NavListBox ListBoxItem:selected Border.nav-item">
+            <Setter Property="Background" Value="{DynamicResource PrimaryBrush}" />
+            <Setter Property="Opacity" Value="0.9" />
+        </Style>
+
+        <Style Selector="ListBox#NavListBox ListBoxItem:selected TextBlock">
+            <Setter Property="Foreground" Value="White" />
+        </Style>
+
+        <Style Selector="ListBox#NavListBox ListBoxItem:pointerover Border.nav-item">
+            <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
+        </Style>
+
+        <Style Selector="Border.notification-card">
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+            <Setter Property="Background" Value="{DynamicResource SurfaceElevatedBrush}" />
+            <Setter Property="Padding" Value="16,12" />
+            <Setter Property="Width" Value="320" />
+            <Setter Property="BoxShadow" Value="0 4 12 0 #40000000" />
+            <Setter Property="Margin" Value="0,0,16,12" />
+        </Style>
+
+        <Style Selector="Border.dialog-card">
+            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseLowBrush}" />
+            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundAltHighBrush}" />
+            <Setter Property="Padding" Value="18" />
+            <Setter Property="Width" Value="520" />
+        </Style>
+
+        <Style Selector="Border.authurl-card">
+            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseLowBrush}" />
+            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundAltHighBrush}" />
+            <Setter Property="Padding" Value="18" />
+            <Setter Property="Width" Value="520" />
+        </Style>
+    </Window.Styles>
+
+    <Grid x:Name="RootGrid" RowDefinitions="40,*">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="200" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <Border Grid.Row="0" Grid.ColumnSpan="2"
+                Classes="chrome-surface"
+                BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="Auto,*,Auto" Height="40">
+
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="15,0,0,0" VerticalAlignment="Center">
+                    <Image Source="/Assets/logo.png" Width="24" Height="24" Stretch="Uniform" VerticalAlignment="Center" />
+                    <TextBlock Text="黑曜石MC启动器" FontSize="13" FontWeight="SemiBold" Margin="10,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource TextBrush}" />
+                </StackPanel>
+
+                <Panel Grid.Column="1" Background="Transparent">
+                    <Border Height="40" Background="Transparent" PointerPressed="TitleBar_PointerPressed" />
+                </Panel>
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Width="46" Height="40" Background="Transparent" BorderThickness="0" Click="MinimizeButton_Click">
+                        <TextBlock Text="—" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{DynamicResource TextBrush}" />
+                    </Button>
+                    <Button Width="46" Height="40" Background="Transparent" BorderThickness="0" Click="MaximizeButton_Click">
+                        <TextBlock Text="□" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{DynamicResource TextBrush}" />
+                    </Button>
+                    <Button Width="46" Height="40" Background="Transparent" BorderThickness="0" Click="CloseButton_Click">
+                        <TextBlock Text="✕" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{DynamicResource TextBrush}" />
+                    </Button>
+                </StackPanel>
+
+            </Grid>
+        </Border>
+
+        <Border x:Name="NavBorder" Grid.Row="1" Grid.Column="0"
+                Classes="chrome-surface"
+                BorderThickness="0,0,1,0">
+            <Grid RowDefinitions="Auto,*,Auto">
+
+                <StackPanel Grid.Row="0" Margin="12,12,12,12" Orientation="Horizontal">
+                    <Button Width="36"
+                            Height="36"
+                            HorizontalAlignment="Left"
+                            Command="{Binding ToggleNavCommand}"
+                            ToolTip.Tip="折叠/展开"
+                            Background="Transparent"
+                            BorderThickness="0">
+                        <TextBlock Text="≡" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{DynamicResource TextBrush}" />
+                    </Button>
+                </StackPanel>
+
+                <ListBox x:Name="NavListBox"
+                         Grid.Row="1"
+                         Margin="10,0"
+                         ItemsSource="{Binding NavItems}"
+                         SelectedItem="{Binding SelectedNavItem}"
+                         HorizontalAlignment="Stretch">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <Border Classes="nav-item"
+                                    CornerRadius="6"
+                                    Padding="10,10"
+                                    ToolTip.Tip="{Binding Title}">
+                                <Grid ColumnDefinitions="Auto,*" VerticalAlignment="Center">
+                                    <TextBlock Grid.Column="0"
+                                               Text="{Binding Icon}"
+                                               FontSize="20"
+                                               Width="28"
+                                               VerticalAlignment="Center"
+                                               HorizontalAlignment="Center"
+                                               TextAlignment="Center"
+                                               Foreground="{DynamicResource TextBrush}" />
+
+                                    <TextBlock Grid.Column="1"
+                                               Text="{Binding Title}"
+                                               FontSize="14"
+                                               Margin="12,0,0,0"
+                                               VerticalAlignment="Center"
+                                               Foreground="{DynamicResource TextBrush}"
+                                               IsVisible="{Binding $parent[Window].DataContext.IsNavCollapsed, Converter={x:Static converters:NotConverter.Instance}}" />
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+                <StackPanel Grid.Row="2" Margin="20,20" IsVisible="{Binding !IsNavCollapsed}">
+                    <TextBlock Text="{Binding NavCopyrightText}" FontSize="10" Opacity="0.6" HorizontalAlignment="Center" Foreground="{DynamicResource TextBrush}" />
+                </StackPanel>
+
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="1" Grid.Column="1" Background="{DynamicResource SystemControlBackgroundBaseHighBrush}">
+            <TransitioningContentControl Content="{Binding CurrentPage}" Margin="16">
+                <TransitioningContentControl.PageTransition>
+                    <CrossFade Duration="0:0:0.18" />
+                </TransitioningContentControl.PageTransition>
+            </TransitioningContentControl>
+        </Border>
+
+        <!-- 全局模态遮罩（对话框/授权URL） -->
+        <Border Grid.Row="0" Grid.Column="0" Grid.RowSpan="2" Grid.ColumnSpan="2"
+                Background="#80000000"
+                IsVisible="{Binding Dialogs.IsAnyModalOpen}"
+                IsHitTestVisible="{Binding Dialogs.IsAnyModalOpen}" />
+
+        <!-- 通用对话框 -->
+        <Border Grid.Row="0" Grid.Column="0" Grid.RowSpan="2" Grid.ColumnSpan="2"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                IsVisible="{Binding Dialogs.IsOpen}"
+                ZIndex="100"
+                Classes="dialog-card"
+                x:CompileBindings="False">
+            <Grid RowDefinitions="Auto,Auto,Auto,Auto" ColumnDefinitions="*,Auto" >
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding Dialogs.Current.Title, FallbackValue=''}" FontSize="18" FontWeight="Bold" />
+                <Button Grid.Row="0" Grid.Column="1"
+                        Width="32" Height="32"
+                        Background="Transparent" BorderThickness="0"
+                        Command="{Binding Dialogs.CloseCommand}">
+                    <TextBlock Text="✕" FontSize="16" />
+                </Button>
+
+                <TextBlock Grid.Row="1" Grid.ColumnSpan="2"
+                           Text="{Binding Dialogs.Current.Message, FallbackValue=''}"
+                           Margin="0,12,0,0"
+                           TextWrapping="Wrap"
+                           Opacity="0.85" />
+
+                <TextBox Grid.Row="2" Grid.ColumnSpan="2"
+                         Margin="0,12,0,0"
+                         Text="{Binding Dialogs.Current.InputText, Mode=TwoWay}"
+                         Watermark="{Binding Dialogs.Current.Placeholder}"
+                         IsVisible="{Binding Dialogs.Current.Type, Converter={x:Static converters:DialogInputVisibleConverter.Instance}, FallbackValue=False}" />
+
+                <StackPanel Grid.Row="3" Grid.ColumnSpan="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0" Spacing="8">
+                    <Button Content="取消"
+                            IsVisible="{Binding Dialogs.Current.Buttons, Converter={x:Static converters:DialogShowCancelConverter.Instance}, FallbackValue=False}"
+                            Command="{Binding Dialogs.ChooseCommand}">
+                        <Button.CommandParameter>
+                            <dialogs:DialogResult>Cancel</dialogs:DialogResult>
+                        </Button.CommandParameter>
+                    </Button>
+                    <Button Content="否"
+                            IsVisible="{Binding Dialogs.Current.Buttons, Converter={x:Static converters:DialogShowNoConverter.Instance}, FallbackValue=False}"
+                            Command="{Binding Dialogs.ChooseCommand}">
+                        <Button.CommandParameter>
+                            <dialogs:DialogResult>No</dialogs:DialogResult>
+                        </Button.CommandParameter>
+                    </Button>
+                    <Button Content="是"
+                            IsVisible="{Binding Dialogs.Current.Buttons, Converter={x:Static converters:DialogShowYesConverter.Instance}, FallbackValue=False}"
+                            Command="{Binding Dialogs.ChooseCommand}">
+                        <Button.CommandParameter>
+                            <dialogs:DialogResult>Yes</dialogs:DialogResult>
+                        </Button.CommandParameter>
+                    </Button>
+                    <Button Content="确定"
+                            IsVisible="{Binding Dialogs.Current.Buttons, Converter={x:Static converters:DialogShowOkConverter.Instance}, FallbackValue=False}"
+                            Command="{Binding Dialogs.ChooseCommand}">
+                        <Button.CommandParameter>
+                            <dialogs:DialogResult>OK</dialogs:DialogResult>
+                        </Button.CommandParameter>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- 授权URL 弹窗（关闭=取消登录） -->
+        <Border Grid.Row="0" Grid.Column="0" Grid.RowSpan="2" Grid.ColumnSpan="2"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                IsVisible="{Binding Dialogs.IsAuthUrlOpen}"
+                IsHitTestVisible="{Binding Dialogs.IsAuthUrlOpen}"
+                Classes="authurl-card"
+                x:CompileBindings="False">
+            <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,Auto">
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding Dialogs.AuthUrlCurrent.Title, FallbackValue=''}" FontSize="18" FontWeight="Bold" />
+                <Button Grid.Row="0" Grid.Column="1"
+                        Width="32" Height="32"
+                        Background="Transparent" BorderThickness="0"
+                        Command="{Binding Dialogs.CloseAuthUrlCommand}"
+                        CommandParameter="{x:True}">
+                    <TextBlock Text="✕" FontSize="16" />
+                </Button>
+
+                <TextBlock Grid.Row="1" Grid.ColumnSpan="2"
+                           Text="如果浏览器没有自动打开，请手动访问以下网址："
+                           Opacity="0.85"
+                           Margin="0,12,0,8" />
+
+                <Border Grid.Row="2" Grid.ColumnSpan="2"
+                        Background="{DynamicResource SystemControlBackgroundBaseHighBrush}"
+                        BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Padding="12">
+                    <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Row="0" Grid.ColumnSpan="2" Text="授权链接" FontSize="11" Opacity="0.7" />
+
+                        <ScrollViewer Grid.Row="1" Grid.ColumnSpan="2" MaxHeight="80" Margin="0,8,0,12">
+                            <TextBlock Text="{Binding Dialogs.AuthUrlCurrent.Url, FallbackValue=''}"
+                                       FontFamily="Consolas"
+                                       FontSize="12"
+                                       TextWrapping="Wrap" />
+                        </ScrollViewer>
+
+                        <Button Grid.Row="2" Grid.Column="0" Content="复制链接" Command="{Binding Dialogs.CopyAuthUrlCommand}" />
+
+                        <Button Grid.Row="2" Grid.Column="1" Content="好的"
+                                Command="{Binding Dialogs.CloseAuthUrlCommand}"
+                                CommandParameter="{x:False}"
+                                Margin="8,0,0,0" />
+                    </Grid>
+                </Border>
+            </Grid>
+        </Border>
+
+        <!-- 更新对话框 -->
+        <Border Grid.Row="0" Grid.Column="0" Grid.RowSpan="2" Grid.ColumnSpan="2"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                IsVisible="{Binding Dialogs.IsUpdateDialogOpen}"
+                IsHitTestVisible="{Binding Dialogs.IsUpdateDialogOpen}"
+                CornerRadius="12"
+                BorderThickness="1"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                Background="{DynamicResource SystemControlBackgroundAltHighBrush}"
+                MaxWidth="600"
+                MaxHeight="700"
+                Padding="24"
+                x:CompileBindings="False">
+            <Grid RowDefinitions="Auto,*,Auto">
+                <TextBlock Grid.Row="0" Text="{Binding Dialogs.UpdateDialogCurrent.Title, FallbackValue=''}" FontSize="22" FontWeight="Bold" Margin="0,0,0,20" />
+
+                <ScrollViewer Grid.Row="1" MaxHeight="400" Margin="0,0,0,25">
+                    <TextBlock Text="{Binding Dialogs.UpdateDialogCurrent.MarkdownContent, FallbackValue=''}"
+                               TextWrapping="Wrap"
+                               FontSize="14"
+                               LineHeight="22" />
+                </ScrollViewer>
+
+                <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+                    <Button Content="{Binding Dialogs.UpdateDialogCurrent.CancelText, FallbackValue='取消'}"
+                            Width="100"
+                            Command="{Binding Dialogs.CloseUpdateDialogCommand}"
+                            CommandParameter="{x:False}" />
+                    <Button Content="{Binding Dialogs.UpdateDialogCurrent.ConfirmText, FallbackValue='确定'}"
+                            Width="120"
+                            Classes="accent"
+                            Command="{Binding Dialogs.CloseUpdateDialogCommand}"
+                            CommandParameter="{x:True}" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- 下载管理器按钮（右下角） -->
+        <Button Grid.Row="1"
+                Grid.Column="1"
+                Width="56"
+                Height="56"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Bottom"
+                Margin="0,0,30,30"
+                CornerRadius="28"
+                Foreground="White"
+                IsVisible="{Binding DownloadManager.HasActiveTasks}"
+                Command="{Binding DownloadManager.TogglePanelVisibilityCommand}">
+            <Button.Background>
+                <SolidColorBrush Color="{DynamicResource SystemAccentColor}" />
+            </Button.Background>
+            <Grid>
+                <TextBlock Text="↓" FontSize="24" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                <Border Width="22"
+                        Height="22"
+                        CornerRadius="11"
+                        Background="#DC3545"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Top"
+                        Margin="0,-8,-8,0"
+                        IsVisible="{Binding DownloadManager.ActiveTaskCount, Converter={x:Static converters:GreaterThanZeroToIsVisibleConverter.Instance}}">
+                    <TextBlock Text="{Binding DownloadManager.ActiveTaskCount}"
+                               FontSize="11"
+                               FontWeight="Bold"
+                               Foreground="White"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center" />
+                </Border>
+            </Grid>
+        </Button>
+
+        <!-- 下载管理器面板 -->
+        <Border Grid.Row="1"
+                Grid.Column="1"
+                Width="400"
+                MaxHeight="500"
+                CornerRadius="16"
+                BorderThickness="1"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                Background="{DynamicResource SystemControlBackgroundAltHighBrush}"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Bottom"
+                Margin="0,0,100,30"
+                IsVisible="{Binding DownloadManager.IsPanelVisible}">
+
+            <Grid RowDefinitions="Auto,*,Auto">
+                <Border CornerRadius="16,16,0,0"
+                        Padding="16,12">
+                    <Border.Background>
+                        <SolidColorBrush Color="{DynamicResource SystemAccentColor}" />
+                    </Border.Background>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="↓" FontSize="18" VerticalAlignment="Center" Foreground="White" />
+                            <TextBlock Text="下载管理器" FontSize="16" FontWeight="SemiBold" Foreground="White" VerticalAlignment="Center" />
+                            <TextBlock Text="(" FontSize="13" Foreground="White" Opacity="0.85" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding DownloadManager.ActiveTaskCount}" FontSize="13" Foreground="White" Opacity="0.85" VerticalAlignment="Center" />
+                            <TextBlock Text=" 个任务)" FontSize="13" Foreground="White" Opacity="0.85" VerticalAlignment="Center" />
+                        </StackPanel>
+
+                        <Button Grid.Column="1"
+                                Width="32"
+                                Height="32"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Foreground="White"
+                                Command="{Binding DownloadManager.ClosePanelCommand}">
+                            <TextBlock Text="✕" FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Button>
+                    </Grid>
+                </Border>
+
+                <ScrollViewer Grid.Row="1" MaxHeight="400">
+                    <ItemsControl ItemsSource="{Binding DownloadManager.Tasks}" Margin="12">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border CornerRadius="8" Padding="12" Margin="0,0,0,10"
+                                        Background="{DynamicResource SystemControlBackgroundBaseHighBrush}">
+                                    <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,Auto">
+                                        <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding Name}" FontSize="14" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+
+                                        <Button Grid.Row="0" Grid.Column="1" Width="28" Height="28"
+                                                Background="Transparent" BorderThickness="0"
+                                                IsVisible="{Binding CanCancel}"
+                                                Command="{Binding $parent[Window].DataContext.DownloadManager.CancelTaskCommand}"
+                                                CommandParameter="{Binding Id}">
+                                            <TextBlock Text="✕" FontSize="14" />
+                                        </Button>
+
+                                        <ProgressBar Grid.Row="1" Grid.ColumnSpan="2" Height="6" Minimum="0" Maximum="100" Value="{Binding Progress}" Margin="0,8,0,6" />
+
+                                        <TextBlock Grid.Row="2" Grid.Column="0" Text="{Binding StatusText}" FontSize="12" Opacity="0.7" />
+
+                                        <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                                            <TextBlock Text="{Binding ProgressText}" FontSize="12" FontWeight="SemiBold" />
+                                            <TextBlock Text="{Binding SpeedText}" FontSize="11" Opacity="0.7" />
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+
+                <Border Grid.Row="2"
+                        BorderThickness="0,1,0,0"
+                        BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                        Background="{DynamicResource SystemControlBackgroundAltHighBrush}"
+                        CornerRadius="0,0,16,16"
+                        Padding="12">
+                    <Button Content="清除已完成"
+                            HorizontalAlignment="Right"
+                            Command="{Binding DownloadManager.ClearInactiveTasksCommand}" />
+                </Border>
+            </Grid>
+        </Border>
+
+        <!-- 全局通知（顶部居中 Toast） -->
+        <ItemsControl x:Name="NotificationItemsControl"
+                      Grid.Row="0"
+                      Grid.Column="0"
+                      Grid.ColumnSpan="2"
+                      Grid.RowSpan="2"
+                      HorizontalAlignment="Center"
+                      VerticalAlignment="Top"
+                      Margin="0,12,0,0"
+                      IsHitTestVisible="True"
+                      ItemsSource="{Binding Notifications.Items}">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <StackPanel Spacing="10" />
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="notif:NotificationItemViewModel">
+                    <Border Classes="notification-card" IsHitTestVisible="True">
+                        <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto">
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding Title}" FontWeight="SemiBold" />
+                            <Button Grid.Row="0" Grid.Column="1"
+                                    Width="28" Height="28"
+                                    Background="Transparent" BorderThickness="0"
+                                    IsVisible="{Binding CanClose}"
+                                    Command="{Binding CloseCommand}">
+                                <TextBlock Text="✕" />
+                            </Button>
+
+                            <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding Message}" Opacity="0.8" TextWrapping="Wrap" />
+
+                            <ProgressBar Grid.Row="2" Grid.ColumnSpan="2"
+                                         Height="3"
+                                         Minimum="0" Maximum="100"
+                                         Value="{Binding Progress}"
+                                         IsIndeterminate="False"
+                                         IsVisible="{Binding IsProgress}"
+                                         Margin="0,8,0,0" />
+
+                            <ProgressBar Grid.Row="2" Grid.ColumnSpan="2"
+                                         Height="4"
+                                         Minimum="0" Maximum="100"
+                                         Value="{Binding CountdownProgress}"
+                                         IsIndeterminate="False"
+                                         IsVisible="{Binding IsCountdown}"
+                                         Margin="0,8,0,0" />
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+    </Grid>
+
+</Window>

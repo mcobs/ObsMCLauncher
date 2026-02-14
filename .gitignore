@@ -276,3 +276,7 @@ plugin-market-example.json
 INTRODUCTION.md
 FEATURES.md
 UPDATE_SYSTEM_DESIGN.md
+.claude/
+.trae/
+.vs/
+ObsMCLauncher-main/

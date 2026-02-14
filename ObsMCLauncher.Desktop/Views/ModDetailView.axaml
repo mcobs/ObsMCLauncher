@@ -1,0 +1,108 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ObsMCLauncher.Desktop.ViewModels"
+             x:Class="ObsMCLauncher.Desktop.Views.ModDetailView"
+             x:DataType="vm:ModDetailViewModel"
+             x:Name="Root">
+
+  <Grid RowDefinitions="Auto,*" Margin="16">
+    <!-- 顶部：返回 + 基本信息 -->
+    <StackPanel Grid.Row="0" Spacing="12">
+      <Button Content="返回"
+              Command="{Binding BackCommand}"
+              HorizontalAlignment="Left"/>
+
+      <Border CornerRadius="10" Padding="20" Background="{DynamicResource SurfaceBrush}">
+        <Grid ColumnDefinitions="Auto,*">
+          <Border Width="120" Height="120" CornerRadius="12" Background="{DynamicResource BorderBrush}" Margin="0,0,25,0">
+            <Image Source="{Binding Icon}" Stretch="UniformToFill"/>
+          </Border>
+
+          <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="8">
+            <TextBlock Text="{Binding DisplayName}" FontSize="28" FontWeight="Bold"/>
+            <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" FontSize="14" Opacity="0.8"/>
+
+            <StackPanel Orientation="Horizontal" Spacing="16">
+              <TextBlock Text="{Binding AuthorDisplay}" FontSize="13" Opacity="0.8"/>
+              <TextBlock Text="{Binding DownloadsDisplay}" FontSize="13" Opacity="0.8"/>
+              <TextBlock Text="{Binding LastUpdateDisplay}" FontSize="13" Opacity="0.8"/>
+            </StackPanel>
+          </StackPanel>
+        </Grid>
+      </Border>
+    </StackPanel>
+
+    <!-- 下半部分：版本分组列表 -->
+    <Border Grid.Row="1" CornerRadius="10" Background="{DynamicResource SurfaceBrush}" Padding="15" Margin="0,16,0,0">
+      <Grid RowDefinitions="Auto,*">
+        <TextBlock Grid.Row="0" Text="可用版本" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,10"/>
+
+        <Grid Grid.Row="1">
+          <ScrollViewer IsVisible="{Binding IsVersionsVisible}">
+            <StackPanel>
+              <ItemsControl ItemsSource="{Binding VersionGroups}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <Expander IsExpanded="{Binding IsLatest}"
+                              Margin="0,0,0,6">
+                      <Expander.Header>
+                        <Grid ColumnDefinitions="*,Auto" Margin="4">
+                          <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="{Binding McVersion}" FontSize="16" FontWeight="Bold"/>
+                            <Border IsVisible="{Binding IsLatest}"
+                                    Background="{DynamicResource AccentBrush}"
+                                    CornerRadius="3" Padding="6,2">
+                              <TextBlock Text="最新" FontSize="12" FontWeight="SemiBold" Foreground="White"/>
+                            </Border>
+                          </StackPanel>
+                          <TextBlock Grid.Column="1"
+                                     Text="{Binding FileCountDisplay}"
+                                     FontSize="13" Opacity="0.7" VerticalAlignment="Center"/>
+                        </Grid>
+                      </Expander.Header>
+
+                      <ItemsControl ItemsSource="{Binding Files}">
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate>
+                            <Border CornerRadius="6" Padding="10" Margin="0,0,0,6"
+                                    Background="{DynamicResource SurfaceElevatedBrush}">
+                              <Grid ColumnDefinitions="*,Auto">
+                                <StackPanel>
+                                  <TextBlock Text="{Binding Name}" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                                  <StackPanel Orientation="Horizontal" Spacing="12">
+                                    <TextBlock Text="{Binding DateDisplay}" FontSize="13" Opacity="0.7"/>
+                                    <TextBlock Text="{Binding McVersionsDisplay}" FontSize="13" Opacity="0.7"/>
+                                    <TextBlock Text="{Binding SizeDisplay}" FontSize="13" Opacity="0.7"/>
+                                  </StackPanel>
+                                </StackPanel>
+
+                                <Button Grid.Column="1"
+                                        Content="下载"
+                                        Command="{Binding #Root.DataContext.DownloadVersionCommand}"
+                                        CommandParameter="{Binding}"
+                                        VerticalAlignment="Center" Margin="12,0,0,0"/>
+                              </Grid>
+                            </Border>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                    </Expander>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </ScrollViewer>
+
+          <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding IsLoading}">
+            <ProgressBar IsIndeterminate="True" Width="60" Height="6"/>
+            <TextBlock Text="加载中..." Margin="0,12,0,0" Opacity="0.8"/>
+          </StackPanel>
+
+          <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding IsEmptyVisible}">
+            <TextBlock Text="没有找到可用版本" FontSize="16" Opacity="0.8"/>
+          </StackPanel>
+        </Grid>
+      </Grid>
+    </Border>
+  </Grid>
+</UserControl>

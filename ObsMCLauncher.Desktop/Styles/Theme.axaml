@@ -1,0 +1,54 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <Styles.Resources>
+    <!-- 基础配色（全局，不随主题变化） -->
+    <SolidColorBrush x:Key="BrandBrush" Color="#10B981"/>
+    <SolidColorBrush x:Key="PrimaryBrush" Color="#10B981"/>
+    <SolidColorBrush x:Key="PrimaryDarkBrush" Color="#059669"/>
+    <SolidColorBrush x:Key="PrimaryLightBrush" Color="#34D399"/>
+    <SolidColorBrush x:Key="SecondaryBrush" Color="#6EE7B7"/>
+    <SolidColorBrush x:Key="AccentBrush" Color="#10B981"/>
+
+    <CornerRadius x:Key="ControlCornerRadius">4</CornerRadius>
+    <CornerRadius x:Key="OverlayCornerRadius">8</CornerRadius>
+    <CornerRadius x:Key="CardCornerRadius">12</CornerRadius>
+
+    <!-- 深色主题默认资源 -->
+    <SolidColorBrush x:Key="BackgroundBrush" Color="#202020"/>
+    <SolidColorBrush x:Key="SurfaceBrush" Color="#2C2C2C"/>
+    <SolidColorBrush x:Key="SurfaceElevatedBrush" Color="#333333"/>
+    <SolidColorBrush x:Key="SurfaceHoverBrush" Color="#3A3A3A"/>
+
+    <SolidColorBrush x:Key="TextBrush" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#ADADAD"/>
+    <SolidColorBrush x:Key="TextTertiaryBrush" Color="#8A8A8A"/>
+
+    <SolidColorBrush x:Key="BorderBrush" Color="#414141"/>
+    <SolidColorBrush x:Key="DividerBrush" Color="#2C2C2C"/>
+
+    <SolidColorBrush x:Key="InputBackgroundBrush" Color="#2C2C2C"/>
+    <SolidColorBrush x:Key="InputForegroundBrush" Color="#FFFFFF"/>
+
+    <SolidColorBrush x:Key="GlassmorphismBackgroundBrush" Color="#2C2C2C" Opacity="0.88"/>
+    <SolidColorBrush x:Key="GlassmorphismBorderBrush" Color="#FFFFFF" Opacity="0.5"/>
+
+    <SolidColorBrush x:Key="SystemControlBackgroundBaseHighBrush" Color="#202020"/>
+    <SolidColorBrush x:Key="SystemControlBackgroundAltHighBrush" Color="#2C2C2C"/>
+    <SolidColorBrush x:Key="SystemControlBackgroundBaseLowBrush" Color="#3A3A3A"/>
+    <SolidColorBrush x:Key="SystemControlBackgroundBaseMediumBrush" Color="#333333"/>
+
+    <SolidColorBrush x:Key="SystemControlForegroundBaseHighBrush" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="SystemControlForegroundBaseLowBrush" Color="#414141"/>
+
+    <Color x:Key="SystemAccentColor">#10B981</Color>
+  </Styles.Resources>
+
+  <!-- 全局文本前景 -->
+  <Style Selector="TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+  </Style>
+
+</Styles>
+
+

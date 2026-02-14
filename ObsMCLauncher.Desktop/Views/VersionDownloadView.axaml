@@ -1,0 +1,279 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ObsMCLauncher.Desktop.ViewModels"
+             xmlns:views="using:ObsMCLauncher.Desktop.Views"
+             xmlns:mc="using:ObsMCLauncher.Core.Services.Minecraft"
+             xmlns:converters="using:ObsMCLauncher.Desktop.Converters"
+             x:Class="ObsMCLauncher.Desktop.Views.VersionDownloadView"
+             x:DataType="vm:VersionDownloadViewModel">
+
+  <UserControl.Resources>
+    <converters:BitmapAssetValueConverter x:Key="BitmapConverter"/>
+  </UserControl.Resources>
+
+  <Grid>
+    <!-- 版本列表内容 -->
+    <Grid x:Name="VersionListGrid" Margin="24" RowDefinitions="Auto,*">
+
+      <!-- 标题区域 -->
+      <StackPanel Grid.Row="0">
+        <TextBlock Text="版本管理"
+                   FontSize="28"
+                   FontWeight="Bold"
+                   Margin="0,0,0,8"/>
+        <TextBlock Text="管理已安装的版本或下载新版本"
+                   FontSize="14"
+                   Foreground="{DynamicResource TextSecondaryBrush}"
+                   Margin="0,0,0,16"/>
+      </StackPanel>
+
+      <!-- Tab 控件 -->
+      <TabControl Grid.Row="1">
+
+        <!-- 已安装版本 Tab -->
+        <TabItem Header="已安装版本">
+          <Grid Margin="0,20,0,0" RowDefinitions="Auto,*">
+
+            <!-- 工具栏 -->
+            <Border Grid.Row="0"
+                    Background="{DynamicResource SurfaceBrush}"
+                    CornerRadius="8"
+                    Padding="15,10"
+                    Margin="0,0,0,15"
+                    BorderThickness="1"
+                    BorderBrush="{DynamicResource BorderBrush}">
+              <Grid ColumnDefinitions="*,Auto">
+
+                <TextBlock Grid.Column="0"
+                           VerticalAlignment="Center"
+                           FontSize="13"
+                           Foreground="{DynamicResource TextSecondaryBrush}">
+                  <Run Text="共 "/>
+                  <Run Text="{Binding InstalledVersionsCount}" FontWeight="SemiBold"/>
+                  <Run Text=" 个已安装版本"/>
+                </TextBlock>
+
+                <Button Grid.Column="1"
+                        Command="{Binding RefreshInstalledCommand}"
+                        Height="30"
+                        FontSize="12"
+                        Padding="12,0">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <TextBlock Text="↻" VerticalAlignment="Center"/>
+                    <TextBlock Text="刷新" VerticalAlignment="Center"/>
+                  </StackPanel>
+                </Button>
+
+              </Grid>
+            </Border>
+
+            <!-- 已安装版本列表 -->
+            <Border Grid.Row="1"
+                    Background="{DynamicResource SurfaceBrush}"
+                    CornerRadius="10"
+                    BorderThickness="1"
+                    BorderBrush="{DynamicResource BorderBrush}">
+              <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <ItemsControl ItemsSource="{Binding InstalledVersions}" Margin="10">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <Border Background="{DynamicResource SurfaceElevatedBrush}"
+                              CornerRadius="6"
+                              Padding="15,12"
+                              Margin="10,5">
+                        <Grid ColumnDefinitions="Auto,*,Auto">
+                          <Image Grid.Column="0" Width="28" Height="28" Margin="0,0,12,0"
+                                 Source="{Binding LoaderIconPath, Converter={StaticResource BitmapConverter}}"/>
+                          
+                          <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                              <TextBlock Text="{Binding Id}" FontSize="14" FontWeight="SemiBold"/>
+                              <Border Background="{DynamicResource PrimaryBrush}"
+                                      CornerRadius="3"
+                                      Padding="6,1"
+                                      IsVisible="{Binding IsSelected}">
+                                <TextBlock Text="当前版本" FontSize="10" FontWeight="SemiBold" Foreground="White"/>
+                              </Border>
+                            </StackPanel>
+                            <TextBlock Text="{Binding DetailText}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,3,0,0"/>
+                          </StackPanel>
+
+                          <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                            <Button Content="选择"
+                                    Height="28"
+                                    FontSize="12"
+                                    Padding="12,0"
+                                    Command="{Binding $parent[UserControl].((vm:VersionDownloadViewModel)DataContext).SelectInstalledCommand}"
+                                    CommandParameter="{Binding}"
+                                    IsVisible="{Binding !IsSelected}"/>
+
+                            <Button Content="▶"
+                                    Width="28" Height="28" Padding="0"
+                                    ToolTip.Tip="快速启动"
+                                    Command="{Binding $parent[UserControl].((vm:VersionDownloadViewModel)DataContext).QuickLaunchCommand}"
+                                    CommandParameter="{Binding}"/>
+
+                            <Button Content="⚙"
+                                    Width="28" Height="28" Padding="0"
+                                    ToolTip.Tip="管理实例"
+                                    Command="{Binding $parent[UserControl].((vm:VersionDownloadViewModel)DataContext).OpenInstanceCommand}"
+                                    CommandParameter="{Binding}"/>
+
+                            <Button Content="🗑"
+                                    Width="28" Height="28" Padding="0"
+                                    ToolTip.Tip="删除版本"
+                                    Classes="danger"
+                                    Command="{Binding $parent[UserControl].((vm:VersionDownloadViewModel)DataContext).DeleteInstalledCommand}"
+                                    CommandParameter="{Binding}"/>
+                          </StackPanel>
+                        </Grid>
+                      </Border>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </ScrollViewer>
+            </Border>
+
+          </Grid>
+        </TabItem>
+
+        <!-- 下载新版本 Tab -->
+        <TabItem Header="下载新版本">
+          <Grid Margin="0,20,0,0" RowDefinitions="Auto,*">
+
+            <!-- 筛选和搜索区域 -->
+            <Border Grid.Row="0"
+                    Background="{DynamicResource SurfaceBrush}"
+                    CornerRadius="8"
+                    Padding="15,10"
+                    Margin="0,0,0,15"
+                    BorderThickness="1"
+                    BorderBrush="{DynamicResource BorderBrush}">
+              <Grid ColumnDefinitions="*,Auto,Auto">
+
+                <TextBox Grid.Column="0"
+                         Watermark="搜索版本号..."
+                         FontSize="13"
+                         Margin="0,0,12,0"
+                         Text="{Binding SearchText}"/>
+
+                <ComboBox Grid.Column="1"
+                          Width="120"
+                          FontSize="13"
+                          Margin="0,0,10,0"
+                          SelectedIndex="{Binding SelectedTypeIndex}">
+                  <ComboBoxItem Content="全部版本"/>
+                  <ComboBoxItem Content="正式版"/>
+                  <ComboBoxItem Content="快照版"/>
+                  <ComboBoxItem Content="远古版"/>
+                </ComboBox>
+
+                <Button Grid.Column="2"
+                        Width="32" Height="32" Padding="0"
+                        ToolTip.Tip="刷新版本列表"
+                        Command="{Binding RefreshOnlineCommand}">
+                  <TextBlock Text="↻" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Button>
+
+              </Grid>
+            </Border>
+
+            <!-- 版本列表 / 骨架屏 -->
+            <Border Grid.Row="1"
+                    Background="{DynamicResource SurfaceBrush}"
+                    CornerRadius="10"
+                    BorderThickness="1"
+                    BorderBrush="{DynamicResource BorderBrush}">
+              <Grid>
+
+                <!-- 版本列表 -->
+                <ScrollViewer VerticalScrollBarVisibility="Auto" IsVisible="{Binding !IsLoading}">
+                  <ItemsControl ItemsSource="{Binding FilteredVersions}" Margin="0,10">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="mc:MinecraftVersion">
+                        <Button Command="{Binding $parent[UserControl].((vm:VersionDownloadViewModel)DataContext).OpenDetailCommand}"
+                                CommandParameter="{Binding}"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Stretch"
+                                Padding="0"
+                                Margin="20,0,20,12"
+                                Background="Transparent"
+                                BorderThickness="0">
+                          <Border Background="{DynamicResource SurfaceElevatedBrush}"
+                                  CornerRadius="6"
+                                  Padding="12,10">
+                            <Grid ColumnDefinitions="Auto,*,Auto">
+
+                              <Image Width="28" Height="28" Margin="0,0,12,0"
+                                     Source="{Binding IconPath, Converter={StaticResource BitmapConverter}}"/>
+
+                              <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                <TextBlock FontSize="15" FontWeight="SemiBold">
+                                  <Run Text="Minecraft "/>
+                                  <Run Text="{Binding Id}"/>
+                                  <Run Text=" [" FontSize="11"/>
+                                  <Run Text="{Binding Type}" FontSize="11"/>
+                                  <Run Text="]" FontSize="11"/>
+                                </TextBlock>
+                                <TextBlock Text="{Binding ReleaseTime, StringFormat='发布时间: {0:yyyy-MM-dd HH:mm}'}"
+                                           FontSize="11"
+                                           Margin="0,3,0,0"
+                                           Foreground="{DynamicResource TextSecondaryBrush}"/>
+                              </StackPanel>
+
+                              <TextBlock Grid.Column="2" Text="›" FontSize="20"
+                                         VerticalAlignment="Center"
+                                         Foreground="{DynamicResource TextSecondaryBrush}"/>
+
+                            </Grid>
+                          </Border>
+                        </Button>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </ScrollViewer>
+
+                <!-- 骨架屏加载效果 (1:1 对齐项布局) -->
+                <StackPanel IsVisible="{Binding IsLoading}" Margin="20,10">
+                  <Border Background="{DynamicResource SurfaceElevatedBrush}" CornerRadius="6" Padding="12,10" Margin="0,0,0,12" Opacity="0.6">
+                    <Grid ColumnDefinitions="Auto,*,Auto">
+                      <Border Grid.Column="0" Width="28" Height="28" CornerRadius="14" Background="{DynamicResource SurfaceHoverBrush}" Margin="0,0,12,0"/>
+                      <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="8">
+                        <Border Width="150" Height="14" HorizontalAlignment="Left" Background="{DynamicResource SurfaceHoverBrush}" CornerRadius="2"/>
+                        <Border Width="100" Height="10" HorizontalAlignment="Left" Background="{DynamicResource SurfaceHoverBrush}" CornerRadius="2"/>
+                      </StackPanel>
+                    </Grid>
+                  </Border>
+                  <Border Background="{DynamicResource SurfaceElevatedBrush}" CornerRadius="6" Padding="12,10" Margin="0,0,0,12" Opacity="0.4">
+                    <Grid ColumnDefinitions="Auto,*,Auto">
+                      <Border Grid.Column="0" Width="28" Height="28" CornerRadius="14" Background="{DynamicResource SurfaceHoverBrush}" Margin="0,0,12,0"/>
+                      <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="8">
+                        <Border Width="150" Height="14" HorizontalAlignment="Left" Background="{DynamicResource SurfaceHoverBrush}" CornerRadius="2"/>
+                        <Border Width="100" Height="10" HorizontalAlignment="Left" Background="{DynamicResource SurfaceHoverBrush}" CornerRadius="2"/>
+                      </StackPanel>
+                    </Grid>
+                  </Border>
+                </StackPanel>
+
+              </Grid>
+            </Border>
+
+          </Grid>
+        </TabItem>
+
+      </TabControl>
+
+    </Grid>
+
+    <!-- 版本详情内容（叠加显示） -->
+    <Border IsVisible="{Binding IsDetailOpen}"
+            Background="#80000000">
+      <ContentControl Content="{Binding DetailPage}"/>
+    </Border>
+
+    <!-- 实例管理覆盖层 -->
+    <views:InstanceView DataContext="{Binding InstanceViewModel}"/>
+
+  </Grid>
+
+</UserControl>

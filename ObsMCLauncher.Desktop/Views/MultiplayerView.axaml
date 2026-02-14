@@ -1,0 +1,188 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ObsMCLauncher.Desktop.ViewModels"
+             x:Class="ObsMCLauncher.Desktop.Views.MultiplayerView"
+             x:DataType="vm:MultiplayerViewModel">
+
+  <Grid Margin="24">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="*"/>
+    </Grid.RowDefinitions>
+
+    <!-- 顶部栏 -->
+    <Border Grid.Row="0"
+            Background="{DynamicResource SurfaceBrush}"
+            CornerRadius="10"
+            Padding="16"
+            BorderThickness="1"
+            BorderBrush="{DynamicResource BorderBrush}">
+      <DockPanel>
+        <Button Command="{Binding BackToModeSelectCommand}"
+                Content="返回"
+                Width="80"
+                Height="32"
+                IsVisible="{Binding IsInDetailView}"
+                DockPanel.Dock="Left"/>
+        <TextBlock Text="多人联机"
+                   FontSize="18"
+                   FontWeight="Bold"
+                   Foreground="{DynamicResource TextBrush}"
+                   VerticalAlignment="Center"
+                   HorizontalAlignment="Center"/>
+      </DockPanel>
+    </Border>
+
+    <!-- 主内容：模式选择 -->
+    <Grid Grid.Row="1" Margin="0,16,0,0" IsVisible="{Binding !IsInDetailView}">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto"/>
+        <RowDefinition Height="Auto"/>
+        <RowDefinition Height="*"/>
+      </Grid.RowDefinitions>
+
+      <Border Grid.Row="0"
+              Background="{DynamicResource SurfaceBrush}"
+              CornerRadius="10"
+              Padding="16"
+              BorderThickness="1"
+              BorderBrush="{DynamicResource BorderBrush}"
+              Margin="0,0,0,16">
+        <StackPanel>
+          <TextBlock Text="选择联机模式"
+                     FontSize="16"
+                     FontWeight="SemiBold"
+                     Foreground="{DynamicResource TextBrush}"
+                     Margin="0,0,0,6"/>
+          <TextBlock Text="{Binding StatusText}"
+                     FontSize="12"
+                     Foreground="{DynamicResource TextSecondaryBrush}"/>
+        </StackPanel>
+      </Border>
+
+      <Grid Grid.Row="1"
+            Margin="0,0,0,16"
+            HorizontalAlignment="Center"
+            ColumnDefinitions="260,16,260">
+        <Button Grid.Column="0"
+                Width="260"
+                Height="160"
+                Padding="18"
+                CornerRadius="10"
+                Classes="accent"
+                Command="{Binding OpenHostPanelCommand}">
+          <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="10">
+            <TextBlock Text="🏠" FontSize="44" HorizontalAlignment="Center"/>
+            <TextBlock Text="我要开房" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center"/>
+            <TextBlock Text="分享你的本地服务器" FontSize="12" Opacity="0.85" HorizontalAlignment="Center"/>
+          </StackPanel>
+        </Button>
+
+        <Button Grid.Column="2"
+                Width="260"
+                Height="160"
+                Padding="18"
+                CornerRadius="10"
+                Classes="accent"
+                Command="{Binding OpenJoinPanelCommand}">
+          <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="10">
+            <TextBlock Text="👥" FontSize="44" HorizontalAlignment="Center"/>
+            <TextBlock Text="加入房间" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center"/>
+            <TextBlock Text="输入分享码加入" FontSize="12" Opacity="0.85" HorizontalAlignment="Center"/>
+          </StackPanel>
+        </Button>
+      </Grid>
+    </Grid>
+
+    <!-- 子页面：开房/加入 -->
+    <Border Grid.Row="1"
+            Background="{DynamicResource SurfaceBrush}"
+            CornerRadius="10"
+            Padding="16"
+            BorderThickness="1"
+            BorderBrush="{DynamicResource BorderBrush}"
+            Margin="0,16,0,0"
+            IsVisible="{Binding IsInDetailView}">
+      <Grid RowDefinitions="Auto,*">
+        <TextBlock Grid.Row="0"
+                   Text="{Binding DetailTitle}"
+                   FontSize="16"
+                   FontWeight="SemiBold"
+                   Foreground="{DynamicResource TextBrush}"
+                   Margin="0,0,0,12"/>
+
+        <Grid Grid.Row="1" ColumnDefinitions="*,16,*">
+          <!-- 左侧：表单区 -->
+          <Grid Grid.Column="0">
+            <!-- 开房面板 -->
+            <StackPanel IsVisible="{Binding IsHostMode}">
+              <TextBox Watermark="本地服务器端口 (默认 25565)"
+                       Text="{Binding ServerPort}"
+                       Margin="0,0,0,10"/>
+              <Button Content="开始开房"
+                      Classes="primary"
+                      HorizontalAlignment="Stretch"
+                      Command="{Binding StartServerCommand}"/>
+
+              <Border Background="{DynamicResource SurfaceElevatedBrush}"
+                      CornerRadius="6"
+                      Padding="12"
+                      Margin="0,12,0,0">
+                <StackPanel Spacing="6">
+                  <TextBlock Text="分享码" FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}"/>
+                  <SelectableTextBlock Text="{Binding ShareCode}"
+                                     FontSize="14"
+                                     FontFamily="Consolas"
+                                     Foreground="{DynamicResource TextBrush}"/>
+                  <Button Content="复制分享码"
+                          HorizontalAlignment="Stretch"
+                          Command="{Binding CopyShareCodeCommand}"
+                          IsEnabled="{Binding HasShareCode}"/>
+                </StackPanel>
+              </Border>
+  </StackPanel>
+
+            <!-- 加入面板 -->
+            <StackPanel IsVisible="{Binding !IsHostMode}">
+              <TextBox Watermark="请输入分享码"
+                       Text="{Binding JoinCode}"
+                       Margin="0,0,0,10"/>
+              <Button Content="加入房间"
+                      Classes="primary"
+                      HorizontalAlignment="Stretch"
+                      Command="{Binding JoinRoomCommand}"/>
+            </StackPanel>
+          </Grid>
+
+          <!-- 右侧：运行输出 -->
+          <Border Grid.Column="2"
+                  Background="{DynamicResource SurfaceElevatedBrush}"
+                  CornerRadius="6"
+                  Padding="12">
+            <Grid RowDefinitions="Auto,*">
+              <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+                <TextBlock Text="运行输出"
+                           FontSize="12"
+                           Foreground="{DynamicResource TextTertiaryBrush}"
+                           VerticalAlignment="Center"/>
+                <Button Grid.Column="1"
+                        Content="停止联机"
+                        Classes="danger"
+                        Command="{Binding StopLinkCommand}"
+                        IsVisible="{Binding IsRunning}"/>
+              </Grid>
+
+              <ScrollViewer Grid.Row="1" Margin="0,8,0,0">
+                <SelectableTextBlock Text="{Binding OutputLog}"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"
+                                   TextWrapping="Wrap"
+                                   FontFamily="Consolas"/>
+              </ScrollViewer>
+            </Grid>
+          </Border>
+        </Grid>
+      </Grid>
+    </Border>
+  </Grid>
+</UserControl>

@@ -1,0 +1,257 @@
+using System;
+using System.Collections.ObjectModel;
+using System.IO;
+using System.Linq;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using ObsMCLauncher.Core.Plugins;
+using ObsMCLauncher.Desktop.ViewModels.Dialogs;
+using ObsMCLauncher.Desktop.ViewModels.Notifications;
+
+namespace ObsMCLauncher.Desktop.ViewModels;
+
+public partial class MainWindowViewModel : ViewModelBase, IDisposable
+{
+    public ObservableCollection<NavItemViewModel> NavItems { get; } = new();
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CurrentPage))]
+    private NavItemViewModel? selectedNavItem;
+
+    [ObservableProperty]
+    private bool isNavCollapsed;
+
+    public ViewModelBase? CurrentPage => SelectedNavItem?.Page;
+
+    public DownloadManagerViewModel DownloadManager { get; }
+
+    public NotificationService Notifications { get; } = new();
+
+    public DialogService Dialogs { get; } = new();
+
+    public string NavVersionText => $"v{ObsMCLauncher.Core.Utils.VersionInfo.ShortVersion}";
+
+    public string NavCopyrightText => ObsMCLauncher.Core.Utils.VersionInfo.Copyright;
+
+    private readonly PluginLoader _pluginLoader;
+    private HomeViewModel? _homeViewModel;
+    private MoreViewModel? _moreViewModel;
+
+    public MainWindowViewModel()
+    {
+        NavigationStore.MainWindow = this;
+
+        var dispatcher = new ObsMCLauncher.Desktop.Services.AvaloniaDispatcher();
+        ObsMCLauncher.Core.Services.Minecraft.DownloadTaskManager.Instance.SetDispatcher(dispatcher);
+        ObsMCLauncher.Core.Services.Minecraft.DownloadBridge.Initialize();
+
+        DownloadManager = new DownloadManagerViewModel(dispatcher);
+
+        // 初始化插件系统
+        var pluginsDir = Path.Combine(AppContext.BaseDirectory, "OMCL", "plugins");
+        _pluginLoader = new PluginLoader(pluginsDir);
+
+        // 创建主页ViewModel
+        _homeViewModel = new HomeViewModel(dispatcher, Notifications);
+
+        // 创建更多ViewModel
+        _moreViewModel = new MoreViewModel(Notifications, _pluginLoader);
+
+        // 初始化插件通知回调（必须在加载插件之前设置）
+        InitializePluginCallbacks();
+
+        // 启动时加载所有插件（必须在初始化回调之后）
+        LoadPluginsOnStartup();
+
+        NavItems.Add(new NavItemViewModel("主页", _homeViewModel, "🏠"));
+        NavItems.Add(new NavItemViewModel("多人联机", new MultiplayerViewModel(Notifications, Dialogs), "🌐"));
+        NavItems.Add(new NavItemViewModel("账号管理", new AccountManagementViewModel(), "👤"));
+        NavItems.Add(new NavItemViewModel("版本管理", new VersionDownloadViewModel(dispatcher, Notifications), "📥"));
+        NavItems.Add(new NavItemViewModel("资源下载", new ResourcesViewModel(), "📦"));
+        NavItems.Add(new NavItemViewModel("设置", new SettingsViewModel(Notifications, _homeViewModel), "⚙️"));
+        NavItems.Add(new NavItemViewModel("更多", _moreViewModel, "⋯"));
+
+        SelectedNavItem = NavItems[0];
+    }
+
+    private void LoadPluginsOnStartup()
+    {
+        try
+        {
+            var pluginsDir = Path.Combine(AppContext.BaseDirectory, "OMCL", "plugins");
+            System.Diagnostics.Debug.WriteLine($"[MainWindowViewModel] 插件目录: {pluginsDir}");
+            System.Diagnostics.Debug.WriteLine($"[MainWindowViewModel] 目录存在: {Directory.Exists(pluginsDir)}");
+
+            if (Directory.Exists(pluginsDir))
+            {
+                var pluginDirs = Directory.GetDirectories(pluginsDir);
+                System.Diagnostics.Debug.WriteLine($"[MainWindowViewModel] 找到 {pluginDirs.Length} 个插件文件夹");
+
+                foreach (var dir in pluginDirs)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[MainWindowViewModel] 插件文件夹: {Path.GetFileName(dir)}");
+                }
+            }
+
+            _pluginLoader.LoadAllPlugins();
+            var loadedCount = _pluginLoader.LoadedPlugins.Count(p => p.IsLoaded);
+            System.Diagnostics.Debug.WriteLine($"[MainWindowViewModel] 启动时加载了 {loadedCount} 个插件");
+
+            foreach (var plugin in _pluginLoader.LoadedPlugins)
+            {
+                System.Diagnostics.Debug.WriteLine($"[MainWindowViewModel] 插件: {plugin.Name} (ID: {plugin.Id}) - 加载状态: {plugin.IsLoaded}");
+                if (!string.IsNullOrEmpty(plugin.ErrorMessage))
+                {
+                    System.Diagnostics.Debug.WriteLine($"[MainWindowViewModel]   错误: {plugin.ErrorMessage}");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[MainWindowViewModel] 启动时加载插件失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[MainWindowViewModel] 堆栈: {ex.StackTrace}");
+        }
+    }
+
+    private void InitializePluginCallbacks()
+    {
+        PluginContext.OnShowNotification = (title, message, type, duration) =>
+        {
+            var notifType = type.ToLowerInvariant() switch
+            {
+                "success" => NotificationType.Success,
+                "warning" => NotificationType.Warning,
+                "error" => NotificationType.Error,
+                "progress" => NotificationType.Progress,
+                _ => NotificationType.Info
+            };
+            return Notifications.Show(title, message, notifType, duration);
+        };
+
+        PluginContext.OnUpdateNotification = (id, message, progress) =>
+        {
+            Notifications.Update(id, message, progress);
+        };
+
+        PluginContext.OnCloseNotification = (id) =>
+        {
+            Notifications.Remove(id);
+        };
+
+        // 设置插件标签页和主页卡片回调
+        PluginContext.OnTabRegistered = (pluginId, title, tabId, icon, payload) =>
+        {
+            System.Diagnostics.Debug.WriteLine($"[PluginContext] 插件 {pluginId} 注册标签页: {title} (tabId: {tabId})");
+
+            // 分发到MoreViewModel
+            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            {
+                _moreViewModel?.OnPluginTabRegistered(pluginId, title, tabId, icon, payload);
+            });
+        };
+
+        PluginContext.OnHomeCardRegistered = (cardId, title, description, icon, commandId, payload) =>
+        {
+            System.Diagnostics.Debug.WriteLine($"[PluginContext] 注册主页卡片: {title} (cardId: {cardId})");
+
+            // 分发到HomeViewModel
+            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            {
+                _homeViewModel?.OnPluginCardRegistered(cardId, title, description, icon, commandId, payload);
+            });
+        };
+
+        PluginContext.OnHomeCardUnregistered = (cardId) =>
+        {
+            System.Diagnostics.Debug.WriteLine($"[PluginContext] 注销主页卡片: {cardId}");
+
+            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            {
+                _homeViewModel?.OnPluginCardUnregistered(cardId);
+            });
+        };
+
+        PluginContext.OnTabUnregistered = (pluginId, tabId) =>
+        {
+            System.Diagnostics.Debug.WriteLine($"[PluginContext] 注销标签页: {tabId} (插件: {pluginId})");
+
+            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            {
+                _moreViewModel?.OnPluginTabUnregistered(pluginId, tabId);
+            });
+        };
+
+        PluginLoader.OnPluginDisabled = (pluginId) =>
+        {
+            System.Diagnostics.Debug.WriteLine($"[MainWindowViewModel] 插件已禁用: {pluginId}");
+
+            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            {
+                _moreViewModel?.RemoveAllPluginTabs(pluginId);
+                _homeViewModel?.RemoveAllPluginCards(pluginId);
+            });
+        };
+
+        PluginLoader.OnPluginEnabled = (pluginId) =>
+        {
+            System.Diagnostics.Debug.WriteLine($"[MainWindowViewModel] 插件已启用: {pluginId}");
+        };
+
+        PluginLoader.OnPluginRemoved = (pluginId) =>
+        {
+            System.Diagnostics.Debug.WriteLine($"[MainWindowViewModel] 插件已移除: {pluginId}");
+
+            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            {
+                _moreViewModel?.RemoveAllPluginTabs(pluginId);
+                _homeViewModel?.RemoveAllPluginCards(pluginId);
+            });
+        };
+    }
+
+    partial void OnSelectedNavItemChanged(NavItemViewModel? value)
+    {
+        OnPropertyChanged(nameof(CurrentPage));
+        
+        if (value?.Page is HomeViewModel homeVm)
+        {
+            _ = homeVm.LoadLocalAsync();
+        }
+        else if (value?.Page is VersionDownloadViewModel versionVm)
+        {
+            versionVm.RefreshInstalled();
+        }
+    }
+
+    [RelayCommand]
+    private void ToggleNav()
+    {
+        IsNavCollapsed = !IsNavCollapsed;
+    }
+
+    private bool _disposed;
+
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (!_disposed)
+        {
+            if (disposing)
+            {
+                // 释放NotificationService
+                Notifications?.Dispose();
+            }
+            _disposed = true;
+        }
+    }
+
+    ~MainWindowViewModel()
+    {
+        Dispose(false);
+    }
+}

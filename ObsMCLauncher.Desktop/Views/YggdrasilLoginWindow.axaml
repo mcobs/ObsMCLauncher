@@ -1,0 +1,131 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:ObsMCLauncher.Desktop.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="500" d:DesignHeight="600"
+        x:Class="ObsMCLauncher.Desktop.Views.YggdrasilLoginWindow"
+        x:DataType="vm:YggdrasilLoginViewModel"
+        Title="外置登录"
+        Width="500" Height="600"
+        WindowStartupLocation="CenterOwner"
+        SystemDecorations="None"
+        ExtendClientAreaToDecorationsHint="True"
+        Background="Transparent"
+        TransparencyLevelHint="AcrylicBlur">
+
+  <Panel>
+    <!-- 背景遮罩模拟 WPF 风格 -->
+    <Border Background="{DynamicResource BackgroundBrush}" Opacity="0.95" CornerRadius="12" Margin="20">
+      <Border.BoxShadow>
+        <BoxShadows>0 10 30 0 #80000000</BoxShadows>
+      </Border.BoxShadow>
+    </Border>
+
+    <Grid Margin="40" RowDefinitions="Auto,*,Auto">
+      <!-- 标题栏 -->
+      <StackPanel Grid.Row="0" Margin="0,0,0,20">
+        <TextBlock Text="外置登录" FontSize="24" FontWeight="Bold" Foreground="{DynamicResource TextBrush}"/>
+        <TextBlock Text="使用 Yggdrasil 认证服务器登录" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,4,0,0"/>
+      </StackPanel>
+
+      <!-- 内容区 -->
+      <Panel Grid.Row="1">
+        <!-- 登录视图 -->
+        <ScrollViewer IsVisible="{Binding !ShowServerManagement}">
+          <StackPanel Spacing="15">
+            <TextBlock Text="认证服务器" FontSize="14" FontWeight="SemiBold"/>
+            <ComboBox HorizontalAlignment="Stretch" 
+                      ItemsSource="{Binding Servers}" 
+                      SelectedItem="{Binding SelectedServer}">
+              <ComboBox.ItemTemplate>
+                <DataTemplate>
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock Text="🛡" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding Name}" VerticalAlignment="Center"/>
+                  </StackPanel>
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+
+            <Button Content="管理服务器" Command="{Binding ToggleServerManagementCommand}" Classes="outline"/>
+
+            <Border Background="{DynamicResource SurfaceElevatedBrush}" CornerRadius="8" Padding="20">
+              <StackPanel Spacing="10">
+                <TextBlock Text="账号信息" FontSize="14" FontWeight="SemiBold"/>
+                
+                <StackPanel Spacing="5">
+                  <TextBlock Text="用户名/邮箱" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                  <TextBox Text="{Binding Username}" Watermark="请输入用户名或邮箱"/>
+                </StackPanel>
+
+                <StackPanel Spacing="5">
+                  <TextBlock Text="密码" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                  <TextBox Text="{Binding Password}" PasswordChar="*" Watermark="请输入密码"/>
+                </StackPanel>
+              </StackPanel>
+            </Border>
+
+            <Border Background="{DynamicResource SurfaceBrush}" CornerRadius="6" Padding="12">
+              <StackPanel Orientation="Horizontal" Spacing="10">
+                <TextBlock Text="ℹ" Foreground="{DynamicResource PrimaryBrush}" VerticalAlignment="Top"/>
+                <TextBlock Text="外置登录需要在第三方认证服务器注册账号。推荐使用 LittleSkin 服务。" 
+                           FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap"/>
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+
+        <!-- 服务器管理视图 -->
+        <ScrollViewer IsVisible="{Binding ShowServerManagement}">
+          <StackPanel Spacing="15">
+            <Button Content="← 返回登录" Command="{Binding ToggleServerManagementCommand}" Classes="outline"/>
+            <TextBlock Text="管理认证服务器" FontSize="20" FontWeight="Bold"/>
+            
+            <Border Background="{DynamicResource SurfaceElevatedBrush}" CornerRadius="8" Padding="15">
+              <StackPanel Spacing="10">
+                <TextBlock Text="添加新服务器" FontWeight="SemiBold"/>
+                <TextBox Text="{Binding NewServerName}" Watermark="服务器名称"/>
+                <TextBox Text="{Binding NewServerUrl}" Watermark="服务器地址 (如 littleskin.cn)"/>
+                <Button Content="添加" Command="{Binding AddServerCommand}" HorizontalAlignment="Right" Classes="accent"/>
+              </StackPanel>
+            </Border>
+
+            <ItemsControl ItemsSource="{Binding Servers}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Border Background="{DynamicResource SurfaceElevatedBrush}" CornerRadius="8" Padding="12" Margin="0,0,0,8">
+                    <Grid ColumnDefinitions="*,Auto">
+                      <StackPanel>
+                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
+                        <TextBlock Text="{Binding ApiUrl}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                      </StackPanel>
+                      <Button Grid.Column="1" Content="删除" 
+                              Command="{Binding $parent[Window].((vm:YggdrasilLoginViewModel)DataContext).DeleteServerCommand}" 
+                              CommandParameter="{Binding}"
+                              IsVisible="{Binding !IsBuiltIn}" Classes="danger"/>
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </ScrollViewer>
+
+        <!-- 加载/登录中遮罩 -->
+        <Border Background="{DynamicResource BackgroundBrush}" Opacity="0.8" IsVisible="{Binding IsLoggingIn}" CornerRadius="8">
+          <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="10">
+            <ProgressBar IsIndeterminate="True" Width="100"/>
+            <TextBlock Text="{Binding StatusMessage}" HorizontalAlignment="Center"/>
+          </StackPanel>
+        </Border>
+      </Panel>
+
+      <!-- 底部按钮 -->
+      <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="15" Margin="0,20,0,0">
+        <Button Content="取消" Width="100" Click="Cancel_Click" Classes="outline"/>
+        <Button Content="登录" Width="100" Command="{Binding LoginCommand}" IsVisible="{Binding !ShowServerManagement}" Classes="accent"/>
+      </StackPanel>
+    </Grid>
+  </Panel>
+</Window>
