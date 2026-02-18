@@ -14,6 +14,7 @@ jobs:
     strategy:
       matrix:
         configuration: [Release]
+        rid: [win-x86, win-x64, win-arm64]
     
     runs-on: windows-latest
     
@@ -49,21 +50,21 @@ jobs:
 
     - name: Publish single-file executable
       run: |
-        dotnet publish $env:Project_Path -c ${{ matrix.configuration }} -r win-x64 --self-contained false -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=none -p:DebugSymbols=false -o ./publish
+        dotnet publish $env:Project_Path -c ${{ matrix.configuration }} -r ${{ matrix.rid }} --self-contained false -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=none -p:DebugSymbols=false -o ./publish/${{ matrix.rid }}
 
     - name: Verify output
       shell: pwsh
       run: |
         Write-Host "发布目录内容:"
-        Get-ChildItem ./publish | Format-Table Name, Length
+        Get-ChildItem ./publish/${{ matrix.rid }} | Format-Table Name, Length
         
-        $exeFile = Get-Item ./publish/*.exe
+        $exeFile = Get-Item ./publish/${{ matrix.rid }}/*.exe
         $fileSizeMB = [Math]::Round($exeFile.Length / 1MB, 2)
         Write-Host "可执行文件大小: $fileSizeMB MB"
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: ObsMCLauncher-${{ steps.version.outputs.version }}-win-x64
-        path: ./publish/*
+        name: ObsMCLauncher-${{ steps.version.outputs.version }}-${{ matrix.rid }}
+        path: ./publish/${{ matrix.rid }}/*
         retention-days: 90

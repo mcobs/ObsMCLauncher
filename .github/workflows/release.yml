@@ -1,0 +1,151 @@
+name: Release ObsMCLauncher
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g., v1.0.0)'
+        required: true
+        type: string
+
+jobs:
+  build:
+    runs-on: windows-latest
+    
+    strategy:
+      matrix:
+        rid: [win-x86, win-x64, win-arm64]
+    
+    env:
+      Project_Path: ObsMCLauncher.Desktop/ObsMCLauncher.Desktop.csproj
+      
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Install .NET Core
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 8.0.x
+
+    - name: Restore dependencies
+      run: dotnet restore $env:Project_Path
+      
+    - name: Build application
+      run: dotnet build $env:Project_Path -c Release --no-restore
+
+    - name: Get version info
+      id: version
+      shell: pwsh
+      run: |
+        if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+          $version = "${{ github.event.inputs.tag }}"
+        } else {
+          $version = "${{ github.ref_name }}"
+        }
+        # 移除 v 前缀用于版本号
+        $versionNumber = $version -replace '^v', ''
+        # 检查是否为预发布版本（包含 -alpha, -beta, -rc, -pre, -test 等）
+        $isPrerelease = $version -match '-(alpha|beta|rc|pre|test|preview)'
+        echo "version=$version" >> $env:GITHUB_OUTPUT
+        echo "version_number=$versionNumber" >> $env:GITHUB_OUTPUT
+        echo "is_prerelease=$isPrerelease" >> $env:GITHUB_OUTPUT
+        echo "当前版本: $version"
+        echo "是否预发布: $isPrerelease"
+
+    - name: Publish ${{ matrix.rid }}
+      run: |
+        dotnet publish $env:Project_Path -c Release -r ${{ matrix.rid }} --self-contained false `
+          -p:PublishSingleFile=true `
+          -p:IncludeNativeLibrariesForSelfExtract=true `
+          -p:DebugType=none `
+          -p:DebugSymbols=false `
+          -p:Version=${{ steps.version.outputs.version_number }} `
+          -o ./publish/${{ matrix.rid }}
+
+    - name: Create ZIP archive
+      shell: pwsh
+      run: |
+        Compress-Archive -Path ./publish/${{ matrix.rid }}/* -DestinationPath ./ObsMCLauncher-${{ steps.version.outputs.version }}-${{ matrix.rid }}.zip
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ObsMCLauncher-${{ steps.version.outputs.version }}-${{ matrix.rid }}
+        path: ./ObsMCLauncher-${{ steps.version.outputs.version }}-${{ matrix.rid }}.zip
+        retention-days: 1
+
+  release:
+    needs: build
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Get version info
+      id: version
+      shell: pwsh
+      run: |
+        if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+          $version = "${{ github.event.inputs.tag }}"
+        } else {
+          $version = "${{ github.ref_name }}"
+        }
+        # 检查是否为预发布版本
+        $isPrerelease = $version -match '-(alpha|beta|rc|pre|test|preview)'
+        echo "version=$version" >> $env:GITHUB_OUTPUT
+        echo "is_prerelease=$isPrerelease" >> $env:GITHUB_OUTPUT
+        echo "当前版本: $version"
+        echo "是否预发布: $isPrerelease"
+
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: ./artifacts
+
+    - name: Prepare release files
+      shell: pwsh
+      run: |
+        $version = "${{ steps.version.outputs.version }}"
+        
+        # 移动所有 ZIP 文件到发布目录
+        New-Item -ItemType Directory -Force -Path ./release
+        Get-ChildItem ./artifacts -Recurse -Filter "*.zip" | ForEach-Object {
+          Copy-Item $_.FullName ./release/
+        }
+        
+        # 列出所有文件
+        Write-Host "Release files:"
+        Get-ChildItem ./release | Format-Table Name, Length
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: ${{ steps.version.outputs.version }}
+        name: ObsMCLauncher ${{ steps.version.outputs.version }}
+        draft: false
+        prerelease: ${{ steps.version.outputs.is_prerelease == 'true' }}
+        generate_release_notes: true
+        body: |
+          ## 📥 下载
+          
+          | 平台 | 架构 | 文件 |
+          |:----:|:----:|:----:|
+          | Windows | x86 (32位) | [ObsMCLauncher-${{ steps.version.outputs.version }}-win-x86.zip](https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.version }}/ObsMCLauncher-${{ steps.version.outputs.version }}-win-x86.zip) |
+          | Windows | x64 (64位) | [ObsMCLauncher-${{ steps.version.outputs.version }}-win-x64.zip](https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.version }}/ObsMCLauncher-${{ steps.version.outputs.version }}-win-x64.zip) |
+          | Windows | ARM64 | [ObsMCLauncher-${{ steps.version.outputs.version }}-win-arm64.zip](https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.version }}/ObsMCLauncher-${{ steps.version.outputs.version }}-win-arm64.zip) |
+          
+          ${{ steps.version.outputs.is_prerelease == 'true' && '---\n\n## ⚠️ 预发布版本警告\n\n**此版本为预发布版本，可能存在以下问题：**\n- 🐛 可能包含未发现的 Bug\n- ⚡ 功能可能不稳定\n- 🔄 部分功能可能会在正式版中更改\n\n**不建议在生产环境或日常使用中使用此版本。**\n\n如果您发现问题，请在 [Issues](https://github.com/${{ github.repository }}/issues) 中反馈。\n' || '---' }}
+          
+          ## 📋 更新内容
+        files: ./release/*.zip
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

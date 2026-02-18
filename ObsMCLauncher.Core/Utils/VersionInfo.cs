@@ -15,7 +15,7 @@ public static class VersionInfo
 
     public static readonly string CodeName = "GrassBlock";
 
-    public static readonly VersionStatus Status = VersionStatus.Testing;
+    public static readonly VersionStatus Status = VersionStatus.PreRelease;
 
     public static readonly string ProductName = "ObsMCLauncher";
 
