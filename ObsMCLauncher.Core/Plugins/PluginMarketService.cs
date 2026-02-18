@@ -457,7 +457,8 @@ namespace ObsMCLauncher.Core.Plugins
 
                     if (string.IsNullOrEmpty(assetUrl)) continue;
 
-                    // 如果指定了资源匹配模式
+                    if (!assetName.EndsWith(".zip")) continue;
+
                     if (!string.IsNullOrEmpty(assetPattern))
                     {
                         if (assetName.Contains(assetPattern.ToLowerInvariant()))
@@ -466,16 +467,17 @@ namespace ObsMCLauncher.Core.Plugins
                             break;
                         }
                     }
-                    // 否则按平台匹配
-                    else if (!string.IsNullOrEmpty(pluginId))
+
+                    if (!string.IsNullOrEmpty(pluginId))
                     {
-                        // 优先匹配插件ID
-                        if (assetName.Contains(pluginId.ToLowerInvariant()))
+                        var normalizedPluginId = pluginId.ToLowerInvariant().Replace("-", "").Replace("_", "").Replace(" ", "");
+                        var normalizedAssetName = assetName.Replace("-", "").Replace("_", "").Replace(" ", "");
+                        
+                        if (normalizedAssetName.Contains(normalizedPluginId))
                         {
-                            // 再检查平台
                             var matchesPlatform = currentPlatform switch
                             {
-                                "windows" => assetName.Contains("win") || assetName.Contains("windows"),
+                                "windows" => assetName.Contains("win") || assetName.Contains("windows") || (!assetName.Contains("linux") && !assetName.Contains("osx") && !assetName.Contains("macos") && !assetName.Contains("mac")),
                                 "linux" => assetName.Contains("linux"),
                                 "macos" => assetName.Contains("osx") || assetName.Contains("macos") || assetName.Contains("mac"),
                                 _ => true
@@ -488,8 +490,8 @@ namespace ObsMCLauncher.Core.Plugins
                             }
                         }
                     }
-                    // 兜底：取第一个zip文件
-                    else if (assetName.EndsWith(".zip") && downloadUrl == null)
+
+                    if (downloadUrl == null)
                     {
                         downloadUrl = assetUrl;
                     }
