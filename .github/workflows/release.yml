@@ -51,9 +51,7 @@ jobs:
         } else {
           $version = "${{ github.ref_name }}"
         }
-        # 移除 v 前缀用于版本号
         $versionNumber = $version -replace '^v', ''
-        # 检查是否为预发布版本（包含 -alpha, -beta, -rc, -pre, -test 等）
         $isPrerelease = $version -match '-(alpha|beta|rc|pre|test|preview)'
         echo "version=$version" >> $env:GITHUB_OUTPUT
         echo "version_number=$versionNumber" >> $env:GITHUB_OUTPUT
@@ -86,6 +84,8 @@ jobs:
   release:
     needs: build
     runs-on: windows-latest
+    permissions:
+      contents: write
     
     steps:
     - name: Checkout
@@ -102,7 +102,6 @@ jobs:
         } else {
           $version = "${{ github.ref_name }}"
         }
-        # 检查是否为预发布版本
         $isPrerelease = $version -match '-(alpha|beta|rc|pre|test|preview)'
         echo "version=$version" >> $env:GITHUB_OUTPUT
         echo "is_prerelease=$isPrerelease" >> $env:GITHUB_OUTPUT
@@ -118,14 +117,10 @@ jobs:
       shell: pwsh
       run: |
         $version = "${{ steps.version.outputs.version }}"
-        
-        # 移动所有 ZIP 文件到发布目录
         New-Item -ItemType Directory -Force -Path ./release
         Get-ChildItem ./artifacts -Recurse -Filter "*.zip" | ForEach-Object {
           Copy-Item $_.FullName ./release/
         }
-        
-        # 列出所有文件
         Write-Host "Release files:"
         Get-ChildItem ./release | Format-Table Name, Length
 
@@ -151,4 +146,4 @@ jobs:
           ## 📋 更新内容
         files: ./release/*.zip
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
