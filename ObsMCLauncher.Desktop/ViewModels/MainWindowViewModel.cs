@@ -2,6 +2,7 @@ using System;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using Avalonia.Controls;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using ObsMCLauncher.Core.Plugins;
@@ -20,6 +21,88 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     [ObservableProperty]
     private bool isNavCollapsed;
+
+    private double _navWidthValue = 200;
+    public GridLength NavWidth
+    {
+        get => new GridLength(_navWidthValue);
+    }
+
+    private double _navRotationAngle;
+    public double NavRotationAngle
+    {
+        get => _navRotationAngle;
+        private set => SetProperty(ref _navRotationAngle, value);
+    }
+
+    private double _navTextOpacity = 1;
+    public double NavTextOpacity
+    {
+        get => _navTextOpacity;
+        private set => SetProperty(ref _navTextOpacity, value);
+    }
+
+    partial void OnIsNavCollapsedChanged(bool value)
+    {
+        AnimateNavWidth(value ? 48 : 200);
+        AnimateNavRotation(value ? 90 : 0);
+        AnimateNavTextOpacity(value ? 0 : 1);
+    }
+
+    private async void AnimateNavWidth(double targetWidth)
+    {
+        const int steps = 15;
+        const int delay = 12;
+        var startWidth = _navWidthValue;
+        var diff = targetWidth - startWidth;
+
+        for (int i = 1; i <= steps; i++)
+        {
+            var progress = (double)i / steps;
+            var easedProgress = 1 - Math.Pow(1 - progress, 3);
+            _navWidthValue = startWidth + diff * easedProgress;
+            OnPropertyChanged(nameof(NavWidth));
+            await System.Threading.Tasks.Task.Delay(delay);
+        }
+
+        _navWidthValue = targetWidth;
+        OnPropertyChanged(nameof(NavWidth));
+    }
+
+    private async void AnimateNavRotation(double targetAngle)
+    {
+        const int steps = 15;
+        const int delay = 12;
+        var startAngle = NavRotationAngle;
+        var diff = targetAngle - startAngle;
+
+        for (int i = 1; i <= steps; i++)
+        {
+            var progress = (double)i / steps;
+            var easedProgress = 1 - Math.Pow(1 - progress, 3);
+            NavRotationAngle = startAngle + diff * easedProgress;
+            await System.Threading.Tasks.Task.Delay(delay);
+        }
+
+        NavRotationAngle = targetAngle;
+    }
+
+    private async void AnimateNavTextOpacity(double targetOpacity)
+    {
+        const int steps = 10;
+        const int delay = 15;
+        var startOpacity = NavTextOpacity;
+        var diff = targetOpacity - startOpacity;
+
+        for (int i = 1; i <= steps; i++)
+        {
+            var progress = (double)i / steps;
+            NavTextOpacity = startOpacity + diff * progress;
+            await System.Threading.Tasks.Task.Delay(delay);
+        }
+
+        NavTextOpacity = targetOpacity;
+    }
 
     public ViewModelBase? CurrentPage => SelectedNavItem?.Page;
 

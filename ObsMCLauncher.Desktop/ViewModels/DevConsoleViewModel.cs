@@ -8,6 +8,8 @@ using CommunityToolkit.Mvvm.Input;
 using ObsMCLauncher.Core.Models;
 using ObsMCLauncher.Core.Services;
 using ObsMCLauncher.Core.Services.Minecraft;
+using ObsMCLauncher.Core.Utils;
+using ObsMCLauncher.Desktop.ViewModels.Dialogs;
 
 namespace ObsMCLauncher.Desktop.ViewModels;
 
@@ -17,7 +19,7 @@ public partial class DevConsoleViewModel : ObservableObject
     private readonly Dictionary<string, Action<string[]>> _commands = new();
 
     [ObservableProperty]
-    private string _output = "ObsMCLauncher DevConsole [版本 1.0.0]\r\n(c) 2024-2026 ObsMCLauncher. 保留所有权利。\r\n\r\n输入 'help' 以查看命令列表。\r\n";
+    private string _output = "ObsMCLauncher DevConsole [版本 1.0.0]\r\n(c) 2026 ObsMCLauncher. 保留所有权利。\r\n\r\n输入 'help' 以查看命令列表。\r\n";
 
     [ObservableProperty]
     private string _command = string.Empty;
@@ -35,7 +37,7 @@ public partial class DevConsoleViewModel : ObservableObject
         _commands["clear"] = _ => Output = string.Empty;
         _commands["crash"] = _ => ShowCrash();
         _commands["throw"] = args => ThrowException(args);
-        _commands["update"] = args => OpenUpdate(args);
+        _commands["update"] = args => ShowUpdateDialog(args);
     }
 
     private void ShowHelp()
@@ -46,7 +48,7 @@ public partial class DevConsoleViewModel : ObservableObject
   clear                清空输出
   crash                直接打开崩溃窗口（不抛未处理异常）
   throw <msg>          抛出一个未处理异常（msg 可选）
-  update [tag]         强制打开更新窗口（tag 可选）
+  update [tag]         测试更新对话框（tag 可选，默认 v9.9.9）
 ";
         AppendOutput(help);
     }
@@ -88,11 +90,70 @@ public partial class DevConsoleViewModel : ObservableObject
         });
     }
 
-    private void OpenUpdate(string[] args)
+    private void ShowUpdateDialog(string[] args)
     {
-        var tag = args.Length > 0 ? args[0] : "v9.9.9-test";
-        AppendOutput($"[info] 正在模拟打开更新窗口: {tag} (Avalonia 迁移中)");
-        // TODO: 待实现 Avalonia 版更新窗口调用
+        _ = ShowUpdateDialogAsync(args);
+    }
+
+    private async System.Threading.Tasks.Task ShowUpdateDialogAsync(string[] args)
+    {
+        var tag = args.Length > 0 ? args[0] : "v9.9.9";
+        AppendOutput($"[info] 正在打开更新对话框: {tag}");
+
+        try
+        {
+            var dialogs = NavigationStore.MainWindow?.Dialogs;
+            if (dialogs == null)
+            {
+                AppendOutput("[error] 无法获取 DialogService");
+                return;
+            }
+
+            var markdownContent = $@"# 🎉 发现新版本 {tag}
+
+## 更新内容
+
+### ✨ 新功能
+- 添加了全新的用户界面设计
+- 支持多账号快速切换
+- 新增模组包一键安装功能
+- 优化了下载速度和稳定性
+
+### 🐛 修复
+- 修复了启动游戏时偶发的崩溃问题
+- 修复了账号登录状态异常
+- 修复了部分模组无法正确识别的问题
+
+### 🔧 优化
+- 大幅提升了启动速度
+- 减少了内存占用
+- 改进了日志输出格式
+
+---
+
+**当前版本**: {VersionInfo.DisplayVersion}
+**最新版本**: {tag}
+**发布时间**: {DateTime.Now:yyyy-MM-dd}
+
+点击「立即更新」前往下载页面。
+";
+
+            var result = await dialogs.ShowUpdateDialogAsync($"发现新版本 {tag}", markdownContent, "立即更新", "稍后提醒");
+
+            if (result)
+            {
+                AppendOutput("[info] 用户点击了「立即更新」");
+                UpdateService.OpenReleasePage("https://github.com/mcobs/ObsMCLauncher/releases/latest");
+            }
+            else
+            {
+                AppendOutput("[info] 用户关闭了更新对话框");
+            }
+        }
+        catch (Exception ex)
+        {
+            AppendOutput($"[error] 打开更新对话框失败: {ex.Message}");
+        }
     }
 
     private void AppendOutput(string text)

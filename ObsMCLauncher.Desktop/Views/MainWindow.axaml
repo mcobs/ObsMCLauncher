@@ -76,7 +76,7 @@
 
     <Grid x:Name="RootGrid" RowDefinitions="40,*">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="200" />
+            <ColumnDefinition Width="{Binding NavWidth}" />
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
 
@@ -121,7 +121,11 @@
                             Command="{Binding ToggleNavCommand}"
                             ToolTip.Tip="折叠/展开"
                             Background="Transparent"
-                            BorderThickness="0">
+                            BorderThickness="0"
+                            RenderTransformOrigin="50%,50%">
+                        <Button.RenderTransform>
+                            <RotateTransform Angle="{Binding NavRotationAngle}" />
+                        </Button.RenderTransform>
                         <TextBlock Text="≡" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{DynamicResource TextBrush}" />
                     </Button>
                 </StackPanel>
@@ -154,6 +158,7 @@
                                                Margin="12,0,0,0"
                                                VerticalAlignment="Center"
                                                Foreground="{DynamicResource TextBrush}"
+                                               Opacity="{Binding $parent[Window].DataContext.NavTextOpacity}"
                                                IsVisible="{Binding $parent[Window].DataContext.IsNavCollapsed, Converter={x:Static converters:NotConverter.Instance}}" />
                                 </Grid>
                             </Border>
