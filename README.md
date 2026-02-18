@@ -2,7 +2,7 @@
 
 <div align="center">
   <img src="https://img.shields.io/badge/.NET-8.0-512BD4?style=for-the-badge&logo=dotnet" alt=".NET 8.0"/>
-  <img src="https://img.shields.io/badge/WPF-Windows-0078D6?style=for-the-badge&logo=windows" alt="WPF"/>
+  <img src="https://img.shields.io/badge/Avalonia-Cross%20Platform-1E9BDB?style=for-the-badge" alt="Avalonia"/>
   <img src="https://img.shields.io/badge/License-GPL--3.0-blue?style=for-the-badge" alt="License"/>
   <br/>
   <img src="https://github.com/x1aoren/ObsMCLauncher/actions/workflows/build.yml/badge.svg" alt="Build Status"/>
@@ -16,7 +16,17 @@
 
 ## 📖 简介
 
-**ObsMCLauncher** 是一款采用现代 UI 设计的 Minecraft 启动器，提供流畅的游戏管理体验。
+**ObsMCLauncher** 是一款采用现代 UI 设计的 Minecraft 启动器，基于 Avalonia UI 框架开发，支持跨平台运行。
+
+---
+
+## 💻 支持的操作系统
+
+| 平台 | 状态 | 架构 |
+|:----:|:----:|:----:|
+| Windows | ✅ 支持 | x64 |
+| Linux | 🚧 计划中 | x64 |
+| macOS | 🚧 计划中 | x64, ARM64 |
 
 ---
 
@@ -49,13 +59,13 @@ dotnet restore
 dotnet build
 
 # 运行启动器
-dotnet run
+dotnet run --project ObsMCLauncher.Desktop
 ```
 
 ### 发布为可执行文件
 
 ```bash
-dotnet publish -c Release -r win-x64 -p:PublishSingleFile=true
+dotnet publish ObsMCLauncher.Desktop -c Release -r win-x64 -p:PublishSingleFile=true
 ```
 
 ---
@@ -64,69 +74,87 @@ dotnet publish -c Release -r win-x64 -p:PublishSingleFile=true
 
 ```text
 ObsMCLauncher/
-├── App.xaml                         # 全局样式和主题配置
-├── MainWindow.xaml                  # 主窗口（导航框架）
-├── Assets/                          # 资源文件
-│   ├── LoaderIcons/                 # 模组加载器图标
-│   └── mod_translations.txt         # MOD中文翻译数据
-├── Pages/                           # 页面目录
-│   ├── HomePage.xaml                # 主页（版本列表）
-│   ├── AccountManagementPage.xaml   # 账号管理页面
-│   ├── VersionDownloadPage.xaml     # 版本下载页面
-│   ├── VersionDetailPage.xaml       # 版本详情页（安装Forge/Fabric等）
-│   ├── ResourcesPage.xaml           # 资源中心（MOD/材质包等）
-│   ├── ModDetailPage.xaml           # 资源详情页
-│   ├── MorePage.xaml                # 更多功能页面（插件市场/已安装已迁移到 MVVM）
-│   └── SettingsPage.xaml            # 设置页面
-├── ViewModels/                      # MVVM 视图模型（逐步迁移中）
-│   └── PluginsViewModel.cs          # 更多-插件区 ViewModel（市场/已安装/详情/命令）
-├── Plugins/                         # 启动器插件系统
-│   ├── PluginLoader.cs              # 插件加载器（扫描/加载/启用禁用/卸载）
-│   ├── PluginMarketService.cs       # 插件市场服务（索引/分类/下载安装）
-│   ├── PluginContext.cs             # 插件上下文实现
-│   ├── IPluginContext.cs            # 插件上下文接口
-│   ├── ILauncherPlugin.cs           # 插件接口
-│   └── PluginMetadata.cs            # plugin.json 元数据模型
-├── Models/                          # 数据模型
-│   ├── LauncherConfig.cs            # 启动器配置模型
-│   ├── GameDirectoryType.cs         # 版本隔离类型
-│   ├── GameAccount.cs               # 游戏账号模型
-│   ├── ServerInfo.cs                # 服务器信息模型
-│   ├── ScreenshotInfo.cs            # 截图信息模型
-│   ├── WorldInfo.cs                 # 世界信息模型
-│   ├── CurseForgeModels.cs          # CurseForge API模型
-│   ├── ModrinthModels.cs            # Modrinth API模型
-│   └── ModTranslation.cs            # MOD翻译模型
-├── Services/                        # 服务层
-│   ├── MinecraftVersionService.cs   # Minecraft版本管理
-│   ├── DownloadService.cs           # 文件下载服务
-│   ├── DownloadSourceManager.cs     # 下载源管理
-│   ├── DownloadTaskManager.cs       # 下载任务管理
-│   ├── GameLauncher.cs              # 游戏启动服务
-│   ├── ForgeService.cs              # Forge服务
-│   ├── NeoForgeService.cs           # NeoForge服务
-│   ├── FabricService.cs             # Fabric服务
-│   ├── OptiFineService.cs           # OptiFine服务
-│   ├── QuiltService.cs              # Quilt服务
-│   ├── CurseForgeService.cs         # CurseForge API服务
-│   ├── ModrinthService.cs           # Modrinth API服务
-│   ├── ModpackInstallService.cs     # 整合包安装服务
-│   ├── ModTranslationService.cs     # MOD翻译服务
-│   ├── LocalVersionService.cs       # 本地版本服务
-│   ├── MicrosoftAuthService.cs      # 微软账号登录
-│   └── AccountService.cs            # 账号管理服务
-└── Utils/                           # 工具类
-    ├── Converters/                  # XAML 转换器
-    │   ├── ValueConverters.cs       # 常用转换器（Bool/Null -> Visibility 等）
-    │   ├── PluginTabToBoolConverter.cs # 插件子标签页转换器
-    │   └── EnumEqualsConverter.cs   # 枚举比较转换器
-    ├── DialogManager.cs             # 对话框管理器
-    ├── NotificationManager.cs       # 通知管理器
-    ├── ThemeTransitionManager.cs    # 主题切换过渡遮罩
-    ├── SystemInfo.cs                # 系统信息
-    ├── VersionInfo.cs               # 版本信息
-    ├── GameVersionNumber.cs         # 游戏版本号解析
-    └── ApiTester.cs                 # API测试工具
+├── ObsMCLauncher.Core/                  # 核心库（跨平台）
+│   ├── Bootstrap/                       # 启动引导
+│   │   └── LauncherBootstrap.cs
+│   ├── Models/                          # 数据模型
+│   │   ├── LauncherConfig.cs            # 启动器配置模型
+│   │   ├── GameAccount.cs               # 游戏账号模型
+│   │   ├── ServerInfo.cs                # 服务器信息模型
+│   │   ├── ScreenshotInfo.cs            # 截图信息模型
+│   │   ├── HomeCardInfo.cs              # 主页卡片模型
+│   │   ├── CurseForgeModels.cs          # CurseForge API模型
+│   │   └── ...
+│   ├── Plugins/                         # 插件系统
+│   │   ├── PluginLoader.cs              # 插件加载器
+│   │   ├── PluginMarketService.cs       # 插件市场服务
+│   │   ├── PluginContext.cs             # 插件上下文实现
+│   │   ├── ILauncherPlugin.cs           # 插件接口
+│   │   └── PluginMetadata.cs            # plugin.json 元数据模型
+│   ├── Services/                        # 服务层
+│   │   ├── Accounts/                    # 账号服务
+│   │   │   ├── AccountService.cs
+│   │   │   ├── MicrosoftAuthService.cs  # 微软账号登录
+│   │   │   └── LocalHttpServer.cs
+│   │   ├── Download/                    # 下载服务
+│   │   │   ├── DownloadTaskManager.cs
+│   │   │   ├── DownloadSourceManager.cs
+│   │   │   └── ...
+│   │   ├── Installers/                  # 模组加载器安装
+│   │   │   ├── ForgeService.cs
+│   │   │   ├── FabricService.cs
+│   │   │   ├── NeoForgeService.cs
+│   │   │   ├── QuiltService.cs
+│   │   │   └── OptiFineService.cs
+│   │   ├── Minecraft/                   # Minecraft 相关服务
+│   │   │   ├── MinecraftVersionService.cs
+│   │   │   ├── LocalVersionService.cs
+│   │   │   ├── ModpackInstallService.cs
+│   │   │   └── ...
+│   │   ├── Modrinth/                    # Modrinth 服务
+│   │   ├── GameLauncher.cs              # 游戏启动服务
+│   │   ├── UpdateService.cs             # 更新服务
+│   │   └── ...
+│   └── Utils/                           # 工具类
+│       ├── VersionInfo.cs               # 版本信息
+│       ├── GameVersionNumber.cs         # 游戏版本号解析
+│       └── ...
+│
+├── ObsMCLauncher.Desktop/               # Avalonia 桌面应用
+│   ├── Assets/                          # 资源文件
+│   │   ├── LoaderIcons/                 # 模组加载器图标
+│   │   ├── logo.png                     # 启动器 Logo
+│   │   └── mod_translations.txt         # MOD中文翻译数据
+│   ├── Converters/                      # XAML 转换器
+│   │   ├── NotConverter.cs
+│   │   ├── NullToBoolConverter.cs
+│   │   ├── BitmapAssetValueConverter.cs
+│   │   └── ...
+│   ├── Styles/                          # 样式主题
+│   │   ├── Controls.axaml               # 控件样式
+│   │   └── Theme.axaml                  # 主题配置
+│   ├── ViewModels/                      # MVVM 视图模型
+│   │   ├── MainWindowViewModel.cs       # 主窗口 ViewModel
+│   │   ├── HomeViewModel.cs             # 主页 ViewModel
+│   │   ├── SettingsViewModel.cs         # 设置 ViewModel
+│   │   ├── PluginsViewModel.cs          # 插件 ViewModel
+│   │   ├── Dialogs/                     # 对话框服务
+│   │   ├── Notifications/               # 通知服务
+│   │   └── ...
+│   ├── Views/                           # 视图（AXAML）
+│   │   ├── MainWindow.axaml             # 主窗口
+│   │   ├── HomeView.axaml               # 主页
+│   │   ├── SettingsView.axaml           # 设置页面
+│   │   ├── MoreView.axaml               # 更多功能页面
+│   │   └── ...
+│   ├── Windows/                         # 独立窗口
+│   │   ├── CrashWindow.axaml            # 崩溃报告窗口
+│   │   └── DevConsoleWindow.axaml       # 开发者控制台
+│   ├── App.axaml                        # 应用程序资源
+│   ├── App.axaml.cs                     # 应用程序入口
+│   └── Program.cs                       # 程序入口
+│
+└── Plugin-Development.md                 # 插件开发指南
 ```
 
 ---
@@ -152,6 +180,5 @@ ObsMCLauncher/
 ---
 
 <div align="center">
-  <p>使用 ❤️ 和 C# 构建</p>
-  <p>© 2025 ObsMCLauncher</p>
+  <p>© 2026 ObsMCLauncher</p>
 </div>
