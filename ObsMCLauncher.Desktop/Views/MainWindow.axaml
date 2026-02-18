@@ -480,7 +480,11 @@
                                     Background="Transparent" BorderThickness="0"
                                     IsVisible="{Binding CanClose}"
                                     Command="{Binding CloseCommand}">
-                                <TextBlock Text="✕" />
+                                <Path Data="M6 6L18 18M6 18L18 6" 
+                                      Width="12" Height="12"
+                                      Stroke="{DynamicResource TextSecondaryBrush}"
+                                      StrokeThickness="2"
+                                      Stretch="Uniform" />
                             </Button>
 
                             <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding Message}" Opacity="0.8" TextWrapping="Wrap" />
