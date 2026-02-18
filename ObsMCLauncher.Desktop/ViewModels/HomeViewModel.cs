@@ -31,6 +31,12 @@ public partial class HomeViewModel : ViewModelBase
 
     public ObservableCollection<HomeCardInfo> HomeCards { get; } = new();
 
+    public HomeCardInfo? WelcomeCard => HomeCards.FirstOrDefault(c => c.CardId == "welcome");
+
+    public IEnumerable<HomeCardInfo> OtherCards => HomeCards.Where(c => c.CardId != "welcome");
+
+    public bool IsWelcomeCardEnabled => WelcomeCard?.IsEnabled ?? false;
+
     private bool _hasAccounts = true;
     public bool HasAccounts
     {
@@ -197,6 +203,20 @@ public partial class HomeViewModel : ViewModelBase
         SelectedVersionId = config.SelectedVersion;
         _showGameLog = config.ShowGameLogOnLaunch;
 
+        HomeCards.CollectionChanged += (s, e) =>
+        {
+            OnPropertyChanged(nameof(WelcomeCard));
+            OnPropertyChanged(nameof(IsWelcomeCardEnabled));
+            OnPropertyChanged(nameof(OtherCards));
+
+            if (e.Action == System.Collections.Specialized.NotifyCollectionChangedAction.Add || 
+                e.Action == System.Collections.Specialized.NotifyCollectionChangedAction.Replace ||
+                e.Action == System.Collections.Specialized.NotifyCollectionChangedAction.Reset)
+            {
+                SubscribeToWelcomeCardChanges();
+            }
+        };
+
         InitializeHomeData();
 
         _ = LoadAsync();
@@ -212,7 +232,7 @@ public partial class HomeViewModel : ViewModelBase
 
         var defaultCards = new List<HomeCardInfo>
         {
-            new HomeCardInfo { CardId = "welcome", Title = "欢迎使用黑曜石启动器！", Description = "开始你的Minecraft之旅", Icon = "🎉", Order = 0 },
+            new HomeCardInfo { CardId = "welcome", Title = "欢迎使用黑曜石启动器", Description = "开始你的 Minecraft 之旅", Icon = "🎉", Order = 0 },
             new HomeCardInfo { CardId = "news", Title = "查看最新的 Minecraft 新闻", Description = "了解游戏动态", Icon = "📰", CommandId = "url:https://zh.minecraft.wiki", Order = 1 },
             new HomeCardInfo { CardId = "multiplayer", Title = "多人联机", Description = "加入服务器与好友一起游戏", Icon = "🌐", CommandId = "navigate:multiplayer", Order = 2 },
             new HomeCardInfo { CardId = "mods", Title = "资源下载", Description = "下载Mod、材质包等资源", Icon = "📦", CommandId = "navigate:resources", Order = 3 }
@@ -225,7 +245,7 @@ public partial class HomeViewModel : ViewModelBase
             card.Order = cardConfig?.Order ?? defaultCards.IndexOf(card);
         }
 
-        foreach (var card in defaultCards.Where(c => c.IsEnabled).OrderBy(c => c.Order))
+        foreach (var card in defaultCards.OrderBy(c => c.Order))
         {
             HomeCards.Add(card);
         }
@@ -234,6 +254,23 @@ public partial class HomeViewModel : ViewModelBase
 
         // 注意：PluginContext.OnHomeCardRegistered 和 OnHomeCardUnregistered
         // 现在在 MainWindowViewModel 中设置，并通过事件分发到各个ViewModel
+    }
+
+    private void SubscribeToWelcomeCardChanges()
+    {
+        if (WelcomeCard != null)
+        {
+            WelcomeCard.PropertyChanged -= OnWelcomeCardPropertyChanged;
+            WelcomeCard.PropertyChanged += OnWelcomeCardPropertyChanged;
+        }
+    }
+
+    private void OnWelcomeCardPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(HomeCardInfo.IsEnabled))
+        {
+            OnPropertyChanged(nameof(IsWelcomeCardEnabled));
+        }
     }
 
     public void OnPluginCardRegistered(string cardId, string title, string description, string? icon, string? commandId, object? payload)
