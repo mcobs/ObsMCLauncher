@@ -425,16 +425,21 @@ public partial class PluginsViewModel : ViewModelBase
         try
         {
             var pluginsDir = System.IO.Path.Combine(System.AppContext.BaseDirectory, "OMCL", "plugins");
+            
+            var notificationId = _notificationService.Show("下载中", $"正在下载 {plugin.Name}... 0%", NotificationType.Progress);
+
             var progress = new Progress<double>(p =>
             {
-                _notificationService.Show("下载中", $"正在下载 {plugin.Name}... {(int)p}%", NotificationType.Progress);
+                _notificationService.Update(notificationId, $"正在下载 {plugin.Name}... {(int)p}%", p);
             });
 
             var success = await PluginMarketService.DownloadAndInstallPluginAsync(plugin, pluginsDir, progress);
 
+            _notificationService.Remove(notificationId);
+
             if (success)
             {
-                _notificationService.Show("安装成功", $"插件 {plugin.Name} 已安装，重启启动器生效", NotificationType.Success);
+                _notificationService.ShowCountdown("安装成功", $"插件 {plugin.Name} 已安装，重启启动器生效", 3);
                 _pluginLoader.LoadAllPlugins();
                 await RefreshInstalledAsync();
                 CurrentTab = PluginSubTab.Installed;
@@ -468,8 +473,9 @@ public partial class PluginListItemViewModel : ObservableObject
     public bool HasError { get; }
     public bool IsMarket => Source == PluginItemSource.Market;
     public bool IsInstalled => Source == PluginItemSource.Installed;
+    public string? IconUrl { get; }
 
-    private PluginListItemViewModel(PluginItemSource source, string title, string meta, bool hasError, LoadedPlugin? installed, MarketPlugin? marketPlugin)
+    private PluginListItemViewModel(PluginItemSource source, string title, string meta, bool hasError, LoadedPlugin? installed, MarketPlugin? marketPlugin, string? iconUrl = null)
     {
         Source = source;
         Title = title;
@@ -477,10 +483,11 @@ public partial class PluginListItemViewModel : ObservableObject
         HasError = hasError;
         Installed = installed;
         MarketPlugin = marketPlugin;
+        IconUrl = iconUrl;
     }
 
     public static PluginListItemViewModel FromInstalled(LoadedPlugin p)
-        => new(PluginItemSource.Installed, p.Name, $"{p.Version} | {p.Author}", !string.IsNullOrEmpty(p.ErrorOutput), p, null);
+        => new(PluginItemSource.Installed, p.Name, $"{p.Version} | {p.Author}", !string.IsNullOrEmpty(p.ErrorOutput), p, null, p.IconPath);
 
     public static PluginListItemViewModel FromMarket(MarketPlugin p)
     {
@@ -488,7 +495,7 @@ public partial class PluginListItemViewModel : ObservableObject
         var meta = string.IsNullOrEmpty(platforms)
             ? $"{p.Version} | {p.Author}"
             : $"{p.Version} | {p.Author} | {platforms}";
-        return new PluginListItemViewModel(PluginItemSource.Market, p.Name, meta, false, null, p);
+        return new PluginListItemViewModel(PluginItemSource.Market, p.Name, meta, false, null, p, p.Icon);
     }
 
     public PluginDetailViewModel ToDetail(PluginLoader? pluginLoader)
