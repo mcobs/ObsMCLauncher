@@ -73,6 +73,9 @@ jobs:
       shell: pwsh
       run: |
         Compress-Archive -Path ./publish/${{ matrix.rid }}/* -DestinationPath ./ObsMCLauncher-${{ steps.version.outputs.version }}-${{ matrix.rid }}.zip
+        $zipFile = Get-Item ./ObsMCLauncher-${{ steps.version.outputs.version }}-${{ matrix.rid }}.zip
+        $fileSizeMB = [Math]::Round($zipFile.Length / 1MB, 2)
+        Write-Host "创建 ZIP 文件: $($zipFile.Name), 大小: $fileSizeMB MB"
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
@@ -113,37 +116,98 @@ jobs:
       with:
         path: ./artifacts
 
+    - name: List artifacts
+      shell: pwsh
+      run: |
+        Write-Host "Artifacts 目录内容:"
+        Get-ChildItem ./artifacts -Recurse | Format-Table FullName, Length
+
     - name: Prepare release files
       shell: pwsh
       run: |
         $version = "${{ steps.version.outputs.version }}"
         New-Item -ItemType Directory -Force -Path ./release
-        Get-ChildItem ./artifacts -Recurse -Filter "*.zip" | ForEach-Object {
+        
+        $zipFiles = Get-ChildItem ./artifacts -Recurse -Filter "*.zip"
+        Write-Host "找到 $($zipFiles.Count) 个 ZIP 文件"
+        
+        if ($zipFiles.Count -eq 0) {
+          Write-Error "错误: 没有找到 ZIP 文件！"
+          exit 1
+        }
+        
+        $zipFiles | ForEach-Object {
+          Write-Host "复制文件: $($_.FullName) -> ./release/"
           Copy-Item $_.FullName ./release/
         }
-        Write-Host "Release files:"
+        
+        Write-Host "Release 目录内容:"
         Get-ChildItem ./release | Format-Table Name, Length
 
     - name: Create Release
-      uses: softprops/action-gh-release@v2
+      uses: actions/github-script@v6
       with:
-        tag_name: ${{ steps.version.outputs.version }}
-        name: ObsMCLauncher ${{ steps.version.outputs.version }}
-        draft: false
-        prerelease: ${{ steps.version.outputs.is_prerelease == 'true' }}
-        generate_release_notes: true
-        body: |
-          ## 📥 下载
+        script: |
+          const version = '${{ steps.version.outputs.version }}';
+          const isPrerelease = ${{ steps.version.outputs.is_prerelease == 'true' }};
           
-          | 平台 | 架构 | 文件 |
-          |:----:|:----:|:----:|
-          | Windows | x86 (32位) | [ObsMCLauncher-${{ steps.version.outputs.version }}-win-x86.zip](https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.version }}/ObsMCLauncher-${{ steps.version.outputs.version }}-win-x86.zip) |
-          | Windows | x64 (64位) | [ObsMCLauncher-${{ steps.version.outputs.version }}-win-x64.zip](https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.version }}/ObsMCLauncher-${{ steps.version.outputs.version }}-win-x64.zip) |
-          | Windows | ARM64 | [ObsMCLauncher-${{ steps.version.outputs.version }}-win-arm64.zip](https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.version }}/ObsMCLauncher-${{ steps.version.outputs.version }}-win-arm64.zip) |
+          // 准备发布体
+          let body = `## 📥 下载\n\n`;
+          body += `| 平台 | 架构 | 文件 |\n`;
+          body += `|:----:|:----:|:----:|\n`;
+          body += `| Windows | x86 (32位) | [ObsMCLauncher-${version}-win-x86.zip](https://github.com/${{ github.repository }}/releases/download/${version}/ObsMCLauncher-${version}-win-x86.zip) |\n`;
+          body += `| Windows | x64 (64位) | [ObsMCLauncher-${version}-win-x64.zip](https://github.com/${{ github.repository }}/releases/download/${version}/ObsMCLauncher-${version}-win-x64.zip) |\n`;
+          body += `| Windows | ARM64 | [ObsMCLauncher-${version}-win-arm64.zip](https://github.com/${{ github.repository }}/releases/download/${version}/ObsMCLauncher-${version}-win-arm64.zip) |\n\n`;
           
-          ${{ steps.version.outputs.is_prerelease == 'true' && '---\n\n## ⚠️ 预发布版本警告\n\n**此版本为预发布版本，可能存在以下问题：**\n- 🐛 可能包含未发现的 Bug\n- ⚡ 功能可能不稳定\n- 🔄 部分功能可能会在正式版中更改\n\n**不建议在生产环境或日常使用中使用此版本。**\n\n如果您发现问题，请在 [Issues](https://github.com/${{ github.repository }}/issues) 中反馈。\n' || '---' }}
+          if (isPrerelease) {
+            body += `---\n\n## ⚠️ 预发布版本警告\n\n`;
+            body += `**此版本为预发布版本，可能存在以下问题：**\n`;
+            body += `- 🐛 可能包含未发现的 Bug\n`;
+            body += `- ⚡ 功能可能不稳定\n`;
+            body += `- 🔄 部分功能可能会在正式版中更改\n\n`;
+            body += `**不建议在生产环境或日常使用中使用此版本。**\n\n`;
+            body += `如果您发现问题，请在 [Issues](https://github.com/${{ github.repository }}/issues) 中反馈。\n`;
+          } else {
+            body += `---\n`;
+          }
           
-          ## 📋 更新内容
-        files: ./release/*.zip
+          body += `\n## 📋 更新内容\n`;
+          
+          // 创建发布
+          const release = await github.rest.repos.createRelease({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            tag_name: version,
+            name: `ObsMCLauncher ${version}`,
+            body: body,
+            draft: false,
+            prerelease: isPrerelease
+          });
+          
+          console.log('创建发布成功:', release.data.html_url);
+          
+          // 上传文件
+          const fs = require('fs');
+          const path = require('path');
+          const releaseFiles = fs.readdirSync('./release');
+          
+          for (const file of releaseFiles) {
+            if (file.endsWith('.zip')) {
+              const filePath = path.join('./release', file);
+              console.log(`上传文件: ${file}`);
+              
+              await github.rest.repos.uploadReleaseAsset({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                release_id: release.data.id,
+                name: file,
+                data: fs.readFileSync(filePath)
+              });
+              
+              console.log(`文件 ${file} 上传成功`);
+            }
+          }
+          
+          console.log('所有文件上传完成');
       env:
         GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
