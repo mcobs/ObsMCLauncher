@@ -62,6 +62,19 @@
             <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundAltHighBrush}" />
             <Setter Property="Padding" Value="18" />
             <Setter Property="Width" Value="520" />
+            <Setter Property="RenderTransform" Value="scale(0.9)" />
+            <Setter Property="Opacity" Value="0" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.25" Easing="CircularEaseOut" />
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.25" Easing="CircularEaseOut" />
+                </Transitions>
+            </Setter>
+        </Style>
+
+        <Style Selector="Border.dialog-card:visible">
+            <Setter Property="RenderTransform" Value="scale(1)" />
+            <Setter Property="Opacity" Value="1" />
         </Style>
 
         <Style Selector="Border.authurl-card">
@@ -71,6 +84,51 @@
             <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundAltHighBrush}" />
             <Setter Property="Padding" Value="18" />
             <Setter Property="Width" Value="520" />
+            <Setter Property="RenderTransform" Value="scale(0.9)" />
+            <Setter Property="Opacity" Value="0" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.25" Easing="CircularEaseOut" />
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.25" Easing="CircularEaseOut" />
+                </Transitions>
+            </Setter>
+        </Style>
+
+        <Style Selector="Border.authurl-card:visible">
+            <Setter Property="RenderTransform" Value="scale(1)" />
+            <Setter Property="Opacity" Value="1" />
+        </Style>
+
+        <Style Selector="Border.update-dialog">
+            <Setter Property="RenderTransform" Value="scale(0.9)" />
+            <Setter Property="Opacity" Value="0" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.25" Easing="CircularEaseOut" />
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.25" Easing="CircularEaseOut" />
+                </Transitions>
+            </Setter>
+        </Style>
+
+        <Style Selector="Border.update-dialog:visible">
+            <Setter Property="RenderTransform" Value="scale(1)" />
+            <Setter Property="Opacity" Value="1" />
+        </Style>
+
+        <Style Selector="Border.download-panel">
+            <Setter Property="RenderTransform" Value="translate(0, 20px)" />
+            <Setter Property="Opacity" Value="0" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.25" Easing="CircularEaseOut" />
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.25" Easing="CircularEaseOut" />
+                </Transitions>
+            </Setter>
+        </Style>
+
+        <Style Selector="Border.download-panel:visible">
+            <Setter Property="RenderTransform" Value="translate(0, 0)" />
+            <Setter Property="Opacity" Value="1" />
         </Style>
     </Window.Styles>
 
@@ -185,7 +243,13 @@
         <Border Grid.Row="0" Grid.Column="0" Grid.RowSpan="2" Grid.ColumnSpan="2"
                 Background="#80000000"
                 IsVisible="{Binding Dialogs.IsAnyModalOpen}"
-                IsHitTestVisible="{Binding Dialogs.IsAnyModalOpen}" />
+                IsHitTestVisible="{Binding Dialogs.IsAnyModalOpen}">
+            <Border.Transitions>
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.2" Easing="CircularEaseOut" />
+                </Transitions>
+            </Border.Transitions>
+        </Border>
 
         <!-- 通用对话框 -->
         <Border Grid.Row="0" Grid.Column="0" Grid.RowSpan="2" Grid.ColumnSpan="2"
@@ -194,7 +258,15 @@
                 IsVisible="{Binding Dialogs.IsOpen}"
                 ZIndex="100"
                 Classes="dialog-card"
+                Opacity="{Binding Dialogs.Current.AnimationOpacity}"
+                RenderTransformOrigin="0.5,0.5"
                 x:CompileBindings="False">
+            <Border.RenderTransform>
+                <TransformGroup>
+                    <ScaleTransform ScaleX="{Binding Dialogs.Current.AnimationScale}" ScaleY="{Binding Dialogs.Current.AnimationScale}" />
+                    <TranslateTransform Y="{Binding Dialogs.Current.AnimationOffsetY}" />
+                </TransformGroup>
+            </Border.RenderTransform>
             <Grid RowDefinitions="Auto,Auto,Auto,Auto" ColumnDefinitions="*,Auto" >
                 <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding Dialogs.Current.Title, FallbackValue=''}" FontSize="18" FontWeight="Bold" />
                 <Button Grid.Row="0" Grid.Column="1"
@@ -312,7 +384,16 @@
                 MaxWidth="600"
                 MaxHeight="700"
                 Padding="24"
-                x:CompileBindings="False">
+                Opacity="{Binding Dialogs.UpdateDialogCurrent.AnimationOpacity}"
+                RenderTransformOrigin="0.5,0.5"
+                x:CompileBindings="False"
+                Classes="update-dialog">
+            <Border.RenderTransform>
+                <TransformGroup>
+                    <ScaleTransform ScaleX="{Binding Dialogs.UpdateDialogCurrent.AnimationScale}" ScaleY="{Binding Dialogs.UpdateDialogCurrent.AnimationScale}" />
+                    <TranslateTransform Y="{Binding Dialogs.UpdateDialogCurrent.AnimationOffsetY}" />
+                </TransformGroup>
+            </Border.RenderTransform>
             <Grid RowDefinitions="Auto,*,Auto">
                 <TextBlock Grid.Row="0" Text="{Binding Dialogs.UpdateDialogCurrent.Title, FallbackValue=''}" FontSize="22" FontWeight="Bold" Margin="0,0,0,20" />
 
@@ -384,7 +465,8 @@
                 HorizontalAlignment="Right"
                 VerticalAlignment="Bottom"
                 Margin="0,0,100,30"
-                IsVisible="{Binding DownloadManager.IsPanelVisible}">
+                IsVisible="{Binding DownloadManager.IsPanelVisible}"
+                Classes="download-panel">
 
             <Grid RowDefinitions="Auto,*,Auto">
                 <Border CornerRadius="16,16,0,0"
@@ -477,7 +559,16 @@
 
             <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="notif:NotificationItemViewModel">
-                    <Border Classes="notification-card" IsHitTestVisible="True">
+                    <Border Classes="notification-card" 
+                            IsHitTestVisible="True"
+                            Opacity="{Binding AnimationOpacity}"
+                            RenderTransformOrigin="0.5,0">
+                        <Border.RenderTransform>
+                            <TransformGroup>
+                                <ScaleTransform ScaleX="{Binding AnimationScale}" ScaleY="{Binding AnimationScale}" />
+                                <TranslateTransform Y="{Binding AnimationOffsetY}" />
+                            </TransformGroup>
+                        </Border.RenderTransform>
                         <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto">
                             <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding Title}" FontWeight="SemiBold" />
                             <Button Grid.Row="0" Grid.Column="1"

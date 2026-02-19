@@ -47,6 +47,11 @@ public partial class DialogService : ObservableObject
         OnPropertyChanged(nameof(IsOpen));
         OnPropertyChanged(nameof(IsAnyModalOpen));
 
+        Avalonia.Threading.DispatcherTimer.RunOnce(() =>
+        {
+            req.StartEnterAnimation();
+        }, TimeSpan.FromMilliseconds(30));
+
         return req.Completion.Task.ContinueWith(t => t.Result.Result, TaskScheduler.Default);
     }
 
@@ -75,6 +80,11 @@ public partial class DialogService : ObservableObject
         Current = req;
         OnPropertyChanged(nameof(IsOpen));
         OnPropertyChanged(nameof(IsAnyModalOpen));
+
+        Avalonia.Threading.DispatcherTimer.RunOnce(() =>
+        {
+            req.StartEnterAnimation();
+        }, TimeSpan.FromMilliseconds(30));
 
         return req.Completion.Task;
     }
@@ -133,16 +143,23 @@ public partial class DialogService : ObservableObject
         OnPropertyChanged(nameof(IsUpdateDialogOpen));
         OnPropertyChanged(nameof(IsAnyModalOpen));
 
+        Avalonia.Threading.DispatcherTimer.RunOnce(() =>
+        {
+            req.StartEnterAnimation();
+        }, TimeSpan.FromMilliseconds(30));
+
         return req.Completion.Task;
     }
 
     [RelayCommand]
-    private void Choose(DialogResult result)
+    private async void Choose(DialogResult result)
     {
         if (Current == null)
             return;
 
         var req = Current;
+        req.StartExitAnimation();
+        await Task.Delay(200);
         Current = null;
         OnPropertyChanged(nameof(IsOpen));
         OnPropertyChanged(nameof(IsAnyModalOpen));
@@ -190,12 +207,14 @@ public partial class DialogService : ObservableObject
     }
 
     [RelayCommand]
-    private void CloseUpdateDialog(bool confirmed)
+    private async void CloseUpdateDialog(bool confirmed)
     {
         if (UpdateDialogCurrent == null)
             return;
 
         var req = UpdateDialogCurrent;
+        req.StartExitAnimation();
+        await Task.Delay(200);
         UpdateDialogCurrent = null;
         OnPropertyChanged(nameof(IsUpdateDialogOpen));
         OnPropertyChanged(nameof(IsAnyModalOpen));

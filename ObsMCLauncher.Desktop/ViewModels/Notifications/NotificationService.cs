@@ -40,13 +40,17 @@ public partial class NotificationService : ObservableObject, IDisposable
             Cts = cts
         };
 
-        // 设置关闭事件处理器
         item.CloseRequested += (id) => Remove(id);
 
         Items.Insert(0, item);
 
         while (Items.Count > MaxNotifications)
             Items.RemoveAt(Items.Count - 1);
+
+        Avalonia.Threading.DispatcherTimer.RunOnce(() =>
+        {
+            item.StartEnterAnimation();
+        }, TimeSpan.FromMilliseconds(50));
 
         if (durationSeconds.HasValue && type != NotificationType.Progress && type != NotificationType.Countdown)
         {
@@ -76,13 +80,17 @@ public partial class NotificationService : ObservableObject, IDisposable
             OnCountdownComplete = onComplete
         };
 
-        // 设置关闭事件处理器
         item.CloseRequested += (id) => Remove(id);
 
         Items.Insert(0, item);
 
         while (Items.Count > MaxNotifications)
             Items.RemoveAt(Items.Count - 1);
+
+        Avalonia.Threading.DispatcherTimer.RunOnce(() =>
+        {
+            item.StartEnterAnimation();
+        }, TimeSpan.FromMilliseconds(50));
 
         var capturedId = item.Id;
         var interval = TimeSpan.FromMilliseconds(100);
@@ -156,7 +164,7 @@ public partial class NotificationService : ObservableObject, IDisposable
         }
     }
 
-    public void Remove(string id)
+    public async void Remove(string id)
     {
         var item = Items.FirstOrDefault(x => x.Id == id);
         if (item != null)
@@ -174,12 +182,13 @@ public partial class NotificationService : ObservableObject, IDisposable
                 DebugLogger.Error("Notification", $"终止关联任务失败: {ex.Message}");
             }
 
-            // 清理倒计时计时器
             if (_countdownTimers.TryRemove(id, out var timer))
             {
                 timer?.Dispose();
             }
 
+            item.StartExitAnimation();
+            await System.Threading.Tasks.Task.Delay(350);
             Items.Remove(item);
         }
     }
