@@ -153,6 +153,13 @@ public partial class AccountManagementViewModel : ViewModelBase
                 IsAddOfflinePanelVisible = false;
                 Load();
                 Status = "已添加离线账号";
+                
+                // 通知主页刷新账号列表
+                if (NavigationStore.MainWindow?.NavItems.FirstOrDefault(x => x.Title == "主页")?.Page is HomeViewModel homeVm)
+                {
+                    homeVm.RefreshAccounts();
+                }
+                
                 _ = RefreshAccountAsync(acc); // 添加后自动刷新头像
             }
             catch (Exception ex)
@@ -177,6 +184,12 @@ public partial class AccountManagementViewModel : ViewModelBase
                 AccountService.Instance.DeleteAccount(acc.Id);
                 Load();
                 Status = "已删除账号";
+                
+                // 通知主页刷新账号列表
+                if (NavigationStore.MainWindow?.NavItems.FirstOrDefault(x => x.Title == "主页")?.Page is HomeViewModel homeVm)
+                {
+                    homeVm.RefreshAccounts();
+                }
             }
             catch (Exception ex)
             {
@@ -193,6 +206,12 @@ public partial class AccountManagementViewModel : ViewModelBase
                 AccountService.Instance.SetDefaultAccount(acc.Id);
                 Load();
                 Status = "已设置为默认账号";
+                
+                // 通知主页刷新账号列表
+                if (NavigationStore.MainWindow?.NavItems.FirstOrDefault(x => x.Title == "主页")?.Page is HomeViewModel homeVm)
+                {
+                    homeVm.RefreshAccounts();
+                }
             }
             catch (Exception ex)
             {
@@ -417,6 +436,12 @@ public partial class AccountManagementViewModel : ViewModelBase
 
             AccountService.Instance.AddOrUpdateMicrosoftAccount(account);
             Load();
+
+            // 通知主页刷新账号列表
+            if (NavigationStore.MainWindow?.NavItems.FirstOrDefault(x => x.Title == "主页")?.Page is HomeViewModel homeVm)
+            {
+                homeVm.RefreshAccounts();
+            }
 
             // 确保关闭授权对话框
             try
