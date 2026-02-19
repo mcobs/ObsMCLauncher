@@ -138,19 +138,50 @@ public static class UpdateService
             newVersion = newVersion.TrimStart('v', 'V');
             currentVersion = currentVersion.TrimStart('v', 'V');
 
-            var newParts = newVersion.Split('.');
-            var currentParts = currentVersion.Split('.');
+            var newParts = newVersion.Split('.', 4);
+            var currentParts = currentVersion.Split('.', 4);
 
             int maxLength = Math.Max(newParts.Length, currentParts.Length);
 
             for (int i = 0; i < maxLength; i++)
             {
-                int newPart = i < newParts.Length && int.TryParse(newParts[i], out int n) ? n : 0;
-                int currentPart = i < currentParts.Length && int.TryParse(currentParts[i], out int c) ? c : 0;
+                var newPartStr = i < newParts.Length ? newParts[i] : "0";
+                var currentPartStr = i < currentParts.Length ? currentParts[i] : "0";
+
+                var newPart = ParseVersionPart(newPartStr);
+                var currentPart = ParseVersionPart(currentPartStr);
 
                 if (newPart > currentPart)
                     return true;
                 if (newPart < currentPart)
+                    return false;
+            }
+
+            var newPreRelease = GetPreReleaseInfo(newVersion);
+            var currentPreRelease = GetPreReleaseInfo(currentVersion);
+
+            if (newPreRelease == null && currentPreRelease != null)
+                return true;
+            if (newPreRelease != null && currentPreRelease == null)
+                return false;
+
+            if (newPreRelease != null && currentPreRelease != null)
+            {
+                if (newPreRelease.Value.Type != currentPreRelease.Value.Type)
+                {
+                    var typeOrder = new[] { "alpha", "beta", "rc", "preview" };
+                    var newTypeIndex = Array.IndexOf(typeOrder, newPreRelease.Value.Type);
+                    var currentTypeIndex = Array.IndexOf(typeOrder, currentPreRelease.Value.Type);
+                    
+                    if (newTypeIndex > currentTypeIndex)
+                        return true;
+                    if (newTypeIndex < currentTypeIndex)
+                        return false;
+                }
+
+                if (newPreRelease.Value.Number > currentPreRelease.Value.Number)
+                    return true;
+                if (newPreRelease.Value.Number < currentPreRelease.Value.Number)
                     return false;
             }
 
@@ -160,6 +191,40 @@ public static class UpdateService
         {
             return false;
         }
+    }
+
+    private static int ParseVersionPart(string part)
+    {
+        var dashIndex = part.IndexOf('-');
+        if (dashIndex >= 0)
+        {
+            part = part.Substring(0, dashIndex);
+        }
+        return int.TryParse(part, out int result) ? result : 0;
+    }
+
+    private static (string Type, int Number)? GetPreReleaseInfo(string version)
+    {
+        var dashIndex = version.IndexOf('-');
+        if (dashIndex < 0)
+            return null;
+        
+        var preRelease = version.Substring(dashIndex + 1).ToLowerInvariant();
+        
+        var match = System.Text.RegularExpressions.Regex.Match(preRelease, @"(alpha|beta|rc|preview|pre|test)[.\-]?(\d+)?");
+        if (match.Success)
+        {
+            var type = match.Groups[1].Value;
+            if (type == "pre") type = "preview";
+            if (type == "test") type = "alpha";
+            
+            var numberStr = match.Groups[2].Value;
+            var number = int.TryParse(numberStr, out int n) ? n : 0;
+            
+            return (type, number);
+        }
+        
+        return (preRelease, 0);
     }
 
     /// <summary>
