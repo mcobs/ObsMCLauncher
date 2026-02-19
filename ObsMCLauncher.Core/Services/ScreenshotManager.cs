@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using ObsMCLauncher.Core.Models;
+using ObsMCLauncher.Core.Utils;
 
 namespace ObsMCLauncher.Core.Services;
 
@@ -98,13 +99,13 @@ public class ScreenshotManager
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"[ScreenshotManager] 读取截图文件失败: {file}, 错误: {ex.Message}");
+                    DebugLogger.Warn("Screenshot", $"读取截图文件失败: {file}, 错误: {ex.Message}");
                 }
             }
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[ScreenshotManager] 扫描截图目录失败: {screenshotsDir}, 错误: {ex.Message}");
+            DebugLogger.Error("Screenshot", $"扫描截图目录失败: {screenshotsDir}, 错误: {ex.Message}");
         }
 
         return screenshots;
@@ -191,7 +192,7 @@ public class ScreenshotManager
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[ScreenshotManager] 删除截图失败: {ex.Message}");
+            DebugLogger.Error("Screenshot", $"删除截图失败: {ex.Message}");
             return false;
         }
     }
@@ -223,7 +224,7 @@ public class ScreenshotManager
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[ScreenshotManager] 导出截图失败: {ex.Message}");
+            DebugLogger.Error("Screenshot", $"导出截图失败: {ex.Message}");
             return null;
         }
     }

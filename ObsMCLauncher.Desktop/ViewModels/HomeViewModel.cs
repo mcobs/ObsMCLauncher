@@ -357,7 +357,7 @@ public partial class HomeViewModel : ViewModelBase
             }
             config.Save();
 
-            System.Diagnostics.Debug.WriteLine($"[HomeViewModel] 已移除插件 {pluginId} 的所有卡片，共 {cardsToRemove.Count} 个");
+            DebugLogger.Info("Home", $"已移除插件 {pluginId} 的所有卡片，共 {cardsToRemove.Count} 个");
         });
     }
 
@@ -372,7 +372,7 @@ public partial class HomeViewModel : ViewModelBase
             var main = NavigationStore.MainWindow;
             if (main == null)
             {
-                System.Diagnostics.Debug.WriteLine("NavigationStore.MainWindow is null");
+                DebugLogger.Warn("Home", "NavigationStore.MainWindow is null");
                 return;
             }
 
@@ -396,12 +396,12 @@ public partial class HomeViewModel : ViewModelBase
                 }
                 else
                 {
-                    System.Diagnostics.Debug.WriteLine($"NavItem with title '{navTitle}' not found");
+                    DebugLogger.Warn("Home", $"NavItem with title '{navTitle}' not found");
                 }
             }
             else
             {
-                System.Diagnostics.Debug.WriteLine($"Page '{page}' not in mapping");
+                DebugLogger.Warn("Home", $"Page '{page}' not in mapping");
             }
         }
         else if (card.CommandId.StartsWith("url:"))

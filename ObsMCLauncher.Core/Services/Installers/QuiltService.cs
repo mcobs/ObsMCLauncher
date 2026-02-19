@@ -10,6 +10,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using ObsMCLauncher.Core.Models;
 using ObsMCLauncher.Core.Services.Minecraft;
+using ObsMCLauncher.Core.Utils;
 
 namespace ObsMCLauncher.Core.Services.Installers
 {
@@ -78,7 +79,7 @@ namespace ObsMCLauncher.Core.Services.Installers
             try
             {
                 var config = LauncherConfig.Load();
-                Debug.WriteLine($"[QuiltService] 获取Quilt支持的MC版本列表... (源: {config.DownloadSource})");
+                DebugLogger.Info("Quilt", $"获取Quilt支持的MC版本列表... (源: {config.DownloadSource})");
 
                 // 优先使用BMCLAPI，如果失败则使用官方源
                 var urlsToTry = new List<string>();
@@ -99,7 +100,7 @@ namespace ObsMCLauncher.Core.Services.Installers
                 {
                     try
                     {
-                        Debug.WriteLine($"[QuiltService] 尝试从 {url} 获取版本列表");
+                        DebugLogger.Info("Quilt", $"尝试从 {url} 获取版本列表");
                         var response = await _httpClient.GetAsync(url);
                         response.EnsureSuccessStatusCode();
 
@@ -109,17 +110,17 @@ namespace ObsMCLauncher.Core.Services.Installers
                         if (versions != null)
                         {
                             var versionList = versions.Select(v => v.Version).ToList();
-                            Debug.WriteLine($"[QuiltService] ✅ 获取到 {versionList.Count} 个支持的MC版本");
+                            DebugLogger.Info("Quilt", $"获取到 {versionList.Count} 个支持的MC版本");
                             return versionList;
                         }
                         else
                         {
-                            Debug.WriteLine($"[QuiltService] ❌ 反序列化返回null");
+                            DebugLogger.Warn("QuiltService", "反序列化返回null");
                         }
                     }
                     catch (Exception ex)
                     {
-                        Debug.WriteLine($"[QuiltService] ❌ 从 {url} 获取失败: {ex.Message}");
+                        DebugLogger.Warn("Quilt", $"从 {url} 获取失败: {ex.Message}");
                         lastException = ex;
                     }
                 }
@@ -127,14 +128,14 @@ namespace ObsMCLauncher.Core.Services.Installers
                 // 所有URL都失败了
                 if (lastException != null)
                 {
-                    Debug.WriteLine($"[QuiltService] ⚠️ 所有下载源都失败了，最后的错误: {lastException.Message}");
+                    DebugLogger.Warn("Quilt", $"所有下载源都失败了，最后的错误: {lastException.Message}");
                 }
 
                 return new List<string>();
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[QuiltService] 获取Quilt支持版本失败: {ex.Message}");
+                DebugLogger.Error("QuiltService", $"获取Quilt支持版本失败: {ex.Message}");
                 return new List<string>();
             }
         }
@@ -179,7 +180,7 @@ namespace ObsMCLauncher.Core.Services.Installers
             try
             {
                 var config = LauncherConfig.Load();
-                Debug.WriteLine($"[QuiltService] 获取 MC {mcVersion} 的Quilt版本列表... (源: {config.DownloadSource})");
+                DebugLogger.Info("Quilt", $"获取 MC {mcVersion} 的Quilt版本列表... (源: {config.DownloadSource})");
 
                 // 优先使用BMCLAPI，如果失败则使用官方源
                 var urlsToTry = new List<string>();
@@ -200,7 +201,7 @@ namespace ObsMCLauncher.Core.Services.Installers
                 {
                     try
                     {
-                        Debug.WriteLine($"[QuiltService] 尝试从 {url} 获取Loader版本");
+                        DebugLogger.Info("Quilt", $"尝试从 {url} 获取Loader版本");
                         var response = await _httpClient.GetAsync(url);
                         response.EnsureSuccessStatusCode();
 
@@ -214,17 +215,17 @@ namespace ObsMCLauncher.Core.Services.Installers
                                 .OrderByDescending(f => ParseVersionNumber(f.Version))
                                 .ToList();
                             
-                            Debug.WriteLine($"[QuiltService] ✅ 获取到 {quiltVersions.Count} 个Quilt Loader版本");
+                            DebugLogger.Info("Quilt", $"获取到 {quiltVersions.Count} 个Quilt Loader版本");
                             return quiltVersions;
                         }
                         else
                         {
-                            Debug.WriteLine($"[QuiltService] ❌ 反序列化返回null");
+                            DebugLogger.Warn("QuiltService", "反序列化返回null");
                         }
                     }
                     catch (Exception ex)
                     {
-                        Debug.WriteLine($"[QuiltService] ❌ 从 {url} 获取失败: {ex.Message}");
+                        DebugLogger.Error("QuiltService", $"从 {url} 获取失败: {ex.Message}");
                         lastException = ex;
                     }
                 }
@@ -232,14 +233,14 @@ namespace ObsMCLauncher.Core.Services.Installers
                 // 所有URL都失败了
                 if (lastException != null)
                 {
-                    Debug.WriteLine($"[QuiltService] ⚠️ 所有下载源都失败了，最后的错误: {lastException.Message}");
+                    DebugLogger.Warn("QuiltService", $"所有下载源都失败了，最后的错误: {lastException.Message}");
                 }
 
                 return new List<QuiltVersion>();
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[QuiltService] 获取Quilt版本列表失败: {ex.Message}");
+                DebugLogger.Error("Quilt", $"获取Quilt版本列表失败: {ex.Message}");
                 return new List<QuiltVersion>();
             }
         }
@@ -285,8 +286,8 @@ namespace ObsMCLauncher.Core.Services.Installers
             try
             {
                 var config = LauncherConfig.Load();
-                Debug.WriteLine($"[QuiltService] 开始安装Quilt: MC {mcVersion}, Loader {loaderVersion}");
-                if (isModpackMode) Debug.WriteLine("[QuiltService] 正在以整合包精简模式安装...");
+                DebugLogger.Info("Quilt", $"开始安装Quilt: MC {mcVersion}, Loader {loaderVersion}");
+                if (isModpackMode) DebugLogger.Info("Quilt", "正在以整合包精简模式安装...");
 
                 progressCallback?.Invoke("正在获取Quilt配置文件...", 0, 0, 100);
 
@@ -311,18 +312,18 @@ namespace ObsMCLauncher.Core.Services.Installers
                 {
                     try
                     {
-                        Debug.WriteLine($"[QuiltService] 尝试获取Quilt配置: {profileUrl}");
+                        DebugLogger.Info("Quilt", $"尝试获取Quilt配置: {profileUrl}");
                         profileJson = await _httpClient.GetStringAsync(profileUrl, cancellationToken);
                         
                         if (!string.IsNullOrEmpty(profileJson))
                         {
-                            Debug.WriteLine($"[QuiltService] ✅ 成功获取Quilt配置");
+                            DebugLogger.Info("Quilt", "成功获取Quilt配置");
                             break;
                         }
                     }
                     catch (Exception ex)
                     {
-                        Debug.WriteLine($"[QuiltService] ❌ 获取配置失败: {ex.Message}");
+                        DebugLogger.Error("QuiltService", $"获取配置失败: {ex.Message}");
                         lastException = ex;
                     }
                 }
@@ -344,7 +345,7 @@ namespace ObsMCLauncher.Core.Services.Installers
 
                 // 3. 下载原版文件到临时目录（所有操作都在.temp中）
                 progressCallback?.Invoke($"正在下载基础版本 {mcVersion}...", 0, 0, 100);
-                Debug.WriteLine($"[QuiltService] 开始下载基础MC版本到临时目录: {tempGameDir}");
+                DebugLogger.Info("QuiltService", $"开始下载基础MC版本到临时目录: {tempGameDir}");
 
                 // 下载基础MC版本到临时gameDirectory（版本文件到.temp/versions/，库文件到.temp/libraries/）
                 var downloadProgressReporter = new System.Progress<ObsMCLauncher.Core.Services.Minecraft.DownloadProgress>(p =>
@@ -376,7 +377,7 @@ namespace ObsMCLauncher.Core.Services.Installers
                     throw new Exception($"下载基础版本 {mcVersion} 失败");
                 }
 
-                Debug.WriteLine($"[QuiltService] 基础MC版本已下载到临时目录");
+                DebugLogger.Info("QuiltService", "基础MC版本已下载到临时目录");
 
                 // 将库文件从临时目录移动到真实的libraries目录（如果不存在）
                 if (Directory.Exists(tempLibrariesDir))
@@ -400,20 +401,20 @@ namespace ObsMCLauncher.Core.Services.Installers
                 if (File.Exists(tempVanillaJarPath))
                 {
                     File.Copy(tempVanillaJarPath, tempQuiltJarPath, true);
-                    Debug.WriteLine($"[QuiltService] ✅ 已复制原版JAR: {tempVanillaJarPath} -> {tempQuiltJarPath}");
+                    DebugLogger.Info("QuiltService", $"已复制原版JAR: {tempVanillaJarPath} -> {tempQuiltJarPath}");
                 }
                 else
                 {
-                    Debug.WriteLine($"[QuiltService] ⚠️ 原版JAR不存在: {tempVanillaJarPath}");
+                    DebugLogger.Warn("QuiltService", $"原版JAR不存在: {tempVanillaJarPath}");
                 }
                 if (File.Exists(tempVanillaJsonPath))
                 {
                     File.Copy(tempVanillaJsonPath, tempQuiltJsonPath, true);
-                    Debug.WriteLine($"[QuiltService] ✅ 已复制原版JSON: {tempVanillaJsonPath} -> {tempQuiltJsonPath}");
+                    DebugLogger.Info("QuiltService", $"已复制原版JSON: {tempVanillaJsonPath} -> {tempQuiltJsonPath}");
                 }
                 else
                 {
-                    Debug.WriteLine($"[QuiltService] ⚠️ 原版JSON不存在: {tempVanillaJsonPath}");
+                    DebugLogger.Warn("QuiltService", $"原版JSON不存在: {tempVanillaJsonPath}");
                 }
 
                 progressCallback?.Invoke("正在安装Quilt配置文件...", 50, 0, 100);
@@ -423,7 +424,7 @@ namespace ObsMCLauncher.Core.Services.Installers
                 if (File.Exists(tempVanillaJsonPath))
                 {
                     File.Copy(tempVanillaJsonPath, savedVanillaJsonPath, true);
-                    Debug.WriteLine($"[QuiltService] 已备份原版JSON到: {savedVanillaJsonPath}");
+                    DebugLogger.Info("QuiltService", $"已备份原版JSON到: {savedVanillaJsonPath}");
                 }
 
                 // 5. 修改Quilt profile JSON
@@ -432,7 +433,7 @@ namespace ObsMCLauncher.Core.Services.Installers
 
                 // 6. 保存Quilt版本JSON
                 await File.WriteAllTextAsync(tempQuiltJsonPath, modifiedProfile, cancellationToken);
-                Debug.WriteLine($"[QuiltService] Quilt配置文件已保存: {tempQuiltJsonPath}");
+                DebugLogger.Info("QuiltService", $"Quilt配置文件已保存: {tempQuiltJsonPath}");
 
                 // 7. 下载Quilt库文件（使用真实gameDirectory，因为libraries是共享的）
                 progressCallback?.Invoke("正在下载Quilt库文件...", 70, 0, 100);
@@ -446,7 +447,7 @@ namespace ObsMCLauncher.Core.Services.Installers
 
                 // 8. 原版文件保留在.temp中，不移动到标准位置（所有操作都在.temp中）
                 // 如果需要合并父版本信息，将从.temp读取原版JSON
-                Debug.WriteLine($"[QuiltService] ✅ 原版文件保留在临时目录: {tempVanillaDir}");
+                DebugLogger.Info("QuiltService", $"原版文件保留在临时目录: {tempVanillaDir}");
 
                 // 9. 将临时目录移动到最终位置
                 if (!isModpackMode)
@@ -462,7 +463,7 @@ namespace ObsMCLauncher.Core.Services.Installers
                 
                 // 移动临时目录到最终位置
                 Directory.Move(tempQuiltVersionPath, finalQuiltVersionPath);
-                Debug.WriteLine($"[QuiltService] ✅ 已移动Quilt版本到最终位置: {finalQuiltVersionPath}");
+                DebugLogger.Info("QuiltService", $"已移动Quilt版本到最终位置: {finalQuiltVersionPath}");
 
                 // 10. 清理临时目录
                 if (Directory.Exists(tempGameDir))
@@ -472,23 +473,23 @@ namespace ObsMCLauncher.Core.Services.Installers
                 }
                 else
                 {
-                    Debug.WriteLine($"[QuiltService] 整合包模式：已准备好文件在 {tempQuiltVersionPath}");
+                    DebugLogger.Info("QuiltService", $"整合包模式：已准备好文件在 {tempQuiltVersionPath}");
                 }
 
                 progressCallback?.Invoke("Quilt安装完成！", 100, 0, 100);
-                Debug.WriteLine($"[QuiltService] Quilt安装完成: {customVersionName}");
+                DebugLogger.Info("QuiltService", $"Quilt安装完成: {customVersionName}");
 
                 return true;
             }
             catch (OperationCanceledException)
             {
-                Debug.WriteLine($"[QuiltService] Quilt安装已取消");
+                DebugLogger.Info("QuiltService", "Quilt安装已取消");
                 throw;
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[QuiltService] Quilt安装失败: {ex.Message}");
-                Debug.WriteLine($"[QuiltService] 堆栈跟踪: {ex.StackTrace}");
+                DebugLogger.Error("QuiltService", $"Quilt安装失败: {ex.Message}");
+                DebugLogger.Error("QuiltService", $"堆栈跟踪: {ex.StackTrace}");
                 throw;
             }
         }
@@ -535,11 +536,11 @@ namespace ObsMCLauncher.Core.Services.Installers
                         movedCount++;
                     }
 
-                    Debug.WriteLine($"[QuiltService] ✅ 已移动 {movedCount} 个库文件到真实libraries目录");
+                    DebugLogger.Info("QuiltService", $"已移动 {movedCount} 个库文件到真实libraries目录");
                 }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine($"[QuiltService] ⚠️ 移动库文件失败: {ex.Message}");
+                    DebugLogger.Warn("QuiltService", $"移动库文件失败: {ex.Message}");
                 }
             });
         }
@@ -629,7 +630,7 @@ namespace ObsMCLauncher.Core.Services.Installers
                                     {
                                         writer.WritePropertyName("assetIndex");
                                         assetIndex.WriteTo(writer);
-                                        Debug.WriteLine($"[QuiltService] ✅ 已从原版JSON复制assetIndex");
+                                        DebugLogger.Info("QuiltService", "已从原版JSON复制assetIndex");
                                     }
                                 }
                             }
@@ -647,7 +648,7 @@ namespace ObsMCLauncher.Core.Services.Installers
                         }
                         catch (Exception ex)
                         {
-                            Debug.WriteLine($"[QuiltService] 获取时间信息失败: {ex.Message}");
+                            DebugLogger.Warn("QuiltService", $"获取时间信息失败: {ex.Message}");
                             writer.WriteString("releaseTime", DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss+00:00"));
                         }
                     }
@@ -659,7 +660,7 @@ namespace ObsMCLauncher.Core.Services.Installers
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[QuiltService] 修改Quilt profile失败: {ex.Message}");
+                DebugLogger.Error("QuiltService", $"修改Quilt profile失败: {ex.Message}");
                 throw;
             }
         }
@@ -681,7 +682,7 @@ namespace ObsMCLauncher.Core.Services.Installers
 
                 if (profile?.Libraries == null || profile.Libraries.Count == 0)
                 {
-                    Debug.WriteLine("[QuiltService] 没有需要下载的库文件");
+                    DebugLogger.Info("QuiltService", "没有需要下载的库文件");
                     return;
                 }
 
@@ -717,7 +718,7 @@ namespace ObsMCLauncher.Core.Services.Installers
 
                         if (string.IsNullOrEmpty(libPath) || string.IsNullOrEmpty(libUrl))
                         {
-                            Debug.WriteLine($"[QuiltService] 跳过无效库: {library.Name}");
+                            DebugLogger.Warn("QuiltService", $"跳过无效库: {library.Name}");
                             continue;
                         }
 
@@ -769,31 +770,31 @@ namespace ObsMCLauncher.Core.Services.Installers
                             }
                             catch (Exception ex)
                             {
-                                Debug.WriteLine($"[QuiltService] 从 {url} 下载失败: {ex.Message}");
+                                DebugLogger.Error("QuiltService", $"从 {url} 下载失败: {ex.Message}");
                             }
                         }
 
                         if (downloaded)
                         {
                             downloadedLibs++;
-                            Debug.WriteLine($"[QuiltService] 已下载库: {Path.GetFileName(localPath)} ({downloadedLibs}/{totalLibs})");
+                            DebugLogger.Info("QuiltService", $"已下载库: {Path.GetFileName(localPath)} ({downloadedLibs}/{totalLibs})");
                         }
                         else
                         {
-                            Debug.WriteLine($"[QuiltService] ⚠️ 所有源都无法下载: {library.Name}");
+                            DebugLogger.Warn("QuiltService", $"所有源都无法下载: {library.Name}");
                         }
                     }
                     catch (Exception ex)
                     {
-                        Debug.WriteLine($"[QuiltService] 下载库文件失败: {library.Name} - {ex.Message}");
+                        DebugLogger.Error("QuiltService", $"下载库文件失败: {library.Name} - {ex.Message}");
                     }
                 }
 
-                Debug.WriteLine($"[QuiltService] 库文件下载完成: {downloadedLibs}/{totalLibs}");
+                DebugLogger.Info("QuiltService", $"库文件下载完成: {downloadedLibs}/{totalLibs}");
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[QuiltService] 下载Quilt库文件失败: {ex.Message}");
+                DebugLogger.Error("QuiltService", $"下载Quilt库文件失败: {ex.Message}");
                 throw;
             }
         }

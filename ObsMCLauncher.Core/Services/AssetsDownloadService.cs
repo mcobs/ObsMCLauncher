@@ -8,6 +8,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using ObsMCLauncher.Core.Models;
+using ObsMCLauncher.Core.Utils;
 
 namespace ObsMCLauncher.Core.Services;
 
@@ -46,7 +47,7 @@ public class AssetsDownloadService
     {
         try
         {
-            Debug.WriteLine($"[Assets] ========== 开始检查Assets资源: {versionId} ==========");
+            DebugLogger.Info("Assets", $"========== 开始检查Assets资源: {versionId} ==========");
             onProgress?.Invoke(0, 100, "正在读取版本信息...", 0);
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -57,7 +58,7 @@ public class AssetsDownloadService
             // 递归查找 assetIndex (处理 inheritsFrom)
             while (!string.IsNullOrEmpty(currentVerId) && visitedVersions.Add(currentVerId))
             {
-                Debug.WriteLine($"[Assets] 正在尝试从版本 {currentVerId} 获取 AssetIndex...");
+                DebugLogger.Info("Assets", $"正在尝试从版本 {currentVerId} 获取 AssetIndex...");
                 var jsonPath = Path.Combine(gameDir, "versions", currentVerId, $"{currentVerId}.json");
                 
                 if (!File.Exists(jsonPath) && currentVerId != versionId)
@@ -66,13 +67,13 @@ public class AssetsDownloadService
                     if (File.Exists(fallbackPath))
                     {
                         jsonPath = fallbackPath;
-                        Debug.WriteLine($"[Assets] 在整合包目录中找到父版本 JSON: {currentVerId}.json");
+                        DebugLogger.Info("Assets", $"在整合包目录中找到父版本 JSON: {currentVerId}.json");
                     }
                 }
 
                 if (!File.Exists(jsonPath))
                 {
-                    Debug.WriteLine($"[Assets] 找不到 JSON: {jsonPath}");
+                    DebugLogger.Warn("Assets", $"找不到 JSON: {jsonPath}");
                     break;
                 }
 
@@ -82,13 +83,13 @@ public class AssetsDownloadService
                 if (versionData?.AssetIndex != null && !string.IsNullOrEmpty(versionData.AssetIndex.Id))
                 {
                     assetIndexInfo = versionData.AssetIndex;
-                    Debug.WriteLine($"[Assets] ✅ 在版本 {currentVerId} 中找到 AssetIndex: {assetIndexInfo.Id}");
+                    DebugLogger.Info("Assets", $"在版本 {currentVerId} 中找到 AssetIndex: {assetIndexInfo.Id}");
                     break;
                 }
 
                 if (!string.IsNullOrEmpty(versionData?.InheritsFrom))
                 {
-                    Debug.WriteLine($"[Assets] 版本 {currentVerId} 继承自 {versionData.InheritsFrom}，继续向上查找...");
+                    DebugLogger.Info("Assets", $"版本 {currentVerId} 继承自 {versionData.InheritsFrom}，继续向上查找...");
                     currentVerId = versionData.InheritsFrom;
                 }
                 else
@@ -99,7 +100,7 @@ public class AssetsDownloadService
 
             if (assetIndexInfo == null)
             {
-                Debug.WriteLine($"[Assets] ❌ 无法找到版本 {versionId} 的AssetIndex信息");
+                DebugLogger.Error("Assets", $"无法找到版本 {versionId} 的AssetIndex信息");
                 return new AssetsDownloadResult { Success = false };
             }
 
@@ -117,13 +118,13 @@ public class AssetsDownloadService
             if (!File.Exists(assetIndexPath))
             {
                 onProgress?.Invoke(5, 100, "正在下载资源索引文件...", 0);
-                Debug.WriteLine($"[Assets] 📥 正在下载 AssetIndex: {assetIndexUrl}");
+                DebugLogger.Info("Assets", $"正在下载 AssetIndex: {assetIndexUrl}");
 
                 var response = await _httpClient.GetAsync(assetIndexUrl, cancellationToken).ConfigureAwait(false);
                 response.EnsureSuccessStatusCode();
                 var indexContent = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
                 await File.WriteAllTextAsync(assetIndexPath, indexContent, cancellationToken).ConfigureAwait(false);
-                Debug.WriteLine($"[Assets] ✅ AssetIndex 下载成功");
+                DebugLogger.Info("Assets", "AssetIndex 下载成功");
             }
 
             var assetIndexJson = await File.ReadAllTextAsync(assetIndexPath, cancellationToken).ConfigureAwait(false);
@@ -131,7 +132,7 @@ public class AssetsDownloadService
 
             if (assetIndex?.Objects == null)
             {
-                Debug.WriteLine($"[Assets] ❌ AssetIndex 解析失败");
+                DebugLogger.Error("Assets", "AssetIndex 解析失败");
                 return new AssetsDownloadResult { Success = false };
             }
 
@@ -148,7 +149,7 @@ public class AssetsDownloadService
                 }
             }
 
-            Debug.WriteLine($"[Assets] 总数: {assetIndex.Objects.Count}, 缺失: {missingAssets.Count}");
+            DebugLogger.Info("Assets", $"总数: {assetIndex.Objects.Count}, 缺失: {missingAssets.Count}");
 
             if (missingAssets.Count == 0)
             {
@@ -172,12 +173,12 @@ public class AssetsDownloadService
             var lastReportTime = DateTime.MinValue;
             var lockObject = new object();
 
-            Debug.WriteLine($"[Assets] 🚀 准备启动 {maxThreads} 个工作线程进行并行下载...");
+            DebugLogger.Info("Assets", $"准备启动 {maxThreads} 个工作线程进行并行下载...");
             var assetQueue = new System.Collections.Concurrent.ConcurrentQueue<AssetObject>(missingAssets);
             
             var workers = Enumerable.Range(0, maxThreads).Select(async i =>
             {
-                Debug.WriteLine($"[Assets] 工作线程 #{i} 启动");
+                DebugLogger.Info("Assets", $"工作线程 #{i} 启动");
                 while (assetQueue.TryDequeue(out var asset))
                 {
                     if (cancellationToken.IsCancellationRequested) break;
@@ -229,7 +230,7 @@ public class AssetsDownloadService
                         {
                             failed++;
                             failedAssets.Add($"{asset.Name} ({lastExc?.Message})");
-                            Debug.WriteLine($"[Assets] ❌ 下载失败: {asset.Name} - {lastExc?.Message}");
+                            DebugLogger.Error("Assets", $"下载失败: {asset.Name} - {lastExc?.Message}");
                         }
 
                         var now = DateTime.Now;
@@ -245,7 +246,7 @@ public class AssetsDownloadService
                         }
                     }
                 }
-                Debug.WriteLine($"[Assets] 工作线程 #{i} 退出");
+                DebugLogger.Info("Assets", $"工作线程 #{i} 退出");
             }).ToList();
 
             await Task.WhenAll(workers).ConfigureAwait(false);
@@ -264,7 +265,7 @@ public class AssetsDownloadService
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"[Assets] ❌ 严重异常: {ex.Message}");
+            DebugLogger.Error("Assets", $"严重异常: {ex.Message}");
             return new AssetsDownloadResult { Success = false };
         }
     }

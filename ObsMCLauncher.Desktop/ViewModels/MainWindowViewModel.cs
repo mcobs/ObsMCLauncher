@@ -8,6 +8,7 @@ using CommunityToolkit.Mvvm.Input;
 using ObsMCLauncher.Core.Plugins;
 using ObsMCLauncher.Desktop.ViewModels.Dialogs;
 using ObsMCLauncher.Desktop.ViewModels.Notifications;
+using ObsMCLauncher.Core.Utils;
 
 namespace ObsMCLauncher.Desktop.ViewModels;
 
@@ -162,37 +163,37 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         try
         {
             var pluginsDir = Path.Combine(AppContext.BaseDirectory, "OMCL", "plugins");
-            System.Diagnostics.Debug.WriteLine($"[MainWindowViewModel] 插件目录: {pluginsDir}");
-            System.Diagnostics.Debug.WriteLine($"[MainWindowViewModel] 目录存在: {Directory.Exists(pluginsDir)}");
+            DebugLogger.Info("MainWindow", $"插件目录: {pluginsDir}");
+            DebugLogger.Info("MainWindow", $"目录存在: {Directory.Exists(pluginsDir)}");
 
             if (Directory.Exists(pluginsDir))
             {
                 var pluginDirs = Directory.GetDirectories(pluginsDir);
-                System.Diagnostics.Debug.WriteLine($"[MainWindowViewModel] 找到 {pluginDirs.Length} 个插件文件夹");
+                DebugLogger.Info("MainWindow", $"找到 {pluginDirs.Length} 个插件文件夹");
 
                 foreach (var dir in pluginDirs)
                 {
-                    System.Diagnostics.Debug.WriteLine($"[MainWindowViewModel] 插件文件夹: {Path.GetFileName(dir)}");
+                    DebugLogger.Info("MainWindow", $"插件文件夹: {Path.GetFileName(dir)}");
                 }
             }
 
             _pluginLoader.LoadAllPlugins();
             var loadedCount = _pluginLoader.LoadedPlugins.Count(p => p.IsLoaded);
-            System.Diagnostics.Debug.WriteLine($"[MainWindowViewModel] 启动时加载了 {loadedCount} 个插件");
+            DebugLogger.Info("MainWindow", $"启动时加载了 {loadedCount} 个插件");
 
             foreach (var plugin in _pluginLoader.LoadedPlugins)
             {
-                System.Diagnostics.Debug.WriteLine($"[MainWindowViewModel] 插件: {plugin.Name} (ID: {plugin.Id}) - 加载状态: {plugin.IsLoaded}");
+                DebugLogger.Info("MainWindow", $"插件: {plugin.Name} (ID: {plugin.Id}) - 加载状态: {plugin.IsLoaded}");
                 if (!string.IsNullOrEmpty(plugin.ErrorMessage))
                 {
-                    System.Diagnostics.Debug.WriteLine($"[MainWindowViewModel]   错误: {plugin.ErrorMessage}");
+                    DebugLogger.Error("MainWindow", $"插件错误: {plugin.ErrorMessage}");
                 }
             }
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[MainWindowViewModel] 启动时加载插件失败: {ex.Message}");
-            System.Diagnostics.Debug.WriteLine($"[MainWindowViewModel] 堆栈: {ex.StackTrace}");
+            DebugLogger.Error("MainWindow", $"启动时加载插件失败: {ex.Message}");
+            DebugLogger.Error("MainWindow", $"堆栈: {ex.StackTrace}");
         }
     }
 
@@ -224,7 +225,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         // 设置插件标签页和主页卡片回调
         PluginContext.OnTabRegistered = (pluginId, title, tabId, icon, payload) =>
         {
-            System.Diagnostics.Debug.WriteLine($"[PluginContext] 插件 {pluginId} 注册标签页: {title} (tabId: {tabId})");
+            DebugLogger.Info("Plugin", $"插件 {pluginId} 注册标签页: {title} (tabId: {tabId})");
 
             // 分发到MoreViewModel
             Avalonia.Threading.Dispatcher.UIThread.Post(() =>
@@ -235,7 +236,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
         PluginContext.OnHomeCardRegistered = (cardId, title, description, icon, commandId, payload) =>
         {
-            System.Diagnostics.Debug.WriteLine($"[PluginContext] 注册主页卡片: {title} (cardId: {cardId})");
+            DebugLogger.Info("Plugin", $"注册主页卡片: {title} (cardId: {cardId})");
 
             // 分发到HomeViewModel
             Avalonia.Threading.Dispatcher.UIThread.Post(() =>
@@ -246,7 +247,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
         PluginContext.OnHomeCardUnregistered = (cardId) =>
         {
-            System.Diagnostics.Debug.WriteLine($"[PluginContext] 注销主页卡片: {cardId}");
+            DebugLogger.Info("Plugin", $"注销主页卡片: {cardId}");
 
             Avalonia.Threading.Dispatcher.UIThread.Post(() =>
             {
@@ -256,7 +257,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
         PluginContext.OnTabUnregistered = (pluginId, tabId) =>
         {
-            System.Diagnostics.Debug.WriteLine($"[PluginContext] 注销标签页: {tabId} (插件: {pluginId})");
+            DebugLogger.Info("Plugin", $"注销标签页: {tabId} (插件: {pluginId})");
 
             Avalonia.Threading.Dispatcher.UIThread.Post(() =>
             {
@@ -266,7 +267,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
         PluginLoader.OnPluginDisabled = (pluginId) =>
         {
-            System.Diagnostics.Debug.WriteLine($"[MainWindowViewModel] 插件已禁用: {pluginId}");
+            DebugLogger.Info("MainWindow", $"插件已禁用: {pluginId}");
 
             Avalonia.Threading.Dispatcher.UIThread.Post(() =>
             {
@@ -277,12 +278,12 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
         PluginLoader.OnPluginEnabled = (pluginId) =>
         {
-            System.Diagnostics.Debug.WriteLine($"[MainWindowViewModel] 插件已启用: {pluginId}");
+            DebugLogger.Info("MainWindow", $"插件已启用: {pluginId}");
         };
 
         PluginLoader.OnPluginRemoved = (pluginId) =>
         {
-            System.Diagnostics.Debug.WriteLine($"[MainWindowViewModel] 插件已移除: {pluginId}");
+            DebugLogger.Info("MainWindow", $"插件已移除: {pluginId}");
 
             Avalonia.Threading.Dispatcher.UIThread.Post(() =>
             {

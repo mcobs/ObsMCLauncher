@@ -1,6 +1,7 @@
 using System;
 using System.Net.Http;
 using System.Threading.Tasks;
+using ObsMCLauncher.Core.Utils;
 
 namespace ObsMCLauncher.Core.Services.Minecraft
 {
@@ -88,7 +89,7 @@ namespace ObsMCLauncher.Core.Services.Minecraft
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"获取Forge版本列表失败: {ex.Message}");
+                DebugLogger.Error("MojangAPI", $"获取Forge版本列表失败: {ex.Message}");
                 return null;
             }
         }
@@ -106,7 +107,7 @@ namespace ObsMCLauncher.Core.Services.Minecraft
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"获取Forge安装器URL失败: {ex.Message}");
+                DebugLogger.Error("MojangAPI", $"获取Forge安装器URL失败: {ex.Message}");
                 return Task.FromResult<string?>(null);
             }
         }

@@ -7,34 +7,27 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using ObsMCLauncher.Core.Models;
+using ObsMCLauncher.Core.Utils;
 
 namespace ObsMCLauncher.Core.Services.Minecraft
 {
-    /// <summary>
-    /// 下载进度信息
-    /// </summary>
     public class DownloadProgress
     {
-        // 当前文件进度
         public long CurrentFileBytes { get; set; }
         public long CurrentFileTotalBytes { get; set; }
         public double CurrentFilePercentage => CurrentFileTotalBytes > 0 ? (CurrentFileBytes * 100.0 / CurrentFileTotalBytes) : 0;
         
-        // 总体进度
         public long TotalDownloadedBytes { get; set; }
         public long TotalBytes { get; set; }
         public double OverallPercentage => TotalBytes > 0 ? (TotalDownloadedBytes * 100.0 / TotalBytes) : 0;
         
-        // 文件计数
         public int CompletedFiles { get; set; }
         public int TotalFiles { get; set; }
         
-        // 其他信息
         public string CurrentFile { get; set; } = string.Empty;
         public string Status { get; set; } = string.Empty;
-        public double DownloadSpeed { get; set; } // 字节/秒
+        public double DownloadSpeed { get; set; }
         
-        // 兼容性属性（保留旧代码兼容）
         [Obsolete("Use CurrentFileBytes instead")]
         public long DownloadedBytes 
         { 
@@ -46,9 +39,6 @@ namespace ObsMCLauncher.Core.Services.Minecraft
         public double ProgressPercentage => CurrentFilePercentage;
     }
 
-    /// <summary>
-    /// Minecraft版本下载服务
-    /// </summary>
     public class DownloadService
     {
         private static readonly HttpClient _httpClient;
@@ -59,23 +49,19 @@ namespace ObsMCLauncher.Core.Services.Minecraft
             {
                 AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate,
                 
-                // 配置 SSL/TLS 设置
                 SslProtocols = System.Security.Authentication.SslProtocols.Tls12 | System.Security.Authentication.SslProtocols.Tls13,
                 
-                // 证书验证设置
 #if DEBUG
                 ServerCertificateCustomValidationCallback = (message, cert, chain, errors) =>
                 {
-                    // 调试模式：记录但忽略证书错误
                     if (errors != System.Net.Security.SslPolicyErrors.None)
                     {
-                        System.Diagnostics.Debug.WriteLine($"[DownloadService] SSL证书警告: {errors}");
+                        DebugLogger.Warn("Download", $"SSL证书警告: {errors}");
                     }
                     return true;
                 },
 #endif
                 
-                // 其他网络优化
                 MaxConnectionsPerServer = 10,
                 UseProxy = true,
                 UseCookies = false,
@@ -89,19 +75,11 @@ namespace ObsMCLauncher.Core.Services.Minecraft
             };
 
             _httpClient.DefaultRequestHeaders.Add("User-Agent", "ObsMCLauncher/1.0");
-            _httpClient.DefaultRequestHeaders.ConnectionClose = false; // 保持连接以提高性能
+            _httpClient.DefaultRequestHeaders.ConnectionClose = false;
             
-            System.Diagnostics.Debug.WriteLine("[DownloadService] ✅ HttpClient 已配置 (TLS 1.2/1.3)");
+            DebugLogger.Info("Download", "HttpClient 已配置 (TLS 1.2/1.3)");
         }
 
-        /// <summary>
-        /// 下载Minecraft版本
-        /// </summary>
-        /// <param name="versionId">版本ID（如 1.20.4）</param>
-        /// <param name="gameDirectory">游戏目录</param>
-        /// <param name="customVersionName">自定义版本名称（文件夹名），如果为空则使用versionId</param>
-        /// <param name="progress">进度报告</param>
-        /// <param name="cancellationToken">取消令牌</param>
         public static async Task<bool> DownloadMinecraftVersion(
             string versionId,
             string gameDirectory,
@@ -113,7 +91,6 @@ namespace ObsMCLauncher.Core.Services.Minecraft
             {
                 var downloadSource = DownloadSourceManager.Instance.CurrentService;
                 
-                // 使用自定义名称或默认版本ID
                 var installName = string.IsNullOrEmpty(customVersionName) ? versionId : customVersionName;
                 
                 progress?.Report(new DownloadProgress 
@@ -122,13 +99,11 @@ namespace ObsMCLauncher.Core.Services.Minecraft
                     CurrentFile = versionId 
                 });
 
-                // 1. 下载版本JSON
                 string versionJsonUrl;
                 
-                // 如果是Mojang源，需要先从version_manifest获取真实URL
                 if (downloadSource is MojangAPIService)
                 {
-                    System.Diagnostics.Debug.WriteLine("使用Mojang官方源，先获取version_manifest...");
+                    DebugLogger.Info("Download", "使用Mojang官方源，先获取version_manifest...");
                     var manifest = await MinecraftVersionService.GetVersionListAsync();
                     if (manifest == null)
                     {
@@ -142,11 +117,10 @@ namespace ObsMCLauncher.Core.Services.Minecraft
                     }
                     
                     versionJsonUrl = manifestVersion.Url;
-                    System.Diagnostics.Debug.WriteLine($"从version_manifest获取到真实URL: {versionJsonUrl}");
+                    DebugLogger.Info("Download", $"从version_manifest获取到真实URL: {versionJsonUrl}");
                 }
                 else
                 {
-                    // BMCLAPI等其他源直接使用固定模式
                     versionJsonUrl = downloadSource.GetVersionJsonUrl(versionId);
                 }
                 
@@ -161,9 +135,8 @@ namespace ObsMCLauncher.Core.Services.Minecraft
                 }
 
                 await File.WriteAllTextAsync(versionJsonPath, versionJson, cancellationToken);
-                System.Diagnostics.Debug.WriteLine($"✅ 版本JSON已保存: {versionJsonPath}");
+                DebugLogger.Info("Download", $"版本JSON已保存: {versionJsonPath}");
 
-                // 2. 解析版本JSON
                 var options = new JsonSerializerOptions
                 {
                     PropertyNameCaseInsensitive = true
@@ -174,12 +147,11 @@ namespace ObsMCLauncher.Core.Services.Minecraft
                     throw new Exception("解析版本JSON失败");
                 }
 
-                System.Diagnostics.Debug.WriteLine($"✅ 解析版本信息成功");
-                System.Diagnostics.Debug.WriteLine($"   客户端URL: {versionInfo.Downloads?.Client?.Url}");
-                System.Diagnostics.Debug.WriteLine($"   库文件数量: {versionInfo.Libraries?.Count ?? 0}");
+                DebugLogger.Info("Download", $"解析版本信息成功");
+                DebugLogger.Info("Download", $"客户端URL: {versionInfo.Downloads?.Client?.Url}");
+                DebugLogger.Info("Download", $"库文件数量: {versionInfo.Libraries?.Count ?? 0}");
 
-                // 计算总文件数和总大小
-                var totalFiles = 1; // 客户端JAR
+                var totalFiles = 1;
                 var totalBytes = versionInfo.Downloads?.Client?.Size ?? 0;
                 
                 if (versionInfo.Libraries != null)
@@ -193,7 +165,7 @@ namespace ObsMCLauncher.Core.Services.Minecraft
                         }
                     }
                 }
-                totalFiles++; // 资源索引
+                totalFiles++;
 
                 var downloadState = new DownloadState
                 {
@@ -201,21 +173,18 @@ namespace ObsMCLauncher.Core.Services.Minecraft
                     TotalDownloadedBytes = 0
                 };
 
-                // 3. 下载客户端JAR
                 var clientJarPath = Path.Combine(gameDirectory, "versions", installName, $"{installName}.jar");
                 if (versionInfo.Downloads?.Client?.Url != null)
                 {
-                    // 根据下载源替换客户端JAR的URL
                     var clientJarUrl = versionInfo.Downloads.Client.Url;
                     if (downloadSource is BMCLAPIService)
                     {
-                        // BMCLAPI的客户端JAR下载格式: https://bmclapi2.bangbang93.com/version/{version}/client
                         clientJarUrl = $"https://bmclapi2.bangbang93.com/version/{versionId}/client";
-                        System.Diagnostics.Debug.WriteLine($"使用BMCLAPI镜像源下载客户端JAR");
+                        DebugLogger.Info("Download", "使用BMCLAPI镜像源下载客户端JAR");
                     }
                     
-                    System.Diagnostics.Debug.WriteLine($"开始下载客户端JAR: {clientJarUrl}");
-                    System.Diagnostics.Debug.WriteLine($"保存路径: {clientJarPath}");
+                    DebugLogger.Info("Download", $"开始下载客户端JAR: {clientJarUrl}");
+                    DebugLogger.Info("Download", $"保存路径: {clientJarPath}");
 
                     var clientSize = versionInfo.Downloads.Client.Size;
                     
@@ -224,7 +193,6 @@ namespace ObsMCLauncher.Core.Services.Minecraft
                         clientJarPath,
                         (currentBytes, speed, actualTotalBytes) =>
                         {
-                            // 如果预先知道的大小为0，使用实际下载时获取的大小
                             var effectiveClientSize = clientSize > 0 ? clientSize : actualTotalBytes;
                             var effectiveTotalBytes = totalBytes > 0 ? totalBytes : actualTotalBytes;
                             
@@ -245,14 +213,13 @@ namespace ObsMCLauncher.Core.Services.Minecraft
                     
                     downloadState.CompletedFiles++;
                     downloadState.TotalDownloadedBytes += clientSize;
-                    System.Diagnostics.Debug.WriteLine($"✅ 客户端JAR已下载: {clientJarPath}");
+                    DebugLogger.Info("Download", $"客户端JAR已下载: {clientJarPath}");
                 }
                 else
                 {
-                    System.Diagnostics.Debug.WriteLine($"❌ 警告：客户端下载URL为空！");
+                    DebugLogger.Warn("Download", "客户端下载URL为空！");
                 }
 
-                // 4. 下载库文件
                 if (versionInfo.Libraries != null && versionInfo.Libraries.Count > 0)
                 {
                     await DownloadLibrariesWithProgressAsync(
@@ -266,7 +233,6 @@ namespace ObsMCLauncher.Core.Services.Minecraft
                         cancellationToken);
                 }
 
-                // 5. 下载资源文件（如果需要）
                 if (versionInfo.AssetIndex != null)
                 {
                     progress?.Report(new DownloadProgress
@@ -304,16 +270,16 @@ namespace ObsMCLauncher.Core.Services.Minecraft
             }
             catch (OperationCanceledException)
             {
-                System.Diagnostics.Debug.WriteLine($"❌ 下载已取消");
+                DebugLogger.Warn("Download", "下载已取消");
                 progress?.Report(new DownloadProgress
                 {
                     Status = "下载已取消"
                 });
-                throw; // 重新抛出，让上层处理
+                throw;
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"❌ 下载版本失败: {ex.Message}");
+                DebugLogger.Error("Download", $"下载版本失败: {ex.Message}");
                 progress?.Report(new DownloadProgress
                 {
                     Status = $"下载失败: {ex.Message}"
@@ -322,9 +288,6 @@ namespace ObsMCLauncher.Core.Services.Minecraft
             }
         }
 
-        /// <summary>
-        /// 下载库文件
-        /// </summary>
         private static async Task DownloadLibrariesAsync(
             List<Library> libraries,
             string gameDirectory,
@@ -342,7 +305,6 @@ namespace ObsMCLauncher.Core.Services.Minecraft
             {
                 if (cancellationToken.IsCancellationRequested) break;
 
-                // 检查是否允许下载该库
                 if (!IsLibraryAllowed(library)) continue;
 
                 var artifact = library.Downloads?.Artifact;
@@ -350,7 +312,6 @@ namespace ObsMCLauncher.Core.Services.Minecraft
 
                 var libraryPath = Path.Combine(librariesPath, artifact.Path.Replace('/', Path.DirectorySeparatorChar));
                 
-                // 如果文件已存在且大小正确，跳过
                 if (File.Exists(libraryPath))
                 {
                     var fileInfo = new FileInfo(libraryPath);
@@ -374,7 +335,6 @@ namespace ObsMCLauncher.Core.Services.Minecraft
                     await DownloadFileAsync(url, libraryPath, null, cancellationToken);
                     completed++;
 
-                    // 计算库文件下载进度（基于文件数量）
                     var libraryProgress = total > 0 ? (completed * 100.0 / total) : 0;
                     progress?.Report(new DownloadProgress
                     {
@@ -386,14 +346,11 @@ namespace ObsMCLauncher.Core.Services.Minecraft
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"下载库文件失败 {artifact.Path}: {ex.Message}");
+                    DebugLogger.Error("Download", $"下载库文件失败 {artifact.Path}: {ex.Message}");
                 }
             }
         }
 
-        /// <summary>
-        /// 下载资源文件
-        /// </summary>
         private static async Task DownloadAssetsAsync(
             AssetIndex assetIndex,
             string gameDirectory,
@@ -403,28 +360,25 @@ namespace ObsMCLauncher.Core.Services.Minecraft
         {
             try
             {
-                // 下载资源索引JSON
                 var assetsIndexPath = Path.Combine(gameDirectory, "assets", "indexes", $"{assetIndex.Id}.json");
                 Directory.CreateDirectory(Path.GetDirectoryName(assetsIndexPath)!);
 
                 if (string.IsNullOrEmpty(assetIndex.Url))
                 {
-                    System.Diagnostics.Debug.WriteLine("资源索引URL为空，跳过下载");
+                    DebugLogger.Warn("Download", "资源索引URL为空，跳过下载");
                     return;
                 }
 
                 var assetIndexJson = await DownloadStringAsync(assetIndex.Url, cancellationToken);
                 if (string.IsNullOrEmpty(assetIndexJson))
                 {
-                    System.Diagnostics.Debug.WriteLine("下载资源索引失败");
+                    DebugLogger.Warn("Download", "下载资源索引失败");
                     return;
                 }
 
                 await File.WriteAllTextAsync(assetsIndexPath, assetIndexJson, cancellationToken);
-                System.Diagnostics.Debug.WriteLine($"✅ 资源索引已保存: {assetsIndexPath}");
+                DebugLogger.Info("Download", $"资源索引已保存: {assetsIndexPath}");
 
-                // 注意：这里不下载所有资源文件，因为文件太多
-                // 游戏启动时会自动下载缺失的资源
                 progress?.Report(new DownloadProgress
                 {
                     Status = "资源索引已下载（资源文件将在首次启动时自动下载）",
@@ -434,13 +388,10 @@ namespace ObsMCLauncher.Core.Services.Minecraft
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"下载资源索引失败: {ex.Message}");
+                DebugLogger.Error("Download", $"下载资源索引失败: {ex.Message}");
             }
         }
 
-        /// <summary>
-        /// 检查库是否允许下载（根据规则）
-        /// </summary>
         private static bool IsLibraryAllowed(Library library)
         {
             if (library.Rules == null || library.Rules.Count == 0)
@@ -463,9 +414,6 @@ namespace ObsMCLauncher.Core.Services.Minecraft
             return true;
         }
 
-        /// <summary>
-        /// 下载文件并报告详细进度（包括速度）
-        /// </summary>
         private static async Task DownloadFileWithProgressAsync(
             string url,
             string savePath,
@@ -474,7 +422,7 @@ namespace ObsMCLauncher.Core.Services.Minecraft
         {
             try
             {
-                System.Diagnostics.Debug.WriteLine($"📥 开始下载: {url}");
+                DebugLogger.Info("Download", $"开始下载: {url}");
                 
                 using var response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
                 response.EnsureSuccessStatusCode();
@@ -482,7 +430,7 @@ namespace ObsMCLauncher.Core.Services.Minecraft
                 var totalBytes = response.Content.Headers.ContentLength ?? 0;
                 var downloadedBytes = 0L;
 
-                System.Diagnostics.Debug.WriteLine($"   文件大小: {totalBytes / 1024.0 / 1024.0:F2} MB");
+                DebugLogger.Info("Download", $"文件大小: {totalBytes / 1024.0 / 1024.0:F2} MB");
 
                 using var contentStream = await response.Content.ReadAsStreamAsync(cancellationToken);
                 using var fileStream = new FileStream(savePath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true);
@@ -499,7 +447,6 @@ namespace ObsMCLauncher.Core.Services.Minecraft
                     await fileStream.WriteAsync(buffer, 0, bytesRead, cancellationToken);
                     downloadedBytes += bytesRead;
 
-                    // 每100ms报告一次进度
                     var now = DateTime.Now;
                     if ((now - lastReportTime).TotalMilliseconds >= 100)
                     {
@@ -514,22 +461,18 @@ namespace ObsMCLauncher.Core.Services.Minecraft
                     }
                 }
 
-                // 最后再报告一次，确保100%
                 progressCallback?.Invoke(downloadedBytes, 0, totalBytes);
 
-                System.Diagnostics.Debug.WriteLine($"✅ 下载完成: {Path.GetFileName(savePath)} ({downloadedBytes / 1024.0 / 1024.0:F2} MB)");
+                DebugLogger.Info("Download", $"下载完成: {Path.GetFileName(savePath)} ({downloadedBytes / 1024.0 / 1024.0:F2} MB)");
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"❌ 下载失败: {url}");
-                System.Diagnostics.Debug.WriteLine($"   错误: {ex.Message}");
+                DebugLogger.Error("Download", $"下载失败: {url}");
+                DebugLogger.Error("Download", $"错误: {ex.Message}");
                 throw;
             }
         }
 
-        /// <summary>
-        /// 下载文件（旧版本，保持兼容性）
-        /// </summary>
         private static async Task DownloadFileAsync(
             string url,
             string savePath,
@@ -551,18 +494,12 @@ namespace ObsMCLauncher.Core.Services.Minecraft
                 cancellationToken);
         }
 
-        /// <summary>
-        /// 下载进度状态
-        /// </summary>
         private class DownloadState
         {
             public int CompletedFiles { get; set; }
             public long TotalDownloadedBytes { get; set; }
         }
 
-        /// <summary>
-        /// 下载库文件（带详细进度）
-        /// </summary>
         private static async Task DownloadLibrariesWithProgressAsync(
             List<Library> libraries,
             string gameDirectory,
@@ -576,12 +513,10 @@ namespace ObsMCLauncher.Core.Services.Minecraft
             var librariesPath = Path.Combine(gameDirectory, "libraries");
             Directory.CreateDirectory(librariesPath);
 
-            // 获取最大并发下载数
             var config = LauncherConfig.Load();
             var maxConcurrent = Math.Max(1, config.MaxDownloadThreads);
-            System.Diagnostics.Debug.WriteLine($"[DownloadService] 使用 {maxConcurrent} 个并发线程下载库文件");
+            DebugLogger.Info("Download", $"使用 {maxConcurrent} 个并发线程下载库文件");
 
-            // 准备下载任务列表
             var downloadTasks = new List<Task>();
             var semaphore = new System.Threading.SemaphoreSlim(maxConcurrent, maxConcurrent);
             var lockObject = new object();
@@ -590,7 +525,6 @@ namespace ObsMCLauncher.Core.Services.Minecraft
             {
                 if (cancellationToken.IsCancellationRequested) break;
 
-                // 检查是否允许下载该库
                 if (!IsLibraryAllowed(library)) continue;
 
                 var artifact = library.Downloads?.Artifact;
@@ -598,7 +532,6 @@ namespace ObsMCLauncher.Core.Services.Minecraft
 
                 var libraryPath = Path.Combine(librariesPath, artifact.Path.Replace('/', Path.DirectorySeparatorChar));
                 
-                // 如果文件已存在且大小正确，跳过
                 if (File.Exists(libraryPath))
                 {
                     var fileInfo = new FileInfo(libraryPath);
@@ -613,7 +546,6 @@ namespace ObsMCLauncher.Core.Services.Minecraft
                     }
                 }
 
-                // 创建并发下载任务
                 var downloadTask = Task.Run(async () =>
                 {
                     await semaphore.WaitAsync(cancellationToken);
@@ -634,7 +566,6 @@ namespace ObsMCLauncher.Core.Services.Minecraft
                             libraryPath,
                             (currentBytes, speed, actualTotalBytes) =>
                             {
-                                // 如果预先知道的大小为0，使用实际下载时获取的大小
                                 var effectiveLibSize = libSize > 0 ? libSize : actualTotalBytes;
                                 
                                 long currentTotalDownloaded;
@@ -668,7 +599,7 @@ namespace ObsMCLauncher.Core.Services.Minecraft
                     }
                     catch (Exception ex)
                     {
-                        System.Diagnostics.Debug.WriteLine($"下载库文件失败 {artifact.Path}: {ex.Message}");
+                        DebugLogger.Error("Download", $"下载库文件失败 {artifact.Path}: {ex.Message}");
                     }
                     finally
                     {
@@ -679,13 +610,9 @@ namespace ObsMCLauncher.Core.Services.Minecraft
                 downloadTasks.Add(downloadTask);
             }
 
-            // 等待所有下载任务完成
             await Task.WhenAll(downloadTasks);
         }
 
-        /// <summary>
-        /// 下载字符串内容
-        /// </summary>
         private static async Task<string> DownloadStringAsync(string url, CancellationToken cancellationToken)
         {
             var response = await _httpClient.GetAsync(url, cancellationToken);
@@ -751,4 +678,3 @@ namespace ObsMCLauncher.Core.Services.Minecraft
         #endregion
     }
 }
-

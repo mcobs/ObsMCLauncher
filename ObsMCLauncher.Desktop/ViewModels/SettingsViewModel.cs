@@ -18,6 +18,7 @@ using Avalonia.Styling;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.Input;
 using ObsMCLauncher.Core.Models;
+using ObsMCLauncher.Core.Utils;
 using ObsMCLauncher.Desktop.ViewModels.Notifications;
 
 namespace ObsMCLauncher.Desktop.ViewModels;
@@ -910,7 +911,7 @@ public class SettingsViewModel : ViewModelBase
             HomeCards[i].Order = i;
         }
 
-        System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 已刷新插件卡片，共 {pluginCards.Count} 个");
+        DebugLogger.Info("Settings", $"已刷新插件卡片，共 {pluginCards.Count} 个");
     }
 
     private void LoadHomeCards()
@@ -1003,7 +1004,7 @@ public class SettingsViewModel : ViewModelBase
         _config.Save();
         RefreshHomeCards();
 
-        System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 卡片状态改变: {card.Title} (插件卡片: {card.IsPluginCard}) -> {card.IsEnabled}");
+        DebugLogger.Info("Settings", $"卡片状态改变: {card.Title} (插件卡片: {card.IsPluginCard}) -> {card.IsEnabled}");
     }
 
     private void MoveCardUp(HomeCardInfo? card)

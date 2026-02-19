@@ -10,6 +10,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using ObsMCLauncher.Core.Models;
 using ObsMCLauncher.Core.Services.Minecraft;
+using ObsMCLauncher.Core.Utils;
 
 namespace ObsMCLauncher.Core.Services.Installers
 {
@@ -117,7 +118,7 @@ namespace ObsMCLauncher.Core.Services.Installers
             try
             {
                 var config = LauncherConfig.Load();
-                Debug.WriteLine($"[FabricService] 获取Fabric支持的MC版本列表... (源: {config.DownloadSource})");
+                DebugLogger.Info("Fabric", $"获取Fabric支持的MC版本列表... (源: {config.DownloadSource})");
 
                 var baseUrl = config.DownloadSource == DownloadSource.BMCLAPI ? BMCL_FABRIC_META_URL : FABRIC_META_URL;
                 var url = $"{baseUrl}/v2/versions/game";
@@ -131,7 +132,7 @@ namespace ObsMCLauncher.Core.Services.Installers
                 if (versions != null)
                 {
                     var versionList = versions.Select(v => v.Version).ToList();
-                    Debug.WriteLine($"[FabricService] 获取到 {versionList.Count} 个支持的MC版本");
+                    DebugLogger.Info("Fabric", $"获取到 {versionList.Count} 个支持的MC版本");
                     return versionList;
                 }
 
@@ -139,7 +140,7 @@ namespace ObsMCLauncher.Core.Services.Installers
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[FabricService] 获取Fabric支持版本失败: {ex.Message}");
+                DebugLogger.Error("Fabric", $"获取Fabric支持版本失败: {ex.Message}");
                 return new List<string>();
             }
         }
@@ -185,7 +186,7 @@ namespace ObsMCLauncher.Core.Services.Installers
             try
             {
                 var config = LauncherConfig.Load();
-                Debug.WriteLine($"[FabricService] 获取 MC {mcVersion} 的Fabric版本列表... (源: {config.DownloadSource})");
+                DebugLogger.Info("Fabric", $"获取 MC {mcVersion} 的Fabric版本列表... (源: {config.DownloadSource})");
 
                 var baseUrl = config.DownloadSource == DownloadSource.BMCLAPI ? BMCL_FABRIC_META_URL : FABRIC_META_URL;
                 var url = $"{baseUrl}/v2/versions/loader";
@@ -206,7 +207,7 @@ namespace ObsMCLauncher.Core.Services.Installers
                         .ThenByDescending(f => ParseVersionNumber(f.Version)) // 版本号从高到低
                         .ToList();
                     
-                    Debug.WriteLine($"[FabricService] 获取到 {fabricVersions.Count} 个Fabric Loader版本");
+                    DebugLogger.Info("Fabric", $"获取到 {fabricVersions.Count} 个Fabric Loader版本");
                     return fabricVersions;
                 }
 
@@ -214,7 +215,7 @@ namespace ObsMCLauncher.Core.Services.Installers
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[FabricService] 获取Fabric版本列表失败: {ex.Message}");
+                DebugLogger.Error("Fabric", $"获取Fabric版本列表失败: {ex.Message}");
                 return new List<FabricVersion>();
             }
         }
@@ -260,8 +261,8 @@ namespace ObsMCLauncher.Core.Services.Installers
             try
             {
                 var config = LauncherConfig.Load();
-                Debug.WriteLine($"[FabricService] 开始安装Fabric: MC {mcVersion}, Loader {loaderVersion}");
-                if (isModpackMode) Debug.WriteLine("[FabricService] 正在以整合包精简模式安装...");
+                DebugLogger.Info("Fabric", $"开始安装Fabric: MC {mcVersion}, Loader {loaderVersion}");
+                if (isModpackMode) DebugLogger.Info("Fabric", "正在以整合包精简模式安装...");
 
                 progressCallback?.Invoke("正在获取Fabric配置文件...", 0, 0, 100);
 
@@ -269,7 +270,7 @@ namespace ObsMCLauncher.Core.Services.Installers
                 var baseUrl = config.DownloadSource == DownloadSource.BMCLAPI ? BMCL_FABRIC_META_URL : FABRIC_META_URL;
                 var profileUrl = $"{baseUrl}/v2/versions/loader/{mcVersion}/{loaderVersion}/profile/json";
 
-                Debug.WriteLine($"[FabricService] 获取Fabric配置: {profileUrl}");
+                DebugLogger.Info("Fabric", $"获取Fabric配置: {profileUrl}");
 
                 var profileJson = await _httpClient.GetStringAsync(profileUrl, cancellationToken);
                 if (string.IsNullOrEmpty(profileJson))
@@ -289,7 +290,7 @@ namespace ObsMCLauncher.Core.Services.Installers
 
                 // 3. 下载原版文件到临时目录（所有操作都在.temp中）
                 progressCallback?.Invoke($"正在下载基础版本 {mcVersion}...", 0, 0, 100);
-                Debug.WriteLine($"[FabricService] 开始下载基础MC版本到临时目录: {tempGameDir}");
+                DebugLogger.Info("Fabric", $"开始下载基础MC版本到临时目录: {tempGameDir}");
 
                 // 下载基础MC版本到临时gameDirectory（版本文件到.temp/versions/，库文件到.temp/libraries/）
                 var downloadProgressReporter = new System.Progress<ObsMCLauncher.Core.Services.Minecraft.DownloadProgress>(p =>
@@ -321,7 +322,7 @@ namespace ObsMCLauncher.Core.Services.Installers
                     throw new Exception($"下载基础版本 {mcVersion} 失败");
                 }
 
-                Debug.WriteLine($"[FabricService] 基础MC版本已下载到临时目录");
+                DebugLogger.Info("Fabric", $"基础MC版本已下载到临时目录");
 
                 // 将库文件从临时目录移动到真实的libraries目录（如果不存在）
                 if (Directory.Exists(tempLibrariesDir))
@@ -345,20 +346,20 @@ namespace ObsMCLauncher.Core.Services.Installers
                 if (File.Exists(tempVanillaJarPath))
                 {
                     File.Copy(tempVanillaJarPath, tempFabricJarPath, true);
-                    Debug.WriteLine($"[FabricService] ✅ 已复制原版JAR: {tempVanillaJarPath} -> {tempFabricJarPath}");
+                    DebugLogger.Info("Fabric", $"已复制原版JAR: {tempVanillaJarPath} -> {tempFabricJarPath}");
                 }
                 else
                 {
-                    Debug.WriteLine($"[FabricService] ⚠️ 原版JAR不存在: {tempVanillaJarPath}");
+                    DebugLogger.Warn("Fabric", $"原版JAR不存在: {tempVanillaJarPath}");
                 }
                 if (File.Exists(tempVanillaJsonPath))
                 {
                     File.Copy(tempVanillaJsonPath, tempFabricJsonPath, true);
-                    Debug.WriteLine($"[FabricService] ✅ 已复制原版JSON: {tempVanillaJsonPath} -> {tempFabricJsonPath}");
+                    DebugLogger.Info("Fabric", $"已复制原版JSON: {tempVanillaJsonPath} -> {tempFabricJsonPath}");
                 }
                 else
                 {
-                    Debug.WriteLine($"[FabricService] ⚠️ 原版JSON不存在: {tempVanillaJsonPath}");
+                    DebugLogger.Warn("Fabric", $"原版JSON不存在: {tempVanillaJsonPath}");
                 }
 
                 progressCallback?.Invoke("正在安装Fabric配置文件...", 50, 0, 100);
@@ -368,7 +369,7 @@ namespace ObsMCLauncher.Core.Services.Installers
                 if (File.Exists(tempVanillaJsonPath))
                 {
                     File.Copy(tempVanillaJsonPath, savedVanillaJsonPath, true);
-                    Debug.WriteLine($"[FabricService] 已备份原版JSON到: {savedVanillaJsonPath}");
+                    DebugLogger.Info("Fabric", $"已备份原版JSON到: {savedVanillaJsonPath}");
                 }
 
                 // 5. 修改Fabric profile JSON
@@ -377,7 +378,7 @@ namespace ObsMCLauncher.Core.Services.Installers
 
                 // 6. 保存Fabric版本JSON
                 await File.WriteAllTextAsync(tempFabricJsonPath, modifiedProfile, cancellationToken);
-                Debug.WriteLine($"[FabricService] Fabric配置文件已保存: {tempFabricJsonPath}");
+                DebugLogger.Info("Fabric", $"Fabric配置文件已保存: {tempFabricJsonPath}");
 
                 // 7. 下载Fabric库文件（使用真实gameDirectory，因为libraries是共享的）
                 progressCallback?.Invoke("正在下载Fabric库文件...", 70, 0, 100);
@@ -391,7 +392,7 @@ namespace ObsMCLauncher.Core.Services.Installers
 
                 // 8. 原版文件保留在.temp中，不移动到标准位置（所有操作都在.temp中）
                 // 如果需要合并父版本信息，将从.temp读取原版JSON
-                Debug.WriteLine($"[FabricService] ✅ 原版文件保留在临时目录: {tempVanillaDir}");
+                DebugLogger.Info("Fabric", $"原版文件保留在临时目录: {tempVanillaDir}");
 
                 // 9. 将临时目录移动到最终位置
                 if (!isModpackMode)
@@ -407,7 +408,7 @@ namespace ObsMCLauncher.Core.Services.Installers
                 
                 // 移动临时目录到最终位置
                 Directory.Move(tempFabricVersionPath, finalFabricVersionPath);
-                Debug.WriteLine($"[FabricService] ✅ 已移动Fabric版本到最终位置: {finalFabricVersionPath}");
+                DebugLogger.Info("FabricService", $"已移动Fabric版本到最终位置: {finalFabricVersionPath}");
 
                 // 10. 清理临时目录
                 if (Directory.Exists(tempGameDir))
@@ -419,23 +420,23 @@ namespace ObsMCLauncher.Core.Services.Installers
                 {
                     // 在整合包模式下，虽然不 Move，但也必须确保 JAR 已经存在于 tempFabricVersionPath 中
                     // (前面的代码已经执行了复制逻辑)
-                    Debug.WriteLine($"[FabricService] 整合包模式：已准备好文件在 {tempFabricVersionPath}");
+                    DebugLogger.Info("FabricService", $"整合包模式：已准备好文件在 {tempFabricVersionPath}");
                 }
 
                 progressCallback?.Invoke("Fabric安装完成！", 100, 0, 100);
-                Debug.WriteLine($"[FabricService] Fabric安装完成: {customVersionName}");
+                DebugLogger.Info("FabricService", $"Fabric安装完成: {customVersionName}");
 
                 return true;
             }
             catch (OperationCanceledException)
             {
-                Debug.WriteLine($"[FabricService] Fabric安装已取消");
+                DebugLogger.Info("FabricService", "Fabric安装已取消");
                 throw;
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[FabricService] Fabric安装失败: {ex.Message}");
-                Debug.WriteLine($"[FabricService] 堆栈跟踪: {ex.StackTrace}");
+                DebugLogger.Error("FabricService", $"Fabric安装失败: {ex.Message}");
+                DebugLogger.Error("FabricService", $"堆栈跟踪: {ex.StackTrace}");
                 throw;
             }
         }
@@ -482,11 +483,11 @@ namespace ObsMCLauncher.Core.Services.Installers
                         movedCount++;
                     }
 
-                    Debug.WriteLine($"[FabricService] ✅ 已移动 {movedCount} 个库文件到真实libraries目录");
+                    DebugLogger.Info("FabricService", $"已移动 {movedCount} 个库文件到真实libraries目录");
                 }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine($"[FabricService] ⚠️ 移动库文件失败: {ex.Message}");
+                    DebugLogger.Warn("FabricService", $"移动库文件失败: {ex.Message}");
                 }
             });
         }
@@ -620,7 +621,7 @@ namespace ObsMCLauncher.Core.Services.Installers
                                     {
                                         writer.WritePropertyName("assetIndex");
                                         assetIndex.WriteTo(writer);
-                                        Debug.WriteLine($"[Fabric] 已从原版JSON复制assetIndex: {assetIndex.GetProperty("id").GetString()}");
+                                        DebugLogger.Info("Fabric", $"已从原版JSON复制assetIndex: {assetIndex.GetProperty("id").GetString()}");
                                     }
                                 }
                             }
@@ -636,7 +637,7 @@ namespace ObsMCLauncher.Core.Services.Installers
                         }
                         catch (Exception ex)
                         {
-                            Debug.WriteLine($"[FabricService] 获取releaseTime失败: {ex.Message}");
+                            DebugLogger.Warn("FabricService", $"获取releaseTime失败: {ex.Message}");
                             writer.WriteString("releaseTime", DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss+00:00"));
                         }
                     }
@@ -648,7 +649,7 @@ namespace ObsMCLauncher.Core.Services.Installers
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[FabricService] 修改Fabric profile失败: {ex.Message}");
+                DebugLogger.Error("FabricService", $"修改Fabric profile失败: {ex.Message}");
                 throw;
             }
         }
@@ -671,7 +672,7 @@ namespace ObsMCLauncher.Core.Services.Installers
 
                 if (profile?.Libraries == null || profile.Libraries.Count == 0)
                 {
-                    Debug.WriteLine("[FabricService] 没有需要下载的库文件");
+                    DebugLogger.Info("FabricService", "没有需要下载的库文件");
                     return;
                 }
 
@@ -708,7 +709,7 @@ namespace ObsMCLauncher.Core.Services.Installers
 
                         if (string.IsNullOrEmpty(libPath) || string.IsNullOrEmpty(libUrl))
                         {
-                            Debug.WriteLine($"[FabricService] 跳过无效库: {library.Name}");
+                            DebugLogger.Warn("FabricService", $"跳过无效库: {library.Name}");
                             continue;
                         }
 
@@ -721,7 +722,7 @@ namespace ObsMCLauncher.Core.Services.Installers
                             if (fileInfo.Length > 0)
                             {
                                 downloadedLibs++;
-                                Debug.WriteLine($"[FabricService] 库文件已存在，跳过: {Path.GetFileName(localPath)}");
+                                DebugLogger.Info("FabricService", $"库文件已存在，跳过: {Path.GetFileName(localPath)}");
                                 continue;
                             }
                         }
@@ -740,7 +741,7 @@ namespace ObsMCLauncher.Core.Services.Installers
                         {
                             await DownloadFileAsync(libUrl, localPath, cancellationToken);
                             downloadedLibs++;
-                            Debug.WriteLine($"[FabricService] 已下载库: {Path.GetFileName(localPath)} ({downloadedLibs}/{totalLibs})");
+                            DebugLogger.Info("FabricService", $"已下载库: {Path.GetFileName(localPath)} ({downloadedLibs}/{totalLibs})");
                         }
                         catch (HttpRequestException httpEx) when (httpEx.Message.Contains("304"))
                         {
@@ -748,23 +749,23 @@ namespace ObsMCLauncher.Core.Services.Installers
                             if (File.Exists(localPath) && new FileInfo(localPath).Length > 0)
                             {
                                 downloadedLibs++;
-                                Debug.WriteLine($"[FabricService] 库文件已是最新（304）: {Path.GetFileName(localPath)}");
+                                DebugLogger.Info("FabricService", $"库文件已是最新（304）: {Path.GetFileName(localPath)}");
                             }
                             else
                             {
-                                Debug.WriteLine($"[FabricService] 收到304但文件不存在，可能需要重新下载: {library.Name}");
+                                DebugLogger.Warn("FabricService", $"收到304但文件不存在，可能需要重新下载: {library.Name}");
                                 throw;
                             }
                         }
                     }
                     catch (Exception ex)
                     {
-                        Debug.WriteLine($"[FabricService] 下载库文件失败: {library.Name} - {ex.Message}");
+                        DebugLogger.Error("FabricService", $"下载库文件失败: {library.Name} - {ex.Message}");
                         // 继续下载其他库，但记录失败
                     }
                 }
 
-                Debug.WriteLine($"[FabricService] 库文件下载完成: {downloadedLibs}/{totalLibs}");
+                DebugLogger.Info("FabricService", $"库文件下载完成: {downloadedLibs}/{totalLibs}");
                 
                 // 验证关键库文件是否存在
                 var criticalLibraries = new[]
@@ -798,7 +799,7 @@ namespace ObsMCLauncher.Core.Services.Installers
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[FabricService] 下载Fabric库文件失败: {ex.Message}");
+                DebugLogger.Error("FabricService", $"下载Fabric库文件失败: {ex.Message}");
                 throw;
             }
         }
@@ -816,7 +817,7 @@ namespace ObsMCLauncher.Core.Services.Installers
                 // 如果文件已存在，视为成功
                 if (File.Exists(savePath) && new FileInfo(savePath).Length > 0)
                 {
-                    Debug.WriteLine($"[FabricService] 文件已是最新（304）: {Path.GetFileName(savePath)}");
+                    DebugLogger.Info("FabricService", $"文件已是最新（304）: {Path.GetFileName(savePath)}");
                     return;
                 }
                 // 如果文件不存在但返回304，抛出异常让上层处理
@@ -835,7 +836,7 @@ namespace ObsMCLauncher.Core.Services.Installers
                 var fileInfo = new FileInfo(savePath);
                 if (fileInfo.Length == response.Content.Headers.ContentLength.Value && fileInfo.Length > 0)
                 {
-                    Debug.WriteLine($"[FabricService] 文件已存在且大小匹配，跳过下载: {Path.GetFileName(savePath)}");
+                    DebugLogger.Info("FabricService", $"文件已存在且大小匹配，跳过下载: {Path.GetFileName(savePath)}");
                     return;
                 }
             }

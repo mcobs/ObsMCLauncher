@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Avalonia.Data.Converters;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
+using ObsMCLauncher.Core.Utils;
 
 namespace ObsMCLauncher.Desktop.Converters;
 
@@ -37,7 +38,7 @@ public class PluginIconConverter : IValueConverter
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[PluginIconConverter] 加载图标失败: {iconPath}. Error: {ex.Message}");
+            DebugLogger.Error("PluginIconConverter", $"加载图标失败: {iconPath}. Error: {ex.Message}");
         }
 
         return LoadDefaultIcon();
@@ -69,7 +70,7 @@ public class PluginIconConverter : IValueConverter
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[PluginIconConverter] 加载远程图标失败: {url}. Error: {ex.Message}");
+            DebugLogger.Error("PluginIconConverter", $"加载远程图标失败: {url}. Error: {ex.Message}");
         }
     }
 

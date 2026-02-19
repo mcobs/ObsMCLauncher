@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using ObsMCLauncher.Core.Utils;
 
 namespace ObsMCLauncher.Core.Bootstrap;
 
@@ -23,8 +24,7 @@ public static class LauncherBootstrap
         }
         catch (Exception ex)
         {
-            // 记录错误日志
-            System.Diagnostics.Debug.WriteLine($"创建OMCL目录失败: {ex.Message}");
+            DebugLogger.Error("Bootstrap", $"创建OMCL目录失败: {ex.Message}");
         }
     }
 }

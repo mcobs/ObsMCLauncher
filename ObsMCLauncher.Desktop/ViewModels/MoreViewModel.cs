@@ -71,12 +71,12 @@ public partial class MoreViewModel : ViewModelBase
                     var pluginTabIndex = Tabs.IndexOf(Tabs.First(t => t.Header == "插件"));
                     Tabs.Insert(pluginTabIndex + 1, tabItem);
 
-                    System.Diagnostics.Debug.WriteLine($"[MoreViewModel] 已添加插件标签页: {title} (插件: {pluginId})");
+                    DebugLogger.Info("MoreViewModel", $"已添加插件标签页: {title} (插件: {pluginId})");
                 }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[MoreViewModel] 添加插件标签页失败: {ex.Message}");
+                DebugLogger.Error("MoreViewModel", $"添加插件标签页失败: {ex.Message}");
             }
         });
     }
@@ -91,12 +91,12 @@ public partial class MoreViewModel : ViewModelBase
                 if (tabToRemove != null)
                 {
                     Tabs.Remove(tabToRemove);
-                    System.Diagnostics.Debug.WriteLine($"[MoreViewModel] 已移除插件标签页: {tabToRemove.Header} (插件: {pluginId})");
+                    DebugLogger.Info("MoreViewModel", $"已移除插件标签页: {tabToRemove.Header} (插件: {pluginId})");
                 }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[MoreViewModel] 移除插件标签页失败: {ex.Message}");
+                DebugLogger.Error("MoreViewModel", $"移除插件标签页失败: {ex.Message}");
             }
         });
     }
@@ -112,11 +112,11 @@ public partial class MoreViewModel : ViewModelBase
                 {
                     Tabs.Remove(tab);
                 }
-                System.Diagnostics.Debug.WriteLine($"[MoreViewModel] 已移除插件 {pluginId} 的所有标签页，共 {tabsToRemove.Count} 个");
+                DebugLogger.Info("MoreViewModel", $"已移除插件 {pluginId} 的所有标签页，共 {tabsToRemove.Count} 个");
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[MoreViewModel] 移除插件标签页失败: {ex.Message}");
+                DebugLogger.Error("MoreViewModel", $"移除插件标签页失败: {ex.Message}");
             }
         });
     }
@@ -142,7 +142,7 @@ public partial class MoreViewModel : ViewModelBase
         else if (selectedTab.Content is PluginTabViewModel pluginTab)
         {
             pluginTab.Initialize();
-            System.Diagnostics.Debug.WriteLine($"[MoreViewModel] 激活插件标签页: {pluginTab.Title}");
+            DebugLogger.Info("MoreViewModel", $"激活插件标签页: {pluginTab.Title}");
         }
     }
 

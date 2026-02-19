@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
+using ObsMCLauncher.Core.Utils;
 
 namespace ObsMCLauncher.Core.Services;
 
@@ -29,7 +30,7 @@ public static class VersionConfigService
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"[VersionConfig] 加载配置失败: {ex.Message}");
+            DebugLogger.Error("VersionConfig", $"加载配置失败: {ex.Message}");
             return new VersionConfig();
         }
     }
@@ -41,12 +42,12 @@ public static class VersionConfigService
             var configPath = GetConfigPath(versionPath);
             var options = new JsonSerializerOptions { WriteIndented = true };
             File.WriteAllText(configPath, JsonSerializer.Serialize(config, options));
-            Debug.WriteLine($"[VersionConfig] 配置已保存: {versionPath}");
+            DebugLogger.Info("VersionConfig", $"配置已保存: {versionPath}");
             return true;
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"[VersionConfig] 保存配置失败: {ex.Message}");
+            DebugLogger.Error("VersionConfig", $"保存配置失败: {ex.Message}");
             return false;
         }
     }

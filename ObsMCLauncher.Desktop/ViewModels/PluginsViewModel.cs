@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using ObsMCLauncher.Core.Plugins;
+using ObsMCLauncher.Core.Utils;
 using ObsMCLauncher.Desktop.ViewModels.Notifications;
 
 namespace ObsMCLauncher.Desktop.ViewModels;
@@ -201,7 +202,7 @@ public partial class PluginsViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[PluginsVM] 加载分类失败: {ex.Message}");
+            DebugLogger.Error("PluginsVM", $"加载分类失败: {ex.Message}");
         }
     }
 

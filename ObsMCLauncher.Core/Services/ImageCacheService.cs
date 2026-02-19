@@ -4,6 +4,7 @@ using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
+using ObsMCLauncher.Core.Utils;
 
 namespace ObsMCLauncher.Core.Services;
 
@@ -52,7 +53,7 @@ public class ImageCacheService
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[ImageCache] 下载图片失败: {url}, {ex.Message}");
+            DebugLogger.Error("ImageCache", $"下载图片失败: {url}, {ex.Message}");
             return null;
         }
     }

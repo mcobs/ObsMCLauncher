@@ -199,11 +199,11 @@ namespace ObsMCLauncher.Core.Plugins
             {
                 if (!forceRefresh && _cachedIndex != null && DateTime.Now - _lastFetchTime < _cacheDuration)
                 {
-                    Debug.WriteLine($"[PluginMarket] 使用缓存的市场索引");
+                    DebugLogger.Info("PluginMarket", "使用缓存的市场索引");
                     return _cachedIndex;
                 }
 
-                Debug.WriteLine($"[PluginMarket] 正在获取插件市场索引...");
+                DebugLogger.Info("PluginMarket", "正在获取插件市场索引...");
                 
                 var url = GitHubProxyHelper.WithProxy(MARKET_INDEX_URL);
                 var response = await _httpClient.GetAsync(url);
@@ -218,12 +218,12 @@ namespace ObsMCLauncher.Core.Plugins
                 _cachedIndex = index;
                 _lastFetchTime = DateTime.Now;
                 
-                Debug.WriteLine($"[PluginMarket] 成功获取 {index?.Plugins?.Count ?? 0} 个插件");
+                DebugLogger.Info("PluginMarket", $"成功获取 {index?.Plugins?.Count ?? 0} 个插件");
                 return index;
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[PluginMarket] 获取插件市场索引失败: {ex.Message}");
+                DebugLogger.Error("PluginMarket", $"获取插件市场索引失败: {ex.Message}");
                 return _cachedIndex;
             }
         }
@@ -240,7 +240,7 @@ namespace ObsMCLauncher.Core.Plugins
                     return _cachedCategories;
                 }
 
-                Debug.WriteLine($"[PluginMarket] 正在获取插件分类...");
+                DebugLogger.Info("PluginMarket", "正在获取插件分类...");
                 
                 var url = GitHubProxyHelper.WithProxy(CATEGORY_INDEX_URL);
                 var response = await _httpClient.GetAsync(url);
@@ -254,12 +254,12 @@ namespace ObsMCLauncher.Core.Plugins
 
                 _cachedCategories = categoryIndex?.Categories;
                 
-                Debug.WriteLine($"[PluginMarket] 成功获取 {categoryIndex?.Categories?.Count ?? 0} 个分类");
+                DebugLogger.Info("PluginMarket", $"成功获取 {categoryIndex?.Categories?.Count ?? 0} 个分类");
                 return _cachedCategories;
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[PluginMarket] 获取插件分类失败: {ex.Message}");
+                DebugLogger.Error("PluginMarket", $"获取插件分类失败: {ex.Message}");
                 return _cachedCategories;
             }
         }
@@ -273,7 +273,7 @@ namespace ObsMCLauncher.Core.Plugins
             if (index?.Plugins == null) return null;
 
             var currentPlatform = GetCurrentPlatform();
-            Debug.WriteLine($"[PluginMarket] 筛选支持 {currentPlatform} 的插件");
+            DebugLogger.Info("PluginMarket", $"筛选支持 {currentPlatform} 的插件");
 
             return index.Plugins.FindAll(p => p.SupportsCurrentPlatform);
         }
@@ -298,7 +298,7 @@ namespace ObsMCLauncher.Core.Plugins
         {
             try
             {
-                Debug.WriteLine($"[PluginMarket] 开始下载插件: {plugin.Name}");
+                DebugLogger.Info("PluginMarket", $"开始下载插件: {plugin.Name}");
                 progress?.Report(0);
 
                 // 如果有releaseUrl，先获取最新版本信息
@@ -319,12 +319,12 @@ namespace ObsMCLauncher.Core.Plugins
                 var downloadUrl = GetDownloadUrl(plugin);
                 if (string.IsNullOrEmpty(downloadUrl))
                 {
-                    Debug.WriteLine($"[PluginMarket] 无法获取下载地址: {plugin.Name}");
+                    DebugLogger.Warn("PluginMarket", $"无法获取下载地址: {plugin.Name}");
                     return false;
                 }
 
                 downloadUrl = GitHubProxyHelper.WithProxy(downloadUrl);
-                Debug.WriteLine($"[PluginMarket] 下载地址: {downloadUrl}");
+                DebugLogger.Info("PluginMarket", $"下载地址: {downloadUrl}");
                 
                 var response = await _httpClient.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
                 response.EnsureSuccessStatusCode();
@@ -354,7 +354,7 @@ namespace ObsMCLauncher.Core.Plugins
                     }
                 }
                 
-                Debug.WriteLine($"[PluginMarket] 下载完成，开始安装: {plugin.Name}");
+                DebugLogger.Info("PluginMarket", $"下载完成，开始安装: {plugin.Name}");
                 progress?.Report(50);
                 
                 var pluginTargetDir = Path.Combine(pluginsDirectory, plugin.Id);
@@ -371,18 +371,18 @@ namespace ObsMCLauncher.Core.Plugins
                 File.Delete(tempZipPath);
                 
                 progress?.Report(100);
-                Debug.WriteLine($"[PluginMarket] 插件安装成功: {plugin.Name}");
+                DebugLogger.Info("PluginMarket", $"插件安装成功: {plugin.Name}");
                 
                 return true;
             }
             catch (OperationCanceledException)
             {
-                Debug.WriteLine($"[PluginMarket] 插件下载已取消: {plugin.Name}");
+                DebugLogger.Info("PluginMarket", $"插件下载已取消: {plugin.Name}");
                 return false;
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[PluginMarket] 插件下载/安装失败: {ex.Message}");
+                DebugLogger.Error("PluginMarket", $"插件下载/安装失败: {ex.Message}");
                 return false;
             }
         }
@@ -399,7 +399,7 @@ namespace ObsMCLauncher.Core.Plugins
                 if (Directory.Exists(pluginDir))
                 {
                     Directory.Delete(pluginDir, true);
-                    Debug.WriteLine($"[PluginMarket] 插件卸载成功: {pluginId}");
+                    DebugLogger.Info("PluginMarket", $"插件卸载成功: {pluginId}");
                     return true;
                 }
                 
@@ -407,7 +407,7 @@ namespace ObsMCLauncher.Core.Plugins
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[PluginMarket] 插件卸载失败: {ex.Message}");
+                DebugLogger.Error("PluginMarket", $"插件卸载失败: {ex.Message}");
                 return false;
             }
         }
@@ -426,7 +426,7 @@ namespace ObsMCLauncher.Core.Plugins
                     return (null, null);
 
                 var url = GitHubProxyHelper.WithProxy(releaseUrl);
-                Debug.WriteLine($"[PluginMarket] 获取最新版本: {url}");
+                DebugLogger.Info("PluginMarket", $"获取最新版本: {url}");
 
                 var response = await _httpClient.GetAsync(url);
                 response.EnsureSuccessStatusCode();
@@ -497,12 +497,12 @@ namespace ObsMCLauncher.Core.Plugins
                     }
                 }
 
-                Debug.WriteLine($"[PluginMarket] 最新版本: {tagName}, 下载地址: {downloadUrl}");
+                DebugLogger.Info("PluginMarket", $"最新版本: {tagName}, 下载地址: {downloadUrl}");
                 return (tagName, downloadUrl);
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[PluginMarket] 获取最新版本失败: {ex.Message}");
+                DebugLogger.Error("PluginMarket", $"获取最新版本失败: {ex.Message}");
                 return (null, null);
             }
         }

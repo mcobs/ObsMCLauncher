@@ -71,7 +71,7 @@ public static class UpdateService
     {
         try
         {
-            Debug.WriteLine("[UpdateService] 开始检查更新...");
+            DebugLogger.Info("Update", "开始检查更新...");
 
             string apiUrl = string.Format(GITHUB_API, GITHUB_OWNER, GITHUB_REPO);
 
@@ -82,7 +82,7 @@ public static class UpdateService
 
             // 使用镜像代理
             apiUrl = GitHubProxyHelper.WithProxy(apiUrl);
-            Debug.WriteLine($"[UpdateService] API URL: {apiUrl}");
+            DebugLogger.Info("Update", $"API URL: {apiUrl}");
 
             var response = await _httpClient.GetAsync(apiUrl);
             response.EnsureSuccessStatusCode();
@@ -102,31 +102,31 @@ public static class UpdateService
 
             if (latestRelease == null)
             {
-                Debug.WriteLine("[UpdateService] 未找到发布版本");
+                DebugLogger.Warn("Update", "未找到发布版本");
                 return null;
             }
 
-            Debug.WriteLine($"[UpdateService] 最新版本: {latestRelease.TagName}");
+            DebugLogger.Info("Update", $"最新版本: {latestRelease.TagName}");
 
             if (IsNewerVersion(latestRelease.TagName, Utils.VersionInfo.ShortVersion))
             {
-                Debug.WriteLine("[UpdateService] 发现新版本！");
+                DebugLogger.Info("Update", "发现新版本！");
                 return latestRelease;
             }
             else
             {
-                Debug.WriteLine("[UpdateService] 当前已是最新版本");
+                DebugLogger.Info("Update", "当前已是最新版本");
                 return null;
             }
         }
         catch (HttpRequestException ex)
         {
-            Debug.WriteLine($"[UpdateService] 网络错误: {ex.Message}");
+            DebugLogger.Error("Update", $"网络错误: {ex.Message}");
             return null;
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"[UpdateService] 检查更新失败: {ex.Message}");
+            DebugLogger.Error("Update", $"检查更新失败: {ex.Message}");
             return null;
         }
     }
@@ -235,7 +235,7 @@ public static class UpdateService
         if (release.Assets == null || release.Assets.Length == 0) return null;
 
         var platform = GetPlatformIdentifier();
-        Debug.WriteLine($"[UpdateService] 当前平台: {platform}");
+        DebugLogger.Info("Update", $"当前平台: {platform}");
 
         foreach (var asset in release.Assets)
         {
@@ -296,7 +296,7 @@ public static class UpdateService
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"[UpdateService] 打开Release页面失败: {ex.Message}");
+            DebugLogger.Error("Update", $"打开Release页面失败: {ex.Message}");
         }
     }
 }

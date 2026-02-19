@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using ObsMCLauncher.Core.Models;
+using ObsMCLauncher.Core.Utils;
 
 namespace ObsMCLauncher.Core.Services.Minecraft
 {
@@ -44,7 +45,7 @@ namespace ObsMCLauncher.Core.Services.Minecraft
             }
             catch { }
 
-            System.Diagnostics.Debug.WriteLine($"[LocalVersionService] 无法解析时间格式: {dateString}");
+            DebugLogger.Warn("LocalVersion", $"无法解析时间格式: {dateString}");
             return DateTime.MinValue;
         }
 
@@ -155,12 +156,12 @@ namespace ObsMCLauncher.Core.Services.Minecraft
                 
                 if (!Directory.Exists(versionsPath))
                 {
-                    System.Diagnostics.Debug.WriteLine($"版本目录不存在: {versionsPath}");
+                    DebugLogger.Warn("LocalVersion", $"版本目录不存在: {versionsPath}");
                     return installedVersions;
                 }
 
                 var versionDirs = Directory.GetDirectories(versionsPath);
-                System.Diagnostics.Debug.WriteLine($"找到 {versionDirs.Length} 个版本文件夹");
+                DebugLogger.Info("LocalVersion", $"找到 {versionDirs.Length} 个版本文件夹");
 
                 foreach (var versionDir in versionDirs)
                 {
@@ -171,7 +172,7 @@ namespace ObsMCLauncher.Core.Services.Minecraft
                     // 检查JSON文件是否存在（必须）
                     if (!File.Exists(jsonPath))
                     {
-                        System.Diagnostics.Debug.WriteLine($"版本 {versionId} 缺少JSON文件，跳过");
+                        DebugLogger.Warn("LocalVersion", $"版本 {versionId} 缺少JSON文件，跳过");
                         continue;
                     }
                     
@@ -183,7 +184,7 @@ namespace ObsMCLauncher.Core.Services.Minecraft
                     }
                     catch
                     {
-                        System.Diagnostics.Debug.WriteLine($"版本 {versionId} JSON读取失败，跳过");
+                        DebugLogger.Warn("LocalVersion", $"版本 {versionId} JSON读取失败，跳过");
                         continue;
                     }
                     
@@ -194,7 +195,7 @@ namespace ObsMCLauncher.Core.Services.Minecraft
                     // 对于原版，必须有JAR文件；对于Mod加载器，JAR在libraries中
                     if (!isModLoader && !File.Exists(jarPath))
                     {
-                        System.Diagnostics.Debug.WriteLine($"版本 {versionId} 缺少JAR文件，跳过");
+                        DebugLogger.Warn("LocalVersion", $"版本 {versionId} 缺少JAR文件，跳过");
                         continue;
                     }
 
@@ -231,12 +232,12 @@ namespace ObsMCLauncher.Core.Services.Minecraft
                             var loaderInfo = string.IsNullOrEmpty(loaderType) ? "" : $" [{loaderType}]";
                             var isolationInfo = versionConfig.UseVersionIsolation.HasValue ? 
                                 (versionConfig.UseVersionIsolation.Value ? " [版本隔离]" : " [共享]") : "";
-                            System.Diagnostics.Debug.WriteLine($"  找到版本: {versionId} (实际版本: {versionData.Id}){loaderInfo}{isolationInfo}");
+                            DebugLogger.Info("LocalVersion", $"找到版本: {versionId} (实际版本: {versionData.Id}){loaderInfo}{isolationInfo}");
                         }
                     }
                     catch (Exception ex)
                     {
-                        System.Diagnostics.Debug.WriteLine($"解析版本 {versionId} JSON 失败: {ex.Message}");
+                        DebugLogger.Error("LocalVersion", $"解析版本 {versionId} JSON 失败: {ex.Message}");
                     }
                 }
 
@@ -246,11 +247,11 @@ namespace ObsMCLauncher.Core.Services.Minecraft
                     .OrderByDescending(v => v.Id == selectedVersionId)
                     .ThenByDescending(v => v.LastPlayed)
                     .ToList();
-                System.Diagnostics.Debug.WriteLine($"✅ 成功加载 {installedVersions.Count} 个已安装版本");
+                DebugLogger.Info("LocalVersion", $"成功加载 {installedVersions.Count} 个已安装版本");
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"❌ 获取已安装版本失败: {ex.Message}");
+                DebugLogger.Error("LocalVersion", $"获取已安装版本失败: {ex.Message}");
             }
 
             return installedVersions;
@@ -273,7 +274,7 @@ namespace ObsMCLauncher.Core.Services.Minecraft
             var config = LauncherConfig.Load();
             config.SelectedVersion = versionId;
             config.Save();
-            System.Diagnostics.Debug.WriteLine($"已选择版本: {versionId}");
+            DebugLogger.Info("LocalVersion", $"已选择版本: {versionId}");
         }
 
         /// <summary>
@@ -290,7 +291,7 @@ namespace ObsMCLauncher.Core.Services.Minecraft
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"打开文件夹失败: {ex.Message}");
+                DebugLogger.Error("LocalVersion", $"打开文件夹失败: {ex.Message}");
             }
         }
 
@@ -304,13 +305,13 @@ namespace ObsMCLauncher.Core.Services.Minecraft
                 if (Directory.Exists(versionPath))
                 {
                     Directory.Delete(versionPath, true);
-                    System.Diagnostics.Debug.WriteLine($"✅ 已删除版本: {versionPath}");
+                    DebugLogger.Info("LocalVersion", $"已删除版本: {versionPath}");
                     return true;
                 }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"❌ 删除版本失败: {ex.Message}");
+                DebugLogger.Error("LocalVersion", $"删除版本失败: {ex.Message}");
             }
             return false;
         }
@@ -377,4 +378,3 @@ namespace ObsMCLauncher.Core.Services.Minecraft
         }
     }
 }
-

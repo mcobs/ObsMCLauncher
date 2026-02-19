@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 using ObsMCLauncher.Core.Models;
 using ObsMCLauncher.Core.Services.Download;
 using ObsMCLauncher.Core.Services.Installers;
+using ObsMCLauncher.Core.Utils;
 
 namespace ObsMCLauncher.Core.Services.Minecraft;
 
@@ -35,7 +36,7 @@ public class ModpackInstallService
 
         try
         {
-            Debug.WriteLine($"[ModpackInstall] 开始安装整合包: {versionName}");
+            DebugLogger.Info("ModpackInstall", $"开始安装整合包: {versionName}");
             progressCallback?.Invoke("正在准备安装...", 0);
 
             if (!File.Exists(zipFilePath))
@@ -93,11 +94,11 @@ public class ModpackInstallService
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[ModpackInstall] 尝试清理临时目录失败: {ex.Message}");
+                DebugLogger.Warn("ModpackInstall", $"尝试清理临时目录失败: {ex.Message}");
             }
 
             progressCallback?.Invoke("安装完成", 100);
-            Debug.WriteLine($"[ModpackInstall] 整合包安装完成: {versionName}");
+            DebugLogger.Info("ModpackInstall", $"整合包安装完成: {versionName}");
 
             var config = LauncherConfig.Load();
             // 如果开启了自动下载资源，则在后台启动下载任务
@@ -135,7 +136,7 @@ public class ModpackInstallService
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"[ModpackInstall] 安装失败: {ex.Message}");
+            DebugLogger.Error("ModpackInstall", $"安装失败: {ex.Message}");
             try
             {
                 if (Directory.Exists(tempRoot))
@@ -165,7 +166,7 @@ public class ModpackInstallService
             }
             catch (IOException ex) when (i < retries - 1)
             {
-                Debug.WriteLine($"[ModpackInstall] 目录移动被锁定，正在重试 ({i + 1}/{retries}): {ex.Message}");
+                DebugLogger.Warn("ModpackInstall", $"目录移动被锁定，正在重试 ({i + 1}/{retries}): {ex.Message}");
                 await Task.Delay(delayMs);
             }
         }
@@ -571,18 +572,18 @@ public class ModpackInstallService
                     try
                     {
                         File.Copy(bestJar, jarPath, true);
-                        Debug.WriteLine($"[ModpackInstall] ✅ 已自动补全版本 JAR: {Path.GetFileName(bestJar)} -> {versionName}.jar");
+                        DebugLogger.Info("ModpackInstall", $"已自动补全版本 JAR: {Path.GetFileName(bestJar)} -> {versionName}.jar");
                     }
                     catch (Exception ex)
                     {
-                        Debug.WriteLine($"[ModpackInstall] ⚠️ 复制版本 JAR 失败: {ex.Message}");
+                        DebugLogger.Warn("ModpackInstall", $"复制版本 JAR 失败: {ex.Message}");
                     }
                 }
                 else
                 {
                     // 如果版本目录没找到，去正式库里找（针对 NeoForge 这种库里才有 JAR 的情况）
                     // 虽然 NeoForge 的 JSON 会指定正确的库路径，但启动器扫描器通常仍要求版本目录下有一个 jar 占位（或作为主文件）
-                    Debug.WriteLine($"[ModpackInstall] ⚠️ 未在版本目录找到可用的 JAR 文件");
+                    DebugLogger.Warn("ModpackInstall", "未在版本目录找到可用的 JAR 文件");
                 }
             }
 
@@ -627,11 +628,11 @@ public class ModpackInstallService
                     }
                 }
 
-                Debug.WriteLine($"[ModpackInstall] ✅ 已合并临时库文件到真实libraries目录");
+                DebugLogger.Info("ModpackInstall", "已合并临时库文件到真实libraries目录");
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[ModpackInstall] ⚠️ 合并库文件失败: {ex.Message}");
+                DebugLogger.Warn("ModpackInstall", $"合并库文件失败: {ex.Message}");
             }
         });
     }

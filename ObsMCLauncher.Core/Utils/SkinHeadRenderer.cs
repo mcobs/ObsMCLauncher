@@ -71,7 +71,7 @@ public static class SkinHeadRenderer
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[SkinHeadRenderer] 渲染失败: {ex.Message}");
+            DebugLogger.Error("SkinHeadRenderer", $"渲染失败: {ex.Message}");
             return null;
         }
     }

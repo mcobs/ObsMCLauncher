@@ -12,6 +12,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using ObsMCLauncher.Core.Models;
 using ObsMCLauncher.Core.Services.Minecraft;
+using ObsMCLauncher.Core.Utils;
 
 namespace ObsMCLauncher.Core.Services.Installers
 {
@@ -359,7 +360,7 @@ namespace ObsMCLauncher.Core.Services.Installers
                         if (File.Exists(tempVanillaJar))
                             File.Copy(tempVanillaJar, standardVanillaJar, true);
                         
-                        Debug.WriteLine($"[ForgeService] ✅ 已复制原版文件到标准位置: {standardVanillaDir}");
+                        DebugLogger.Info("Forge", $"已复制原版文件到标准位置: {standardVanillaDir}");
                         }
                     }
                     
@@ -374,7 +375,7 @@ namespace ObsMCLauncher.Core.Services.Installers
                         }
                         catch (Exception mergeEx)
                         {
-                            Debug.WriteLine($"[ForgeService] ⚠️ 合并父版本信息失败: {mergeEx.Message}");
+                            DebugLogger.Warn("Forge", $"合并父版本信息失败: {mergeEx.Message}");
                         }
                     }
                     
@@ -492,8 +493,8 @@ namespace ObsMCLauncher.Core.Services.Installers
 
                 var outText = await outTask;
                 var errText = await errTask;
-                if (!string.IsNullOrWhiteSpace(outText)) Debug.WriteLine($"[Forge Processor] {outText}");
-                if (!string.IsNullOrWhiteSpace(errText)) Debug.WriteLine($"[Forge Processor ERROR] {errText}");
+                if (!string.IsNullOrWhiteSpace(outText)) DebugLogger.Info("Forge", $"Processor: {outText}");
+                if (!string.IsNullOrWhiteSpace(errText)) DebugLogger.Error("Forge", $"Processor ERROR: {errText}");
 
                 if (p.ExitCode != 0)
                 {
@@ -524,11 +525,11 @@ namespace ObsMCLauncher.Core.Services.Installers
                     if (!string.IsNullOrEmpty(best))
                     {
                         minecraftJarCandidate = best;
-                        Debug.WriteLine($"[Forge] 已为 processor 定位到 slim jar: {Path.GetFileName(best)}");
+                        DebugLogger.Info("Forge", $"已为 processor 定位到 slim jar: {Path.GetFileName(best)}");
                     }
                 }
             }
-            catch (Exception ex) { Debug.WriteLine($"[Forge] 查找 slim jar 失败: {ex.Message}"); }
+            catch (Exception ex) { DebugLogger.Warn("Forge", $"查找 slim jar 失败: {ex.Message}"); }
 
             var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
@@ -635,7 +636,7 @@ namespace ObsMCLauncher.Core.Services.Installers
                 }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine($"[Forge] processor 依赖下载失败: {maven} - {ex.Message}");
+                    DebugLogger.Error("Forge", $"processor 依赖下载失败: {maven} - {ex.Message}");
                 }
                 finally
                 {
@@ -702,7 +703,7 @@ namespace ObsMCLauncher.Core.Services.Installers
 
                     if (string.IsNullOrWhiteSpace(downloadUrl) || string.IsNullOrWhiteSpace(savePath))
                     {
-                        Debug.WriteLine($"[Forge] 跳过 install_profile 库（无法构建URL）: {lib.Name}");
+                        DebugLogger.Warn("Forge", $"跳过 install_profile 库（无法构建URL）: {lib.Name}");
                         return;
                     }
 
@@ -721,7 +722,7 @@ namespace ObsMCLauncher.Core.Services.Installers
                 }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine($"[Forge] install_profile 库下载失败: {lib.Name} - {ex.Message}");
+                    DebugLogger.Error("Forge", $"install_profile 库下载失败: {lib.Name} - {ex.Message}");
                 }
                 finally
                 {
@@ -940,7 +941,7 @@ namespace ObsMCLauncher.Core.Services.Installers
             // 对于 1.12.2 及更早的版本，安装器参数可能无效，需手动安装（完整迁移 VersionDetailPage 逻辑）
             if (isVeryOldVersion || !isNewVersion)
             {
-                Debug.WriteLine($"[Forge] 安装器参数不适用，尝试手动安装客户端... {mcVersion}");
+                DebugLogger.Info("Forge", $"安装器参数不适用，尝试手动安装客户端... {mcVersion}");
                 string targetVersionName = $"{mcVersion}-forge-{forgeVersion}";
                 string targetVersionDir = Path.Combine(gameDirectory, "versions", targetVersionName);
                 var ok = await ManualInstallVeryOldForgeClient(installerPath, gameDirectory, mcVersion, targetVersionName, targetVersionDir, config, cancellationToken);
@@ -965,7 +966,7 @@ namespace ObsMCLauncher.Core.Services.Installers
             if (!string.IsNullOrEmpty(mcVersion))
             {
                 javaPath = config.GetActualJavaPath(mcVersion);
-                Debug.WriteLine($"[Forge] 根据Minecraft版本 {mcVersion} 选择Java: {javaPath}");
+                DebugLogger.Info("Forge", $"根据Minecraft版本 {mcVersion} 选择Java: {javaPath}");
             }
             else
             {
@@ -975,7 +976,7 @@ namespace ObsMCLauncher.Core.Services.Installers
             if (string.IsNullOrEmpty(javaPath) || !File.Exists(javaPath))
             {
                 javaPath = "java"; // 回退到系统 PATH
-                Debug.WriteLine("[Forge] 未配置有效Java路径，将使用系统 PATH 中的 'java'。这可能导致安装失败！");
+                DebugLogger.Warn("Forge", "未配置有效Java路径，将使用系统 PATH 中的 'java'。这可能导致安装失败！");
             }
 
             var startInfo = new ProcessStartInfo
@@ -999,7 +1000,7 @@ namespace ObsMCLauncher.Core.Services.Installers
                 if (!string.IsNullOrEmpty(e.Data))
                 {
                     stdout.AppendLine(e.Data);
-                    Debug.WriteLine($"[Forge Installer] {e.Data}");
+                    DebugLogger.Info("Forge", $"Installer: {e.Data}");
                 }
             };
 
@@ -1008,7 +1009,7 @@ namespace ObsMCLauncher.Core.Services.Installers
                 if (!string.IsNullOrEmpty(e.Data))
                 {
                     stderr.AppendLine(e.Data);
-                    Debug.WriteLine($"[Forge Installer ERROR] {e.Data}");
+                    DebugLogger.Error("Forge", $"Installer ERROR: {e.Data}");
                 }
             };
 
@@ -1024,11 +1025,11 @@ namespace ObsMCLauncher.Core.Services.Installers
             if (completed == timeoutTask)
             {
                 try { if (!process.HasExited) process.Kill(true); } catch { }
-                Debug.WriteLine("[Forge] 安装器超时（10分钟），已终止进程");
+                DebugLogger.Warn("Forge", "安装器超时（10分钟），已终止进程");
                 return false;
             }
 
-            Debug.WriteLine($"[Forge] 安装器退出码: {process.ExitCode}");
+            DebugLogger.Info("Forge", $"安装器退出码: {process.ExitCode}");
 
             if (process.ExitCode != 0)
             {
@@ -1036,9 +1037,9 @@ namespace ObsMCLauncher.Core.Services.Installers
                 var outText = stdout.ToString().Trim();
                 var errText = stderr.ToString().Trim();
                 if (!string.IsNullOrEmpty(outText))
-                    Debug.WriteLine($"[Forge] 安装器输出汇总:\n{outText}");
+                    DebugLogger.Info("Forge", $"安装器输出汇总:\n{outText}");
                 if (!string.IsNullOrEmpty(errText))
-                    Debug.WriteLine($"[Forge] 安装器错误汇总:\n{errText}");
+                    DebugLogger.Error("Forge", $"安装器错误汇总:\n{errText}");
             }
 
             return process.ExitCode == 0;
@@ -1067,13 +1068,13 @@ namespace ObsMCLauncher.Core.Services.Installers
                 
                 if (!File.Exists(vanillaJsonPath))
                 {
-                    Debug.WriteLine($"[Forge] 原版JSON不存在（.temp和标准位置都未找到），保留inheritsFrom: {vanillaVersion}");
+                    DebugLogger.Warn("Forge", $"原版JSON不存在（.temp和标准位置都未找到），保留inheritsFrom: {vanillaVersion}");
                     forgeJson["inheritsFrom"] = vanillaVersion;
                     await File.WriteAllTextAsync(forgeJsonPath, forgeJson.ToJsonString(new JsonSerializerOptions { WriteIndented = true }), cancellationToken);
                     return;
                 }
 
-                Debug.WriteLine($"[Forge] 从{(vanillaJsonPath == tempVanillaJsonPath ? "临时目录" : "标准位置")}读取原版JSON: {vanillaJsonPath}");
+                DebugLogger.Info("Forge", $"从{(vanillaJsonPath == tempVanillaJsonPath ? "临时目录" : "标准位置")}读取原版JSON: {vanillaJsonPath}");
                 var vanillaJsonContent = await File.ReadAllTextAsync(vanillaJsonPath, cancellationToken);
                 var vanillaJson = JsonNode.Parse(vanillaJsonContent)!.AsObject();
 
@@ -1128,11 +1129,11 @@ namespace ObsMCLauncher.Core.Services.Installers
 
                 await File.WriteAllTextAsync(forgeJsonPath, forgeJson.ToJsonString(new JsonSerializerOptions { WriteIndented = true }), cancellationToken);
 
-                Debug.WriteLine($"[Forge] MergeVanillaIntoForgeJson 完成，新增库 {addedCount} 个");
+                DebugLogger.Info("Forge", $"MergeVanillaIntoForgeJson 完成，新增库 {addedCount} 个");
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[Forge] MergeVanillaIntoForgeJson 失败: {ex.Message}");
+                DebugLogger.Error("Forge", $"MergeVanillaIntoForgeJson 失败: {ex.Message}");
                 throw;
             }
         }
@@ -1159,13 +1160,13 @@ namespace ObsMCLauncher.Core.Services.Installers
         {
             try
             {
-                Debug.WriteLine($"[Forge] 开始手动安装旧版Forge: {mcVersion} -> {targetVersionName}");
+                DebugLogger.Info("Forge", $"开始手动安装旧版Forge: {mcVersion} -> {targetVersionName}");
 
                 using var zip = ZipFile.OpenRead(installerPath);
                 var profileEntry = zip.GetEntry("install_profile.json");
                 if (profileEntry == null)
                 {
-                    Debug.WriteLine("[Forge] 安装器中找不到 install_profile.json");
+                    DebugLogger.Warn("Forge", "安装器中找不到 install_profile.json");
                     return false;
                 }
 
@@ -1202,7 +1203,7 @@ namespace ObsMCLauncher.Core.Services.Installers
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[Forge] 手动安装旧版Forge失败: {ex.Message}");
+                DebugLogger.Error("Forge", $"手动安装旧版Forge失败: {ex.Message}");
                 return false;
             }
         }
@@ -1268,21 +1269,21 @@ namespace ObsMCLauncher.Core.Services.Installers
                     if (File.Exists(jarInForgeDir))
                     {
                         File.Copy(jarInForgeDir, customJar, true);
-                        Debug.WriteLine($"[Forge] 已从Forge目录内复制主JAR: {gameVersion}.jar -> {customVersionName}.jar");
+                        DebugLogger.Info("Forge", $"已从Forge目录内复制主JAR: {gameVersion}.jar -> {customVersionName}.jar");
                     }
                     else if (File.Exists(jarInVanillaDir))
                     {
                         File.Copy(jarInVanillaDir, customJar, true);
-                        Debug.WriteLine($"[Forge] 已从原版目录复制主JAR: {gameVersion}.jar -> {customVersionName}.jar");
+                        DebugLogger.Info("Forge", $"已从原版目录复制主JAR: {gameVersion}.jar -> {customVersionName}.jar");
                     }
                     else
                     {
-                        Debug.WriteLine($"[Forge] 未找到可复制的原版JAR（{gameVersion}.jar），新版Forge可能不需要独立JAR");
+                        DebugLogger.Warn("Forge", $"未找到可复制的原版JAR（{gameVersion}.jar），新版Forge可能不需要独立JAR");
                     }
                 }
                 catch (Exception jarEx)
                 {
-                    Debug.WriteLine($"[Forge] 复制主JAR失败: {jarEx.Message}");
+                    DebugLogger.Warn("Forge", $"复制主JAR失败: {jarEx.Message}");
                 }
             }
         }
@@ -1305,7 +1306,7 @@ namespace ObsMCLauncher.Core.Services.Installers
             try
             {
                 var config = LauncherConfig.Load();
-                Debug.WriteLine($"[ForgeService] 获取Forge支持的MC版本列表... (源: {config.DownloadSource})");
+                DebugLogger.Info("ForgeService", $"获取Forge支持的MC版本列表... (源: {config.DownloadSource})");
                 
                 if (config.DownloadSource == DownloadSource.BMCLAPI)
                 {
@@ -1316,7 +1317,7 @@ namespace ObsMCLauncher.Core.Services.Installers
                     var json = await response.Content.ReadAsStringAsync();
                     var versions = JsonSerializer.Deserialize<List<string>>(json);
 
-                    Debug.WriteLine($"[ForgeService] 从镜像源获取到 {versions?.Count ?? 0} 个支持的MC版本");
+                    DebugLogger.Info("ForgeService", $"从镜像源获取到 {versions?.Count ?? 0} 个支持的MC版本");
                     return versions ?? new List<string>();
                 }
                 else
@@ -1340,7 +1341,7 @@ namespace ObsMCLauncher.Core.Services.Installers
                             .OrderByDescending(v => v)
                             .ToList() ?? new List<string>();
                         
-                        Debug.WriteLine($"[ForgeService] 从官方源获取到 {versions.Count} 个支持的MC版本");
+                        DebugLogger.Info("ForgeService", $"从官方源获取到 {versions.Count} 个支持的MC版本");
                         return versions;
                     }
                     
@@ -1349,7 +1350,7 @@ namespace ObsMCLauncher.Core.Services.Installers
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[ForgeService] 获取Forge支持版本失败: {ex.Message}");
+                DebugLogger.Error("ForgeService", $"获取Forge支持版本失败: {ex.Message}");
                 return new List<string>();
             }
         }
@@ -1362,7 +1363,7 @@ namespace ObsMCLauncher.Core.Services.Installers
             try
             {
                 var config = LauncherConfig.Load();
-                Debug.WriteLine($"[ForgeService] 获取 MC {mcVersion} 的Forge版本列表... (源: {config.DownloadSource})");
+                DebugLogger.Info("ForgeService", $"获取 MC {mcVersion} 的Forge版本列表... (源: {config.DownloadSource})");
                 
                 if (config.DownloadSource == DownloadSource.BMCLAPI)
                 {
@@ -1378,7 +1379,7 @@ namespace ObsMCLauncher.Core.Services.Installers
                     {
                         // 按build号降序排序（最新的在前）
                         forgeList = forgeList.OrderByDescending(f => f.Build).ToList();
-                        Debug.WriteLine($"[ForgeService] 从镜像源获取到 {forgeList.Count} 个Forge版本");
+                        DebugLogger.Info("ForgeService", $"从镜像源获取到 {forgeList.Count} 个Forge版本");
                     }
 
                     return forgeList ?? new List<ForgeVersion>();
@@ -1392,13 +1393,13 @@ namespace ObsMCLauncher.Core.Services.Installers
                     var xml = await response.Content.ReadAsStringAsync();
                     var forgeList = ParseForgeMavenMetadata(xml, mcVersion);
                     
-                    Debug.WriteLine($"[ForgeService] 从官方源获取到 {forgeList.Count} 个Forge版本");
+                    DebugLogger.Info("ForgeService", $"从官方源获取到 {forgeList.Count} 个Forge版本");
                     return forgeList;
                 }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[ForgeService] 获取Forge版本列表失败: {ex.Message}");
+                DebugLogger.Error("ForgeService", $"获取Forge版本列表失败: {ex.Message}");
                 return new List<ForgeVersion>();
             }
         }
@@ -1457,7 +1458,7 @@ namespace ObsMCLauncher.Core.Services.Installers
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[ForgeService] 解析Maven元数据失败: {ex.Message}");
+                DebugLogger.Error("ForgeService", $"解析Maven元数据失败: {ex.Message}");
             }
             
             return forgeList;
@@ -1479,7 +1480,7 @@ namespace ObsMCLauncher.Core.Services.Installers
             try
             {
                 var config = LauncherConfig.Load();
-                Debug.WriteLine($"[ForgeService] 开始下载Forge安装器: {forgeVersion} (源: {config.DownloadSource})");
+                DebugLogger.Info("ForgeService", $"开始下载Forge安装器: {forgeVersion} (源: {config.DownloadSource})");
                 
                 // 准备多个可能的URL格式（与原方法相同的逻辑）
                 var urlsToTry = new List<string>();
@@ -1558,15 +1559,15 @@ namespace ObsMCLauncher.Core.Services.Installers
                 {
                     try
                     {
-                        Debug.WriteLine($"[ForgeService] 尝试下载URL: {url}");
+                        DebugLogger.Info("ForgeService", $"尝试下载URL: {url}");
                         response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
                         response.EnsureSuccessStatusCode();
-                        Debug.WriteLine($"[ForgeService] 成功找到Forge安装器: {url}");
+                        DebugLogger.Info("ForgeService", $"成功找到Forge安装器: {url}");
                         break; // 成功，跳出循环
                     }
                     catch (Exception ex)
                     {
-                        Debug.WriteLine($"[ForgeService] URL失败: {url} - {ex.Message}");
+                        DebugLogger.Warn("ForgeService", $"URL失败: {url} - {ex.Message}");
                         lastException = ex;
                         response?.Dispose();
                         response = null;
@@ -1576,7 +1577,7 @@ namespace ObsMCLauncher.Core.Services.Installers
                 // 如果所有URL都失败了
                 if (response == null || !response.IsSuccessStatusCode)
                 {
-                    Debug.WriteLine($"[ForgeService] 所有URL都无法下载Forge安装器");
+                    DebugLogger.Warn("ForgeService", "所有URL都无法下载Forge安装器");
                     return false;
                 }
 
@@ -1616,12 +1617,12 @@ namespace ObsMCLauncher.Core.Services.Installers
                 // 最后再报告一次
                 progressCallback?.Invoke(totalRead, 0, totalBytes);
 
-                Debug.WriteLine($"[ForgeService] Forge安装器下载完成: {savePath}");
+                DebugLogger.Info("ForgeService", $"Forge安装器下载完成: {savePath}");
                 return true;
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[ForgeService] 下载Forge安装器失败: {ex.Message}");
+                DebugLogger.Error("ForgeService", $"下载Forge安装器失败: {ex.Message}");
                 return false;
             }
         }
@@ -1641,7 +1642,7 @@ namespace ObsMCLauncher.Core.Services.Installers
             try
             {
                 var config = LauncherConfig.Load();
-                Debug.WriteLine($"[ForgeService] 开始下载Forge安装器: {forgeVersion} (源: {config.DownloadSource})");
+                DebugLogger.Info("ForgeService", $"开始下载Forge安装器: {forgeVersion} (源: {config.DownloadSource})");
                 
                 // 准备多个可能的URL格式
                 var urlsToTry = new List<string>();
@@ -1724,23 +1725,23 @@ namespace ObsMCLauncher.Core.Services.Installers
                 {
                     try
                     {
-                        Debug.WriteLine($"[ForgeService] 尝试下载URL: {url}");
+                        DebugLogger.Info("ForgeService", $"尝试下载URL: {url}");
                         response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
                         response.EnsureSuccessStatusCode();
                         successUrl = url;
-                        Debug.WriteLine($"[ForgeService] 成功找到Forge安装器: {url}");
+                        DebugLogger.Info("ForgeService", $"成功找到Forge安装器: {url}");
                         break; // 成功，跳出循环
                     }
                     catch (HttpRequestException ex)
                     {
-                        Debug.WriteLine($"[ForgeService] URL失败 ({ex.StatusCode}): {url}");
+                        DebugLogger.Warn("ForgeService", $"URL失败 ({ex.StatusCode}): {url}");
                         lastException = ex;
                         response?.Dispose();
                         response = null;
                     }
                     catch (Exception ex)
                     {
-                        Debug.WriteLine($"[ForgeService] URL错误: {url} - {ex.Message}");
+                        DebugLogger.Warn("ForgeService", $"URL错误: {url} - {ex.Message}");
                         lastException = ex;
                         response?.Dispose();
                         response = null;
@@ -1750,7 +1751,7 @@ namespace ObsMCLauncher.Core.Services.Installers
                 // 如果所有URL都失败了
                 if (response == null || !response.IsSuccessStatusCode)
                 {
-                    Debug.WriteLine($"[ForgeService] 所有URL都无法下载Forge安装器");
+                    DebugLogger.Warn("ForgeService", "所有URL都无法下载Forge安装器");
                     if (lastException != null)
                     {
                         throw new Exception($"无法下载Forge安装器，已尝试 {urlsToTry.Count} 个URL", lastException);
@@ -1791,12 +1792,12 @@ namespace ObsMCLauncher.Core.Services.Installers
                     }
                 }
 
-                Debug.WriteLine($"[ForgeService] Forge安装器下载完成: {savePath}");
+                DebugLogger.Info("ForgeService", $"Forge安装器下载完成: {savePath}");
                 return true;
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[ForgeService] 下载Forge安装器失败: {ex.Message}");
+                DebugLogger.Error("ForgeService", $"下载Forge安装器失败: {ex.Message}");
                 return false;
             }
         }
@@ -1808,14 +1809,14 @@ namespace ObsMCLauncher.Core.Services.Installers
         {
             try
             {
-                Debug.WriteLine($"[ForgeService] 解析Forge安装器: {installerPath}");
+                DebugLogger.Info("ForgeService", $"解析Forge安装器: {installerPath}");
 
                 using var zip = ZipFile.OpenRead(installerPath);
                 var profileEntry = zip.GetEntry("install_profile.json");
 
                 if (profileEntry == null)
                 {
-                    Debug.WriteLine($"[ForgeService] 未找到install_profile.json");
+                    DebugLogger.Warn("ForgeService", "未找到install_profile.json");
                     return null;
                 }
 
@@ -1824,13 +1825,13 @@ namespace ObsMCLauncher.Core.Services.Installers
                 var json = await reader.ReadToEndAsync();
 
                 var profile = JsonSerializer.Deserialize<ForgeInstallProfile>(json);
-                Debug.WriteLine($"[ForgeService] 成功解析install_profile.json");
+                DebugLogger.Info("ForgeService", "成功解析install_profile.json");
 
                 return profile;
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[ForgeService] 解析install_profile失败: {ex.Message}");
+                DebugLogger.Error("ForgeService", $"解析install_profile失败: {ex.Message}");
                 return null;
             }
         }
@@ -1842,7 +1843,7 @@ namespace ObsMCLauncher.Core.Services.Installers
         {
             try
             {
-                Debug.WriteLine($"[ForgeService] 从安装器提取version.json: {versionId}");
+                DebugLogger.Info("ForgeService", $"从安装器提取version.json: {versionId}");
 
                 using var zip = ZipFile.OpenRead(installerPath);
                 
@@ -1860,14 +1861,14 @@ namespace ObsMCLauncher.Core.Services.Installers
                     versionEntry = zip.GetEntry(path);
                     if (versionEntry != null)
                     {
-                        Debug.WriteLine($"[ForgeService] 找到version.json: {path}");
+                        DebugLogger.Info("ForgeService", $"找到version.json: {path}");
                         break;
                     }
                 }
 
                 if (versionEntry == null)
                 {
-                    Debug.WriteLine($"[ForgeService] 未找到version.json");
+                    DebugLogger.Warn("ForgeService", "未找到version.json");
                     return null;
                 }
 
@@ -1875,12 +1876,12 @@ namespace ObsMCLauncher.Core.Services.Installers
                 using var reader = new StreamReader(stream);
                 var json = await reader.ReadToEndAsync();
 
-                Debug.WriteLine($"[ForgeService] 成功提取version.json");
+                DebugLogger.Info("ForgeService", "成功提取version.json");
                 return json;
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[ForgeService] 提取version.json失败: {ex.Message}");
+                DebugLogger.Error("ForgeService", $"提取version.json失败: {ex.Message}");
                 return null;
             }
         }

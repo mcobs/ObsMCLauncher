@@ -4,6 +4,7 @@ using System.Net;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using ObsMCLauncher.Core.Utils;
 
 namespace ObsMCLauncher.Core.Services.Accounts;
 
@@ -25,7 +26,7 @@ public sealed class LocalHttpServer
             _listener.Prefixes.Add($"http://localhost:{_port}/");
             _listener.Start();
 
-            Debug.WriteLine($"[LocalHttpServer] Listening on http://localhost:{_port}/");
+            DebugLogger.Info("LocalHttpServer", $"Listening on http://localhost:{_port}/");
 
             HttpListenerContext context;
             using (cancellationToken.Register(() =>
@@ -45,7 +46,6 @@ public sealed class LocalHttpServer
 
             if (!string.IsNullOrEmpty(query))
             {
-                // minimal query parsing to avoid System.Web dependency
                 var q = query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries);
                 foreach (var kv in q)
                 {

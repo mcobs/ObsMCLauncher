@@ -7,6 +7,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using ObsMCLauncher.Core.Models;
+using ObsMCLauncher.Core.Utils;
 
 namespace ObsMCLauncher.Core.Services;
 
@@ -90,7 +91,7 @@ public static class CurseForgeService
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"[CurseForge] 搜索失败: {ex.Message}");
+            DebugLogger.Error("CurseForge", $"搜索失败: {ex.Message}");
             return null;
         }
     }
@@ -109,7 +110,7 @@ public static class CurseForgeService
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"[CurseForge] 获取MOD详情失败: {ex.Message}");
+            DebugLogger.Error("CurseForge", $"获取MOD详情失败: {ex.Message}");
             return null;
         }
     }
@@ -129,7 +130,7 @@ public static class CurseForgeService
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"[CurseForge] 获取文件信息失败: {ex.Message}");
+            DebugLogger.Error("CurseForge", $"获取文件信息失败: {ex.Message}");
             return null;
         }
     }
@@ -169,7 +170,7 @@ public static class CurseForgeService
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"[CurseForge] 获取MOD文件列表失败: {ex.Message}");
+            DebugLogger.Error("CurseForge", $"获取MOD文件列表失败: {ex.Message}");
             return null;
         }
     }
@@ -194,7 +195,7 @@ public static class CurseForgeService
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"[CurseForge] 获取分类列表失败: {ex.Message}");
+            DebugLogger.Error("CurseForge", $"获取分类列表失败: {ex.Message}");
             return null;
         }
     }
@@ -244,7 +245,7 @@ public static class CurseForgeService
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"[CurseForge] ❌ 文件下载失败: {ex.Message}");
+            DebugLogger.Error("CurseForge", $"文件下载失败: {ex.Message}");
             return false;
         }
     }

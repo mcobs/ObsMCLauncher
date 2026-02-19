@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using ObsMCLauncher.Core.Models;
+using ObsMCLauncher.Core.Utils;
 
 namespace ObsMCLauncher.Core.Services;
 
@@ -161,7 +162,7 @@ public class YggdrasilServerService
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"加载 Yggdrasil 服务器列表失败: {ex.Message}");
+            DebugLogger.Error("YggdrasilServer", $"加载 Yggdrasil 服务器列表失败: {ex.Message}");
         }
 
         return new List<YggdrasilServer>();
@@ -177,7 +178,7 @@ public class YggdrasilServerService
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"保存 Yggdrasil 服务器列表失败: {ex.Message}");
+            DebugLogger.Error("YggdrasilServer", $"保存 Yggdrasil 服务器列表失败: {ex.Message}");
         }
     }
 }

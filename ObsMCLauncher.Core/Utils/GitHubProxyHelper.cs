@@ -52,12 +52,12 @@ namespace ObsMCLauncher.Core.Utils
             // API请求不使用代理，代理服务通常不支持API请求
             if (IsApiUrl(url))
             {
-                Debug.WriteLine($"[GitHubProxy] API请求不使用代理: {url}");
+                DebugLogger.Info("GitHubProxy", $"API请求不使用代理: {url}");
                 return url;
             }
 
             var proxyUrl = GITHUB_PROXY + url;
-            Debug.WriteLine($"[GitHubProxy] 使用镜像: {url} -> {proxyUrl}");
+            DebugLogger.Info("GitHubProxy", $"使用镜像: {url} -> {proxyUrl}");
             return proxyUrl;
         }
 

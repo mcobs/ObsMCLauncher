@@ -7,6 +7,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using ObsMCLauncher.Core.Models;
+using ObsMCLauncher.Core.Utils;
 
 namespace ObsMCLauncher.Core.Services.Accounts;
 
@@ -156,7 +157,7 @@ public sealed class MicrosoftAuthService
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"[MicrosoftAuth] RefreshToken failed: {ex}");
+            DebugLogger.Error("MicrosoftAuth", $"RefreshToken failed: {ex}");
             OnProgressUpdate?.Invoke($"令牌刷新失败: {ex.Message}");
             return false;
         }

@@ -419,7 +419,7 @@ public partial class AccountManagementViewModel : ViewModelBase
                     }
                     catch (Exception ex)
                     {
-                        Debug.WriteLine($"[MSLogin] AuthUrl dialog error: {ex.Message}");
+                        DebugLogger.Error("MSLogin", $"AuthUrl dialog error: {ex.Message}");
                         authDialogClosed = true;
                     }
                 });

@@ -4,6 +4,7 @@ using Avalonia;
 using Avalonia.Data.Converters;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
+using ObsMCLauncher.Core.Utils;
 
 namespace ObsMCLauncher.Desktop.Converters;
 
@@ -33,7 +34,7 @@ public class BitmapAssetValueConverter : IValueConverter
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[BitmapConverter] Failed to load bitmap: {rawUri}. Error: {ex.Message}");
+                DebugLogger.Error("BitmapConverter", $"Failed to load bitmap: {rawUri}. Error: {ex.Message}");
                 return null;
             }
         }

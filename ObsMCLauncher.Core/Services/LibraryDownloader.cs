@@ -7,6 +7,7 @@ using System.Net.Http;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using ObsMCLauncher.Core.Utils;
 
 namespace ObsMCLauncher.Core.Services;
 
@@ -32,12 +33,12 @@ public static class LibraryDownloader
             return (0, 0);
         }
 
-        Debug.WriteLine($"[LibraryDownloader] 开始下载 {missingLibraryNames.Count} 个缺失的库文件...");
+        DebugLogger.Info("LibraryDownloader", $"开始下载 {missingLibraryNames.Count} 个缺失的库文件...");
 
         var versionJsonPath = Path.Combine(gameDirectory, "versions", versionId, $"{versionId}.json");
         if (!File.Exists(versionJsonPath))
         {
-            Debug.WriteLine($"[LibraryDownloader] ❌ 版本JSON不存在: {versionJsonPath}");
+            DebugLogger.Error("LibraryDownloader", $"版本JSON不存在: {versionJsonPath}");
             return (0, missingLibraryNames.Count);
         }
 
@@ -97,7 +98,7 @@ public static class LibraryDownloader
             var parentVersion = inheritsFromElement.GetString();
             if (!string.IsNullOrEmpty(parentVersion))
             {
-                Debug.WriteLine($"[LibraryDownloader] 检查父版本 {parentVersion} 的库信息...");
+                DebugLogger.Info("LibraryDownloader", $"检查父版本 {parentVersion} 的库信息...");
 
                 var parentVersionJsonPath = Path.Combine(gameDirectory, "versions", versionId, $"{parentVersion}.json");
                 if (File.Exists(parentVersionJsonPath))

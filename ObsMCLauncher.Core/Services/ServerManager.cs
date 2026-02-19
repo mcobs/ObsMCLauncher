@@ -4,6 +4,7 @@ using System.Linq;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 using ObsMCLauncher.Core.Models;
+using ObsMCLauncher.Core.Utils;
 
 namespace ObsMCLauncher.Core.Services;
 
@@ -55,7 +56,7 @@ public class ServerManager
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[ServerManager] 查询服务器信息失败: {ex.Message}");
+            DebugLogger.Error("ServerManager", $"查询服务器信息失败: {ex.Message}");
             server.IsOnline = false;
             server.Ping = -1;
             return server;

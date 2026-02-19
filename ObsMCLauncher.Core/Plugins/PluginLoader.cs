@@ -1,17 +1,13 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text.Json;
+using ObsMCLauncher.Core.Utils;
 
 namespace ObsMCLauncher.Core.Plugins;
 
-/// <summary>
-/// 插件加载器
-/// 负责扫描、加载和管理插件
-/// </summary>
 public class PluginLoader
 {
     private readonly string _pluginsDirectory;
@@ -34,7 +30,7 @@ public class PluginLoader
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"[PluginLoader] 写入禁用标记失败: {ex.Message}");
+            DebugLogger.Error("PluginLoader", $"写入禁用标记失败: {ex.Message}");
         }
     }
 
@@ -45,7 +41,7 @@ public class PluginLoader
         if (!Directory.Exists(_pluginsDirectory))
         {
             Directory.CreateDirectory(_pluginsDirectory);
-            Debug.WriteLine($"[PluginLoader] 创建插件目录: {_pluginsDirectory}");
+            DebugLogger.Info("PluginLoader", $"创建插件目录: {_pluginsDirectory}");
         }
     }
 
@@ -53,7 +49,7 @@ public class PluginLoader
 
     public void LoadAllPlugins()
     {
-        Debug.WriteLine("[PluginLoader] 开始扫描插件...");
+        DebugLogger.Info("PluginLoader", "开始扫描插件...");
 
         try
         {
@@ -62,7 +58,7 @@ public class PluginLoader
             CleanupMarkedPlugins();
 
             var pluginDirs = Directory.GetDirectories(_pluginsDirectory);
-            Debug.WriteLine($"[PluginLoader] 发现 {pluginDirs.Length} 个插件文件夹");
+            DebugLogger.Info("PluginLoader", $"发现 {pluginDirs.Length} 个插件文件夹");
 
             foreach (var pluginDir in pluginDirs)
             {
@@ -72,15 +68,15 @@ public class PluginLoader
                 }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine($"[PluginLoader] 加载插件失败 [{Path.GetFileName(pluginDir)}]: {ex.Message}");
+                    DebugLogger.Error("PluginLoader", $"加载插件失败 [{Path.GetFileName(pluginDir)}]: {ex.Message}");
                 }
             }
 
-            Debug.WriteLine($"[PluginLoader] 插件加载完成，成功加载 {_loadedPlugins.Count(p => p.IsLoaded)} 个插件");
+            DebugLogger.Info("PluginLoader", $"插件加载完成，成功加载 {_loadedPlugins.Count(p => p.IsLoaded)} 个插件");
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"[PluginLoader] 扫描插件目录失败: {ex.Message}");
+            DebugLogger.Error("PluginLoader", $"扫描插件目录失败: {ex.Message}");
         }
     }
 
@@ -97,30 +93,30 @@ public class PluginLoader
                 var deleteMarkerPath = Path.Combine(pluginDir, ".delete_on_restart");
                 if (File.Exists(deleteMarkerPath))
                 {
-                    Debug.WriteLine($"[PluginLoader] 发现待删除插件: {Path.GetFileName(pluginDir)}");
+                    DebugLogger.Info("PluginLoader", $"发现待删除插件: {Path.GetFileName(pluginDir)}");
 
                     try
                     {
                         Directory.Delete(pluginDir, true);
-                        Debug.WriteLine($"[PluginLoader] ✅ 已删除插件目录: {pluginDir}");
+                        DebugLogger.Info("PluginLoader", $"已删除插件目录: {pluginDir}");
                     }
                     catch (Exception ex)
                     {
-                        Debug.WriteLine($"[PluginLoader] ⚠️ 删除插件失败: {ex.Message}");
+                        DebugLogger.Warn("PluginLoader", $"删除插件失败: {ex.Message}");
                     }
                 }
             }
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"[PluginLoader] 清理插件失败: {ex.Message}");
+            DebugLogger.Error("PluginLoader", $"清理插件失败: {ex.Message}");
         }
     }
 
     private void LoadPlugin(string pluginDirectory)
     {
         var pluginDirName = Path.GetFileName(pluginDirectory);
-        Debug.WriteLine($"[PluginLoader] 正在加载插件: {pluginDirName}");
+        DebugLogger.Info("PluginLoader", $"正在加载插件: {pluginDirName}");
 
         var disabledMarkerPath = Path.Combine(pluginDirectory, ".disabled");
         var isDisabled = File.Exists(disabledMarkerPath);
@@ -128,7 +124,7 @@ public class PluginLoader
         var metadataPath = Path.Combine(pluginDirectory, "plugin.json");
         if (!File.Exists(metadataPath))
         {
-            Debug.WriteLine($"[PluginLoader] 插件缺少 plugin.json: {pluginDirName}");
+            DebugLogger.Warn("PluginLoader", $"插件缺少 plugin.json: {pluginDirName}");
             return;
         }
 
@@ -141,14 +137,14 @@ public class PluginLoader
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"[PluginLoader] 解析 plugin.json 失败: {ex.Message}");
+            DebugLogger.Error("PluginLoader", $"解析 plugin.json 失败: {ex.Message}");
             return;
         }
 
         var readmePath = Path.Combine(pluginDirectory, "README.md");
         if (!File.Exists(readmePath))
         {
-            Debug.WriteLine($"[PluginLoader] 插件缺少 README.md: {pluginDirName}");
+            DebugLogger.Warn("PluginLoader", $"插件缺少 README.md: {pluginDirName}");
 
             var missingReadme = new LoadedPlugin
             {
@@ -177,7 +173,7 @@ public class PluginLoader
             var dllFiles = Directory.GetFiles(pluginDirectory, "*.dll");
             if (dllFiles.Length == 0)
             {
-                Debug.WriteLine($"[PluginLoader] 插件缺少 DLL 文件: {pluginDirName}");
+                DebugLogger.Warn("PluginLoader", $"插件缺少 DLL 文件: {pluginDirName}");
                 return;
             }
             dllPath = dllFiles[0];
@@ -209,7 +205,7 @@ public class PluginLoader
             loadedPlugin.ErrorMessage = "插件已被禁用";
             loadedPlugin.IsLoaded = false;
             _loadedPlugins.Add(loadedPlugin);
-            Debug.WriteLine($"[PluginLoader] 插件已禁用，跳过加载: {metadata.Name}");
+            DebugLogger.Info("PluginLoader", $"插件已禁用，跳过加载: {metadata.Name}");
             return;
         }
 
@@ -224,7 +220,7 @@ public class PluginLoader
             {
                 loadedPlugin.ErrorMessage = "未找到实现 ILauncherPlugin 接口的类";
                 loadedPlugin.ErrorOutput = loadedPlugin.ErrorMessage;
-                Debug.WriteLine($"[PluginLoader] {loadedPlugin.ErrorMessage}: {metadata.Name}");
+                DebugLogger.Error("PluginLoader", $"{loadedPlugin.ErrorMessage}: {metadata.Name}");
                 CreateDisabledMarker(pluginDirectory);
                 _loadedPlugins.Add(loadedPlugin);
                 return;
@@ -235,7 +231,7 @@ public class PluginLoader
             {
                 loadedPlugin.ErrorMessage = "无法创建插件实例";
                 loadedPlugin.ErrorOutput = loadedPlugin.ErrorMessage;
-                Debug.WriteLine($"[PluginLoader] {loadedPlugin.ErrorMessage}: {metadata.Name}");
+                DebugLogger.Error("PluginLoader", $"{loadedPlugin.ErrorMessage}: {metadata.Name}");
                 CreateDisabledMarker(pluginDirectory);
                 _loadedPlugins.Add(loadedPlugin);
                 return;
@@ -250,14 +246,14 @@ public class PluginLoader
             loadedPlugin.ErrorMessage = null;
             loadedPlugin.ErrorOutput = null;
 
-            Debug.WriteLine($"[PluginLoader] ✅ 插件加载成功: {metadata.Name} v{metadata.Version}");
+            DebugLogger.Info("PluginLoader", $"插件加载成功: {metadata.Name} v{metadata.Version}");
         }
         catch (Exception ex)
         {
             loadedPlugin.ErrorMessage = ex.Message;
             loadedPlugin.ErrorOutput = ex.ToString();
-            Debug.WriteLine($"[PluginLoader] ❌ 插件加载失败 [{metadata.Name}]: {ex.Message}");
-            Debug.WriteLine($"[PluginLoader] 堆栈跟踪: {ex.StackTrace}");
+            DebugLogger.Error("PluginLoader", $"插件加载失败 [{metadata.Name}]: {ex.Message}");
+            DebugLogger.Error("PluginLoader", $"堆栈跟踪: {ex.StackTrace}");
 
             CreateDisabledMarker(pluginDirectory);
         }
@@ -267,18 +263,18 @@ public class PluginLoader
 
     public void UnloadAllPlugins()
     {
-        Debug.WriteLine("[PluginLoader] 开始卸载插件...");
+        DebugLogger.Info("PluginLoader", "开始卸载插件...");
 
         foreach (var plugin in _loadedPlugins.Where(p => p.IsLoaded && p.Instance != null))
         {
             try
             {
                 plugin.Instance!.OnUnload();
-                Debug.WriteLine($"[PluginLoader] 已卸载插件: {plugin.Name}");
+                DebugLogger.Info("PluginLoader", $"已卸载插件: {plugin.Name}");
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[PluginLoader] 卸载插件失败 [{plugin.Name}]: {ex.Message}");
+                DebugLogger.Error("PluginLoader", $"卸载插件失败 [{plugin.Name}]: {ex.Message}");
             }
         }
 
@@ -287,7 +283,7 @@ public class PluginLoader
 
     public void ShutdownPlugins()
     {
-        Debug.WriteLine("[PluginLoader] 触发插件关闭事件...");
+        DebugLogger.Info("PluginLoader", "触发插件关闭事件...");
 
         foreach (var plugin in _loadedPlugins.Where(p => p.IsLoaded && p.Instance != null))
         {
@@ -297,7 +293,7 @@ public class PluginLoader
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[PluginLoader] 插件关闭事件处理失败 [{plugin.Name}]: {ex.Message}");
+                DebugLogger.Error("PluginLoader", $"插件关闭事件处理失败 [{plugin.Name}]: {ex.Message}");
             }
         }
     }
@@ -309,7 +305,7 @@ public class PluginLoader
             var plugin = _loadedPlugins.FirstOrDefault(p => p.Id == pluginId);
             if (plugin == null)
             {
-                Debug.WriteLine($"[PluginLoader] 未找到插件: {pluginId}");
+                DebugLogger.Warn("PluginLoader", $"未找到插件: {pluginId}");
                 return false;
             }
 
@@ -318,11 +314,11 @@ public class PluginLoader
                 try
                 {
                     plugin.Instance.OnUnload();
-                    Debug.WriteLine($"[PluginLoader] 已调用插件卸载方法: {plugin.Name}");
+                    DebugLogger.Info("PluginLoader", $"已调用插件卸载方法: {plugin.Name}");
                 }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine($"[PluginLoader] 插件卸载方法执行失败: {ex.Message}");
+                    DebugLogger.Error("PluginLoader", $"插件卸载方法执行失败: {ex.Message}");
                 }
 
                 plugin.Instance = null;
@@ -335,12 +331,12 @@ public class PluginLoader
 
             OnPluginDisabled?.Invoke(pluginId);
 
-            Debug.WriteLine($"[PluginLoader] ✅ 已热禁用插件: {plugin.Name}");
+            DebugLogger.Info("PluginLoader", $"已热禁用插件: {plugin.Name}");
             return true;
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"[PluginLoader] 禁用插件失败: {ex.Message}");
+            DebugLogger.Error("PluginLoader", $"禁用插件失败: {ex.Message}");
             return false;
         }
     }
@@ -354,7 +350,7 @@ public class PluginLoader
             if (plugin == null)
             {
                 errorMessage = "未找到插件";
-                Debug.WriteLine($"[PluginLoader] 未找到插件: {pluginId}");
+                DebugLogger.Warn("PluginLoader", $"未找到插件: {pluginId}");
                 return false;
             }
 
@@ -379,7 +375,7 @@ public class PluginLoader
 
             if (plugin.IsLoaded && plugin.Instance != null)
             {
-                Debug.WriteLine($"[PluginLoader] 插件已经处于加载状态: {plugin.Name}");
+                DebugLogger.Info("PluginLoader", $"插件已经处于加载状态: {plugin.Name}");
                 return true;
             }
 
@@ -429,7 +425,7 @@ public class PluginLoader
 
                 OnPluginEnabled?.Invoke(pluginId);
 
-                Debug.WriteLine($"[PluginLoader] ✅ 已热启用插件: {plugin.Name}");
+                DebugLogger.Info("PluginLoader", $"已热启用插件: {plugin.Name}");
                 return true;
             }
             catch (Exception ex)
@@ -437,14 +433,14 @@ public class PluginLoader
                 errorMessage = ex.Message;
                 plugin.ErrorMessage = $"加载失败: {ex.Message}";
                 plugin.IsLoaded = false;
-                Debug.WriteLine($"[PluginLoader] 热启用插件失败 [{plugin.Name}]: {ex.Message}");
+                DebugLogger.Error("PluginLoader", $"热启用插件失败 [{plugin.Name}]: {ex.Message}");
                 return false;
             }
         }
         catch (Exception ex)
         {
             errorMessage = ex.Message;
-            Debug.WriteLine($"[PluginLoader] 启用插件失败: {ex.Message}");
+            DebugLogger.Error("PluginLoader", $"启用插件失败: {ex.Message}");
             return false;
         }
     }
@@ -466,11 +462,11 @@ public class PluginLoader
                 try
                 {
                     plugin.Instance.OnUnload();
-                    Debug.WriteLine($"[PluginLoader] 已调用插件卸载方法: {plugin.Name}");
+                    DebugLogger.Info("PluginLoader", $"已调用插件卸载方法: {plugin.Name}");
                 }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine($"[PluginLoader] 插件卸载方法执行失败: {ex.Message}");
+                    DebugLogger.Error("PluginLoader", $"插件卸载方法执行失败: {ex.Message}");
                 }
 
                 plugin.Instance = null;
@@ -484,13 +480,13 @@ public class PluginLoader
                 if (Directory.Exists(plugin.DirectoryPath))
                 {
                     Directory.Delete(plugin.DirectoryPath, true);
-                    Debug.WriteLine($"[PluginLoader] 已删除插件目录: {plugin.DirectoryPath}");
+                    DebugLogger.Info("PluginLoader", $"已删除插件目录: {plugin.DirectoryPath}");
                 }
             }
             catch (UnauthorizedAccessException)
             {
                 errorMessage = "无法删除插件文件，文件可能被占用。已热卸载插件实例，但文件将在下次重启后删除。";
-                Debug.WriteLine($"[PluginLoader] ⚠️ 文件被占用，标记为待删除: {plugin.DirectoryPath}");
+                DebugLogger.Warn("PluginLoader", $"文件被占用，标记为待删除: {plugin.DirectoryPath}");
 
                 try
                 {
@@ -508,14 +504,14 @@ public class PluginLoader
 
             OnPluginRemoved?.Invoke(pluginId);
             _loadedPlugins.Remove(plugin);
-            Debug.WriteLine($"[PluginLoader] ✅ 已热卸载插件: {plugin.Name}");
+            DebugLogger.Info("PluginLoader", $"已热卸载插件: {plugin.Name}");
 
             return true;
         }
         catch (Exception ex)
         {
             errorMessage = ex.Message;
-            Debug.WriteLine($"[PluginLoader] 删除插件失败: {ex.Message}");
+            DebugLogger.Error("PluginLoader", $"删除插件失败: {ex.Message}");
             return false;
         }
     }

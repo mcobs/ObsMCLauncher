@@ -7,6 +7,7 @@ using System.Threading;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using ObsMCLauncher.Core.Utils;
 
 namespace ObsMCLauncher.Desktop.ViewModels.Notifications;
 
@@ -126,13 +127,13 @@ public partial class NotificationService : ObservableObject, IDisposable
                     }
                     catch (Exception ex)
                     {
-                        Debug.WriteLine($"[Notification] UI线程更新倒计时失败: {ex.Message}");
+                        DebugLogger.Error("Notification", $"UI线程更新倒计时失败: {ex.Message}");
                     }
                 });
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[Notification] 倒计时计时器回调失败: {ex.Message}");
+                DebugLogger.Error("Notification", $"倒计时计时器回调失败: {ex.Message}");
             }
         }, null, interval, interval);
 
@@ -165,12 +166,12 @@ public partial class NotificationService : ObservableObject, IDisposable
                 if (item.Cts != null && !item.Cts.IsCancellationRequested)
                 {
                     item.Cts.Cancel();
-                    Debug.WriteLine($"[Notification] 已通过关闭通知终止任务: {item.Title}");
+                    DebugLogger.Info("Notification", $"已通过关闭通知终止任务: {item.Title}");
                 }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[Notification] 终止关联任务失败: {ex.Message}");
+                DebugLogger.Error("Notification", $"终止关联任务失败: {ex.Message}");
             }
 
             // 清理倒计时计时器

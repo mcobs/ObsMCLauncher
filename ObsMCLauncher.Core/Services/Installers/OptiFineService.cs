@@ -10,6 +10,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using ObsMCLauncher.Core.Models;
 using ObsMCLauncher.Core.Services.Minecraft;
+using ObsMCLauncher.Core.Utils;
 
 namespace ObsMCLauncher.Core.Services.Installers
 {
@@ -47,7 +48,7 @@ namespace ObsMCLauncher.Core.Services.Installers
                 var bmclApiUrl = _downloadSourceManager.CurrentService.GetBMCLApiUrl();
                 var url = $"{bmclApiUrl}/optifine/{mcVersion}";
                 
-                Debug.WriteLine($"[OptiFineService] 获取 OptiFine 版本列表: {url}");
+                DebugLogger.Info("OptiFine", $"获取 OptiFine 版本列表: {url}");
 
                 var response = await _httpClient.GetAsync(url, cancellationToken);
                 response.EnsureSuccessStatusCode();
@@ -57,16 +58,16 @@ namespace ObsMCLauncher.Core.Services.Installers
 
                 if (versions == null || versions.Count == 0)
                 {
-                    Debug.WriteLine($"[OptiFineService] 未找到 Minecraft {mcVersion} 的 OptiFine 版本");
+                    DebugLogger.Warn("OptiFine", $"未找到 Minecraft {mcVersion} 的 OptiFine 版本");
                     return new List<OptifineVersionModel>();
                 }
 
-                Debug.WriteLine($"[OptiFineService] 找到 {versions.Count} 个 OptiFine 版本");
+                DebugLogger.Info("OptiFine", $"找到 {versions.Count} 个 OptiFine 版本");
                 return versions;
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[OptiFineService] 获取 OptiFine 版本列表失败: {ex.Message}");
+                DebugLogger.Error("OptiFine", $"获取 OptiFine 版本列表失败: {ex.Message}");
                 throw new Exception($"获取 OptiFine 版本列表失败: {ex.Message}", ex);
             }
         }
@@ -98,7 +99,7 @@ namespace ObsMCLauncher.Core.Services.Installers
                 var bmclApiUrl = _downloadSourceManager.CurrentService.GetBMCLApiUrl();
                 var downloadUrl = $"{bmclApiUrl}/optifine/{version.McVersion}/{version.Type}/{version.Patch}";
 
-                Debug.WriteLine($"[OptiFineService] 开始下载 OptiFine: {downloadUrl}");
+                DebugLogger.Info("OptiFineService", $"开始下载 OptiFine: {downloadUrl}");
                 progressCallback?.Invoke($"正在下载 {version.Filename}...", 0, 100, 0, 0);
 
                 using var response = await _httpClient.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
@@ -130,11 +131,11 @@ namespace ObsMCLauncher.Core.Services.Installers
                 }
 
                 progressCallback?.Invoke($"{version.Filename} 下载完成", 100, 100, totalBytes, totalBytes);
-                Debug.WriteLine($"[OptiFineService] OptiFine 下载完成: {savePath}");
+                DebugLogger.Info("OptiFineService", $"OptiFine 下载完成: {savePath}");
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[OptiFineService] OptiFine 下载失败: {ex.Message}");
+                DebugLogger.Error("OptiFine", $"OptiFine 下载失败: {ex.Message}");
                 throw new Exception($"OptiFine 下载失败: {ex.Message}", ex);
             }
         }
@@ -165,11 +166,11 @@ namespace ObsMCLauncher.Core.Services.Installers
         {
             try
             {
-                Debug.WriteLine($"========== 开始安装 OptiFine==========");
-                Debug.WriteLine($"[OptiFineService] OptiFine 版本: {version.DisplayName}");
-                Debug.WriteLine($"[OptiFineService] 安装包路径: {installerPath}");
-                Debug.WriteLine($"[OptiFineService] 游戏目录: {gameDirectory}");
-                Debug.WriteLine($"[OptiFineService] 基础版本: {baseVersionId}");
+                DebugLogger.Info("OptiFine", $"========== 开始安装 OptiFine ==========");
+                DebugLogger.Info("OptiFine", $"OptiFine 版本: {version.DisplayName}");
+                DebugLogger.Info("OptiFine", $"安装包路径: {installerPath}");
+                DebugLogger.Info("OptiFine", $"游戏目录: {gameDirectory}");
+                DebugLogger.Info("OptiFine", $"基础版本: {baseVersionId}");
 
                 // 验证文件存在
                 if (!File.Exists(installerPath))
@@ -195,11 +196,11 @@ namespace ObsMCLauncher.Core.Services.Installers
                 var baseVersionJar = Path.Combine(actualBaseVersionDir, $"{baseVersionId}.jar");
                 var baseVersionJson = Path.Combine(actualBaseVersionDir, $"{baseVersionId}.json");
                 
-                Debug.WriteLine($"[OptiFineService] 基础版本验证信息:");
-                Debug.WriteLine($"[OptiFineService] - 传入的 baseVersionDir: {baseVersionDir ?? "null (使用默认)"}");
-                Debug.WriteLine($"[OptiFineService] - 实际使用的 actualBaseVersionDir: {actualBaseVersionDir}");
-                Debug.WriteLine($"[OptiFineService] - 期望的 JAR 路径: {baseVersionJar}");
-                Debug.WriteLine($"[OptiFineService] - 期望的 JSON 路径: {baseVersionJson}");
+                DebugLogger.Info("OptiFine", $"基础版本验证信息:");
+                DebugLogger.Info("OptiFine", $"- 传入的 baseVersionDir: {baseVersionDir ?? "null (使用默认)"}");
+                DebugLogger.Info("OptiFine", $"- 实际使用的 actualBaseVersionDir: {actualBaseVersionDir}");
+                DebugLogger.Info("OptiFine", $"- 期望的 JAR 路径: {baseVersionJar}");
+                DebugLogger.Info("OptiFine", $"- 期望的 JSON 路径: {baseVersionJson}");
 
                 if (!File.Exists(baseVersionJar))
                 {
@@ -211,7 +212,7 @@ namespace ObsMCLauncher.Core.Services.Installers
                     throw new Exception($"基础版本配置文件不存在：{baseVersionJson}");
                 }
 
-                Debug.WriteLine($"[OptiFineService] ✅ 基础版本验证通过");
+                DebugLogger.Info("OptiFine", "基础版本验证通过");
 
                 // 创建版本目录
                 if (!Directory.Exists(versionDir))
@@ -248,7 +249,7 @@ namespace ObsMCLauncher.Core.Services.Installers
                         e.FullName == "Patcher.class");
                     
                     hasPatcher = patcherEntry != null;
-                    Debug.WriteLine($"[OptiFineService] Patcher 存在: {hasPatcher}");
+                    DebugLogger.Info("OptiFineService", $"Patcher 存在: {hasPatcher}");
 
                     if (hasPatcher)
                     {
@@ -256,7 +257,7 @@ namespace ObsMCLauncher.Core.Services.Installers
                         UpdateProgress("正在运行 OptiFine Patcher...", 25);
                         
                         var patchCommand = $"-cp \"{installerPath}\" optifine.Patcher \"{baseVersionJar}\" \"{installerPath}\" \"{optiFineLibPath}\"";
-                        Debug.WriteLine($"[OptiFineService] Patch 命令: java {patchCommand}");
+                        DebugLogger.Info("OptiFineService", $"Patch 命令: java {patchCommand}");
 
                         var patchProcess = new Process
                         {
@@ -278,19 +279,19 @@ namespace ObsMCLauncher.Core.Services.Installers
 
                         if (patchProcess.ExitCode != 0)
                         {
-                            Debug.WriteLine($"[OptiFineService] Patcher 输出: {patchOutput}");
-                            Debug.WriteLine($"[OptiFineService] Patcher 错误: {patchError}");
+                            DebugLogger.Error("OptiFineService", $"Patcher 输出: {patchOutput}");
+                            DebugLogger.Error("OptiFineService", $"Patcher 错误: {patchError}");
                             throw new Exception($"OptiFine Patcher 失败 (退出代码: {patchProcess.ExitCode})");
                         }
 
-                        Debug.WriteLine($"[OptiFineService] ✅ Patch 完成");
+                        DebugLogger.Info("OptiFine", "Patch 完成");
                     }
                     else
                     {
                         // 没有 Patcher，直接复制
                         UpdateProgress("正在复制 OptiFine 文件...", 25);
                         File.Copy(installerPath, optiFineLibPath, true);
-                        Debug.WriteLine($"[OptiFineService] ✅ OptiFine 文件已复制");
+                        DebugLogger.Info("OptiFine", "OptiFine 文件已复制");
                     }
 
                     // 删除 META-INF/mods.toml（如果存在）
@@ -322,7 +323,7 @@ namespace ObsMCLauncher.Core.Services.Installers
 
                         var lwLibPath = Path.Combine(lwLibDir, $"launchwrapper-{launchWrapperVersion}.jar");
                         launchWrapperEntry.ExtractToFile(lwLibPath, true);
-                        Debug.WriteLine($"[OptiFineService] ✅ 已提取 launchwrapper-{launchWrapperVersion}.jar");
+                        DebugLogger.Info("OptiFine", $"已提取 launchwrapper-{launchWrapperVersion}.jar");
                     }
                     else if (launchWrapperTxt != null)
                     {
@@ -345,7 +346,7 @@ namespace ObsMCLauncher.Core.Services.Installers
 
                             var lwLibPath = Path.Combine(lwLibDir, lwJarName);
                             lwJarEntry.ExtractToFile(lwLibPath, true);
-                            Debug.WriteLine($"[OptiFineService] ✅ 已提取 {lwJarName}");
+                            DebugLogger.Info("OptiFineService", $"已提取 {lwJarName}");
                         }
                     }
                 }
@@ -365,15 +366,15 @@ namespace ObsMCLauncher.Core.Services.Installers
                     cancellationToken);
 
                 UpdateProgress("OptiFine 安装完成", 100);
-                Debug.WriteLine($"[OptiFineService] ✅ OptiFine 安装成功: {versionId}");
-                Debug.WriteLine($"========== OptiFine 安装完成 ==========");
+                DebugLogger.Info("OptiFineService", $"OptiFine 安装成功: {versionId}");
+                DebugLogger.Info("OptiFineService", "========== OptiFine 安装完成 ==========");
 
                 return true;
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[OptiFineService] OptiFine 安装失败: {ex.Message}");
-                Debug.WriteLine($"[OptiFineService] 堆栈跟踪: {ex.StackTrace}");
+                DebugLogger.Error("OptiFineService", $"OptiFine 安装失败: {ex.Message}");
+                DebugLogger.Error("OptiFineService", $"堆栈跟踪: {ex.StackTrace}");
                 throw;
             }
         }
@@ -452,7 +453,7 @@ namespace ObsMCLauncher.Core.Services.Installers
             var jsonString = JsonSerializer.Serialize(versionJson, jsonOptions);
             await File.WriteAllTextAsync(versionJsonPath, jsonString, cancellationToken);
 
-            Debug.WriteLine($"[OptiFineService] ✅ 已创建 version.json: {versionJsonPath}");
+            DebugLogger.Info("OptiFineService", $"已创建 version.json: {versionJsonPath}");
         }
 
         /// <summary>
@@ -466,7 +467,7 @@ namespace ObsMCLauncher.Core.Services.Installers
                 var bmclApiUrl = _downloadSourceManager.CurrentService.GetBMCLApiUrl();
                 var url = $"{bmclApiUrl}/optifine/versionList";
 
-                Debug.WriteLine($"[OptiFineService] 获取 OptiFine 支持的 MC 版本列表: {url}");
+                DebugLogger.Info("OptiFineService", $"获取 OptiFine 支持的 MC 版本列表: {url}");
 
                 var response = await _httpClient.GetAsync(url, cancellationToken);
                 response.EnsureSuccessStatusCode();
@@ -476,16 +477,16 @@ namespace ObsMCLauncher.Core.Services.Installers
 
                 if (versions == null || versions.Count == 0)
                 {
-                    Debug.WriteLine($"[OptiFineService] 未找到支持的 Minecraft 版本");
+                    DebugLogger.Warn("OptiFineService", "未找到支持的 Minecraft 版本");
                     return new List<string>();
                 }
 
-                Debug.WriteLine($"[OptiFineService] 找到 {versions.Count} 个支持的 Minecraft 版本");
+                DebugLogger.Info("OptiFineService", $"找到 {versions.Count} 个支持的 Minecraft 版本");
                 return versions;
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[OptiFineService] 获取支持的 MC 版本列表失败: {ex.Message}");
+                DebugLogger.Error("OptiFineService", $"获取支持的 MC 版本列表失败: {ex.Message}");
                 // 返回一些常见版本作为备用
                 return new List<string> 
                 { 
@@ -512,13 +513,13 @@ namespace ObsMCLauncher.Core.Services.Installers
         {
             try
             {
-                Debug.WriteLine($"[OptiFineService] 开始将 OptiFine 下载为 mod: {version.Filename}");
+                DebugLogger.Info("OptiFineService", $"开始将 OptiFine 下载为 mod: {version.Filename}");
                 
                 // 确保 mods 目录存在
                 if (!Directory.Exists(modsDirectory))
                 {
                     Directory.CreateDirectory(modsDirectory);
-                    Debug.WriteLine($"[OptiFineService] 创建 mods 目录: {modsDirectory}");
+                    DebugLogger.Info("OptiFineService", $"创建 mods 目录: {modsDirectory}");
                 }
 
                 var modFilePath = Path.Combine(modsDirectory, version.Filename);
@@ -529,14 +530,14 @@ namespace ObsMCLauncher.Core.Services.Installers
                     var fileInfo = new FileInfo(modFilePath);
                     if (fileInfo.Length > 1024 * 100) // 大于 100KB 认为是完整文件
                     {
-                        Debug.WriteLine($"[OptiFineService] OptiFine mod 已存在且完整: {modFilePath}");
+                        DebugLogger.Info("OptiFineService", $"OptiFine mod 已存在且完整: {modFilePath}");
                         progressCallback?.Invoke("OptiFine 已存在", 100, 100, fileInfo.Length, fileInfo.Length);
                         return true;
                     }
                     else
                     {
                         // 文件不完整，删除后重新下载
-                        Debug.WriteLine($"[OptiFineService] OptiFine mod 文件不完整，重新下载");
+                        DebugLogger.Info("OptiFineService", "OptiFine mod 文件不完整，重新下载");
                         File.Delete(modFilePath);
                     }
                 }
@@ -549,12 +550,12 @@ namespace ObsMCLauncher.Core.Services.Installers
                     cancellationToken
                 );
 
-                Debug.WriteLine($"[OptiFineService] OptiFine mod 下载完成: {modFilePath}");
+                DebugLogger.Info("OptiFineService", $"OptiFine mod 下载完成: {modFilePath}");
                 return true;
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[OptiFineService] 下载 OptiFine mod 失败: {ex.Message}");
+                DebugLogger.Error("OptiFineService", $"下载 OptiFine mod 失败: {ex.Message}");
                 throw new Exception($"下载 OptiFine mod 失败: {ex.Message}", ex);
             }
         }

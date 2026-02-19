@@ -13,6 +13,7 @@ using ObsMCLauncher.Core.Services;
 using ObsMCLauncher.Core.Services.Installers;
 using ObsMCLauncher.Core.Services.Minecraft;
 using ObsMCLauncher.Core.Services.Ui;
+using ObsMCLauncher.Core.Utils;
 using ObsMCLauncher.Desktop.ViewModels.Notifications;
 using ObsMCLauncher.Desktop.ViewModels.Dialogs;
 
@@ -134,7 +135,7 @@ public class VersionDetailViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[SizeCalc] 失败: {ex.Message}");
+            DebugLogger.Error("SizeCalc", $"失败: {ex.Message}");
             TotalDownloadSize = "未知";
         }
     }

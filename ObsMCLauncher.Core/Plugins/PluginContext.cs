@@ -1,12 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using ObsMCLauncher.Core.Utils;
 
 namespace ObsMCLauncher.Core.Plugins;
 
-/// <summary>
-/// 插件上下文实现
-/// </summary>
 public class PluginContext : IPluginContext
 {
     private readonly string _pluginId;
@@ -76,7 +74,7 @@ public class PluginContext : IPluginContext
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"[PluginContext] 事件处理器异常: {ex.Message}");
+                    DebugLogger.Error("PluginContext", $"事件处理器异常: {ex.Message}");
                 }
             }
         }
@@ -127,7 +125,7 @@ public class PluginContext : IPluginContext
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"[PluginContext] 全局事件处理器异常: {ex.Message}");
+                    DebugLogger.Error("PluginContext", $"全局事件处理器异常: {ex.Message}");
                 }
             }
         }

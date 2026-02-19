@@ -4,12 +4,10 @@ using System.Net.Http;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
+using ObsMCLauncher.Core.Utils;
 
 namespace ObsMCLauncher.Core.Services.Minecraft
 {
-    /// <summary>
-    /// Minecraft版本信息
-    /// </summary>
     public class MinecraftVersion
     {
         [JsonPropertyName("id")]
@@ -24,9 +22,6 @@ namespace ObsMCLauncher.Core.Services.Minecraft
         [JsonPropertyName("url")]
         public string Url { get; set; } = "";
 
-        /// <summary>
-        /// 获取版本对应的图标资源路径
-        /// </summary>
         [JsonIgnore]
         public string IconPath
         {
@@ -72,9 +67,6 @@ namespace ObsMCLauncher.Core.Services.Minecraft
         }
     }
 
-    /// <summary>
-    /// 版本清单
-    /// </summary>
     public class VersionManifest
     {
         [JsonPropertyName("latest")]
@@ -84,9 +76,6 @@ namespace ObsMCLauncher.Core.Services.Minecraft
         public List<MinecraftVersion> Versions { get; set; } = new();
     }
 
-    /// <summary>
-    /// 最新版本
-    /// </summary>
     public class LatestVersion
     {
         [JsonPropertyName("release")]
@@ -96,16 +85,12 @@ namespace ObsMCLauncher.Core.Services.Minecraft
         public string Snapshot { get; set; } = "";
     }
 
-    /// <summary>
-    /// Minecraft版本服务
-    /// </summary>
     public class MinecraftVersionService
     {
         private static readonly HttpClient _httpClient;
 
         static MinecraftVersionService()
         {
-            // 创建支持自动解压缩的 HttpClient
             var handler = new HttpClientHandler
             {
                 AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate
@@ -116,13 +101,9 @@ namespace ObsMCLauncher.Core.Services.Minecraft
                 Timeout = TimeSpan.FromSeconds(30)
             };
 
-            // 设置 User-Agent
             _httpClient.DefaultRequestHeaders.Add("User-Agent", "ObsMCLauncher/1.0");
         }
 
-        /// <summary>
-        /// 获取版本列表
-        /// </summary>
         public static async Task<VersionManifest?> GetVersionListAsync()
         {
             try
@@ -130,18 +111,18 @@ namespace ObsMCLauncher.Core.Services.Minecraft
                 var downloadService = DownloadSourceManager.Instance.CurrentService;
                 var url = downloadService.GetVersionManifestUrl();
 
-                System.Diagnostics.Debug.WriteLine($"正在请求版本列表: {url}");
+                DebugLogger.Info("MCVersion", $"正在请求版本列表: {url}");
 
                 var response = await _httpClient.GetAsync(url);
                 if (!response.IsSuccessStatusCode)
                 {
                     var error = $"获取版本列表失败: HTTP {response.StatusCode} - {response.ReasonPhrase}";
-                    System.Diagnostics.Debug.WriteLine(error);
+                    DebugLogger.Error("MCVersion", error);
                     throw new Exception(error);
                 }
 
                 var json = await response.Content.ReadAsStringAsync();
-                System.Diagnostics.Debug.WriteLine($"成功获取版本清单，JSON长度: {json.Length} 字符");
+                DebugLogger.Info("MCVersion", $"成功获取版本清单，JSON长度: {json.Length} 字符");
 
                 var options = new JsonSerializerOptions
                 {
@@ -154,31 +135,28 @@ namespace ObsMCLauncher.Core.Services.Minecraft
                     throw new Exception("JSON 反序列化失败，返回 null");
                 }
 
-                System.Diagnostics.Debug.WriteLine($"成功解析版本清单，版本数量: {manifest.Versions.Count}");
+                DebugLogger.Info("MCVersion", $"成功解析版本清单，版本数量: {manifest.Versions.Count}");
                 return manifest;
             }
             catch (HttpRequestException ex)
             {
                 var error = $"网络请求异常: {ex.Message}";
-                System.Diagnostics.Debug.WriteLine(error);
+                DebugLogger.Error("MCVersion", error);
                 throw new Exception(error, ex);
             }
             catch (JsonException ex)
             {
                 var error = $"JSON 解析异常: {ex.Message}";
-                System.Diagnostics.Debug.WriteLine(error);
+                DebugLogger.Error("MCVersion", error);
                 throw new Exception(error, ex);
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"获取版本列表异常: {ex.Message}");
+                DebugLogger.Error("MCVersion", $"获取版本列表异常: {ex.Message}");
                 throw;
             }
         }
 
-        /// <summary>
-        /// 获取版本详情JSON
-        /// </summary>
         public static async Task<string?> GetVersionJsonAsync(string versionId)
         {
             try
@@ -189,7 +167,7 @@ namespace ObsMCLauncher.Core.Services.Minecraft
                 var response = await _httpClient.GetAsync(url);
                 if (!response.IsSuccessStatusCode)
                 {
-                    System.Diagnostics.Debug.WriteLine($"获取版本详情失败: HTTP {response.StatusCode}");
+                    DebugLogger.Warn("MCVersion", $"获取版本详情失败: HTTP {response.StatusCode}");
                     return null;
                 }
 
@@ -197,14 +175,11 @@ namespace ObsMCLauncher.Core.Services.Minecraft
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"获取版本详情异常: {ex.Message}");
+                DebugLogger.Error("MCVersion", $"获取版本详情异常: {ex.Message}");
                 return null;
             }
         }
 
-        /// <summary>
-        /// 获取Forge版本列表
-        /// </summary>
         public static async Task<string?> GetForgeVersionsAsync(string mcVersion)
         {
             try
@@ -214,10 +189,9 @@ namespace ObsMCLauncher.Core.Services.Minecraft
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"获取Forge版本列表异常: {ex.Message}");
+                DebugLogger.Error("MCVersion", $"获取Forge版本列表异常: {ex.Message}");
                 return null;
             }
         }
     }
 }
-

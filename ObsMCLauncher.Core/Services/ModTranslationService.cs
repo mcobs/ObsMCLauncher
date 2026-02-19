@@ -6,6 +6,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using ObsMCLauncher.Core.Models;
+using ObsMCLauncher.Core.Utils;
 
 namespace ObsMCLauncher.Core.Services;
 
@@ -33,7 +34,7 @@ public class ModTranslationService
             var userTranslationPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "OMCL", "mod_translations.txt");
             if (File.Exists(userTranslationPath))
             {
-                Debug.WriteLine($"[ModTranslation] 从用户目录读取翻译: {userTranslationPath}");
+                DebugLogger.Info("ModTranslation", $"从用户目录读取翻译: {userTranslationPath}");
                 lines = File.ReadAllLines(userTranslationPath, Encoding.UTF8);
             }
 
@@ -56,7 +57,7 @@ public class ModTranslationService
                     var normalizedPath = Path.GetFullPath(path);
                     if (File.Exists(normalizedPath))
                     {
-                        Debug.WriteLine($"[ModTranslation] 从备用路径找到翻译文件: {normalizedPath}");
+                        DebugLogger.Info("ModTranslation", $"从备用路径找到翻译文件: {normalizedPath}");
                         lines = File.ReadAllLines(normalizedPath, Encoding.UTF8);
                         break;
                     }
@@ -65,8 +66,8 @@ public class ModTranslationService
 
             if (lines == null)
             {
-                Debug.WriteLine("[ModTranslation] 翻译文件不存在，跳过加载");
-                Debug.WriteLine($"[ModTranslation] 提示：翻译文件应位于 {userTranslationPath}");
+                DebugLogger.Warn("ModTranslation", "翻译文件不存在，跳过加载");
+                DebugLogger.Info("ModTranslation", $"提示：翻译文件应位于 {userTranslationPath}");
                 _isLoaded = false;
                 return;
             }
@@ -106,13 +107,13 @@ public class ModTranslationService
             }
 
             _isLoaded = true;
-            Debug.WriteLine($"[ModTranslation] 加载了 {_translations.Count} 条翻译数据");
-            Debug.WriteLine($"[ModTranslation] CurseForge ID索引: {_curseForgeIdMap.Count} 个");
-            Debug.WriteLine($"[ModTranslation] Mod ID索引: {_modIdMap.Count} 个");
+            DebugLogger.Info("ModTranslation", $"加载了 {_translations.Count} 条翻译数据");
+            DebugLogger.Info("ModTranslation", $"CurseForge ID索引: {_curseForgeIdMap.Count} 个");
+            DebugLogger.Info("ModTranslation", $"Mod ID索引: {_modIdMap.Count} 个");
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"[ModTranslation] 加载翻译失败: {ex.Message}");
+            DebugLogger.Error("ModTranslation", $"加载翻译失败: {ex.Message}");
             _isLoaded = false;
         }
     }
@@ -204,22 +205,22 @@ public class ModTranslationService
                 using var stream = assembly.GetManifestResourceStream(resourceName);
                 if (stream == null) continue;
 
-                Debug.WriteLine($"[ModTranslation] 从嵌入资源加载: {resourceName}");
+                DebugLogger.Info("ModTranslation", $"从嵌入资源加载: {resourceName}");
                 using var reader = new StreamReader(stream, Encoding.UTF8);
                 var content = reader.ReadToEnd();
                 return content.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
             }
 
             var allResources = assembly.GetManifestResourceNames();
-            Debug.WriteLine("[ModTranslation] 未找到嵌入资源，可用的资源名称：");
+            DebugLogger.Warn("ModTranslation", "未找到嵌入资源，可用的资源名称：");
             foreach (var name in allResources)
             {
-                Debug.WriteLine($"  - {name}");
+                DebugLogger.Info("ModTranslation", $"  - {name}");
             }
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"[ModTranslation] 从嵌入资源读取失败: {ex.Message}");
+            DebugLogger.Error("ModTranslation", $"从嵌入资源读取失败: {ex.Message}");
         }
 
         return null;

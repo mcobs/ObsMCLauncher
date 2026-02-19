@@ -13,6 +13,7 @@ using System.Threading.Tasks;
 using System.Xml.Linq;
 using ObsMCLauncher.Core.Models;
 using ObsMCLauncher.Core.Services.Minecraft;
+using ObsMCLauncher.Core.Utils;
 
 namespace ObsMCLauncher.Core.Services.Installers
 {
@@ -187,7 +188,7 @@ namespace ObsMCLauncher.Core.Services.Installers
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[NeoForgeService] 获取版本列表失败: {ex.Message}");
+                DebugLogger.Error("NeoForgeService", $"获取版本列表失败: {ex.Message}");
                 return new List<NeoForgeVersion>();
             }
         }
@@ -195,7 +196,7 @@ namespace ObsMCLauncher.Core.Services.Installers
         private static async Task<List<NeoForgeVersion>> GetVersionsFromBMCLAPIAsync(string minecraftVersion)
         {
             var url = string.Format(BMCL_NEOFORGE_LIST, minecraftVersion);
-            Debug.WriteLine($"[NeoForgeService] 从镜像源获取版本列表: {url}");
+            DebugLogger.Info("NeoForgeService", $"从镜像源获取版本列表: {url}");
             
             var response = await _httpClient.GetStringAsync(url);
             var versions = JsonSerializer.Deserialize<List<NeoForgeVersion>>(response) ?? new List<NeoForgeVersion>();
@@ -206,13 +207,13 @@ namespace ObsMCLauncher.Core.Services.Installers
                 .OrderByDescending(v => ParseVersionForSorting(v.Version))
                     .ToList();
                 
-            Debug.WriteLine($"[NeoForgeService] 从镜像源获取到 {sortedVersions.Count} 个版本");
+            DebugLogger.Info("NeoForgeService", $"从镜像源获取到 {sortedVersions.Count} 个版本");
             return sortedVersions;
         }
 
         private static async Task<List<NeoForgeVersion>> GetVersionsFromOfficialAsync(string minecraftVersion)
         {
-            Debug.WriteLine($"[NeoForgeService] 从官方源获取版本列表");
+            DebugLogger.Info("NeoForge", "从官方源获取版本列表");
             
             try
             {
@@ -261,7 +262,7 @@ namespace ObsMCLauncher.Core.Services.Installers
             }
             catch (Exception ex)
             {
-                        Debug.WriteLine($"[NeoForgeService] 获取1.20.1旧版本失败: {ex.Message}");
+                        DebugLogger.Error("NeoForgeService", $"获取1.20.1旧版本失败: {ex.Message}");
                     }
                 }
                 
@@ -270,12 +271,12 @@ namespace ObsMCLauncher.Core.Services.Installers
                     .OrderByDescending(v => ParseVersionForSorting(v.Version))
                     .ToList();
                 
-                Debug.WriteLine($"[NeoForgeService] 获取到 {versions.Count} 个版本");
+                DebugLogger.Info("NeoForge", $"获取到 {versions.Count} 个版本");
                 return versions;
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[NeoForgeService] 从官方API获取失败，尝试从Maven元数据获取: {ex.Message}");
+                DebugLogger.Warn("NeoForgeService", $"从官方API获取失败，尝试从Maven元数据获取: {ex.Message}");
                 
                 // 回退到Maven元数据
                 var response = await _httpClient.GetStringAsync(OFFICIAL_NEOFORGE_MAVEN_METADATA);
@@ -423,8 +424,8 @@ namespace ObsMCLauncher.Core.Services.Installers
             {
                 try
                 {
-                Debug.WriteLine($"[NeoForgeService] ========== 开始安装 NeoForge {neoforgeVersion} ==========");
-                if (isModpackMode) Debug.WriteLine("[NeoForgeService] 正在以整合包精简模式安装...");
+                DebugLogger.Info("NeoForge", $"========== 开始安装 NeoForge {neoforgeVersion} ==========");
+                if (isModpackMode) DebugLogger.Info("NeoForge", "正在以整合包精简模式安装...");
                 
                 Action<string, double> UpdateProgress = (status, progressPercent) =>
                 {
@@ -441,7 +442,7 @@ namespace ObsMCLauncher.Core.Services.Installers
                 
                 // 确定最终使用的版本名称
                 var finalVersionName = overrideVersionName ?? $"Minecraft-{mcVersion}-neoforge-{neoforgeVersion}";
-                Debug.WriteLine($"[NeoForgeService] Minecraft版本: {mcVersion}, 目标目录名: {finalVersionName}");
+                DebugLogger.Info("NeoForge", $"Minecraft版本: {mcVersion}, 目标目录名: {finalVersionName}");
                 
                 // 阶段1: 下载NeoForge安装器
                 UpdateProgress("正在下载NeoForge安装器...", 0);
@@ -537,8 +538,8 @@ namespace ObsMCLauncher.Core.Services.Installers
                 }
                 catch (Exception ex)
                 {
-                Debug.WriteLine($"[NeoForgeService] 安装失败: {ex.Message}");
-                Debug.WriteLine($"[NeoForgeService] 堆栈跟踪: {ex.StackTrace}");
+                DebugLogger.Error("NeoForge", $"安装失败: {ex.Message}");
+                DebugLogger.Error("NeoForge", $"堆栈跟踪: {ex.StackTrace}");
                 throw;
             }
         }
@@ -594,7 +595,7 @@ namespace ObsMCLauncher.Core.Services.Installers
                 }
                 catch (Exception ex)
                 {
-                Debug.WriteLine($"[NeoForgeService] 检测安装类型失败: {ex.Message}");
+                DebugLogger.Warn("NeoForge", $"检测安装类型失败: {ex.Message}");
                 return NeoForgeInstallType.Unknown;
             }
         }
@@ -619,7 +620,7 @@ namespace ObsMCLauncher.Core.Services.Installers
                 if (parts[0].Split('.').Length >= 2 && char.IsDigit(parts[1][0]))
                 {
                     normalizedVersion = parts[1];
-                    Debug.WriteLine($"[NeoForgeService] 标准化版本号: {version} -> {normalizedVersion}");
+                    DebugLogger.Info("NeoForgeService", $"标准化版本号: {version} -> {normalizedVersion}");
                 }
             }
 
@@ -646,13 +647,13 @@ namespace ObsMCLauncher.Core.Services.Installers
                 }
             }
             
-            Debug.WriteLine($"[NeoForgeService] 开始下载安装器: {normalizedVersion}");
+            DebugLogger.Info("NeoForgeService", $"开始下载安装器: {normalizedVersion}");
             
             foreach (var url in urls)
             {
                 try
                 {
-                    Debug.WriteLine($"[NeoForgeService] 尝试URL: {url}");
+                    DebugLogger.Info("NeoForge", $"尝试URL: {url}");
                     
                     var request = new HttpRequestMessage(HttpMethod.Get, url);
                     var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
@@ -676,12 +677,12 @@ namespace ObsMCLauncher.Core.Services.Installers
                         progressCallback?.Invoke($"正在下载安装器... ({downloadedBytes}/{totalBytes} 字节)", progress, 100, downloadedBytes, totalBytes);
                     }
                     
-                    Debug.WriteLine($"[NeoForgeService] 安装器下载完成: {outputPath}");
+                    DebugLogger.Info("NeoForge", $"安装器下载完成: {outputPath}");
                     return;
             }
             catch (Exception ex)
             {
-                    Debug.WriteLine($"[NeoForgeService] 下载失败: {ex.Message}");
+                    DebugLogger.Warn("NeoForge", $"下载失败: {ex.Message}");
                     if (url == urls.Last())
                         throw new Exception($"无法下载NeoForge安装器: {ex.Message}");
                 }
@@ -736,7 +737,7 @@ namespace ObsMCLauncher.Core.Services.Installers
             // 启动器在合并父版本时需要找到这个文件来获取 natives 库信息
             var vanillaJsonPath = Path.Combine(versionDir, $"{mcVersion}.json");
             await File.WriteAllTextAsync(vanillaJsonPath, jsonContent, cancellationToken);
-            Debug.WriteLine($"[NeoForgeService] 已备份原版JSON到: {vanillaJsonPath}");
+            DebugLogger.Info("NeoForge", $"已备份原版JSON到: {vanillaJsonPath}");
             
             progressCallback?.Invoke("版本配置文件下载完成", 10, 100, 0, 0);
             
@@ -787,7 +788,7 @@ namespace ObsMCLauncher.Core.Services.Installers
             }
             
             progressCallback?.Invoke("Minecraft客户端下载完成", 100, 100, totalBytes, totalBytes);
-            Debug.WriteLine($"[NeoForgeService] 原版Minecraft下载完成: {totalBytes / 1024.0 / 1024.0:F2}MB");
+            DebugLogger.Info("NeoForgeService", $"原版Minecraft下载完成: {totalBytes / 1024.0 / 1024.0:F2}MB");
         }
 
         #endregion
@@ -809,7 +810,7 @@ namespace ObsMCLauncher.Core.Services.Installers
         {
             try
             {
-                Debug.WriteLine($"[NeoForgeService] ========== 处理 install_profile.json ==========");
+                DebugLogger.Info("NeoForgeService", "========== 处理 install_profile.json ==========");
                 
                 // 进度分配（内部使用0-100%，外部会映射到实际范围）：
                 // 复制库文件: 0-10%
@@ -839,10 +840,10 @@ namespace ObsMCLauncher.Core.Services.Installers
                         throw new Exception("无法解析install_profile.json");
                     }
                     
-                    Debug.WriteLine($"[NeoForgeService] Profile: {profile.Profile}");
-                    Debug.WriteLine($"[NeoForgeService] Version: {profile.Version}");
-                    Debug.WriteLine($"[NeoForgeService] Minecraft: {profile.Minecraft}");
-                    Debug.WriteLine($"[NeoForgeService] 处理器数量: {profile.Processors.Count}");
+                    DebugLogger.Info("NeoForgeService", $"Profile: {profile.Profile}");
+                    DebugLogger.Info("NeoForgeService", $"Version: {profile.Version}");
+                    DebugLogger.Info("NeoForgeService", $"Minecraft: {profile.Minecraft}");
+                    DebugLogger.Info("NeoForgeService", $"处理器数量: {profile.Processors.Count}");
                 }
                 
                 // 2. 从安装器复制maven库文件（提高安装速度）
@@ -885,12 +886,12 @@ namespace ObsMCLauncher.Core.Services.Installers
                     cancellationToken);
                 
                 progressCallback?.Invoke("install_profile处理完成", 100, 100, 0, 0);
-                Debug.WriteLine($"[NeoForgeService] ========== install_profile.json 处理完成 ==========");
+                DebugLogger.Info("NeoForgeService", "========== install_profile.json 处理完成 ==========");
                 return true;
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[NeoForgeService] 处理install_profile.json失败: {ex.Message}");
+                DebugLogger.Error("NeoForgeService", $"处理install_profile.json失败: {ex.Message}");
                 throw;
             }
         }
@@ -907,7 +908,7 @@ namespace ObsMCLauncher.Core.Services.Installers
             string gameDirectory,
             NeoForgeInstallProfile profile)
         {
-            Debug.WriteLine($"[NeoForgeService] 开始从安装器复制库文件...");
+            DebugLogger.Info("NeoForgeService", "开始从安装器复制库文件...");
             
             var librariesDir = Path.Combine(gameDirectory, "libraries");
             int copiedCount = 0;
@@ -938,16 +939,16 @@ namespace ObsMCLauncher.Core.Services.Installers
                         entry.ExtractToFile(destPath, overwrite: true);
                         copiedCount++;
                         
-                        Debug.WriteLine($"[NeoForgeService] 已复制: {Path.GetFileName(destPath)}");
+                        DebugLogger.Info("NeoForgeService", $"已复制: {Path.GetFileName(destPath)}");
                 }
             }
             catch (Exception ex)
             {
-                    Debug.WriteLine($"[NeoForgeService] 复制库文件失败: {ex.Message}");
+                    DebugLogger.Error("NeoForgeService", $"复制库文件失败: {ex.Message}");
                 }
             }
             
-            Debug.WriteLine($"[NeoForgeService] 从安装器复制了 {copiedCount} 个库文件");
+            DebugLogger.Info("NeoForgeService", $"从安装器复制了 {copiedCount} 个库文件");
             
             await Task.CompletedTask;
         }
@@ -964,7 +965,7 @@ namespace ObsMCLauncher.Core.Services.Installers
         {
             if (string.IsNullOrEmpty(profile.Path))
             {
-                Debug.WriteLine($"[NeoForgeService] install_profile.json 中未指定path属性，跳过主JAR复制");
+                DebugLogger.Warn("NeoForgeService", "install_profile.json 中未指定path属性，跳过主JAR复制");
                 return;
             }
 
@@ -982,7 +983,7 @@ namespace ObsMCLauncher.Core.Services.Installers
                 var entry = archive.GetEntry(mavenPath);
                 if (entry == null)
                 {
-                    Debug.WriteLine($"[NeoForgeService] 未在安装器中找到主JAR: {mavenPath}");
+                    DebugLogger.Warn("NeoForgeService", $"未在安装器中找到主JAR: {mavenPath}");
                     return;
                 }
 
@@ -997,11 +998,11 @@ namespace ObsMCLauncher.Core.Services.Installers
                 using var destStream = File.Create(destPath);
                 await sourceStream.CopyToAsync(destStream);
                 
-                Debug.WriteLine($"[NeoForgeService] ✅ 主JAR复制成功: {Path.GetFileName(destPath)}");
+                DebugLogger.Info("NeoForgeService", $"主JAR复制成功: {Path.GetFileName(destPath)}");
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[NeoForgeService] ⚠️ 复制主JAR失败: {ex.Message}");
+                DebugLogger.Warn("NeoForgeService", $"复制主JAR失败: {ex.Message}");
             }
         }
 
@@ -1015,7 +1016,7 @@ namespace ObsMCLauncher.Core.Services.Installers
             Action<string, double, double, long, long>? progressCallback,
             CancellationToken cancellationToken)
         {
-            Debug.WriteLine($"[NeoForgeService] 检查缺失的库文件...");
+            DebugLogger.Info("NeoForgeService", "检查缺失的库文件...");
             
             var librariesDir = Path.Combine(gameDirectory, "libraries");
             var missingLibraries = new List<string>();
@@ -1036,16 +1037,16 @@ namespace ObsMCLauncher.Core.Services.Installers
                     if (!File.Exists(destPath))
                     {
                         missingLibraries.Add(mavenCoordinate);
-                        Debug.WriteLine($"[NeoForgeService] 缺失: {mavenCoordinate}");
+                        DebugLogger.Warn("NeoForgeService", $"缺失: {mavenCoordinate}");
                     }
                 }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine($"[NeoForgeService] 检查库文件失败: {ex.Message}");
+                    DebugLogger.Error("NeoForgeService", $"检查库文件失败: {ex.Message}");
                 }
             }
             
-            Debug.WriteLine($"[NeoForgeService] 发现 {missingLibraries.Count} 个缺失的库文件");
+            DebugLogger.Info("NeoForgeService", $"发现 {missingLibraries.Count} 个缺失的库文件");
             
             if (missingLibraries.Count == 0)
                 return;
@@ -1071,11 +1072,11 @@ namespace ObsMCLauncher.Core.Services.Installers
                     }
                     catch (Exception ex)
                     {
-                    Debug.WriteLine($"[NeoForgeService] 下载库文件失败 {maven}: {ex.Message}");
+                    DebugLogger.Error("NeoForgeService", $"下载库文件失败 {maven}: {ex.Message}");
                 }
             }
             
-            Debug.WriteLine($"[NeoForgeService] 成功下载 {downloadedCount}/{missingLibraries.Count} 个库文件");
+            DebugLogger.Info("NeoForgeService", $"成功下载 {downloadedCount}/{missingLibraries.Count} 个库文件");
         }
 
         /// <summary>
@@ -1129,8 +1130,8 @@ namespace ObsMCLauncher.Core.Services.Installers
             string mcVersion,
             NeoForgeInstallProfile profile)
         {
-            Debug.WriteLine($"[NeoForgeService] 提取version.json...");
-            
+            DebugLogger.Info("NeoForgeService", "提取version.json...");
+
             using var archive = ZipFile.OpenRead(installerPath);
             
             // 处理可能的路径格式：/version.json 或 version.json
@@ -1153,8 +1154,8 @@ namespace ObsMCLauncher.Core.Services.Installers
             
             var outputPath = Path.Combine(versionDir, $"{customVersionName}.json");
             await File.WriteAllTextAsync(outputPath, JsonSerializer.Serialize(modifiedJson, options));
-            
-            Debug.WriteLine($"[NeoForgeService] version.json已保存: {outputPath}");
+
+            DebugLogger.Info("NeoForgeService", $"version.json已保存: {outputPath}");
         }
 
         private static JsonElement ModifyVersionJson(JsonDocument original, string customVersionName, string mcVersion)
@@ -1195,7 +1196,7 @@ namespace ObsMCLauncher.Core.Services.Installers
                     if (gameArgsList[i].ValueKind == JsonValueKind.String && gameArgsList[i].GetString() == "--launchTarget")
                     {
                         var target = gameArgsList[i + 1].GetString();
-                        Debug.WriteLine($"[NeoForgeService] 原始 launchTarget: {target}");
+                        DebugLogger.Info("NeoForgeService", $"原始 launchTarget: {target}");
                         break;
                     }
                 }
@@ -1216,7 +1217,7 @@ namespace ObsMCLauncher.Core.Services.Installers
             string mcVersion,
             NeoForgeInstallProfile profile)
         {
-            Debug.WriteLine($"[NeoForgeService] 构建变量映射...");
+            DebugLogger.Info("NeoForgeService", "构建变量映射...");
             
             var variables = new Dictionary<string, string>();
             var tempDir = Path.Combine(Path.GetTempPath(), "ObsMCLauncher", "NeoForge", Guid.NewGuid().ToString());
@@ -1237,7 +1238,7 @@ namespace ObsMCLauncher.Core.Services.Installers
                     var parsedValue = await ParseDataValueAsync(value, archive, tempDir, gameDirectory, mcVersion);
                     variables[key] = parsedValue;
                     
-                    Debug.WriteLine($"[NeoForgeService] 变量: {{{key}}} = {parsedValue}");
+                    DebugLogger.Info("NeoForgeService", $"变量: {{{key}}} = {parsedValue}");
                 }
             }
             
@@ -1252,7 +1253,7 @@ namespace ObsMCLauncher.Core.Services.Installers
             variables["INSTALLER"] = installerPath;
             variables["LIBRARY_DIR"] = librariesDir;
             
-            Debug.WriteLine($"[NeoForgeService] 变量映射构建完成，共 {variables.Count} 个变量");
+            DebugLogger.Info("NeoForgeService", $"变量映射构建完成，共 {variables.Count} 个变量");
             
             return variables;
         }
@@ -1314,8 +1315,8 @@ namespace ObsMCLauncher.Core.Services.Installers
             Action<string, double, double, long, long>? progressCallback,
             CancellationToken cancellationToken)
         {
-            Debug.WriteLine($"[NeoForgeService] ========== 开始执行处理器 ==========");
-            Debug.WriteLine($"[NeoForgeService] 总处理器数: {profile.Processors.Count}");
+            DebugLogger.Info("NeoForgeService", "========== 开始执行处理器 ==========");
+            DebugLogger.Info("NeoForgeService", $"总处理器数: {profile.Processors.Count}");
             
             int completedCount = 0;
             
@@ -1326,17 +1327,17 @@ namespace ObsMCLauncher.Core.Services.Installers
                 // 检查sides
                 if (processor.Sides != null && !processor.Sides.Contains("client"))
                 {
-                    Debug.WriteLine($"[NeoForgeService] ⏭️ 跳过服务端处理器: {processor.Jar}");
+                    DebugLogger.Info("NeoForgeService", $"跳过服务端处理器: {processor.Jar}");
                     continue;
                 }
                 
-                Debug.WriteLine($"[NeoForgeService] ---------- 处理器 {completedCount + 1}/{profile.Processors.Count} ----------");
-                Debug.WriteLine($"[NeoForgeService] JAR: {processor.Jar}");
+                DebugLogger.Info("NeoForgeService", $"---------- 处理器 {completedCount + 1}/{profile.Processors.Count} ----------");
+                DebugLogger.Info("NeoForgeService", $"JAR: {processor.Jar}");
                 
                 // 检查输出文件是否已存在，避免重复执行
                 if (await AreOutputsValidAsync(processor, variables))
                 {
-                    Debug.WriteLine($"[NeoForgeService] ✅ 输出已存在且有效，跳过处理器");
+                    DebugLogger.Info("NeoForgeService", "输出已存在且有效，跳过处理器");
                     completedCount++;
                     progressCallback?.Invoke($"处理器 {completedCount}/{profile.Processors.Count}", completedCount, profile.Processors.Count, 0, 0);
                     continue;
@@ -1345,7 +1346,7 @@ namespace ObsMCLauncher.Core.Services.Installers
                 // 对DOWNLOAD_MOJMAPS任务使用直接下载方式
                 if (await TryDirectDownloadMojangMappingsAsync(processor, variables, cancellationToken))
                 {
-                    Debug.WriteLine($"[NeoForgeService] ✅ 已通过直接下载完成DOWNLOAD_MOJMAPS");
+                    DebugLogger.Info("NeoForgeService", "已通过直接下载完成DOWNLOAD_MOJMAPS");
                     completedCount++;
                     progressCallback?.Invoke($"处理器 {completedCount}/{profile.Processors.Count}", completedCount, profile.Processors.Count, 0, 0);
                     continue;
@@ -1360,10 +1361,10 @@ namespace ObsMCLauncher.Core.Services.Installers
                 completedCount++;
                 progressCallback?.Invoke($"处理器 {completedCount}/{profile.Processors.Count}", completedCount, profile.Processors.Count, 0, 0);
                 
-                Debug.WriteLine($"[NeoForgeService] ✅ 处理器执行成功");
+                DebugLogger.Info("NeoForgeService", "处理器执行成功");
             }
             
-            Debug.WriteLine($"[NeoForgeService] ========== 所有处理器执行完成 ==========");
+            DebugLogger.Info("NeoForgeService", "========== 所有处理器执行完成 ==========");
         }
 
         /// <summary>
@@ -1391,9 +1392,9 @@ namespace ObsMCLauncher.Core.Services.Installers
                 
                 if (!string.Equals(actualSha1, expectedSha1, StringComparison.OrdinalIgnoreCase))
                 {
-                    Debug.WriteLine($"[NeoForgeService] 输出文件校验失败: {Path.GetFileName(outputPath)}");
-                    Debug.WriteLine($"[NeoForgeService]   期望: {expectedSha1}");
-                    Debug.WriteLine($"[NeoForgeService]   实际: {actualSha1}");
+                    DebugLogger.Warn("NeoForgeService", $"输出文件校验失败: {Path.GetFileName(outputPath)}");
+                    DebugLogger.Warn("NeoForgeService", $"  期望: {expectedSha1}");
+                    DebugLogger.Warn("NeoForgeService", $"  实际: {actualSha1}");
                     
                     // 删除无效文件
                     try { File.Delete(outputPath); } catch { }
@@ -1433,9 +1434,9 @@ namespace ObsMCLauncher.Core.Services.Installers
             var mcVersion = args[versionIndex + 1];
             var outputPath = args[outputIndex + 1];
             
-            Debug.WriteLine($"[NeoForgeService] 检测到DOWNLOAD_MOJMAPS任务，直接下载映射文件");
-            Debug.WriteLine($"[NeoForgeService]   Minecraft版本: {mcVersion}");
-            Debug.WriteLine($"[NeoForgeService]   输出路径: {outputPath}");
+            DebugLogger.Info("NeoForgeService", "检测到DOWNLOAD_MOJMAPS任务，直接下载映射文件");
+            DebugLogger.Info("NeoForgeService", $"  Minecraft版本: {mcVersion}");
+            DebugLogger.Info("NeoForgeService", $"  输出路径: {outputPath}");
             
             try
             {
@@ -1443,7 +1444,7 @@ namespace ObsMCLauncher.Core.Services.Installers
                 var versionManifest = await MinecraftVersionService.GetVersionListAsync();
                 if (versionManifest == null)
                 {
-                    Debug.WriteLine($"[NeoForgeService] 无法获取版本列表");
+                    DebugLogger.Warn("NeoForgeService", "无法获取版本列表");
                     return false;
                 }
                 
@@ -1451,7 +1452,7 @@ namespace ObsMCLauncher.Core.Services.Installers
                 
                 if (targetVersion == null)
                 {
-                    Debug.WriteLine($"[NeoForgeService] 未找到版本 {mcVersion}");
+                    DebugLogger.Warn("NeoForgeService", $"未找到版本 {mcVersion}");
                     return false;
                 }
                 
@@ -1464,7 +1465,7 @@ namespace ObsMCLauncher.Core.Services.Installers
                     !downloads.TryGetProperty("client_mappings", out var clientMappings) ||
                     !clientMappings.TryGetProperty("url", out var urlElement))
                 {
-                    Debug.WriteLine($"[NeoForgeService] 未找到client_mappings下载信息");
+                    DebugLogger.Warn("NeoForgeService", "未找到client_mappings下载信息");
                     return false;
                 }
                 
@@ -1477,13 +1478,13 @@ namespace ObsMCLauncher.Core.Services.Installers
                 
                 await DownloadFileSimpleAsync(mappingsUrl, outputPath, cancellationToken);
                 
-                Debug.WriteLine($"[NeoForgeService] ✅ 映射文件下载完成: {Path.GetFileName(outputPath)}");
+                DebugLogger.Info("NeoForgeService", $"映射文件下载完成: {Path.GetFileName(outputPath)}");
                 
                 return true;
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[NeoForgeService] 直接下载映射文件失败: {ex.Message}");
+                DebugLogger.Error("NeoForgeService", $"直接下载映射文件失败: {ex.Message}");
                 return false;
             }
         }
@@ -1515,10 +1516,10 @@ namespace ObsMCLauncher.Core.Services.Installers
                 throw new Exception($"无法从处理器JAR获取主类: {processorJarPath}");
             }
             
-            Debug.WriteLine($"[NeoForgeService] 主类: {mainClass}");
-            Debug.WriteLine($"[NeoForgeService] 处理器执行开始...");
-            Debug.WriteLine($"[NeoForgeService] 处理器JAR: {processorJarPath}");
-            Debug.WriteLine($"[NeoForgeService] 处理器输出验证:");
+            DebugLogger.Info("NeoForgeService", $"主类: {mainClass}");
+            DebugLogger.Info("NeoForgeService", "处理器执行开始...");
+            DebugLogger.Info("NeoForgeService", $"处理器JAR: {processorJarPath}");
+            DebugLogger.Info("NeoForgeService", "处理器输出验证:");
             
             // 构建classpath
             var classpathParts = new List<string>();
@@ -1539,23 +1540,23 @@ namespace ObsMCLauncher.Core.Services.Installers
             // 解析参数
             var args = processor.Args.Select(a => ReplaceVariables(a, variables)).ToList();
             
-            Debug.WriteLine($"[NeoForgeService] 参数: {string.Join(" ", args.Select(a => $"\"{a}\""))}");
-            
+            DebugLogger.Info("NeoForgeService", $"参数: {string.Join(" ", args.Select(a => $"\"{a}\""))}");
+
             // 获取Java路径 - 根据Minecraft版本自动选择
             string javaPath;
             try
             {
                 var config = LauncherConfig.Load();
                 javaPath = config.GetActualJavaPath(mcVersion);
-                Debug.WriteLine($"[NeoForgeService] 使用Java: {javaPath} (Minecraft {mcVersion})");
-                
+                DebugLogger.Info("NeoForgeService", $"使用Java: {javaPath} (Minecraft {mcVersion})");
+
                 if (!File.Exists(javaPath))
                 {
                     // 如果配置的Java不存在，降级到自动检测
-                    Debug.WriteLine($"[NeoForgeService] 配置的Java不存在，开始自动检测...");
+                    DebugLogger.Info("NeoForgeService", "配置的Java不存在，开始自动检测...");
                     var javaInfo = JavaDetector.SelectBestJava();
                     javaPath = javaInfo?.Path ?? "java";
-                    Debug.WriteLine($"[NeoForgeService] 检测到Java: {javaPath}");
+                    DebugLogger.Info("NeoForgeService", $"检测到Java: {javaPath}");
                 }
             }
             catch
@@ -1576,7 +1577,7 @@ namespace ObsMCLauncher.Core.Services.Installers
                 CreateNoWindow = true
             };
             
-            Debug.WriteLine($"[NeoForgeService] 执行: {processInfo.FileName} {processInfo.Arguments}");
+            DebugLogger.Info("NeoForgeService", $"执行: {processInfo.FileName} {processInfo.Arguments}");
             
             // 执行进程
             using var process = Process.Start(processInfo);
@@ -1606,7 +1607,7 @@ namespace ObsMCLauncher.Core.Services.Installers
                 if (importantLines.Count > 0)
                 {
                     // 如果有重要信息，输出
-                    Debug.WriteLine($"[Processor] {string.Join("\n", importantLines)}");
+                    DebugLogger.Info("Processor", string.Join("\n", importantLines));
                 }
                 else if (lines.Length > 0)
                 {
@@ -1614,7 +1615,7 @@ namespace ObsMCLauncher.Core.Services.Installers
                     var classCount = lines.Count(l => l.Trim().EndsWith(".class", StringComparison.OrdinalIgnoreCase));
                     if (classCount > 0)
                     {
-                        Debug.WriteLine($"[Processor] 处理了 {classCount} 个类文件");
+                        DebugLogger.Info("Processor", $"处理了 {classCount} 个类文件");
                     }
                 }
             }
@@ -1622,7 +1623,7 @@ namespace ObsMCLauncher.Core.Services.Installers
             if (!string.IsNullOrWhiteSpace(error))
             {
                 // 错误信息始终输出
-                Debug.WriteLine($"[Processor Error] {error}");
+                DebugLogger.Error("Processor", error);
             }
             
             if (process.ExitCode != 0)
@@ -1769,7 +1770,7 @@ namespace ObsMCLauncher.Core.Services.Installers
         /// </summary>
         private static void CleanFinalOutputs(string gameDirectory, string mcVersion, string neoforgeVersion)
         {
-            Debug.WriteLine($"[NeoForgeService] 清理最终输出文件...");
+            DebugLogger.Info("NeoForgeService", "清理最终输出文件...");
             
             try
             {
@@ -1782,15 +1783,15 @@ namespace ObsMCLauncher.Core.Services.Installers
                 if (File.Exists(clientJar))
                 {
                     File.Delete(clientJar);
-                    Debug.WriteLine($"[NeoForgeService] 已删除: {Path.GetFileName(clientJar)}");
+                    DebugLogger.Info("NeoForgeService", $"已删除: {Path.GetFileName(clientJar)}");
                 }
                 
                 // 保留处理器生成的中间文件，支持后续的增量安装
-                Debug.WriteLine($"[NeoForgeService] 保留中间文件以支持增量安装");
+                DebugLogger.Info("NeoForgeService", "保留中间文件以支持增量安装");
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[NeoForgeService] 清理失败: {ex.Message}");
+                DebugLogger.Error("NeoForgeService", $"清理失败: {ex.Message}");
             }
         }
 
@@ -1857,15 +1858,15 @@ namespace ObsMCLauncher.Core.Services.Installers
                         }
                         catch (Exception ex)
                         {
-                            Debug.WriteLine($"[NeoForgeService] 搬运单个库文件失败 {relativePath}: {ex.Message}");
+                            DebugLogger.Warn("NeoForgeService", $"搬运单个库文件失败 {relativePath}: {ex.Message}");
                         }
                     }
 
-                    Debug.WriteLine($"[NeoForgeService] ✅ 已从临时目录合并 {movedCount} 个库文件到正式libraries目录");
+                    DebugLogger.Info("NeoForgeService", $"已从临时目录合并 {movedCount} 个库文件到正式libraries目录");
                 }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine($"[NeoForgeService] ⚠️ 移动库文件失败: {ex.Message}");
+                    DebugLogger.Warn("NeoForgeService", $"移动库文件失败: {ex.Message}");
                 }
             });
         }
