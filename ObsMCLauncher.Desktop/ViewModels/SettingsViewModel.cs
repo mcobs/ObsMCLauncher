@@ -26,11 +26,13 @@ namespace ObsMCLauncher.Desktop.ViewModels;
 public class SettingsViewModel : ViewModelBase
 {
     private readonly NotificationService _notificationService;
+    private bool _isInitializing;
 
     public void Save() => AutoSave();
 
     public void Reload()
     {
+        _isInitializing = true;
         _config = LauncherConfig.Load();
 
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(ThemeMode)));
@@ -58,6 +60,7 @@ public class SettingsViewModel : ViewModelBase
         LoadHomeCards();
 
         Status = "设置已重新加载";
+        _isInitializing = false;
     }
 
     private LauncherConfig _config;
@@ -76,6 +79,7 @@ public class SettingsViewModel : ViewModelBase
         JavaOptions = new ObservableCollection<JavaOption>();
         HomeCards = new ObservableCollection<HomeCardInfo>();
 
+        _isInitializing = true;
         _config = LauncherConfig.Load();
 
         // 应用保存的主题模式
@@ -117,6 +121,7 @@ public class SettingsViewModel : ViewModelBase
         LoadHomeCards();
 
         Status = "设置已加载";
+        _isInitializing = false;
     }
 
     public IAsyncRelayCommand TestDialogCommand { get; }
@@ -165,7 +170,10 @@ public class SettingsViewModel : ViewModelBase
                         break;
                 }
 
-                AutoSave();
+                if (!_isInitializing)
+                {
+                    AutoSave();
+                }
             }
         }
     }
@@ -466,7 +474,11 @@ public class SettingsViewModel : ViewModelBase
         {
             _config.Save();
             Status = "设置已自动保存";
-            _notificationService.ShowCountdown("设置已自动保存", "修改已生效，3秒后确认", 3);
+            
+            if (!_isInitializing)
+            {
+                _notificationService.ShowCountdown("设置已自动保存", "修改已生效，3秒后确认", 3);
+            }
         }
         catch (Exception ex)
         {
@@ -501,8 +513,9 @@ public class SettingsViewModel : ViewModelBase
                 var custom = JavaOption.Custom();
                 JavaOptions.Add(custom);
 
-                // 根据配置选中
-                SelectedJavaOption = PickSelectedJavaOption(found, auto, custom);
+                // 根据配置选中（直接设置字段，避免触发AutoSave）
+                _selectedJavaOption = PickSelectedJavaOption(found, auto, custom);
+                OnPropertyChanged(new PropertyChangedEventArgs(nameof(SelectedJavaOption)));
 
                 Status = $"Java 扫描完成：{found.Count} 个";
             });

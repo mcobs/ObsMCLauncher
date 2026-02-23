@@ -17,6 +17,7 @@ public partial class InstanceViewModel : ViewModelBase
     private readonly NotificationService _notificationService;
     private ObsMCLauncher.Core.Services.Minecraft.InstalledVersion? _version;
     private string _versionPath = string.Empty;
+    private bool _isLoadingConfig;
 
     [ObservableProperty]
     private bool _isLoading = true;
@@ -117,12 +118,14 @@ public partial class InstanceViewModel : ViewModelBase
         var versionConfig = config.VersionIsolationSettings?.FirstOrDefault(v => v.VersionId == _version.Id);
         if (versionConfig != null)
         {
+            _isLoadingConfig = true;
             IsolationMode = versionConfig.IsolationMode switch
             {
                 "enabled" => 1,
                 "disabled" => 2,
                 _ => 0
             };
+            _isLoadingConfig = false;
         }
 
         var gameDir = GetGameDirectory();
@@ -292,7 +295,11 @@ public partial class InstanceViewModel : ViewModelBase
         };
 
         config.Save();
-        _notificationService.Show("已保存", "版本隔离设置已更新", NotificationType.Success, 2);
+
+        if (!_isLoadingConfig)
+        {
+            _notificationService.Show("已保存", "版本隔离设置已更新", NotificationType.Success, 2);
+        }
     }
 }
 
