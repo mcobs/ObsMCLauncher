@@ -85,6 +85,12 @@ public class SettingsViewModel : ViewModelBase
         // 应用保存的主题模式
         ApplyThemeMode(_config.ThemeMode);
 
+        // 监听系统主题变化
+        if (Application.Current != null)
+        {
+            Application.Current.ActualThemeVariantChanged += OnSystemThemeChanged;
+        }
+
         BrowseGameDirectoryCommand = new AsyncRelayCommand(BrowseGameDirectoryAsync);
         BrowseJavaPathCommand = new AsyncRelayCommand(BrowseJavaPathAsync);
         TestDownloadSourceCommand = new AsyncRelayCommand(TestDownloadSourceAsync);
@@ -792,55 +798,85 @@ public class SettingsViewModel : ViewModelBase
     {
         if (Application.Current == null) return;
 
-        // 直接更新应用程序的资源字典
         var resources = Application.Current.Resources;
-        if (resources != null)
+        if (resources == null) return;
+
+        // 对于跟随系统模式，需要检测实际的主题
+        bool isLightTheme;
+        if (themeMode == 2)
         {
-            // 根据主题模式更新资源
-            if (themeMode == 1) // 浅色主题
-            {
-                resources["BackgroundBrush"] = new SolidColorBrush(Color.Parse("#F5F5F5"));
-                resources["SurfaceBrush"] = new SolidColorBrush(Color.Parse("#FFFFFF"));
-                resources["SurfaceElevatedBrush"] = new SolidColorBrush(Color.Parse("#FAFAFA"));
-                resources["SurfaceHoverBrush"] = new SolidColorBrush(Color.Parse("#F0F0F0"));
-                resources["TextBrush"] = new SolidColorBrush(Color.Parse("#202020"));
-                resources["TextSecondaryBrush"] = new SolidColorBrush(Color.Parse("#5A5A5A"));
-                resources["TextTertiaryBrush"] = new SolidColorBrush(Color.Parse("#8A8A8A"));
-                resources["BorderBrush"] = new SolidColorBrush(Color.Parse("#E0E0E0"));
-                resources["DividerBrush"] = new SolidColorBrush(Color.Parse("#E8E8E8"));
-                resources["InputBackgroundBrush"] = new SolidColorBrush(Color.Parse("#FFFFFF"));
-                resources["InputForegroundBrush"] = new SolidColorBrush(Color.Parse("#202020"));
-                resources["GlassmorphismBackgroundBrush"] = new SolidColorBrush(Color.Parse("#FFFFFF")) { Opacity = 0.92 };
-                resources["GlassmorphismBorderBrush"] = new SolidColorBrush(Color.Parse("#000000")) { Opacity = 0.1 };
-                resources["SystemControlBackgroundBaseHighBrush"] = new SolidColorBrush(Color.Parse("#F5F5F5"));
-                resources["SystemControlBackgroundAltHighBrush"] = new SolidColorBrush(Color.Parse("#FFFFFF"));
-                resources["SystemControlBackgroundBaseLowBrush"] = new SolidColorBrush(Color.Parse("#F0F0F0"));
-                resources["SystemControlBackgroundBaseMediumBrush"] = new SolidColorBrush(Color.Parse("#FAFAFA"));
-                resources["SystemControlForegroundBaseHighBrush"] = new SolidColorBrush(Color.Parse("#202020"));
-                resources["SystemControlForegroundBaseLowBrush"] = new SolidColorBrush(Color.Parse("#E0E0E0"));
-            }
-            else // 深色主题或默认
-            {
-                resources["BackgroundBrush"] = new SolidColorBrush(Color.Parse("#202020"));
-                resources["SurfaceBrush"] = new SolidColorBrush(Color.Parse("#2C2C2C"));
-                resources["SurfaceElevatedBrush"] = new SolidColorBrush(Color.Parse("#333333"));
-                resources["SurfaceHoverBrush"] = new SolidColorBrush(Color.Parse("#3A3A3A"));
-                resources["TextBrush"] = new SolidColorBrush(Color.Parse("#FFFFFF"));
-                resources["TextSecondaryBrush"] = new SolidColorBrush(Color.Parse("#ADADAD"));
-                resources["TextTertiaryBrush"] = new SolidColorBrush(Color.Parse("#8A8A8A"));
-                resources["BorderBrush"] = new SolidColorBrush(Color.Parse("#414141"));
-                resources["DividerBrush"] = new SolidColorBrush(Color.Parse("#2C2C2C"));
-                resources["InputBackgroundBrush"] = new SolidColorBrush(Color.Parse("#2C2C2C"));
-                resources["InputForegroundBrush"] = new SolidColorBrush(Color.Parse("#FFFFFF"));
-                resources["GlassmorphismBackgroundBrush"] = new SolidColorBrush(Color.Parse("#2C2C2C")) { Opacity = 0.88 };
-                resources["GlassmorphismBorderBrush"] = new SolidColorBrush(Color.Parse("#FFFFFF")) { Opacity = 0.5 };
-                resources["SystemControlBackgroundBaseHighBrush"] = new SolidColorBrush(Color.Parse("#202020"));
-                resources["SystemControlBackgroundAltHighBrush"] = new SolidColorBrush(Color.Parse("#2C2C2C"));
-                resources["SystemControlBackgroundBaseLowBrush"] = new SolidColorBrush(Color.Parse("#3A3A3A"));
-                resources["SystemControlBackgroundBaseMediumBrush"] = new SolidColorBrush(Color.Parse("#333333"));
-                resources["SystemControlForegroundBaseHighBrush"] = new SolidColorBrush(Color.Parse("#FFFFFF"));
-                resources["SystemControlForegroundBaseLowBrush"] = new SolidColorBrush(Color.Parse("#414141"));
-            }
+            // 跟随系统：根据实际主题变体决定
+            var actualTheme = Application.Current.ActualThemeVariant;
+            isLightTheme = actualTheme == ThemeVariant.Light;
+        }
+        else
+        {
+            // 0=深色, 1=浅色
+            isLightTheme = themeMode == 1;
+        }
+
+        if (isLightTheme)
+        {
+            ApplyLightTheme(resources);
+        }
+        else
+        {
+            ApplyDarkTheme(resources);
+        }
+    }
+
+    private void ApplyLightTheme(IResourceDictionary resources)
+    {
+        resources["BackgroundBrush"] = new SolidColorBrush(Color.Parse("#F5F5F5"));
+        resources["SurfaceBrush"] = new SolidColorBrush(Color.Parse("#FFFFFF"));
+        resources["SurfaceElevatedBrush"] = new SolidColorBrush(Color.Parse("#FAFAFA"));
+        resources["SurfaceHoverBrush"] = new SolidColorBrush(Color.Parse("#F0F0F0"));
+        resources["TextBrush"] = new SolidColorBrush(Color.Parse("#202020"));
+        resources["TextSecondaryBrush"] = new SolidColorBrush(Color.Parse("#5A5A5A"));
+        resources["TextTertiaryBrush"] = new SolidColorBrush(Color.Parse("#8A8A8A"));
+        resources["BorderBrush"] = new SolidColorBrush(Color.Parse("#E0E0E0"));
+        resources["DividerBrush"] = new SolidColorBrush(Color.Parse("#E8E8E8"));
+        resources["InputBackgroundBrush"] = new SolidColorBrush(Color.Parse("#FFFFFF"));
+        resources["InputForegroundBrush"] = new SolidColorBrush(Color.Parse("#202020"));
+        resources["GlassmorphismBackgroundBrush"] = new SolidColorBrush(Color.Parse("#FFFFFF")) { Opacity = 0.92 };
+        resources["GlassmorphismBorderBrush"] = new SolidColorBrush(Color.Parse("#000000")) { Opacity = 0.1 };
+        resources["SystemControlBackgroundBaseHighBrush"] = new SolidColorBrush(Color.Parse("#F5F5F5"));
+        resources["SystemControlBackgroundAltHighBrush"] = new SolidColorBrush(Color.Parse("#FFFFFF"));
+        resources["SystemControlBackgroundBaseLowBrush"] = new SolidColorBrush(Color.Parse("#F0F0F0"));
+        resources["SystemControlBackgroundBaseMediumBrush"] = new SolidColorBrush(Color.Parse("#FAFAFA"));
+        resources["SystemControlForegroundBaseHighBrush"] = new SolidColorBrush(Color.Parse("#202020"));
+        resources["SystemControlForegroundBaseLowBrush"] = new SolidColorBrush(Color.Parse("#E0E0E0"));
+    }
+
+    private void ApplyDarkTheme(IResourceDictionary resources)
+    {
+        resources["BackgroundBrush"] = new SolidColorBrush(Color.Parse("#202020"));
+        resources["SurfaceBrush"] = new SolidColorBrush(Color.Parse("#2C2C2C"));
+        resources["SurfaceElevatedBrush"] = new SolidColorBrush(Color.Parse("#333333"));
+        resources["SurfaceHoverBrush"] = new SolidColorBrush(Color.Parse("#3A3A3A"));
+        resources["TextBrush"] = new SolidColorBrush(Color.Parse("#FFFFFF"));
+        resources["TextSecondaryBrush"] = new SolidColorBrush(Color.Parse("#ADADAD"));
+        resources["TextTertiaryBrush"] = new SolidColorBrush(Color.Parse("#8A8A8A"));
+        resources["BorderBrush"] = new SolidColorBrush(Color.Parse("#414141"));
+        resources["DividerBrush"] = new SolidColorBrush(Color.Parse("#2C2C2C"));
+        resources["InputBackgroundBrush"] = new SolidColorBrush(Color.Parse("#2C2C2C"));
+        resources["InputForegroundBrush"] = new SolidColorBrush(Color.Parse("#FFFFFF"));
+        resources["GlassmorphismBackgroundBrush"] = new SolidColorBrush(Color.Parse("#2C2C2C")) { Opacity = 0.88 };
+        resources["GlassmorphismBorderBrush"] = new SolidColorBrush(Color.Parse("#FFFFFF")) { Opacity = 0.5 };
+        resources["SystemControlBackgroundBaseHighBrush"] = new SolidColorBrush(Color.Parse("#202020"));
+        resources["SystemControlBackgroundAltHighBrush"] = new SolidColorBrush(Color.Parse("#2C2C2C"));
+        resources["SystemControlBackgroundBaseLowBrush"] = new SolidColorBrush(Color.Parse("#3A3A3A"));
+        resources["SystemControlBackgroundBaseMediumBrush"] = new SolidColorBrush(Color.Parse("#333333"));
+        resources["SystemControlForegroundBaseHighBrush"] = new SolidColorBrush(Color.Parse("#FFFFFF"));
+        resources["SystemControlForegroundBaseLowBrush"] = new SolidColorBrush(Color.Parse("#414141"));
+    }
+
+    private void OnSystemThemeChanged(object? sender, EventArgs e)
+    {
+        // 只有在跟随系统模式下才响应系统主题变化
+        if (_config.ThemeMode == 2)
+        {
+            UpdateThemeResources(2);
         }
     }
 
