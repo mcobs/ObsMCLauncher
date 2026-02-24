@@ -54,50 +54,79 @@ public sealed partial class DialogRequest : ObservableObject
     private double _animationOpacity = 0;
 
     [ObservableProperty]
-    private double _animationScale = 0.7;
+    private double _animationScale = 0.5;
 
     [ObservableProperty]
-    private double _animationOffsetY = -30;
+    private double _animationOffsetY = -40;
 
     private Timer? _animationTimer;
     private int _animationStep = 0;
-    private static readonly double[] ScaleSteps = { 0.7, 1.05, 0.95, 1.02, 1.0 };
-    private static readonly double[] OffsetSteps = { -30, 5, -2, 1, 0 };
-    private static readonly double[] OpacitySteps = { 0, 1, 1, 1, 1 };
+    private static readonly int TotalSteps = 20;
+    private static readonly int EnterDuration = 400;
 
     public void StartEnterAnimation()
     {
         _animationStep = 0;
         _animationTimer?.Dispose();
-        _animationTimer = new Timer(AnimateStep, null, 0, 50);
+        _animationTimer = new Timer(AnimateEnterStep, null, 0, EnterDuration / TotalSteps);
     }
 
-    private void AnimateStep(object? state)
+    private void AnimateEnterStep(object? state)
     {
-        if (_animationStep >= ScaleSteps.Length)
+        if (_animationStep > TotalSteps)
         {
             _animationTimer?.Dispose();
             return;
         }
 
+        var progress = (double)_animationStep / TotalSteps;
+        var easedProgress = EaseOutBack(progress);
+
         Avalonia.Threading.Dispatcher.UIThread.Post(() =>
         {
-            if (_animationStep < ScaleSteps.Length)
-            {
-                AnimationOpacity = OpacitySteps[_animationStep];
-                AnimationScale = ScaleSteps[_animationStep];
-                AnimationOffsetY = OffsetSteps[_animationStep];
-                _animationStep++;
-            }
+            AnimationOpacity = Math.Min(1, progress * 2);
+            AnimationScale = 0.5 + 0.5 * easedProgress;
+            AnimationOffsetY = -40 + 40 * EaseOutCubic(progress);
+            _animationStep++;
         });
     }
 
     public void StartExitAnimation()
     {
         _animationTimer?.Dispose();
-        AnimationOpacity = 0;
-        AnimationScale = 0.9;
-        AnimationOffsetY = -20;
+        _animationStep = 0;
+        _animationTimer = new Timer(AnimateExitStep, null, 0, 15);
+    }
+
+    private void AnimateExitStep(object? state)
+    {
+        if (_animationStep > 10)
+        {
+            _animationTimer?.Dispose();
+            return;
+        }
+
+        var progress = (double)_animationStep / 10;
+
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            AnimationOpacity = 1 - progress;
+            AnimationScale = 1 - 0.2 * progress;
+            AnimationOffsetY = -20 * progress;
+            _animationStep++;
+        });
+    }
+
+    private static double EaseOutBack(double t)
+    {
+        const double c1 = 1.70158;
+        const double c3 = c1 + 1;
+        return 1 + c3 * Math.Pow(t - 1, 3) + c1 * Math.Pow(t - 1, 2);
+    }
+
+    private static double EaseOutCubic(double t)
+    {
+        return 1 - Math.Pow(1 - t, 3);
     }
 }
 
@@ -119,49 +148,78 @@ public sealed partial class UpdateDialogRequest : ObservableObject
     private double _animationOpacity = 0;
 
     [ObservableProperty]
-    private double _animationScale = 0.7;
+    private double _animationScale = 0.5;
 
     [ObservableProperty]
-    private double _animationOffsetY = -30;
+    private double _animationOffsetY = -40;
 
     private Timer? _animationTimer;
     private int _animationStep = 0;
-    private static readonly double[] ScaleSteps = { 0.7, 1.05, 0.95, 1.02, 1.0 };
-    private static readonly double[] OffsetSteps = { -30, 5, -2, 1, 0 };
-    private static readonly double[] OpacitySteps = { 0, 1, 1, 1, 1 };
+    private static readonly int TotalSteps = 20;
+    private static readonly int EnterDuration = 400;
 
     public void StartEnterAnimation()
     {
         _animationStep = 0;
         _animationTimer?.Dispose();
-        _animationTimer = new Timer(AnimateStep, null, 0, 50);
+        _animationTimer = new Timer(AnimateEnterStep, null, 0, EnterDuration / TotalSteps);
     }
 
-    private void AnimateStep(object? state)
+    private void AnimateEnterStep(object? state)
     {
-        if (_animationStep >= ScaleSteps.Length)
+        if (_animationStep > TotalSteps)
         {
             _animationTimer?.Dispose();
             return;
         }
 
+        var progress = (double)_animationStep / TotalSteps;
+        var easedProgress = EaseOutBack(progress);
+
         Avalonia.Threading.Dispatcher.UIThread.Post(() =>
         {
-            if (_animationStep < ScaleSteps.Length)
-            {
-                AnimationOpacity = OpacitySteps[_animationStep];
-                AnimationScale = ScaleSteps[_animationStep];
-                AnimationOffsetY = OffsetSteps[_animationStep];
-                _animationStep++;
-            }
+            AnimationOpacity = Math.Min(1, progress * 2);
+            AnimationScale = 0.5 + 0.5 * easedProgress;
+            AnimationOffsetY = -40 + 40 * EaseOutCubic(progress);
+            _animationStep++;
         });
     }
 
     public void StartExitAnimation()
     {
         _animationTimer?.Dispose();
-        AnimationOpacity = 0;
-        AnimationScale = 0.9;
-        AnimationOffsetY = -20;
+        _animationStep = 0;
+        _animationTimer = new Timer(AnimateExitStep, null, 0, 15);
+    }
+
+    private void AnimateExitStep(object? state)
+    {
+        if (_animationStep > 10)
+        {
+            _animationTimer?.Dispose();
+            return;
+        }
+
+        var progress = (double)_animationStep / 10;
+
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            AnimationOpacity = 1 - progress;
+            AnimationScale = 1 - 0.2 * progress;
+            AnimationOffsetY = -20 * progress;
+            _animationStep++;
+        });
+    }
+
+    private static double EaseOutBack(double t)
+    {
+        const double c1 = 1.70158;
+        const double c3 = c1 + 1;
+        return 1 + c3 * Math.Pow(t - 1, 3) + c1 * Math.Pow(t - 1, 2);
+    }
+
+    private static double EaseOutCubic(double t)
+    {
+        return 1 - Math.Pow(1 - t, 3);
     }
 }

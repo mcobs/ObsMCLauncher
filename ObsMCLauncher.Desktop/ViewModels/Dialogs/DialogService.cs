@@ -159,7 +159,7 @@ public partial class DialogService : ObservableObject
 
         var req = Current;
         req.StartExitAnimation();
-        await Task.Delay(200);
+        await Task.Delay(150);
         Current = null;
         OnPropertyChanged(nameof(IsOpen));
         OnPropertyChanged(nameof(IsAnyModalOpen));
@@ -214,7 +214,7 @@ public partial class DialogService : ObservableObject
 
         var req = UpdateDialogCurrent;
         req.StartExitAnimation();
-        await Task.Delay(200);
+        await Task.Delay(150);
         UpdateDialogCurrent = null;
         OnPropertyChanged(nameof(IsUpdateDialogOpen));
         OnPropertyChanged(nameof(IsAnyModalOpen));
