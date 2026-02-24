@@ -87,12 +87,16 @@ public class ScreenshotManager
                 try
                 {
                     var fileInfo = new FileInfo(file);
+                    var fileTime = fileInfo.LastWriteTimeUtc > fileInfo.CreationTimeUtc 
+                        ? fileInfo.LastWriteTime 
+                        : fileInfo.CreationTime;
+                    
                     screenshots.Add(new ScreenshotInfo
                     {
                         FileName = Path.GetFileName(file),
                         FullPath = file,
                         Size = fileInfo.Length,
-                        CreatedTime = fileInfo.CreationTime,
+                        CreatedTime = fileTime,
                         LastModified = fileInfo.LastWriteTime,
                         VersionName = versionName
                     });
@@ -135,7 +139,9 @@ public class ScreenshotManager
         bool hasMainScreenshots = Directory.Exists(mainScreenshotsDir) && HasScreenshots(mainScreenshotsDir);
 
         var versionsWithScreenshots = new List<string>();
+        var versionsUsingMainScreenshots = new List<string>();
         var versionsDir = Path.Combine(gameDirectory, "versions");
+        
         if (Directory.Exists(versionsDir))
         {
             var versionDirs = Directory.GetDirectories(versionsDir);
@@ -143,9 +149,20 @@ public class ScreenshotManager
             {
                 var versionName = Path.GetFileName(versionDir);
                 var versionScreenshotsDir = Path.Combine(versionDir, "screenshots");
-                if (Directory.Exists(versionScreenshotsDir) && HasScreenshots(versionScreenshotsDir))
+                
+                if (IsVersionIsolated(config, versionName))
                 {
-                    versionsWithScreenshots.Add(versionName);
+                    if (Directory.Exists(versionScreenshotsDir) && HasScreenshots(versionScreenshotsDir))
+                    {
+                        versionsWithScreenshots.Add(versionName);
+                    }
+                }
+                else
+                {
+                    if (hasMainScreenshots)
+                    {
+                        versionsUsingMainScreenshots.Add(versionName);
+                    }
                 }
             }
         }

@@ -68,12 +68,18 @@ public partial class ScreenshotsViewModel : ViewModelBase
                     Versions.Clear();
                     foreach (var v in versions) Versions.Add(v);
                     SelectedVersion = Versions.FirstOrDefault();
+                    
+                    if (Versions.Count == 0)
+                    {
+                        IsEmpty = true;
+                    }
                 });
             });
         }
         catch (Exception ex)
         {
             _notificationService.Show("错误", $"加载截图列表失败: {ex.Message}", NotificationType.Error);
+            IsEmpty = true;
         }
         finally
         {
