@@ -258,13 +258,13 @@
                 IsVisible="{Binding Dialogs.IsOpen}"
                 ZIndex="100"
                 Classes="dialog-card"
-                Opacity="{Binding Dialogs.Current.AnimationOpacity}"
+                Opacity="{Binding Dialogs.Current.AnimationOpacity, FallbackValue=0}"
                 RenderTransformOrigin="0.5,0.5"
                 x:CompileBindings="False">
             <Border.RenderTransform>
                 <TransformGroup>
-                    <ScaleTransform ScaleX="{Binding Dialogs.Current.AnimationScale}" ScaleY="{Binding Dialogs.Current.AnimationScale}" />
-                    <TranslateTransform Y="{Binding Dialogs.Current.AnimationOffsetY}" />
+                    <ScaleTransform ScaleX="{Binding Dialogs.Current.AnimationScale, FallbackValue=0.5}" ScaleY="{Binding Dialogs.Current.AnimationScale, FallbackValue=0.5}" />
+                    <TranslateTransform Y="{Binding Dialogs.Current.AnimationOffsetY, FallbackValue=-40}" />
                 </TransformGroup>
             </Border.RenderTransform>
             <Grid RowDefinitions="Auto,Auto,Auto,Auto" ColumnDefinitions="*,Auto" >
@@ -284,34 +284,34 @@
 
                 <TextBox Grid.Row="2" Grid.ColumnSpan="2"
                          Margin="0,12,0,0"
-                         Text="{Binding Dialogs.Current.InputText, Mode=TwoWay}"
-                         Watermark="{Binding Dialogs.Current.Placeholder}"
-                         IsVisible="{Binding Dialogs.Current.Type, Converter={x:Static converters:DialogInputVisibleConverter.Instance}, FallbackValue=False}" />
+                         Text="{Binding Dialogs.Current.InputText, Mode=TwoWay, FallbackValue=''}"
+                         Watermark="{Binding Dialogs.Current.Placeholder, FallbackValue=''}"
+                         IsVisible="{Binding Dialogs.Current.Type, Converter={x:Static converters:DialogInputVisibleConverter.Instance}, FallbackValue=False, TargetNullValue=False}" />
 
                 <StackPanel Grid.Row="3" Grid.ColumnSpan="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0" Spacing="8">
                     <Button Content="取消"
-                            IsVisible="{Binding Dialogs.Current.Buttons, Converter={x:Static converters:DialogShowCancelConverter.Instance}, FallbackValue=False}"
+                            IsVisible="{Binding Dialogs.Current.Buttons, Converter={x:Static converters:DialogShowCancelConverter.Instance}, FallbackValue=False, TargetNullValue=False}"
                             Command="{Binding Dialogs.ChooseCommand}">
                         <Button.CommandParameter>
                             <dialogs:DialogResult>Cancel</dialogs:DialogResult>
                         </Button.CommandParameter>
                     </Button>
                     <Button Content="否"
-                            IsVisible="{Binding Dialogs.Current.Buttons, Converter={x:Static converters:DialogShowNoConverter.Instance}, FallbackValue=False}"
+                            IsVisible="{Binding Dialogs.Current.Buttons, Converter={x:Static converters:DialogShowNoConverter.Instance}, FallbackValue=False, TargetNullValue=False}"
                             Command="{Binding Dialogs.ChooseCommand}">
                         <Button.CommandParameter>
                             <dialogs:DialogResult>No</dialogs:DialogResult>
                         </Button.CommandParameter>
                     </Button>
                     <Button Content="是"
-                            IsVisible="{Binding Dialogs.Current.Buttons, Converter={x:Static converters:DialogShowYesConverter.Instance}, FallbackValue=False}"
+                            IsVisible="{Binding Dialogs.Current.Buttons, Converter={x:Static converters:DialogShowYesConverter.Instance}, FallbackValue=False, TargetNullValue=False}"
                             Command="{Binding Dialogs.ChooseCommand}">
                         <Button.CommandParameter>
                             <dialogs:DialogResult>Yes</dialogs:DialogResult>
                         </Button.CommandParameter>
                     </Button>
                     <Button Content="确定"
-                            IsVisible="{Binding Dialogs.Current.Buttons, Converter={x:Static converters:DialogShowOkConverter.Instance}, FallbackValue=False}"
+                            IsVisible="{Binding Dialogs.Current.Buttons, Converter={x:Static converters:DialogShowOkConverter.Instance}, FallbackValue=False, TargetNullValue=False}"
                             Command="{Binding Dialogs.ChooseCommand}">
                         <Button.CommandParameter>
                             <dialogs:DialogResult>OK</dialogs:DialogResult>
@@ -384,14 +384,14 @@
                 MaxWidth="600"
                 MaxHeight="700"
                 Padding="24"
-                Opacity="{Binding Dialogs.UpdateDialogCurrent.AnimationOpacity}"
+                Opacity="{Binding Dialogs.UpdateDialogCurrent.AnimationOpacity, FallbackValue=0}"
                 RenderTransformOrigin="0.5,0.5"
                 x:CompileBindings="False"
                 Classes="update-dialog">
             <Border.RenderTransform>
                 <TransformGroup>
-                    <ScaleTransform ScaleX="{Binding Dialogs.UpdateDialogCurrent.AnimationScale}" ScaleY="{Binding Dialogs.UpdateDialogCurrent.AnimationScale}" />
-                    <TranslateTransform Y="{Binding Dialogs.UpdateDialogCurrent.AnimationOffsetY}" />
+                    <ScaleTransform ScaleX="{Binding Dialogs.UpdateDialogCurrent.AnimationScale, FallbackValue=0.5}" ScaleY="{Binding Dialogs.UpdateDialogCurrent.AnimationScale, FallbackValue=0.5}" />
+                    <TranslateTransform Y="{Binding Dialogs.UpdateDialogCurrent.AnimationOffsetY, FallbackValue=-40}" />
                 </TransformGroup>
             </Border.RenderTransform>
             <Grid RowDefinitions="Auto,*,Auto">

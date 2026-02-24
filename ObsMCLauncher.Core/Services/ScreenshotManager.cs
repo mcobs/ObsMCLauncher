@@ -88,8 +88,8 @@ public class ScreenshotManager
                 {
                     var fileInfo = new FileInfo(file);
                     var fileTime = fileInfo.LastWriteTimeUtc > fileInfo.CreationTimeUtc 
-                        ? fileInfo.LastWriteTime 
-                        : fileInfo.CreationTime;
+                        ? fileInfo.LastWriteTimeUtc.ToLocalTime() 
+                        : fileInfo.CreationTimeUtc.ToLocalTime();
                     
                     screenshots.Add(new ScreenshotInfo
                     {
