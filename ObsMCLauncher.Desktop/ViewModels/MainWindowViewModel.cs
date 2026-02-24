@@ -15,10 +15,14 @@ namespace ObsMCLauncher.Desktop.ViewModels;
 public partial class MainWindowViewModel : ViewModelBase, IDisposable
 {
     public ObservableCollection<NavItemViewModel> NavItems { get; } = new();
+    public ObservableCollection<NavItemViewModel> BottomNavItems { get; } = new();
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CurrentPage))]
     private NavItemViewModel? selectedNavItem;
+
+    [ObservableProperty]
+    private NavItemViewModel? selectedBottomNavItem;
 
     [ObservableProperty]
     private bool isNavCollapsed;
@@ -105,7 +109,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         NavTextOpacity = targetOpacity;
     }
 
-    public ViewModelBase? CurrentPage => SelectedNavItem?.Page;
+    public ViewModelBase? CurrentPage => SelectedNavItem?.Page ?? SelectedBottomNavItem?.Page;
 
     public DownloadManagerViewModel DownloadManager { get; }
 
@@ -152,8 +156,9 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         NavItems.Add(new NavItemViewModel("账号管理", new AccountManagementViewModel(), "👤"));
         NavItems.Add(new NavItemViewModel("版本管理", new VersionDownloadViewModel(dispatcher, Notifications), "📥"));
         NavItems.Add(new NavItemViewModel("资源下载", new ResourcesViewModel(), "📦"));
-        NavItems.Add(new NavItemViewModel("设置", new SettingsViewModel(Notifications, _homeViewModel), "⚙️"));
-        NavItems.Add(new NavItemViewModel("更多", _moreViewModel, "⋯"));
+
+        BottomNavItems.Add(new NavItemViewModel("设置", new SettingsViewModel(Notifications, _homeViewModel), "⚙️"));
+        BottomNavItems.Add(new NavItemViewModel("更多", _moreViewModel, "⋯"));
 
         SelectedNavItem = NavItems[0];
     }
@@ -295,6 +300,11 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     partial void OnSelectedNavItemChanged(NavItemViewModel? value)
     {
+        if (value != null)
+        {
+            SelectedBottomNavItem = null;
+        }
+        
         OnPropertyChanged(nameof(CurrentPage));
         
         if (value?.Page is HomeViewModel homeVm)
@@ -305,6 +315,16 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         {
             versionVm.RefreshInstalled();
         }
+    }
+
+    partial void OnSelectedBottomNavItemChanged(NavItemViewModel? value)
+    {
+        if (value != null)
+        {
+            SelectedNavItem = null;
+        }
+        
+        OnPropertyChanged(nameof(CurrentPage));
     }
 
     [RelayCommand]
