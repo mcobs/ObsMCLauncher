@@ -264,6 +264,7 @@ public partial class ResourcesViewModel : ViewModelBase
 
         if (response?.Data == null) return;
 
+        var tasks = new List<Task>();
         foreach (var mod in response.Data)
         {
             var translation = _translation.GetTranslationByCurseForgeId(mod.Slug)
@@ -271,8 +272,9 @@ public partial class ResourcesViewModel : ViewModelBase
 
             var item = new ResourceItemViewModel(mod, translation);
             Results.Add(item);
-            _ = item.LoadIconAsync();
+            tasks.Add(item.LoadIconAsync());
         }
+        await Task.WhenAll(tasks);
     }
 
     private async Task SearchModrinth(string gameVersion)
@@ -296,6 +298,7 @@ public partial class ResourcesViewModel : ViewModelBase
 
         if (response?.Hits == null) return;
 
+        var tasks = new List<Task>();
         foreach (var hit in response.Hits)
         {
             var translation = _translation.GetTranslationByCurseForgeId(hit.ProjectId);
@@ -303,9 +306,10 @@ public partial class ResourcesViewModel : ViewModelBase
             var item = new ResourceItemViewModel(hit, translation);
             Results.Add(item);
 
-            _ = item.LoadIconAsync();
-            _ = LoadModrinthVersionsAsync(item, hit.ProjectId);
+            tasks.Add(item.LoadIconAsync());
+            tasks.Add(LoadModrinthVersionsAsync(item, hit.ProjectId));
         }
+        await Task.WhenAll(tasks);
     }
 
     private async Task LoadModrinthVersionsAsync(ResourceItemViewModel item, string projectId)
