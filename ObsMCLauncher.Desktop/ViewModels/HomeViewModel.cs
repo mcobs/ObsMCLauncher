@@ -307,11 +307,8 @@ public partial class HomeViewModel : ViewModelBase
                     IsEnabled = isEnabled
                 };
 
-                // 如果卡片被启用，才添加到显示列表
-                if (isEnabled)
-                {
-                    HomeCards.Add(newCard);
-                }
+                // 无论卡片是否被启用，都添加到集合中，只是在显示时根据 IsEnabled 属性决定是否显示
+                HomeCards.Add(newCard);
             }
 
             // 通知SettingsViewModel刷新插件卡片
@@ -322,8 +319,20 @@ public partial class HomeViewModel : ViewModelBase
     private void NotifySettingsViewModelRefreshPluginCards()
     {
         // 通过NavigationStore找到SettingsViewModel并刷新插件卡片
-        var settingsVm = NavigationStore.MainWindow?.NavItems
+        var mainWindow = NavigationStore.MainWindow;
+        if (mainWindow == null) return;
+        
+        // 先检查NavItems
+        var settingsVm = mainWindow.NavItems
             .FirstOrDefault(x => x.Title == "设置")?.Page as SettingsViewModel;
+        
+        // 如果在NavItems中找不到，检查BottomNavItems
+        if (settingsVm == null)
+        {
+            settingsVm = mainWindow.BottomNavItems
+                .FirstOrDefault(x => x.Title == "设置")?.Page as SettingsViewModel;
+        }
+        
         settingsVm?.RefreshPluginCards();
     }
 
@@ -440,8 +449,27 @@ public partial class HomeViewModel : ViewModelBase
 
     public void RefreshHomeCards()
     {
+        // 保存当前的插件卡片
+        var pluginCards = HomeCards.Where(c => c.IsPluginCard).ToList();
+        
         // 重新初始化主页数据
         InitializeHomeData();
+
+        // 重新添加插件卡片
+        foreach (var pluginCard in pluginCards)
+        {
+            // 检查卡片是否已经存在
+            var existingCard = HomeCards.FirstOrDefault(c => c.CardId == pluginCard.CardId);
+            if (existingCard == null)
+            {
+                HomeCards.Add(pluginCard);
+            }
+            else
+            {
+                // 更新现有卡片的状态
+                existingCard.IsEnabled = pluginCard.IsEnabled;
+            }
+        }
 
         // 重新触发插件卡片注册，以便根据新的启用状态更新显示
         // 这里需要通知所有已加载的插件重新注册他们的卡片
@@ -450,10 +478,10 @@ public partial class HomeViewModel : ViewModelBase
         {
             // 获取当前所有插件卡片
             var config = LauncherConfig.Load();
-            var pluginCards = config.HomeCards.Where(c => c.IsPluginCard).ToList();
+            var cardConfigs = config.HomeCards.Where(c => c.IsPluginCard).ToList();
 
             // 对于每个插件卡片，重新检查其启用状态
-            foreach (var cardConfig in pluginCards)
+            foreach (var cardConfig in cardConfigs)
             {
                 // 这里需要从插件系统获取卡片的详细信息
                 // 由于插件系统没有提供获取卡片详情的方法，我们只能更新现有卡片的启用状态
@@ -462,11 +490,7 @@ public partial class HomeViewModel : ViewModelBase
                 {
                     existingCard.IsEnabled = cardConfig.IsEnabled;
 
-                    // 如果卡片被禁用，从显示列表中移除
-                    if (!cardConfig.IsEnabled)
-                    {
-                        HomeCards.Remove(existingCard);
-                    }
+                    // 不再从集合中移除禁用的卡片，而是保留它们，只是在显示时根据 IsEnabled 属性决定是否显示
                 }
                 else if (cardConfig.IsEnabled)
                 {
