@@ -12,20 +12,20 @@
               Command="{Binding BackCommand}"
               HorizontalAlignment="Left"/>
 
-      <Border CornerRadius="10" Padding="20" Background="{DynamicResource SurfaceBrush}">
-        <Grid ColumnDefinitions="Auto,*">
-          <Border Width="120" Height="120" CornerRadius="12" Background="{DynamicResource BorderBrush}" Margin="0,0,25,0">
+      <Border CornerRadius="10" Padding="15" Background="{DynamicResource SurfaceBrush}">
+        <Grid ColumnDefinitions="Auto,*,Auto">
+          <Border Width="80" Height="80" CornerRadius="8" Background="{DynamicResource BorderBrush}" Margin="0,0,20,0">
             <Image Source="{Binding Icon}" Stretch="UniformToFill"/>
           </Border>
 
-          <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="8">
-            <TextBlock Text="{Binding DisplayName}" FontSize="28" FontWeight="Bold"/>
-            <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" FontSize="14" Opacity="0.8"/>
+          <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="6">
+            <TextBlock Text="{Binding DisplayName}" FontSize="20" FontWeight="Bold" TextTrimming="CharacterEllipsis"/>
+            <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" FontSize="13" Opacity="0.8" MaxLines="2"/>
 
-            <StackPanel Orientation="Horizontal" Spacing="16">
-              <TextBlock Text="{Binding AuthorDisplay}" FontSize="13" Opacity="0.8"/>
-              <TextBlock Text="{Binding DownloadsDisplay}" FontSize="13" Opacity="0.8"/>
-              <TextBlock Text="{Binding LastUpdateDisplay}" FontSize="13" Opacity="0.8"/>
+            <StackPanel Orientation="Horizontal" Spacing="12">
+              <TextBlock Text="{Binding AuthorDisplay}" FontSize="12" Opacity="0.8"/>
+              <TextBlock Text="{Binding DownloadsDisplay}" FontSize="12" Opacity="0.8"/>
+              <TextBlock Text="{Binding LastUpdateDisplay}" FontSize="12" Opacity="0.8"/>
             </StackPanel>
           </StackPanel>
         </Grid>
