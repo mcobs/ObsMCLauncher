@@ -1,3 +1,41 @@
+## [v1.0.0-rc.4] - 2026-03-14
+
+### 新增
+
+- **Fluent Design 对话框系统**
+  - 现代化的 Fluent Design 风格对话框
+  - 五种对话框类型（Info、Success、Warning、Error、Question）
+  - 每种类型配有专用图标和配色方案
+  - 亚克力材质背景效果
+  - 圆角设计和阴影效果
+
+- **灵动动画效果**
+  - 流畅的进入/退出动画（350ms/200ms）
+  - 回弹效果的缩放动画
+  - 平滑的位移动画
+  - 悬停交互效果
+  - 使用 SplineEasing 实现 Fluent 风格缓动
+
+- **Fluent 动画服务**
+  - 新增 FluentAnimationService 提供统一动画 API
+  - 支持高性能动画渲染
+  - 可复用的动画组件
+
+### 优化
+
+- 更新对话框模型，添加 DialogStyle 配置
+  - 支持自定义圆角、阴影、透明度等参数
+  - 根据对话框类型自动应用样式
+
+- 完善主题和样式系统
+  - 新增 FluentDialogStyles.axaml
+  - 更新 Theme.axaml 添加 Fluent 材质颜色
+  - 更新 Controls.axaml 添加 Fluent 按钮和输入框样式
+
+---
+
+## [v1.0.0-rc.3] - 2026-03-14
+
 ### UI 优化
 
 - 优化资源详情界面布局，缩小上方资源信息区域，为版本选择提供更多空间
