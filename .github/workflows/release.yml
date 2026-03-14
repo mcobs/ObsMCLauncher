@@ -177,7 +177,7 @@ jobs:
         script: |
           const version = '${{ steps.version.outputs.version }}';
           const isPrerelease = ${{ steps.version.outputs.is_prerelease == 'true' }};
-          const changelog = `${{ steps.changelog.outputs.changelog }}`;
+          const changelog = `"${{ steps.changelog.outputs.changelog }}"`;
           
           // 准备发布体
           let body = `## 📥 下载\n\n`;
@@ -197,9 +197,9 @@ jobs:
             body += `如果您发现问题，请在 [Issues](https://github.com/${{ github.repository }}/issues) 中反馈。\n`;
           }
           
-          if (changelog && changelog.trim()) {
+          if (changelog && changelog.trim() && changelog !== '""') {
             body += `\n---\n\n`;
-            body += changelog;
+            body += changelog.replace(/^"|"$/g, '');
             body += `\n`;
           } else {
             body += `\n---\n\n## 📋 更新内容\n\n暂无更新内容描述。\n`;
