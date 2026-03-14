@@ -204,7 +204,7 @@
                           <Button Width="32" Height="32" Margin="0,0,4,0" Padding="0"
                                   Command="{Binding $parent[ItemsControl].((vm:SettingsViewModel)DataContext).MoveCardUpCommand}"
                                   CommandParameter="{Binding}">
-                            <Path Data="M12 8L8 12L4 8" 
+                            <Path Data="M4 8L8 4L12 8" 
                                   Width="12" Height="12"
                                   Stroke="{DynamicResource TextBrush}"
                                   StrokeThickness="2"
@@ -213,7 +213,7 @@
                           <Button Width="32" Height="32" Padding="0"
                                   Command="{Binding $parent[ItemsControl].((vm:SettingsViewModel)DataContext).MoveCardDownCommand}"
                                   CommandParameter="{Binding}">
-                            <Path Data="M4 8L8 4L12 8" 
+                            <Path Data="M12 8L8 12L4 8" 
                                   Width="12" Height="12"
                                   Stroke="{DynamicResource TextBrush}"
                                   StrokeThickness="2"
