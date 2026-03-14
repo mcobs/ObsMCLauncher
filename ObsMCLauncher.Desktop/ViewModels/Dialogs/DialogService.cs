@@ -6,6 +6,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using ObsMCLauncher.Desktop.Services;
 
 namespace ObsMCLauncher.Desktop.ViewModels.Dialogs;
 
@@ -40,7 +41,8 @@ public partial class DialogService : ObservableObject
             Title = title,
             Message = message,
             Type = type,
-            Buttons = buttons
+            Buttons = buttons,
+            Style = GetDialogStyle(type)
         };
 
         Current = req;
@@ -74,7 +76,8 @@ public partial class DialogService : ObservableObject
             Type = DialogType.Input,
             Buttons = buttons,
             InputText = defaultText ?? string.Empty,
-            Placeholder = placeholder ?? string.Empty
+            Placeholder = placeholder ?? string.Empty,
+            Style = GetDialogStyle(DialogType.Input)
         };
 
         Current = req;
@@ -87,6 +90,39 @@ public partial class DialogService : ObservableObject
         }, TimeSpan.FromMilliseconds(30));
 
         return req.Completion.Task;
+    }
+
+    private static DialogStyle GetDialogStyle(DialogType type)
+    {
+        return type switch
+        {
+            DialogType.Info => new DialogStyle
+            {
+                IconPath = "DialogInfoIcon",
+                AccentColorKey = "#2196F3"
+            },
+            DialogType.Success => new DialogStyle
+            {
+                IconPath = "DialogSuccessIcon",
+                AccentColorKey = "#4CAF50"
+            },
+            DialogType.Warning => new DialogStyle
+            {
+                IconPath = "DialogWarningIcon",
+                AccentColorKey = "#FF9800"
+            },
+            DialogType.Error => new DialogStyle
+            {
+                IconPath = "DialogErrorIcon",
+                AccentColorKey = "#F44336"
+            },
+            DialogType.Question => new DialogStyle
+            {
+                IconPath = "DialogQuestionIcon",
+                AccentColorKey = "SystemAccentColor"
+            },
+            _ => new DialogStyle()
+        };
     }
 
     public Task<bool> ShowAuthUrlAsync(string url, string title = "微软账户登录")

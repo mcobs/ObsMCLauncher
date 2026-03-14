@@ -307,44 +307,60 @@
             </Border.Transitions>
         </Border>
 
-        <!-- 通用对话框 -->
+        <!-- 通用对话框 (Fluent 风格) -->
         <Border Grid.Row="0" Grid.Column="0" Grid.RowSpan="2" Grid.ColumnSpan="2"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
                 IsVisible="{Binding Dialogs.IsOpen}"
                 ZIndex="100"
-                Classes="dialog-card"
+                Classes="fluent-dialog"
                 Opacity="{Binding Dialogs.Current.AnimationOpacity, FallbackValue=0}"
                 RenderTransformOrigin="0.5,0.5"
                 x:CompileBindings="False">
             <Border.RenderTransform>
                 <TransformGroup>
-                    <ScaleTransform ScaleX="{Binding Dialogs.Current.AnimationScale, FallbackValue=0.5}" ScaleY="{Binding Dialogs.Current.AnimationScale, FallbackValue=0.5}" />
-                    <TranslateTransform Y="{Binding Dialogs.Current.AnimationOffsetY, FallbackValue=-40}" />
+                    <ScaleTransform ScaleX="{Binding Dialogs.Current.AnimationScale, FallbackValue=0.9}" ScaleY="{Binding Dialogs.Current.AnimationScale, FallbackValue=0.9}" />
+                    <TranslateTransform Y="{Binding Dialogs.Current.AnimationOffsetY, FallbackValue=20}" />
                 </TransformGroup>
             </Border.RenderTransform>
-            <Grid RowDefinitions="Auto,Auto,Auto,Auto" ColumnDefinitions="*,Auto" >
-                <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding Dialogs.Current.Title, FallbackValue=''}" FontSize="18" FontWeight="Bold" />
-                <Button Grid.Row="0" Grid.Column="1"
+            
+            <Grid RowDefinitions="Auto,Auto,Auto,Auto" ColumnDefinitions="Auto,*">
+                <!-- 动态类型图标 -->
+                <Border Grid.Row="0" Grid.RowSpan="3" Grid.Column="0"
+                        Classes="dialog-icon-container"
+                        Margin="0,0,16,0"
+                        IsVisible="True">
+                    <PathIcon Data="{DynamicResource DialogInfoIcon}"
+                              Classes="dialog-icon"
+                              x:Name="DialogTypeIcon"/>
+                </Border>
+                
+                <!-- 标题和关闭按钮 -->
+                <TextBlock Grid.Row="0" Grid.Column="1" 
+                           Text="{Binding Dialogs.Current.Title, FallbackValue=''}" 
+                           Classes="dialog-title"/>
+                <Button Grid.Row="0" Grid.Column="2"
                         Width="32" Height="32"
                         Background="Transparent" BorderThickness="0"
-                        Command="{Binding Dialogs.CloseCommand}">
+                        Command="{Binding Dialogs.CloseCommand}"
+                        HorizontalAlignment="Right">
                     <TextBlock Text="✕" FontSize="16" />
                 </Button>
 
-                <TextBlock Grid.Row="1" Grid.ColumnSpan="2"
+                <!-- 消息内容 -->
+                <TextBlock Grid.Row="1" Grid.Column="1"
                            Text="{Binding Dialogs.Current.Message, FallbackValue=''}"
-                           Margin="0,12,0,0"
-                           TextWrapping="Wrap"
-                           Opacity="0.85" />
+                           Classes="dialog-message"/>
 
-                <TextBox Grid.Row="2" Grid.ColumnSpan="2"
+                <!-- 输入框 -->
+                <TextBox Grid.Row="2" Grid.Column="1"
                          Margin="0,12,0,0"
                          Text="{Binding Dialogs.Current.InputText, Mode=TwoWay, FallbackValue=''}"
                          Watermark="{Binding Dialogs.Current.Placeholder, FallbackValue=''}"
                          IsVisible="{Binding Dialogs.Current.Type, Converter={x:Static converters:DialogInputVisibleConverter.Instance}, FallbackValue=False, TargetNullValue=False}" />
 
-                <StackPanel Grid.Row="3" Grid.ColumnSpan="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0" Spacing="8">
+                <!-- 按钮区域 -->
+                <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0" Spacing="8">
                     <Button Content="取消"
                             IsVisible="{Binding Dialogs.Current.Buttons, Converter={x:Static converters:DialogShowCancelConverter.Instance}, FallbackValue=False, TargetNullValue=False}"
                             Command="{Binding Dialogs.ChooseCommand}">

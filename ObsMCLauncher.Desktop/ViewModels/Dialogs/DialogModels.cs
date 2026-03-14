@@ -32,6 +32,17 @@ public enum DialogResult
     No
 }
 
+public record DialogStyle
+{
+    public double CornerRadius { get; init; } = 12.0;
+    public double BorderThickness { get; init; } = 1.0;
+    public double ShadowBlurRadius { get; init; } = 20.0;
+    public double ShadowOpacity { get; init; } = 0.3;
+    public double BackgroundOpacity { get; init; } = 0.85;
+    public string IconPath { get; init; } = string.Empty;
+    public string AccentColorKey { get; init; } = "SystemAccentColor";
+}
+
 public sealed partial class DialogRequest : ObservableObject
 {
     public string Id { get; } = Guid.NewGuid().ToString();
@@ -49,6 +60,8 @@ public sealed partial class DialogRequest : ObservableObject
     public DialogButtons Buttons { get; init; }
 
     public TaskCompletionSource<(DialogResult Result, string Text)> Completion { get; } = new();
+
+    public DialogStyle Style { get; init; } = new();
 
     [ObservableProperty]
     private double _animationOpacity = 0;

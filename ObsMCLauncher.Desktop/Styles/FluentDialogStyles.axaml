@@ -1,0 +1,124 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:converters="using:ObsMCLauncher.Desktop.Converters">
+
+  <Styles.Resources>
+    <!-- 对话框类型图标路径 -->
+    <StreamGeometry x:Key="DialogInfoIcon">M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z</StreamGeometry>
+    <StreamGeometry x:Key="DialogSuccessIcon">M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z</StreamGeometry>
+    <StreamGeometry x:Key="DialogWarningIcon">M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z</StreamGeometry>
+    <StreamGeometry x:Key="DialogErrorIcon">M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z</StreamGeometry>
+    <StreamGeometry x:Key="DialogQuestionIcon">M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z</StreamGeometry>
+  </Styles.Resources>
+
+  <!-- Fluent 对话框容器样式 -->
+  <Style Selector="Border.fluent-dialog">
+    <Setter Property="CornerRadius" Value="12"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseLowBrush}"/>
+    <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundAltHighBrush}"/>
+    <Setter Property="Padding" Value="24"/>
+    <Setter Property="MinWidth" Value="400"/>
+    <Setter Property="MaxWidth" Value="600"/>
+    <Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>
+  </Style>
+
+  <!-- 对话框标题样式 -->
+  <Style Selector="TextBlock.dialog-title">
+    <Setter Property="FontSize" Value="20"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+    <Setter Property="Margin" Value="0,0,0,16"/>
+  </Style>
+
+  <!-- 对话框消息样式 -->
+  <Style Selector="TextBlock.dialog-message">
+    <Setter Property="FontSize" Value="14"/>
+    <Setter Property="TextWrapping" Value="Wrap"/>
+    <Setter Property="Opacity" Value="0.9"/>
+    <Setter Property="Margin" Value="0,0,0,20"/>
+  </Style>
+
+  <!-- 对话框图标区域样式 -->
+  <Style Selector="Border.dialog-icon-container">
+    <Setter Property="Width" Value="48"/>
+    <Setter Property="Height" Value="48"/>
+    <Setter Property="CornerRadius" Value="24"/>
+    <Setter Property="HorizontalAlignment" Value="Left"/>
+    <Setter Property="VerticalAlignment" Value="Top"/>
+    <Setter Property="Margin" Value="0,0,20,0"/>
+  </Style>
+
+  <!-- 对话框图标样式 -->
+  <Style Selector="PathIcon.dialog-icon">
+    <Setter Property="Width" Value="24"/>
+    <Setter Property="Height" Value="24"/>
+    <Setter Property="HorizontalAlignment" Value="Center"/>
+    <Setter Property="VerticalAlignment" Value="Center"/>
+  </Style>
+
+  <!-- Info 类型样式 -->
+  <Style Selector="Border.dialog-info">
+    <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundAltHighBrush}"/>
+  </Style>
+  
+  <Style Selector="Border.dialog-info Border.dialog-icon-container">
+    <Setter Property="Background" Value="#2196F3"/>
+  </Style>
+  
+  <Style Selector="Border.dialog-info PathIcon.dialog-icon">
+    <Setter Property="Foreground" Value="White"/>
+  </Style>
+
+  <!-- Success 类型样式 -->
+  <Style Selector="Border.dialog-success">
+    <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundAltHighBrush}"/>
+  </Style>
+  
+  <Style Selector="Border.dialog-success Border.dialog-icon-container">
+    <Setter Property="Background" Value="#4CAF50"/>
+  </Style>
+  
+  <Style Selector="Border.dialog-success PathIcon.dialog-icon">
+    <Setter Property="Foreground" Value="White"/>
+  </Style>
+
+  <!-- Warning 类型样式 -->
+  <Style Selector="Border.dialog-warning">
+    <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundAltHighBrush}"/>
+  </Style>
+  
+  <Style Selector="Border.dialog-warning Border.dialog-icon-container">
+    <Setter Property="Background" Value="#FF9800"/>
+  </Style>
+  
+  <Style Selector="Border.dialog-warning PathIcon.dialog-icon">
+    <Setter Property="Foreground" Value="White"/>
+  </Style>
+
+  <!-- Error 类型样式 -->
+  <Style Selector="Border.dialog-error">
+    <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundAltHighBrush}"/>
+  </Style>
+  
+  <Style Selector="Border.dialog-error Border.dialog-icon-container">
+    <Setter Property="Background" Value="#F44336"/>
+  </Style>
+  
+  <Style Selector="Border.dialog-error PathIcon.dialog-icon">
+    <Setter Property="Foreground" Value="White"/>
+  </Style>
+
+  <!-- Question 类型样式 -->
+  <Style Selector="Border.dialog-question">
+    <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundAltHighBrush}"/>
+  </Style>
+  
+  <Style Selector="Border.dialog-question Border.dialog-icon-container">
+    <Setter Property="Background" Value="{DynamicResource SystemAccentColor}"/>
+  </Style>
+  
+  <Style Selector="Border.dialog-question PathIcon.dialog-icon">
+    <Setter Property="Foreground" Value="White"/>
+  </Style>
+
+</Styles>
