@@ -144,12 +144,40 @@ jobs:
         Write-Host "Release 目录内容:"
         Get-ChildItem ./release | Format-Table Name, Length
 
+    - name: Read CHANGELOG
+      id: changelog
+      shell: pwsh
+      run: |
+        $changelogPath = "./.github/changelogs/CHANGELOG.md"
+        
+        if (Test-Path $changelogPath) {
+          $content = Get-Content $changelogPath -Raw
+          $lines = $content -split "`n"
+          $startIndex = 0
+          for ($i = 0; $i -lt $lines.Count; $i++) {
+            if ($lines[$i] -match "^## \[v") {
+              $startIndex = $i
+              break
+            }
+          }
+          $changelogContent = ($lines[$startIndex..($lines.Count-1)] -join "`n").Trim()
+          
+          echo "changelog<<EOF" >> $env:GITHUB_OUTPUT
+          echo "$changelogContent" >> $env:GITHUB_OUTPUT
+          echo "EOF" >> $env:GITHUB_OUTPUT
+          Write-Host "读取到 CHANGELOG 内容"
+        } else {
+          Write-Host "CHANGELOG.md 文件不存在"
+          echo "changelog=" >> $env:GITHUB_OUTPUT
+        }
+
     - name: Create Release
       uses: actions/github-script@v6
       with:
         script: |
           const version = '${{ steps.version.outputs.version }}';
           const isPrerelease = ${{ steps.version.outputs.is_prerelease == 'true' }};
+          const changelog = `${{ steps.changelog.outputs.changelog }}`;
           
           // 准备发布体
           let body = `## 📥 下载\n\n`;
@@ -167,11 +195,15 @@ jobs:
             body += `- 🔄 部分功能可能会在正式版中更改\n\n`;
             body += `**不建议在生产环境或日常使用中使用此版本。**\n\n`;
             body += `如果您发现问题，请在 [Issues](https://github.com/${{ github.repository }}/issues) 中反馈。\n`;
-          } else {
-            body += `---\n`;
           }
           
-          body += `\n## 📋 更新内容\n`;
+          if (changelog && changelog.trim()) {
+            body += `\n---\n\n`;
+            body += changelog;
+            body += `\n`;
+          } else {
+            body += `\n---\n\n## 📋 更新内容\n\n暂无更新内容描述。\n`;
+          }
           
           // 创建发布
           const release = await github.rest.repos.createRelease({
