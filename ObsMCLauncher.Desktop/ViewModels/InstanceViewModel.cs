@@ -206,7 +206,26 @@ public partial class InstanceViewModel : ViewModelBase
                         Name = Path.GetFileNameWithoutExtension(file),
                         FileName = Path.GetFileName(file),
                         Path = file,
-                        Size = new FileInfo(file).Length
+                        Size = new FileInfo(file).Length,
+                        IsEnabled = true
+                    };
+                    Mods.Add(info);
+                }
+                catch { }
+            }
+
+            foreach (var file in Directory.GetFiles(modsDir, "*.jar.disabled"))
+            {
+                try
+                {
+                    var fileName = Path.GetFileName(file);
+                    var info = new ModInfo
+                    {
+                        Name = fileName,
+                        FileName = fileName,
+                        Path = file,
+                        Size = new FileInfo(file).Length,
+                        IsEnabled = false
                     };
                     Mods.Add(info);
                 }
@@ -273,6 +292,47 @@ public partial class InstanceViewModel : ViewModelBase
         catch { }
     }
 
+    [RelayCommand]
+    private void ToggleModEnabled(ModInfo mod)
+    {
+        if (mod == null) return;
+
+        try
+        {
+            var currentPath = mod.Path;
+            string newPath;
+
+            if (mod.IsEnabled)
+            {
+                newPath = currentPath + ".disabled";
+            }
+            else
+            {
+                newPath = currentPath.Replace(".disabled", "");
+            }
+
+            if (File.Exists(currentPath))
+            {
+                File.Move(currentPath, newPath);
+                mod.Path = newPath;
+                mod.IsEnabled = !mod.IsEnabled;
+                mod.FileName = Path.GetFileName(newPath);
+                mod.Name = mod.IsEnabled ? Path.GetFileNameWithoutExtension(newPath) : Path.GetFileName(newPath);
+                OnPropertyChanged(nameof(Mods));
+            }
+        }
+        catch (Exception ex)
+        {
+            _notificationService.Show("操作失败", $"无法更改Mod状态: {ex.Message}", NotificationType.Error, 3);
+        }
+    }
+
+    [RelayCommand]
+    private void RefreshMods()
+    {
+        LoadMods();
+    }
+
     partial void OnIsolationModeChanged(int value)
     {
         if (_version == null) return;
@@ -310,10 +370,49 @@ public class WorldInfo
     public DateTime LastModified { get; set; }
 }
 
-public class ModInfo
+public class ModInfo : ObservableObject
 {
-    public string Name { get; set; } = string.Empty;
-    public string FileName { get; set; } = string.Empty;
-    public string Path { get; set; } = string.Empty;
-    public long Size { get; set; }
+    private string _name = string.Empty;
+    private string _fileName = string.Empty;
+    private string _path = string.Empty;
+    private long _size;
+    private bool _isEnabled;
+
+    public string Name
+    {
+        get => _name;
+        set => SetProperty(ref _name, value);
+    }
+
+    public string FileName
+    {
+        get => _fileName;
+        set => SetProperty(ref _fileName, value);
+    }
+
+    public string Path
+    {
+        get => _path;
+        set => SetProperty(ref _path, value);
+    }
+
+    public long Size
+    {
+        get => _size;
+        set => SetProperty(ref _size, value);
+    }
+
+    public bool IsEnabled
+    {
+        get => _isEnabled;
+        set
+        {
+            if (SetProperty(ref _isEnabled, value))
+            {
+                OnPropertyChanged(nameof(DisplayName));
+            }
+        }
+    }
+
+    public string DisplayName => IsEnabled ? Name : Name.Replace(".disabled", "");
 }
