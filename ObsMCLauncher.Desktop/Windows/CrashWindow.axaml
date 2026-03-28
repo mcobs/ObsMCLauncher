@@ -86,7 +86,7 @@
       </Border>
 
       <Border Grid.Row="2"
-              Background="#151515"
+              Background="{DynamicResource SurfaceBrush}"
               BorderBrush="{DynamicResource BorderBrush}"
               BorderThickness="1"
               CornerRadius="10"
@@ -100,7 +100,7 @@
                    IsReadOnly="True"
                    Background="Transparent"
                    BorderThickness="0"
-                   Foreground="#FFFFFF"
+                   Foreground="{DynamicResource TextBrush}"
                    FontFamily="Consolas,Courier New"
                    FontSize="12"
                    TextWrapping="NoWrap"
