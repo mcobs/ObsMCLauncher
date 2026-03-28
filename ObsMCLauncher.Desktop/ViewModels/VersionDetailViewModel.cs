@@ -188,6 +188,7 @@ public class VersionDetailViewModel : ViewModelBase
                 _forgeVersion = value;
                 OnPropertyChanged(new PropertyChangedEventArgs(nameof(ForgeVersion)));
                 InstallCommand.NotifyCanExecuteChanged();
+                UpdateDefaultVersionName();
             }
         }
     }
@@ -203,6 +204,7 @@ public class VersionDetailViewModel : ViewModelBase
                 _fabricLoaderVersion = value;
                 OnPropertyChanged(new PropertyChangedEventArgs(nameof(FabricLoaderVersion)));
                 InstallCommand.NotifyCanExecuteChanged();
+                UpdateDefaultVersionName();
             }
         }
     }
@@ -218,6 +220,7 @@ public class VersionDetailViewModel : ViewModelBase
                 _quiltLoaderVersion = value;
                 OnPropertyChanged(new PropertyChangedEventArgs(nameof(QuiltLoaderVersion)));
                 InstallCommand.NotifyCanExecuteChanged();
+                UpdateDefaultVersionName();
             }
         }
     }
@@ -233,6 +236,7 @@ public class VersionDetailViewModel : ViewModelBase
                 _neoForgeVersion = value;
                 OnPropertyChanged(new PropertyChangedEventArgs(nameof(NeoForgeVersion)));
                 InstallCommand.NotifyCanExecuteChanged();
+                UpdateDefaultVersionName();
             }
         }
     }
@@ -318,6 +322,7 @@ public class VersionDetailViewModel : ViewModelBase
             {
                 InstallCommand.NotifyCanExecuteChanged();
                 UpdateOptiFineWarning();
+                UpdateDefaultVersionName();
             }
         }
     }
@@ -362,6 +367,37 @@ public class VersionDetailViewModel : ViewModelBase
         }
     }
 
+    private void UpdateDefaultVersionName()
+    {
+        if (string.IsNullOrWhiteSpace(SelectedMcVersion)) return;
+
+        var parts = new List<string> { SelectedMcVersion };
+
+        if (IsForgeSelected && !string.IsNullOrWhiteSpace(ForgeVersion))
+        {
+            parts.Add($"Forge_{ForgeVersion}");
+        }
+        else if (IsNeoForgeSelected && !string.IsNullOrWhiteSpace(NeoForgeVersion))
+        {
+            parts.Add($"NeoForge_{NeoForgeVersion}");
+        }
+        else if (IsFabricSelected && !string.IsNullOrWhiteSpace(FabricLoaderVersion))
+        {
+            parts.Add($"Fabric_{FabricLoaderVersion}");
+        }
+        else if (IsQuiltSelected && !string.IsNullOrWhiteSpace(QuiltLoaderVersion))
+        {
+            parts.Add($"Quilt_{QuiltLoaderVersion}");
+        }
+
+        if (IsOptiFineEnabled && SelectedOptiFineVersion != null)
+        {
+            parts.Add($"OptiFine_{SelectedOptiFineVersion.FullVersion}");
+        }
+
+        CustomVersionName = string.Join("-", parts);
+    }
+
     private OptifineVersionModel? _selectedOptiFineVersion;
     public OptifineVersionModel? SelectedOptiFineVersion
     {
@@ -371,6 +407,7 @@ public class VersionDetailViewModel : ViewModelBase
             if (SetProperty(ref _selectedOptiFineVersion, value))
             {
                 InstallCommand.NotifyCanExecuteChanged();
+                UpdateDefaultVersionName();
             }
         }
     }
@@ -464,6 +501,7 @@ public class VersionDetailViewModel : ViewModelBase
                 _isVanillaSelected = value;
                 OnPropertyChanged(new PropertyChangedEventArgs(nameof(IsVanillaSelected)));
                 InstallCommand.NotifyCanExecuteChanged();
+                UpdateDefaultVersionName();
             }
         }
     }
@@ -481,6 +519,7 @@ public class VersionDetailViewModel : ViewModelBase
                 OnPropertyChanged(new PropertyChangedEventArgs(nameof(CanSelectForge)));
                 InstallCommand.NotifyCanExecuteChanged();
                 UpdateOptiFineWarning();
+                UpdateDefaultVersionName();
             }
         }
     }
@@ -498,6 +537,7 @@ public class VersionDetailViewModel : ViewModelBase
                 OnPropertyChanged(new PropertyChangedEventArgs(nameof(CanSelectNeoForge)));
                 InstallCommand.NotifyCanExecuteChanged();
                 UpdateOptiFineWarning();
+                UpdateDefaultVersionName();
             }
         }
     }
@@ -515,6 +555,7 @@ public class VersionDetailViewModel : ViewModelBase
                 OnPropertyChanged(new PropertyChangedEventArgs(nameof(CanSelectFabric)));
                 InstallCommand.NotifyCanExecuteChanged();
                 UpdateOptiFineWarning();
+                UpdateDefaultVersionName();
             }
         }
     }
@@ -532,6 +573,7 @@ public class VersionDetailViewModel : ViewModelBase
                 OnPropertyChanged(new PropertyChangedEventArgs(nameof(CanSelectQuilt)));
                 InstallCommand.NotifyCanExecuteChanged();
                 UpdateOptiFineWarning();
+                UpdateDefaultVersionName();
             }
         }
     }
@@ -581,7 +623,7 @@ public class VersionDetailViewModel : ViewModelBase
         : this(dispatcher, notificationService)
     {
         VersionInfo = version;
-        CustomVersionName = $"{version.Id}-custom";
+        CustomVersionName = version.Id;
     }
 
     private void BackToVersionList()
