@@ -38,7 +38,7 @@ public partial class ResourcesViewModel : ViewModelBase
     [ObservableProperty] private string _query = "";
     [ObservableProperty] private string _status = "输入关键词开始搜索";
     [ObservableProperty] private bool _isLoading;
-    [ObservableProperty] private ResourceSource _currentSource = ResourceSource.CurseForge;
+    [ObservableProperty] private ResourceSource _currentSource = ResourceSource.Both;
     [ObservableProperty] private string _currentResourceType = "Mods";
     [ObservableProperty] private string? _selectedVersionId;
     [ObservableProperty] private string _versionFilter = "全部版本";
@@ -46,7 +46,7 @@ public partial class ResourcesViewModel : ViewModelBase
     // 实际用于 API 的排序值
     private object _sortValue = 2; 
 
-    [ObservableProperty] private int _currentSourceIndex = 0;
+    [ObservableProperty] private int _currentSourceIndex = 2;
     [ObservableProperty] private int _sortFieldIndex = 0;
 
     [ObservableProperty] private bool _isViewReady;
@@ -84,9 +84,6 @@ public partial class ResourcesViewModel : ViewModelBase
         ChangeTypeCommand = new RelayCommand<string>(ChangeType);
         OpenDetailCommand = new RelayCommand<ResourceItemViewModel>(OpenDetail);
 
-        // 初始化源索引
-        CurrentSourceIndex = CurrentSource == ResourceSource.Modrinth ? 1 : 0;
-        
         UpdateAvailableSortOptions();
         SortFieldIndex = 0;
 
@@ -97,7 +94,7 @@ public partial class ResourcesViewModel : ViewModelBase
     private void UpdateAvailableSortOptions()
     {
         AvailableSortOptions.Clear();
-        if (CurrentSource == ResourceSource.CurseForge)
+        if (CurrentSource == ResourceSource.CurseForge || CurrentSource == ResourceSource.Both)
         {
             AvailableSortOptions.Add(new SortOption { Name = "最热门", Value = 2 });
             AvailableSortOptions.Add(new SortOption { Name = "下载量", Value = 6 });
@@ -115,10 +112,14 @@ public partial class ResourcesViewModel : ViewModelBase
 
     partial void OnCurrentSourceIndexChanged(int value)
     {
-        CurrentSource = value == 1 ? ResourceSource.Modrinth : ResourceSource.CurseForge;
+        CurrentSource = value switch
+        {
+            1 => ResourceSource.Modrinth,
+            2 => ResourceSource.Both,
+            _ => ResourceSource.CurseForge
+        };
         
         UpdateAvailableSortOptions();
-        // 切换源时重置排序到第一个（通常是默认/最热门）
         SortFieldIndex = 0;
         
         if (IsViewReady && !IsLoading)
@@ -220,10 +221,21 @@ public partial class ResourcesViewModel : ViewModelBase
             if (VersionFilter != "全部版本") gameVersion = VersionFilter;
             else if (!string.IsNullOrEmpty(SelectedVersionId)) gameVersion = ExtractGameVersion(SelectedVersionId);
 
-            if (CurrentSource == ResourceSource.CurseForge)
+            if (CurrentSource == ResourceSource.Both)
+            {
+                await Task.WhenAll(
+                    SearchCurseForge(gameVersion),
+                    SearchModrinth(gameVersion)
+                );
+            }
+            else if (CurrentSource == ResourceSource.CurseForge)
+            {
                 await SearchCurseForge(gameVersion).ConfigureAwait(false);
+            }
             else
+            {
                 await SearchModrinth(gameVersion).ConfigureAwait(false);
+            }
 
             Status = Results.Count > 0 ? $"找到 {Results.Count} 个资源" : "未找到匹配资源";
         }
@@ -264,6 +276,7 @@ public partial class ResourcesViewModel : ViewModelBase
 
         if (response?.Data == null) return;
 
+        var items = new List<ResourceItemViewModel>();
         var tasks = new List<Task>();
         foreach (var mod in response.Data)
         {
@@ -271,10 +284,16 @@ public partial class ResourcesViewModel : ViewModelBase
                            ?? _translation.GetTranslationByCurseForgeId(mod.Id);
 
             var item = new ResourceItemViewModel(mod, translation);
-            Results.Add(item);
+            items.Add(item);
             tasks.Add(item.LoadIconAsync());
         }
         await Task.WhenAll(tasks);
+
+        await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            foreach (var item in items)
+                Results.Add(item);
+        });
     }
 
     private async Task SearchModrinth(string gameVersion)
@@ -298,18 +317,25 @@ public partial class ResourcesViewModel : ViewModelBase
 
         if (response?.Hits == null) return;
 
+        var items = new List<ResourceItemViewModel>();
         var tasks = new List<Task>();
         foreach (var hit in response.Hits)
         {
             var translation = _translation.GetTranslationByCurseForgeId(hit.ProjectId);
 
             var item = new ResourceItemViewModel(hit, translation);
-            Results.Add(item);
+            items.Add(item);
 
             tasks.Add(item.LoadIconAsync());
             tasks.Add(LoadModrinthVersionsAsync(item, hit.ProjectId));
         }
         await Task.WhenAll(tasks);
+
+        await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            foreach (var item in items)
+                Results.Add(item);
+        });
     }
 
     private async Task LoadModrinthVersionsAsync(ResourceItemViewModel item, string projectId)

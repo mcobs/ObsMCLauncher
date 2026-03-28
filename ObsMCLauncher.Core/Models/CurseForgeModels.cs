@@ -348,5 +348,6 @@ public class CurseForgeFileIndex
 public enum ResourceSource
 {
     CurseForge,
-    Modrinth
+    Modrinth,
+    Both
 }

@@ -9,6 +9,7 @@ public class GameVersionNumber : IComparable<GameVersionNumber>
 {
     private readonly string _originalVersion;
     private readonly VersionType _type;
+    private readonly bool _isNewFormat;
     private readonly int _year;
     private readonly int _release;
     private readonly int _patch;
@@ -18,14 +19,14 @@ public class GameVersionNumber : IComparable<GameVersionNumber>
     {
         Release,
         Snapshot,
-        LegacyRelease,
         Unknown
     }
 
-    private GameVersionNumber(string version, VersionType type, int year, int release, int patch, int legacyMinor = 0)
+    private GameVersionNumber(string version, VersionType type, bool isNewFormat, int year, int release, int patch, int legacyMinor = 0)
     {
         _originalVersion = version;
         _type = type;
+        _isNewFormat = isNewFormat;
         _year = year;
         _release = release;
         _patch = patch;
@@ -35,7 +36,7 @@ public class GameVersionNumber : IComparable<GameVersionNumber>
     public static GameVersionNumber Parse(string version)
     {
         if (string.IsNullOrWhiteSpace(version))
-            return new GameVersionNumber(version ?? "", VersionType.Unknown, 0, 0, 0);
+            return new GameVersionNumber(version ?? "", VersionType.Unknown, false, 0, 0, 0);
 
         var newReleaseMatch = Regex.Match(version, @"^(\d{2})\.(\d+)(?:\.(\d+))?$");
         if (newReleaseMatch.Success)
@@ -43,7 +44,7 @@ public class GameVersionNumber : IComparable<GameVersionNumber>
             int year = int.Parse(newReleaseMatch.Groups[1].Value);
             int release = int.Parse(newReleaseMatch.Groups[2].Value);
             int patch = newReleaseMatch.Groups[3].Success ? int.Parse(newReleaseMatch.Groups[3].Value) : 0;
-            return new GameVersionNumber(version, VersionType.Release, year, release, patch);
+            return new GameVersionNumber(version, VersionType.Release, true, year, release, patch);
         }
 
         var newSnapshotMatch = Regex.Match(version, @"^(\d{2})\.(\d+)-snapshot-(\d+)$");
@@ -52,7 +53,7 @@ public class GameVersionNumber : IComparable<GameVersionNumber>
             int year = int.Parse(newSnapshotMatch.Groups[1].Value);
             int release = int.Parse(newSnapshotMatch.Groups[2].Value);
             int patch = int.Parse(newSnapshotMatch.Groups[3].Value);
-            return new GameVersionNumber(version, VersionType.Snapshot, year, release, patch);
+            return new GameVersionNumber(version, VersionType.Snapshot, true, year, release, patch);
         }
 
         var legacyReleaseMatch = Regex.Match(version, @"^1\.(\d+)(?:\.(\d+))?(?:-.*)?$");
@@ -60,7 +61,7 @@ public class GameVersionNumber : IComparable<GameVersionNumber>
         {
             int minor = int.Parse(legacyReleaseMatch.Groups[1].Value);
             int patch = legacyReleaseMatch.Groups[2].Success ? int.Parse(legacyReleaseMatch.Groups[2].Value) : 0;
-            return new GameVersionNumber(version, VersionType.LegacyRelease, 0, 0, patch, minor);
+            return new GameVersionNumber(version, VersionType.Release, false, 0, 0, patch, minor);
         }
 
         var legacySnapshotMatch = Regex.Match(version, @"^(\d{2})w(\d{2})([a-z])$");
@@ -69,10 +70,10 @@ public class GameVersionNumber : IComparable<GameVersionNumber>
             int year = int.Parse(legacySnapshotMatch.Groups[1].Value);
             int week = int.Parse(legacySnapshotMatch.Groups[2].Value);
             char letter = legacySnapshotMatch.Groups[3].Value[0];
-            return new GameVersionNumber(version, VersionType.Snapshot, year, week, letter - 'a');
+            return new GameVersionNumber(version, VersionType.Snapshot, false, year, week, letter - 'a');
         }
 
-        return new GameVersionNumber(version, VersionType.Unknown, 0, 0, 0);
+        return new GameVersionNumber(version, VersionType.Unknown, false, 0, 0, 0);
     }
 
     public int CompareTo(GameVersionNumber? other)
@@ -92,7 +93,12 @@ public class GameVersionNumber : IComparable<GameVersionNumber>
             return string.Compare(_originalVersion, other._originalVersion, StringComparison.Ordinal);
         }
 
-        if (_type == VersionType.LegacyRelease)
+        if (_isNewFormat != other._isNewFormat)
+        {
+            return _isNewFormat ? 1 : -1;
+        }
+
+        if (!_isNewFormat)
         {
             int c = _legacyMinor.CompareTo(other._legacyMinor);
             if (c != 0) return c;

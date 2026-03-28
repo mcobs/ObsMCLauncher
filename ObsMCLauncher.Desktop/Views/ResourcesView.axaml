@@ -67,6 +67,7 @@
                       SelectedIndex="{Binding CurrentSourceIndex}">
               <ComboBoxItem Content="CurseForge" />
               <ComboBoxItem Content="Modrinth" />
+              <ComboBoxItem Content="全部" />
             </ComboBox>
           </StackPanel>
 
