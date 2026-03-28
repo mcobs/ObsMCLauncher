@@ -32,13 +32,18 @@ namespace ObsMCLauncher.Core.Services.Minecraft
 
                 if (Type == "release")
                 {
-                    if (IsVersionLessThanOrEqual(Id, "1.12.2"))
+                    if (IsLegacyVersion(Id) && IsVersionLessThanOrEqual(Id, "1.12.2"))
                         return "avares://ObsMCLauncher.Desktop/Assets/LoaderIcons/vanilla_old.png";
                     return "avares://ObsMCLauncher.Desktop/Assets/LoaderIcons/vanilla.png";
                 }
 
                 return "avares://ObsMCLauncher.Desktop/Assets/LoaderIcons/vanilla_old.png";
             }
+        }
+
+        private static bool IsLegacyVersion(string version)
+        {
+            return version.StartsWith("1.");
         }
 
         private static bool IsVersionLessThanOrEqual(string version, string targetVersion)
