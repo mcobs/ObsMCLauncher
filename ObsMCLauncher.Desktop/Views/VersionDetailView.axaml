@@ -189,6 +189,20 @@
                 </ComboBox.ItemTemplate>
               </ComboBox>
             </Grid>
+
+            <!-- OptiFine 兼容性警告 -->
+            <Border IsVisible="{Binding ShowOptiFineWarning}"
+                    Background="#33F59E0B"
+                    BorderBrush="#F59E0B"
+                    BorderThickness="1"
+                    CornerRadius="6"
+                    Padding="12,8"
+                    Margin="0,4,0,0">
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <TextBlock Text="!" FontSize="14" FontWeight="Bold" Foreground="#F59E0B" VerticalAlignment="Center"/>
+                <TextBlock Text="{Binding OptiFineWarningMessage}" FontSize="12" VerticalAlignment="Center" TextWrapping="Wrap"/>
+              </StackPanel>
+            </Border>
           </StackPanel>
         </StackPanel>
       </Border>

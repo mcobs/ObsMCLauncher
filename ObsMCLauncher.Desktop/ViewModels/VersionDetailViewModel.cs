@@ -317,7 +317,48 @@ public class VersionDetailViewModel : ViewModelBase
             if (SetProperty(ref _isOptiFineEnabled, value))
             {
                 InstallCommand.NotifyCanExecuteChanged();
+                UpdateOptiFineWarning();
             }
+        }
+    }
+
+    private bool _showOptiFineWarning;
+    public bool ShowOptiFineWarning
+    {
+        get => _showOptiFineWarning;
+        private set => SetProperty(ref _showOptiFineWarning, value);
+    }
+
+    private string _optiFineWarningMessage = "";
+    public string OptiFineWarningMessage
+    {
+        get => _optiFineWarningMessage;
+        private set => SetProperty(ref _optiFineWarningMessage, value);
+    }
+
+    private void UpdateOptiFineWarning()
+    {
+        if (!IsOptiFineEnabled)
+        {
+            ShowOptiFineWarning = false;
+            OptiFineWarningMessage = "";
+            return;
+        }
+
+        if (IsFabricSelected || IsQuiltSelected)
+        {
+            ShowOptiFineWarning = true;
+            OptiFineWarningMessage = "警告: OptiFine 与 Fabric/Quilt 兼容性较差，可能导致游戏崩溃或无法运行";
+        }
+        else if (IsForgeSelected || IsNeoForgeSelected)
+        {
+            ShowOptiFineWarning = true;
+            OptiFineWarningMessage = "提示: OptiFine 将作为 Mod 安装到 mods 文件夹";
+        }
+        else
+        {
+            ShowOptiFineWarning = false;
+            OptiFineWarningMessage = "";
         }
     }
 
@@ -439,6 +480,7 @@ public class VersionDetailViewModel : ViewModelBase
                 OnPropertyChanged(new PropertyChangedEventArgs(nameof(IsForgeSelected)));
                 OnPropertyChanged(new PropertyChangedEventArgs(nameof(CanSelectForge)));
                 InstallCommand.NotifyCanExecuteChanged();
+                UpdateOptiFineWarning();
             }
         }
     }
@@ -455,6 +497,7 @@ public class VersionDetailViewModel : ViewModelBase
                 OnPropertyChanged(new PropertyChangedEventArgs(nameof(IsNeoForgeSelected)));
                 OnPropertyChanged(new PropertyChangedEventArgs(nameof(CanSelectNeoForge)));
                 InstallCommand.NotifyCanExecuteChanged();
+                UpdateOptiFineWarning();
             }
         }
     }
@@ -471,6 +514,7 @@ public class VersionDetailViewModel : ViewModelBase
                 OnPropertyChanged(new PropertyChangedEventArgs(nameof(IsFabricSelected)));
                 OnPropertyChanged(new PropertyChangedEventArgs(nameof(CanSelectFabric)));
                 InstallCommand.NotifyCanExecuteChanged();
+                UpdateOptiFineWarning();
             }
         }
     }
@@ -487,6 +531,7 @@ public class VersionDetailViewModel : ViewModelBase
                 OnPropertyChanged(new PropertyChangedEventArgs(nameof(IsQuiltSelected)));
                 OnPropertyChanged(new PropertyChangedEventArgs(nameof(CanSelectQuilt)));
                 InstallCommand.NotifyCanExecuteChanged();
+                UpdateOptiFineWarning();
             }
         }
     }
