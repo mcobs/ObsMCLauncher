@@ -14,6 +14,9 @@ namespace ObsMCLauncher.Desktop;
 
 public partial class App : Application
 {
+    private readonly object _crashLock = new();
+    private bool _crashWindowShowing;
+
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
@@ -24,6 +27,9 @@ public partial class App : Application
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             DisableAvaloniaDataAnnotationValidation();
+
+            // 设置为显式关闭模式，防止异常时应用自动退出
+            desktop.ShutdownMode = Avalonia.Controls.ShutdownMode.OnExplicitShutdown;
 
             ObsMCLauncher.Core.Bootstrap.LauncherBootstrap.Initialize();
 
@@ -61,6 +67,12 @@ public partial class App : Application
     private void ShowCrashWindow(Exception? exception)
     {
         if (exception == null) return;
+
+        lock (_crashLock)
+        {
+            if (_crashWindowShowing) return;
+            _crashWindowShowing = true;
+        }
 
         var summary = exception.Message ?? "未知错误";
         var report = $@"=== ObsMCLauncher 崩溃报告 ===
@@ -105,6 +117,13 @@ public partial class App : Application
             catch { }
 
             var crashWindow = new CrashWindow(summary, report);
+            crashWindow.Closed += (_, _) =>
+            {
+                lock (_crashLock)
+                {
+                    _crashWindowShowing = false;
+                }
+            };
             crashWindow.Show();
         });
     }

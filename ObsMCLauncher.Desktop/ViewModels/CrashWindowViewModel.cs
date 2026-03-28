@@ -1,7 +1,9 @@
 using System;
 using System.IO;
 using System.Threading.Tasks;
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Platform.Storage;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -91,7 +93,14 @@ public partial class CrashWindowViewModel : ObservableObject
     {
         try
         {
-            Environment.Exit(-1);
+            if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+            {
+                desktop.Shutdown(-1);
+            }
+            else
+            {
+                Environment.Exit(-1);
+            }
         }
         catch
         {
