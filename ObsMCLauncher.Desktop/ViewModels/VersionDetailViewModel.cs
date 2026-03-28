@@ -21,6 +21,8 @@ namespace ObsMCLauncher.Desktop.ViewModels;
 
 public class VersionDetailViewModel : ViewModelBase
 {
+    public event Action? CloseRequested;
+
     private readonly ObsMCLauncher.Core.Services.Ui.IDispatcher? _dispatcher;
     private readonly NotificationService _notificationService;
     private readonly DialogService _dialogService;
@@ -539,14 +541,7 @@ public class VersionDetailViewModel : ViewModelBase
 
     private void BackToVersionList()
     {
-        var main = NavigationStore.MainWindow;
-        if (main == null) return;
-
-        var target = main.NavItems?.FirstOrDefault(x => x.Title == "版本管理" || x.Title == "版本下载");
-        if (target != null)
-        {
-            main.SelectedNavItem = target;
-        }
+        CloseRequested?.Invoke();
     }
 
     private bool CanInstall()

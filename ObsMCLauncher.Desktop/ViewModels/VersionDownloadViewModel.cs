@@ -118,24 +118,14 @@ public partial class VersionDownloadViewModel : ViewModelBase
     [RelayCommand]
     private void OpenDetail(MinecraftVersion version)
     {
-        var main = NavigationStore.MainWindow;
-        if (main == null) return;
-
-        // 创建详情页 ViewModel
         var detailVm = new VersionDetailViewModel(version, _dispatcher, _notificationService);
-        
-        // 查找是否已存在“版本详情”导航项
-        var existing = main.NavItems.FirstOrDefault(x => x.Title == "版本详情");
-        if (existing != null)
+        detailVm.CloseRequested += () =>
         {
-            // 如果已存在，从集合中移除（为了更新为新版本的详情）
-            main.NavItems.Remove(existing);
-        }
-
-        // 创建新导航项并加入集合（必须加入集合，否则会被 ListBox 重置为 null）
-        var newItem = new NavItemViewModel("版本详情", detailVm);
-        main.NavItems.Add(newItem);
-        main.SelectedNavItem = newItem;
+            IsDetailOpen = false;
+            DetailPage = null;
+        };
+        DetailPage = detailVm;
+        IsDetailOpen = true;
     }
 
     partial void OnSearchTextChanged(string value) => ApplyFilters();

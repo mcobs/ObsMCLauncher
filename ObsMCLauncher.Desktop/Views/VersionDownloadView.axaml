@@ -267,7 +267,7 @@
 
     <!-- 版本详情内容（叠加显示） -->
     <Border IsVisible="{Binding IsDetailOpen}"
-            Background="#80000000">
+            Background="{DynamicResource BackgroundBrush}">
       <ContentControl Content="{Binding DetailPage}"/>
     </Border>
 
