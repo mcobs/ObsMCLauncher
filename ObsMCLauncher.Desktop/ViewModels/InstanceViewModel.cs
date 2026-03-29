@@ -137,9 +137,11 @@ public partial class InstanceViewModel : ViewModelBase
         if (_version == null) return "-";
 
         var config = LauncherConfig.Load();
-        var useIsolation = config.GameDirectoryType == GameDirectoryType.VersionFolder;
+        var gameRoot = config.GameDirectory;
 
         var versionConfig = config.VersionIsolationSettings?.FirstOrDefault(v => v.VersionId == _version.Id);
+        var useIsolation = config.GameDirectoryType == GameDirectoryType.VersionFolder;
+
         if (versionConfig != null)
         {
             useIsolation = versionConfig.IsolationMode switch
@@ -152,10 +154,10 @@ public partial class InstanceViewModel : ViewModelBase
 
         if (useIsolation)
         {
-            return Path.Combine(Path.GetDirectoryName(_versionPath) ?? "", _version.Id);
+            return Path.Combine(gameRoot, "versions", _version.Id);
         }
 
-        return Path.Combine(Path.GetDirectoryName(_versionPath) ?? "", "..", "common");
+        return gameRoot;
     }
 
     private void LoadWorlds()
