@@ -5,6 +5,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Net.Http;
+using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.Json.Nodes;
@@ -161,13 +162,6 @@ namespace ObsMCLauncher.Core.Services.Installers
             string versionName,
             Action<string, double>? progressCallback = null)
         {
-            // 包装 progressCallback
-            Action<string, double> wrappedCallback = (status, percent) =>
-            {
-                progressCallback?.Invoke(status, percent);
-            };
-
-            // 调用主安装逻辑，开启整合包模式
             var ok = await InstallForgeAsync(
                 mcVersion, 
                 forgeVersion, 
@@ -192,17 +186,11 @@ namespace ObsMCLauncher.Core.Services.Installers
             bool isModpackMode = false,
             string? realGameDirectory = null)
         {
-            var targetGameDir = gameDirectory;
             var finalRealGameDir = realGameDirectory ?? gameDirectory;
-
-            // 复用 VersionDetailPage 中成熟的 Forge 安装流程
             var config = LauncherConfig.Load();
             var forgeFullVersion = $"{mcVersion}-{forgeVersion}";
             var installerPath = Path.Combine(Path.GetTempPath(), $"forge-installer-{forgeFullVersion}.jar");
 
-            System.Threading.Timer? progressSimulator = null;
-
-            // 将 Action<string,double> 适配成 DownloadProgress
             IProgress<DownloadProgress> progress = new Progress<DownloadProgress>(p =>
             {
                 detailedProgressCallback?.Invoke(p);
@@ -216,9 +204,26 @@ namespace ObsMCLauncher.Core.Services.Installers
                 progressCallback?.Invoke(string.IsNullOrWhiteSpace(p.Status) ? "正在安装Forge..." : p.Status, percent);
             });
 
+            string tempGameDir;
+            bool ownsTempDir;
+
+            if (isModpackMode)
+            {
+                tempGameDir = gameDirectory;
+                ownsTempDir = false;
+            }
+            else
+            {
+                tempGameDir = Path.Combine(gameDirectory, ".temp");
+                ownsTempDir = true;
+            }
+
+            string tempVersionsDir = Path.Combine(tempGameDir, "versions");
+            string tempVanillaDir = Path.Combine(tempVersionsDir, mcVersion);
+
             try
             {
-                // 1. 下载 Forge 安装器（使用你现有 ForgeService.DownloadForgeInstallerWithDetailsAsync）
+                // === 阶段1: 下载Forge安装器 (0-30%) ===
                 progressCallback?.Invoke("正在下载Forge安装器...", 0);
 
                 if (!await DownloadForgeInstallerWithDetailsAsync(
@@ -227,179 +232,341 @@ namespace ObsMCLauncher.Core.Services.Installers
                         (currentBytes, speed, totalBytes) =>
                         {
                             double percentage = totalBytes > 0 ? (double)currentBytes / totalBytes * 100 : 0;
-                            progressCallback?.Invoke("正在下载Forge安装器...", Math.Min(40, percentage * 0.4));
+                            progressCallback?.Invoke("正在下载Forge安装器...", Math.Min(30, percentage * 0.3));
                         },
                         default))
                 {
-                    throw new Exception("Forge安装器下载失败");
+                    throw new Exception("Forge安装器下载失败，请检查网络连接");
                 }
 
-                // 2. 创建临时gameDirectory结构，所有操作都在.temp中进行
-                string tempGameDir = Path.Combine(gameDirectory, ".temp");
-                string tempVersionsDir = Path.Combine(tempGameDir, "versions");
-                string tempVanillaDir = Path.Combine(tempVersionsDir, mcVersion);
+                // === 阶段2: 在.temp中准备原版MC (30-45%) ===
                 Directory.CreateDirectory(tempVersionsDir);
-                
-                progressCallback?.Invoke("正在下载原版Minecraft...", 20);
+                progressCallback?.Invoke("正在下载原版Minecraft...", 30);
                 await DownloadVanillaForForge(tempGameDir, mcVersion, tempVanillaDir, progress, default);
 
-                // 2.5 （移除）不执行 install_profile 的 processors / libraries 下载，完全交给 installer 处理（复用 VersionDetailPage 流程）
+                // === 阶段3: 运行官方安装器 (45-80%) ===
+                progressCallback?.Invoke("执行Forge安装器...", 45);
 
-                // 3. 运行官方安装器（使用临时gameDirectory）
-                progressCallback?.Invoke("执行Forge安装...", 50);
-                progressSimulator = SimulateForgeInstallerProgress(progress);
-
-                try
+                string tempProfilesPath = Path.Combine(tempGameDir, "launcher_profiles.json");
+                if (!File.Exists(tempProfilesPath))
                 {
-                    // 确保临时gameDirectory有必要的文件（如launcher_profiles.json）
-                    string tempProfilesPath = Path.Combine(tempGameDir, "launcher_profiles.json");
-                    if (!File.Exists(tempProfilesPath))
+                    string realProfilesPath = Path.Combine(finalRealGameDir, "launcher_profiles.json");
+                    if (File.Exists(realProfilesPath))
                     {
-                        string realProfilesPath = Path.Combine(finalRealGameDir, "launcher_profiles.json");
-                        if (File.Exists(realProfilesPath))
+                        File.Copy(realProfilesPath, tempProfilesPath, true);
+                    }
+                    else
+                    {
+                        var defaultProfiles = new
                         {
-                            File.Copy(realProfilesPath, tempProfilesPath, true);
-                        }
-                        else
+                            profiles = new { },
+                            selectedProfile = (string?)null,
+                            clientToken = Guid.NewGuid().ToString(),
+                            authenticationDatabase = new { },
+                            launcherVersion = new { name = "ObsMCLauncher", format = 21 }
+                        };
+                        await File.WriteAllTextAsync(tempProfilesPath, JsonSerializer.Serialize(defaultProfiles, new JsonSerializerOptions { WriteIndented = true }), default);
+                    }
+                }
+
+                bool installSuccess;
+                string officialForgeId = $"{mcVersion}-forge-{forgeVersion}";
+                string tempForgeDir = Path.Combine(tempVersionsDir, officialForgeId);
+
+                bool isNewVersion = IsForgeInstallerNewVersion(mcVersion);
+                bool isVeryOldVersion = IsVeryOldForgeVersion(mcVersion);
+
+                if (isNewVersion)
+                {
+                    // 新版Forge(1.13+): 先下载install_profile中的库，再运行安装器
+                    progressCallback?.Invoke("正在准备Forge依赖库...", 48);
+                    await DownloadInstallerLibrariesAsync(installerPath, tempGameDir, progressCallback, default);
+
+                    progressCallback?.Invoke("正在运行Forge安装器...", 55);
+                    installSuccess = await RunForgeInstallerAsync(installerPath, tempGameDir, mcVersion, forgeVersion, config, default);
+                }
+                else
+                {
+                    // 旧版Forge: 尝试运行安装器，失败则手动安装
+                    progressCallback?.Invoke("正在运行Forge安装器...", 55);
+                    installSuccess = await RunForgeInstallerAsync(installerPath, tempGameDir, mcVersion, forgeVersion, config, default);
+
+                    if (!installSuccess && (isVeryOldVersion || !isNewVersion))
+                    {
+                        DebugLogger.Info("Forge", $"安装器执行失败，尝试手动安装: {mcVersion}");
+                        progressCallback?.Invoke("正在手动安装Forge...", 60);
+                        installSuccess = await ManualInstallVeryOldForgeClient(installerPath, tempGameDir, mcVersion, officialForgeId, tempForgeDir, config, default);
+                    }
+                }
+
+                if (!installSuccess)
+                {
+                    throw new Exception("Forge安装器执行失败。可能原因：Java版本不兼容、安装器损坏或缺少依赖。请检查Java配置后重试。");
+                }
+
+                // === 阶段4: 验证安装结果 (80-85%) ===
+                progressCallback?.Invoke("正在验证安装结果...", 80);
+
+                if (!Directory.Exists(tempForgeDir))
+                {
+                    throw new Exception($"Forge安装后未找到版本目录: {officialForgeId}。安装器可能未正确执行。");
+                }
+
+                string tempForgeJson = Path.Combine(tempForgeDir, $"{officialForgeId}.json");
+                if (!File.Exists(tempForgeJson))
+                {
+                    var jsonCandidates = Directory.GetFiles(tempForgeDir, "*.json");
+                    if (jsonCandidates.Length > 0)
+                    {
+                        tempForgeJson = jsonCandidates[0];
+                        DebugLogger.Info("Forge", $"使用替代JSON文件: {Path.GetFileName(tempForgeJson)}");
+                    }
+                    else
+                    {
+                        throw new Exception($"Forge安装后未找到版本JSON文件。安装可能不完整。");
+                    }
+                }
+
+                // === 阶段5: 在.temp中完成所有配置 (85-92%) ===
+                progressCallback?.Invoke("正在配置版本信息...", 85);
+
+                if (isModpackMode)
+                {
+                    string newJson = Path.Combine(tempForgeDir, $"{customVersionName}.json");
+                    if (File.Exists(Path.Combine(tempForgeDir, $"{officialForgeId}.json")))
+                        File.Move(Path.Combine(tempForgeDir, $"{officialForgeId}.json"), newJson, true);
+
+                    string oldJar = Path.Combine(tempForgeDir, $"{officialForgeId}.jar");
+                    string newJar = Path.Combine(tempForgeDir, $"{customVersionName}.jar");
+                    if (File.Exists(oldJar) && !File.Exists(newJar))
+                        File.Move(oldJar, newJar, true);
+
+                    if (File.Exists(newJson))
+                    {
+                        var jsonText = await File.ReadAllTextAsync(newJson, default);
+                        var node = JsonNode.Parse(jsonText) as JsonObject;
+                        if (node != null)
                         {
-                            var defaultProfiles = new
-                            {
-                                profiles = new { },
-                                selectedProfile = (string?)null,
-                                clientToken = Guid.NewGuid().ToString(),
-                                authenticationDatabase = new { },
-                                launcherVersion = new { name = "ObsMCLauncher", format = 21 }
-                            };
-                            await File.WriteAllTextAsync(tempProfilesPath, JsonSerializer.Serialize(defaultProfiles, new JsonSerializerOptions { WriteIndented = true }), default);
+                            node["id"] = customVersionName;
+                            await File.WriteAllTextAsync(newJson, node.ToJsonString(new JsonSerializerOptions { WriteIndented = true }), default);
                         }
                     }
-                    
-                    bool installSuccess = await RunForgeInstallerAsync(installerPath, tempGameDir, mcVersion, forgeVersion, config, default);
+                }
+                else
+                {
+                    string finalVersionDir = Path.Combine(finalRealGameDir, "versions", customVersionName);
 
-                    progressSimulator.Dispose();
-                    progressSimulator = null;
+                    // 先在.temp中完成重命名
+                    string renamedJson = Path.Combine(tempForgeDir, $"{customVersionName}.json");
+                    string renamedJar = Path.Combine(tempForgeDir, $"{customVersionName}.jar");
 
-                    if (!installSuccess)
-                        throw new Exception("Forge安装器执行失败，请查看日志");
+                    if (File.Exists(tempForgeJson) && Path.GetFileName(tempForgeJson) != $"{customVersionName}.json")
+                        File.Move(tempForgeJson, renamedJson, true);
 
-                    // 4. 将临时目录中的Forge版本移动到最终位置并重命名
-                    progressCallback?.Invoke("配置版本信息...", 85);
-                    string officialForgeId = $"{mcVersion}-forge-{forgeVersion}";
-                    string tempForgeDir = Path.Combine(tempVersionsDir, officialForgeId);
-                    
-                    if (isModpackMode)
+                    string oldJar = Path.Combine(tempForgeDir, $"{officialForgeId}.jar");
+                    if (File.Exists(oldJar) && !File.Exists(renamedJar))
+                        File.Move(oldJar, renamedJar, true);
+
+                    // 修正json内的id字段
+                    if (File.Exists(renamedJson))
                     {
-                        // 整合包模式：直接在 tempForgeDir 里修 JSON，不需要 Move 到正式 versions
-                        string newJson = Path.Combine(tempForgeDir, $"{customVersionName}.json");
-                        if (File.Exists(Path.Combine(tempForgeDir, $"{officialForgeId}.json")))
-                            File.Move(Path.Combine(tempForgeDir, $"{officialForgeId}.json"), newJson, true);
-
-                        if (File.Exists(newJson))
+                        try
                         {
-                            var jsonText = await File.ReadAllTextAsync(newJson, default);
+                            var jsonText = await File.ReadAllTextAsync(renamedJson, default);
                             var node = JsonNode.Parse(jsonText) as JsonObject;
                             if (node != null)
                             {
                                 node["id"] = customVersionName;
-                                await File.WriteAllTextAsync(newJson, node.ToJsonString(new JsonSerializerOptions { WriteIndented = true }), default);
+                                await File.WriteAllTextAsync(renamedJson, node.ToJsonString(new JsonSerializerOptions { WriteIndented = true }), default);
                             }
                         }
+                        catch (Exception ex)
+                        {
+                            DebugLogger.Warn("Forge", $"修改版本JSON的id字段失败: {ex.Message}");
+                        }
                     }
-                    else
-                    {
-                        string finalVersionDir = Path.Combine(finalRealGameDir, "versions", customVersionName);
-                    
-                    if (Directory.Exists(finalVersionDir))
-                        Directory.Delete(finalVersionDir, true);
-                    
-                    if (Directory.Exists(tempForgeDir))
-                    {
-                        Directory.Move(tempForgeDir, finalVersionDir);
-                        
-                        // 重命名json和jar文件
-                        string oldJson = Path.Combine(finalVersionDir, $"{officialForgeId}.json");
-                        string newJson = Path.Combine(finalVersionDir, $"{customVersionName}.json");
-                        if (File.Exists(oldJson)) File.Move(oldJson, newJson, true);
 
-                        string oldJar = Path.Combine(finalVersionDir, $"{officialForgeId}.jar");
-                        string newJar = Path.Combine(finalVersionDir, $"{customVersionName}.jar");
-                        if (File.Exists(oldJar)) File.Move(oldJar, newJar, true);
+                    // 确保主JAR存在
+                    if (!File.Exists(renamedJar))
+                    {
+                        var jarInForgeDir = Path.Combine(tempForgeDir, $"{mcVersion}.jar");
+                        var jarInVanillaDir = Path.Combine(tempVanillaDir, $"{mcVersion}.jar");
 
-                        // 修正json内的id字段
-                        if (File.Exists(newJson))
-                        {
-                            try
-                            {
-                                var jsonText = await File.ReadAllTextAsync(newJson, default);
-                                var node = JsonNode.Parse(jsonText) as JsonObject;
-                                if (node != null)
-                                {
-                                    node["id"] = customVersionName;
-                                    await File.WriteAllTextAsync(newJson, node.ToJsonString(new JsonSerializerOptions { WriteIndented = true }), default);
-                                }
-                            }
-                            catch { }
-                            }
-                        }
-                    }
-                    
-                    if (!isModpackMode)
-                    {
-                    // 将原版文件复制到标准位置（如果不存在），供合并父版本信息使用
-                        string standardVanillaDir = Path.Combine(finalRealGameDir, "versions", mcVersion);
-                    if (Directory.Exists(tempVanillaDir) && !Directory.Exists(standardVanillaDir))
-                    {
-                        Directory.CreateDirectory(standardVanillaDir);
-                        string tempVanillaJson = Path.Combine(tempVanillaDir, $"{mcVersion}.json");
-                        string tempVanillaJar = Path.Combine(tempVanillaDir, $"{mcVersion}.jar");
-                        string standardVanillaJson = Path.Combine(standardVanillaDir, $"{mcVersion}.json");
-                        string standardVanillaJar = Path.Combine(standardVanillaDir, $"{mcVersion}.jar");
-                        
-                        if (File.Exists(tempVanillaJson))
-                            File.Copy(tempVanillaJson, standardVanillaJson, true);
-                        if (File.Exists(tempVanillaJar))
-                            File.Copy(tempVanillaJar, standardVanillaJar, true);
-                        
-                        DebugLogger.Info("Forge", $"已复制原版文件到标准位置: {standardVanillaDir}");
-                        }
-                    }
-                    
-                    // 合并父版本信息
-                    string targetDir = isModpackMode ? tempForgeDir : Path.Combine(finalRealGameDir, "versions", customVersionName);
-                    string finalJsonPath = Path.Combine(targetDir, $"{customVersionName}.json");
-                    if (File.Exists(finalJsonPath))
-                    {
-                        try
-                        {
-                            await MergeVanillaIntoForgeJson(finalJsonPath, customVersionName, finalRealGameDir, mcVersion, default);
-                        }
-                        catch (Exception mergeEx)
-                        {
-                            DebugLogger.Warn("Forge", $"合并父版本信息失败: {mergeEx.Message}");
-                        }
-                    }
-                    
-                    if (!isModpackMode && Directory.Exists(tempGameDir))
-                    {
-                        try { Directory.Delete(tempGameDir, true); } catch { }
+                        if (File.Exists(jarInForgeDir))
+                            File.Copy(jarInForgeDir, renamedJar, true);
+                        else if (File.Exists(jarInVanillaDir))
+                            File.Copy(jarInVanillaDir, renamedJar, true);
+                        else
+                            DebugLogger.Warn("Forge", "未找到可复制的原版JAR，新版Forge可能不需要独立JAR");
                     }
                 }
-                catch
+
+                // 合并父版本信息（在.temp中完成）
+                string targetDir = isModpackMode ? tempForgeDir : Path.Combine(tempForgeDir);
+                string finalJsonPath = Path.Combine(targetDir, $"{customVersionName}.json");
+                if (File.Exists(finalJsonPath))
                 {
-                    if (!isModpackMode && Directory.Exists(tempGameDir))
+                    try
                     {
-                        try { Directory.Delete(tempGameDir, true); } catch { }
+                        await MergeVanillaIntoForgeJson(finalJsonPath, customVersionName, finalRealGameDir, mcVersion, default);
                     }
-                    throw;
+                    catch (Exception mergeEx)
+                    {
+                        DebugLogger.Warn("Forge", $"合并父版本信息失败: {mergeEx.Message}");
+                    }
+                }
+
+                // === 阶段6: 验证完整性后迁移到最终位置 (92-100%) ===
+                progressCallback?.Invoke("正在验证安装完整性...", 92);
+
+                // 验证JSON可解析
+                string verifyJsonPath = Path.Combine(targetDir, $"{customVersionName}.json");
+                if (File.Exists(verifyJsonPath))
+                {
+                    try
+                    {
+                        var verifyContent = await File.ReadAllTextAsync(verifyJsonPath, default);
+                        var verifyNode = JsonNode.Parse(verifyContent);
+                        if (verifyNode == null)
+                            throw new Exception("版本JSON解析结果为空");
+                    }
+                    catch (Exception ex)
+                    {
+                        throw new Exception($"安装结果验证失败：版本JSON文件损坏 - {ex.Message}");
+                    }
+                }
+
+                if (!isModpackMode)
+                {
+                    // 迁移Forge版本到最终位置
+                    progressCallback?.Invoke("正在完成安装...", 95);
+                    string finalVersionDir = Path.Combine(finalRealGameDir, "versions", customVersionName);
+
+                    if (Directory.Exists(finalVersionDir))
+                    {
+                        try { Directory.Delete(finalVersionDir, true); }
+                        catch (Exception ex)
+                        {
+                            DebugLogger.Warn("Forge", $"删除已有版本目录失败: {ex.Message}");
+                            throw new Exception($"无法删除已有的版本目录 {customVersionName}，可能被占用。请关闭游戏后重试。");
+                        }
+                    }
+
+                    try
+                    {
+                        Directory.Move(tempForgeDir, finalVersionDir);
+                    }
+                    catch (Exception ex)
+                    {
+                        DebugLogger.Error("Forge", $"移动版本目录失败: {ex.Message}");
+                        throw new Exception($"无法将安装结果移动到最终位置: {ex.Message}。临时文件保留在 {tempForgeDir}。");
+                    }
+
+                    // 迁移安装器下载的库文件到正式libraries目录
+                    MoveLibrariesFromTemp(tempGameDir, finalRealGameDir);
                 }
 
                 progressCallback?.Invoke("Forge安装完成", 100);
+                DebugLogger.Info("Forge", $"Forge {forgeVersion} 安装成功: {customVersionName}");
                 return true;
+            }
+            catch (OperationCanceledException)
+            {
+                DebugLogger.Warn("Forge", "Forge安装被取消");
+                throw;
+            }
+            catch (Exception ex)
+            {
+                DebugLogger.Error("Forge", $"Forge安装失败: {ex.Message}");
+                throw;
             }
             finally
             {
-                try { progressSimulator?.Dispose(); } catch { }
+                // 清理安装器临时文件
                 try { if (File.Exists(installerPath)) File.Delete(installerPath); } catch { }
+
+                // 非整合包模式下清理.temp目录
+                if (ownsTempDir && Directory.Exists(tempGameDir))
+                {
+                    try { Directory.Delete(tempGameDir, true); }
+                    catch (Exception ex) { DebugLogger.Warn("Forge", $"清理临时目录失败: {ex.Message}"); }
+                }
+            }
+        }
+
+        private static void MoveLibrariesFromTemp(string tempGameDir, string realGameDir)
+        {
+            var tempLibDir = Path.Combine(tempGameDir, "libraries");
+            var realLibDir = Path.Combine(realGameDir, "libraries");
+
+            if (!Directory.Exists(tempLibDir)) return;
+
+            Directory.CreateDirectory(realLibDir);
+
+            foreach (var srcFile in Directory.GetFiles(tempLibDir, "*", SearchOption.AllDirectories))
+            {
+                var relPath = Path.GetRelativePath(tempLibDir, srcFile);
+                var destFile = Path.Combine(realLibDir, relPath);
+
+                if (File.Exists(destFile)) continue;
+
+                Directory.CreateDirectory(Path.GetDirectoryName(destFile)!);
+                try
+                {
+                    File.Move(srcFile, destFile, false);
+                }
+                catch (IOException)
+                {
+                    try { File.Copy(srcFile, destFile, false); } catch { }
+                }
+            }
+
+            DebugLogger.Info("Forge", "已将临时库文件迁移到正式目录");
+        }
+
+        private static async Task DownloadInstallerLibrariesAsync(
+            string installerPath,
+            string gameDirectory,
+            Action<string, double>? progressCallback,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                var profile = await ExtractInstallProfileAsync(installerPath);
+                if (profile == null)
+                {
+                    DebugLogger.Warn("Forge", "无法解析install_profile.json，跳过库预下载");
+                    return;
+                }
+
+                if (profile.Libraries != null && profile.Libraries.Count > 0)
+                {
+                    await DownloadInstallProfileLibrariesAsync(profile.Libraries, gameDirectory, progressCallback, cancellationToken);
+                }
+
+                // 检查是否有下载失败的库
+                var failedLibs = new List<string>();
+                if (profile.Libraries != null)
+                {
+                    foreach (var lib in profile.Libraries)
+                    {
+                        if (lib.Downloads?.Artifact != null && !string.IsNullOrWhiteSpace(lib.Downloads.Artifact.Path))
+                        {
+                            var libPath = Path.Combine(gameDirectory, "libraries", lib.Downloads.Artifact.Path.Replace('/', Path.DirectorySeparatorChar));
+                            if (!File.Exists(libPath))
+                                failedLibs.Add(lib.Name);
+                        }
+                    }
+                }
+
+                if (failedLibs.Count > 0)
+                {
+                    DebugLogger.Warn("Forge", $"以下库下载失败（将交给安装器处理）: {string.Join(", ", failedLibs.Take(5))}");
+                }
+            }
+            catch (Exception ex)
+            {
+                DebugLogger.Warn("Forge", $"预下载install_profile库时出错: {ex.Message}，将交给安装器处理");
             }
         }
 
@@ -609,11 +776,11 @@ namespace ObsMCLauncher.Core.Services.Installers
             var librariesDir = Path.Combine(gameDirectory, "libraries");
             Directory.CreateDirectory(librariesDir);
 
-            // 去重
             var list = mavenCoords.Where(x => !string.IsNullOrWhiteSpace(x)).Distinct().ToList();
 
             using var semaphore = new SemaphoreSlim(8);
             int done = 0;
+            var failedMavens = new List<string>();
 
             var tasks = list.Select(async maven =>
             {
@@ -637,6 +804,7 @@ namespace ObsMCLauncher.Core.Services.Installers
                 catch (Exception ex)
                 {
                     DebugLogger.Error("Forge", $"processor 依赖下载失败: {maven} - {ex.Message}");
+                    lock (failedMavens) { failedMavens.Add(maven); }
                 }
                 finally
                 {
@@ -647,6 +815,11 @@ namespace ObsMCLauncher.Core.Services.Installers
             }).ToList();
 
             await Task.WhenAll(tasks);
+
+            if (failedMavens.Count > 0)
+            {
+                DebugLogger.Warn("Forge", $"processor 依赖下载失败 {failedMavens.Count}/{list.Count} 个: {string.Join(", ", failedMavens.Take(5))}");
+            }
         }
 
         private static async Task DownloadInstallProfileLibrariesAsync(
@@ -664,6 +837,7 @@ namespace ObsMCLauncher.Core.Services.Installers
 
             int total = libraries.Count;
             int completed = 0;
+            var failedLibs = new List<string>();
 
             using var semaphore = new SemaphoreSlim(8);
             var tasks = libraries.Select(async lib =>
@@ -674,29 +848,26 @@ namespace ObsMCLauncher.Core.Services.Installers
                     string? downloadUrl = null;
                     string? savePath = null;
 
-                    // 1) 优先使用 install_profile 给出的 artifact.path
                     if (lib.Downloads?.Artifact != null)
                     {
                         var artifact = lib.Downloads.Artifact;
                         if (!string.IsNullOrWhiteSpace(artifact.Path))
                         {
-                            downloadUrl = downloadService.GetLibraryUrl(artifact.Path);
-                            savePath = Path.Combine(librariesDir, artifact.Path.Replace("/", "\\"));
-                        }
-                        else if (!string.IsNullOrWhiteSpace(artifact.Url) && !string.IsNullOrWhiteSpace(artifact.Path))
-                        {
-                            downloadUrl = artifact.Url;
+                            downloadUrl = !string.IsNullOrWhiteSpace(artifact.Url)
+                                ? artifact.Url
+                                : downloadService.GetLibraryUrl(artifact.Path);
                             savePath = Path.Combine(librariesDir, artifact.Path.Replace("/", "\\"));
                         }
                     }
 
-                    // 2) fallback：从 name 推导 maven 路径
                     if ((string.IsNullOrWhiteSpace(downloadUrl) || string.IsNullOrWhiteSpace(savePath)) && !string.IsNullOrWhiteSpace(lib.Name))
                     {
                         var mavenPath = MavenToPath(lib.Name);
                         if (!string.IsNullOrWhiteSpace(mavenPath))
                         {
-                            downloadUrl = downloadService.GetLibraryUrl(mavenPath);
+                            downloadUrl = !string.IsNullOrWhiteSpace(lib.Url)
+                                ? $"{lib.Url}{mavenPath}"
+                                : downloadService.GetLibraryUrl(mavenPath);
                             savePath = Path.Combine(librariesDir, mavenPath.Replace("/", "\\"));
                         }
                     }
@@ -707,11 +878,8 @@ namespace ObsMCLauncher.Core.Services.Installers
                         return;
                     }
 
-                    // 已存在则跳过
                     if (File.Exists(savePath))
-                    {
                         return;
-                    }
 
                     Directory.CreateDirectory(Path.GetDirectoryName(savePath)!);
 
@@ -719,60 +887,39 @@ namespace ObsMCLauncher.Core.Services.Installers
                     resp.EnsureSuccessStatusCode();
                     var bytes = await resp.Content.ReadAsByteArrayAsync(cancellationToken);
                     await File.WriteAllBytesAsync(savePath, bytes, cancellationToken);
+
+                    // SHA1校验
+                    if (lib.Downloads?.Artifact != null && !string.IsNullOrWhiteSpace(lib.Downloads.Artifact.Sha1))
+                    {
+                        using var sha1 = SHA1.Create();
+                        var hash = string.Concat(sha1.ComputeHash(bytes).Select(b => b.ToString("x2")));
+                        if (!string.Equals(hash, lib.Downloads.Artifact.Sha1, StringComparison.OrdinalIgnoreCase))
+                        {
+                            DebugLogger.Warn("Forge", $"库文件SHA1校验失败: {lib.Name} (期望: {lib.Downloads.Artifact.Sha1}, 实际: {hash})");
+                            try { File.Delete(savePath); } catch { }
+                            lock (failedLibs) { failedLibs.Add(lib.Name); }
+                        }
+                    }
                 }
                 catch (Exception ex)
                 {
                     DebugLogger.Error("Forge", $"install_profile 库下载失败: {lib.Name} - {ex.Message}");
+                    lock (failedLibs) { failedLibs.Add(lib.Name); }
                 }
                 finally
                 {
                     var done = Interlocked.Increment(ref completed);
-                    progressCallback?.Invoke($"正在下载 Forge 依赖库... ({done}/{total})", 45 + (done / (double)Math.Max(1, total) * 10)); // 45-55
+                    progressCallback?.Invoke($"正在下载 Forge 依赖库... ({done}/{total})", 45 + (done / (double)Math.Max(1, total) * 10));
                     semaphore.Release();
                 }
             }).ToList();
 
             await Task.WhenAll(tasks);
-        }
 
-        private static System.Threading.Timer SimulateForgeInstallerProgress(IProgress<DownloadProgress>? progress)
-        {
-            double currentProgress = 50;
-            var random = new Random();
-
-            var timer = new System.Threading.Timer(_ =>
+            if (failedLibs.Count > 0)
             {
-                try
-                {
-                    if (currentProgress < 69)
-                    {
-                        currentProgress += random.NextDouble() * 0.5;
-
-                        string statusText;
-                        if (currentProgress < 55)
-                            statusText = "正在下载依赖库...";
-                        else if (currentProgress < 60)
-                            statusText = "正在处理混淆映射...";
-                        else if (currentProgress < 65)
-                            statusText = "正在应用访问转换器...";
-                        else
-                            statusText = "正在生成Forge客户端...";
-
-                        progress?.Report(new DownloadProgress
-                        {
-                            Status = statusText,
-                            CurrentFile = statusText,
-                            CurrentFileBytes = (long)currentProgress,
-                            CurrentFileTotalBytes = 100,
-                            CompletedFiles = 2,
-                            TotalFiles = 3
-                        });
-                    }
-                }
-                catch { }
-            }, null, 500, 500);
-
-            return timer;
+                DebugLogger.Warn("Forge", $"install_profile 库下载失败 {failedLibs.Count}/{total} 个: {string.Join(", ", failedLibs.Take(5))}");
+            }
         }
 
         private class MojangVersionJson
@@ -913,23 +1060,27 @@ namespace ObsMCLauncher.Core.Services.Installers
             bool isNewVersion = IsForgeInstallerNewVersion(mcVersion);
             bool isVeryOldVersion = IsVeryOldForgeVersion(mcVersion);
 
-            // 参数组合（按 VersionDetailPage 的逻辑）
             var argsList = new List<string>();
 
             if (isNewVersion)
             {
+                // 1.13+: --installClient <path>
                 argsList.Add($"--installClient \"{gameDirectory}\"");
             }
             else if (isVeryOldVersion)
             {
+                // <1.9: 先尝试不带目录参数，再尝试各种格式
+                argsList.Add("--installClient");
                 argsList.Add($"--installClient \"{gameDirectory}\"");
-                argsList.Add($"--install-client \"{gameDirectory}\"");
-                argsList.Add($"-installClient \"{gameDirectory}\"");
+                argsList.Add("--install-client");
+                argsList.Add("-installClient");
             }
             else
             {
+                // 1.9~1.12.2: 旧版安装器--installClient通常不接受目录参数
+                argsList.Add("--installClient");
                 argsList.Add($"--installClient \"{gameDirectory}\"");
-                argsList.Add($"--install-client \"{gameDirectory}\"");
+                argsList.Add("--install-client");
             }
 
             foreach (var args in argsList)
@@ -1054,12 +1205,22 @@ namespace ObsMCLauncher.Core.Services.Installers
         {
             try
             {
+                if (!File.Exists(forgeJsonPath))
+                {
+                    DebugLogger.Warn("Forge", $"MergeVanillaIntoForgeJson: Forge JSON不存在: {forgeJsonPath}");
+                    return;
+                }
+
                 var forgeJsonContent = await File.ReadAllTextAsync(forgeJsonPath, cancellationToken);
-                var forgeJson = JsonNode.Parse(forgeJsonContent)!.AsObject();
+                var forgeJson = JsonNode.Parse(forgeJsonContent);
+                if (forgeJson == null)
+                {
+                    DebugLogger.Warn("Forge", "MergeVanillaIntoForgeJson: Forge JSON解析失败");
+                    return;
+                }
+                var forgeObj = forgeJson.AsObject();
 
-                bool isOldVersion = IsForgeInstallerNewVersion(vanillaVersion) == false;
-
-                forgeJson["id"] = customVersionName;
+                forgeObj["id"] = customVersionName;
 
                 // 优先从.temp读取原版JSON，如果不存在则从标准位置读取
                 string tempVanillaJsonPath = Path.Combine(gameDirectory, ".temp", "versions", vanillaVersion, $"{vanillaVersion}.json");
@@ -1069,23 +1230,30 @@ namespace ObsMCLauncher.Core.Services.Installers
                 if (!File.Exists(vanillaJsonPath))
                 {
                     DebugLogger.Warn("Forge", $"原版JSON不存在（.temp和标准位置都未找到），保留inheritsFrom: {vanillaVersion}");
-                    forgeJson["inheritsFrom"] = vanillaVersion;
-                    await File.WriteAllTextAsync(forgeJsonPath, forgeJson.ToJsonString(new JsonSerializerOptions { WriteIndented = true }), cancellationToken);
+                    forgeObj["inheritsFrom"] = vanillaVersion;
+                    await File.WriteAllTextAsync(forgeJsonPath, forgeObj.ToJsonString(new JsonSerializerOptions { WriteIndented = true }), cancellationToken);
                     return;
                 }
 
                 DebugLogger.Info("Forge", $"从{(vanillaJsonPath == tempVanillaJsonPath ? "临时目录" : "标准位置")}读取原版JSON: {vanillaJsonPath}");
                 var vanillaJsonContent = await File.ReadAllTextAsync(vanillaJsonPath, cancellationToken);
-                var vanillaJson = JsonNode.Parse(vanillaJsonContent)!.AsObject();
+                var vanillaJson = JsonNode.Parse(vanillaJsonContent);
+                if (vanillaJson == null)
+                {
+                    DebugLogger.Warn("Forge", "原版JSON解析失败，保留inheritsFrom");
+                    forgeObj["inheritsFrom"] = vanillaVersion;
+                    await File.WriteAllTextAsync(forgeJsonPath, forgeObj.ToJsonString(new JsonSerializerOptions { WriteIndented = true }), cancellationToken);
+                    return;
+                }
+                var vanillaObj = vanillaJson.AsObject();
 
-                var forgeLibraries = forgeJson["libraries"]?.AsArray() ?? new JsonArray();
-                var vanillaLibraries = vanillaJson["libraries"]?.AsArray() ?? new JsonArray();
+                var forgeLibraries = forgeObj["libraries"]?.AsArray() ?? new JsonArray();
+                var vanillaLibraries = vanillaObj["libraries"]?.AsArray() ?? new JsonArray();
 
-                // 收集已存在的库（忽略版本号，保留 classifier 区分 natives）
                 var existingLibs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 foreach (var lib in forgeLibraries)
                 {
-                    if (lib? ["name"] != null)
+                    if (lib?["name"] != null)
                     {
                         existingLibs.Add(GetLibraryKeyFromName(lib["name"]!.ToString()));
                     }
@@ -1094,7 +1262,7 @@ namespace ObsMCLauncher.Core.Services.Installers
                 int addedCount = 0;
                 foreach (var vlib in vanillaLibraries)
                 {
-                    bool isNativesLib = vlib? ["natives"] != null;
+                    bool isNativesLib = vlib?["natives"] != null;
                     if (isNativesLib)
                     {
                         forgeLibraries.Add(vlib?.DeepClone());
@@ -1102,7 +1270,7 @@ namespace ObsMCLauncher.Core.Services.Installers
                         continue;
                     }
 
-                    var name = vlib? ["name"]?.ToString();
+                    var name = vlib?["name"]?.ToString();
                     if (!string.IsNullOrEmpty(name))
                     {
                         var key = GetLibraryKeyFromName(name);
@@ -1115,19 +1283,19 @@ namespace ObsMCLauncher.Core.Services.Installers
                     }
                 }
 
-                forgeJson["libraries"] = forgeLibraries;
+                forgeObj["libraries"] = forgeLibraries;
 
-                if (!forgeJson.ContainsKey("assetIndex") && vanillaJson.ContainsKey("assetIndex"))
-                    forgeJson["assetIndex"] = vanillaJson["assetIndex"]!.DeepClone();
-                if (!forgeJson.ContainsKey("assets") && vanillaJson.ContainsKey("assets"))
-                    forgeJson["assets"] = vanillaJson["assets"]!.DeepClone();
-                if (!forgeJson.ContainsKey("arguments") && vanillaJson.ContainsKey("arguments"))
-                    forgeJson["arguments"] = vanillaJson["arguments"]!.DeepClone();
+                if (!forgeObj.ContainsKey("assetIndex") && vanillaObj.ContainsKey("assetIndex"))
+                    forgeObj["assetIndex"] = vanillaObj["assetIndex"]!.DeepClone();
+                if (!forgeObj.ContainsKey("assets") && vanillaObj.ContainsKey("assets"))
+                    forgeObj["assets"] = vanillaObj["assets"]!.DeepClone();
+                if (!forgeObj.ContainsKey("arguments") && vanillaObj.ContainsKey("arguments"))
+                    forgeObj["arguments"] = vanillaObj["arguments"]!.DeepClone();
 
-                // 新旧版本都移除 inheritsFrom，避免依赖父版本目录
-                forgeJson.Remove("inheritsFrom");
+                // 移除inheritsFrom，使版本自包含
+                forgeObj.Remove("inheritsFrom");
 
-                await File.WriteAllTextAsync(forgeJsonPath, forgeJson.ToJsonString(new JsonSerializerOptions { WriteIndented = true }), cancellationToken);
+                await File.WriteAllTextAsync(forgeJsonPath, forgeObj.ToJsonString(new JsonSerializerOptions { WriteIndented = true }), cancellationToken);
 
                 DebugLogger.Info("Forge", $"MergeVanillaIntoForgeJson 完成，新增库 {addedCount} 个");
             }
@@ -1176,29 +1344,109 @@ namespace ObsMCLauncher.Core.Services.Installers
                     profileJson = await reader.ReadToEndAsync();
 
                 var profile = JsonDocument.Parse(profileJson);
-                var versionInfo = profile.RootElement.GetProperty("versionInfo");
 
                 Directory.CreateDirectory(targetVersionDir);
 
+                // 尝试从install_profile.json中获取版本JSON
+                string? versionJsonContent = null;
+
+                // 方式1: 旧格式 - install_profile.json 中的 versionInfo 字段
+                if (profile.RootElement.TryGetProperty("versionInfo", out var versionInfo))
+                {
+                    versionJsonContent = versionInfo.GetRawText();
+                    DebugLogger.Info("Forge", "从install_profile.versionInfo提取版本JSON");
+                }
+
+                // 方式2: 新格式 - 从安装器jar中提取 version.json
+                if (string.IsNullOrEmpty(versionJsonContent))
+                {
+                    var versionEntry = zip.GetEntry("version.json");
+                    if (versionEntry != null)
+                    {
+                        using var vstream = versionEntry.Open();
+                        using var vreader = new StreamReader(vstream);
+                        versionJsonContent = await vreader.ReadToEndAsync();
+                        DebugLogger.Info("Forge", "从安装器中提取version.json");
+                    }
+                }
+
+                // 方式3: 尝试从install_profile的data字段中提取
+                if (string.IsNullOrEmpty(versionJsonContent))
+                {
+                    DebugLogger.Warn("Forge", "install_profile.json 中缺少 versionInfo 字段，且未找到 version.json");
+                    return false;
+                }
+
                 var versionJsonPath = Path.Combine(targetVersionDir, $"{targetVersionName}.json");
-                var versionJson = JsonNode.Parse(versionInfo.GetRawText())!.AsObject();
+                var versionJson = JsonNode.Parse(versionJsonContent)!.AsObject();
                 versionJson["id"] = targetVersionName;
 
                 await File.WriteAllTextAsync(versionJsonPath, versionJson.ToJsonString(new JsonSerializerOptions { WriteIndented = true }), cancellationToken);
+
+                // 下载install_profile中的libraries
+                if (profile.RootElement.TryGetProperty("install", out var installSection))
+                {
+                    if (installSection.TryGetProperty("libraries", out var libsElement))
+                    {
+                        var forgeLibraries = JsonSerializer.Deserialize<List<ForgeLibrary>>(libsElement.GetRawText());
+                        if (forgeLibraries != null && forgeLibraries.Count > 0)
+                        {
+                            DebugLogger.Info("Forge", $"旧版Forge: 需要下载 {forgeLibraries.Count} 个库文件");
+                            await DownloadInstallProfileLibrariesAsync(forgeLibraries, gameDirectory, null, cancellationToken);
+                        }
+                    }
+                }
+
+                // 新格式install_profile中也可能有顶层libraries
+                if (profile.RootElement.TryGetProperty("libraries", out var topLibs))
+                {
+                    var topForgeLibs = JsonSerializer.Deserialize<List<ForgeLibrary>>(topLibs.GetRawText());
+                    if (topForgeLibs != null && topForgeLibs.Count > 0)
+                    {
+                        DebugLogger.Info("Forge", $"install_profile顶层: 需要下载 {topForgeLibs.Count} 个库文件");
+                        await DownloadInstallProfileLibrariesAsync(topForgeLibs, gameDirectory, null, cancellationToken);
+                    }
+                }
 
                 // 尝试合并原版信息
                 var vanillaJsonPath = Path.Combine(gameDirectory, "versions", mcVersion, $"{mcVersion}.json");
                 if (File.Exists(vanillaJsonPath))
                 {
-                    await MergeVanillaIntoForgeJson(versionJsonPath, targetVersionName, gameDirectory, mcVersion, cancellationToken);
+                    try
+                    {
+                        await MergeVanillaIntoForgeJson(versionJsonPath, targetVersionName, gameDirectory, mcVersion, cancellationToken);
+                    }
+                    catch (Exception mergeEx)
+                    {
+                        DebugLogger.Warn("Forge", $"旧版Forge合并原版信息失败: {mergeEx.Message}");
+                    }
+                }
+                else
+                {
+                    DebugLogger.Warn("Forge", $"原版JSON不存在: {vanillaJsonPath}，跳过合并");
                 }
 
-                // 旧版需要复制原版 jar 到版本目录
+                // 复制原版jar到版本目录
                 var vanillaJar = Path.Combine(gameDirectory, "versions", mcVersion, $"{mcVersion}.jar");
                 var jarInTarget = Path.Combine(targetVersionDir, $"{mcVersion}.jar");
                 if (File.Exists(vanillaJar) && !File.Exists(jarInTarget))
+                {
                     File.Copy(vanillaJar, jarInTarget, true);
+                    DebugLogger.Info("Forge", $"已复制原版JAR到版本目录: {mcVersion}.jar");
+                }
+                else if (!File.Exists(vanillaJar))
+                {
+                    DebugLogger.Warn("Forge", $"原版JAR不存在: {vanillaJar}，旧版Forge可能无法正常启动");
+                }
 
+                // 验证安装结果
+                if (!File.Exists(versionJsonPath))
+                {
+                    DebugLogger.Error("Forge", "手动安装后版本JSON文件不存在");
+                    return false;
+                }
+
+                DebugLogger.Info("Forge", $"旧版Forge手动安装完成: {targetVersionName}");
                 return true;
             }
             catch (Exception ex)
@@ -1217,8 +1465,6 @@ namespace ObsMCLauncher.Core.Services.Installers
             string customVersionName,
             CancellationToken cancellationToken = default)
         {
-            // 极简重命名：把官方目录移动到自定义名称
-            // 注：VersionDetailPage 里有更完整的兼容与 JSON 修正，后续可继续迁移。
             string officialForgeId = $"{gameVersion}-forge-{forgeVersion}";
             string officialDir = Path.Combine(gameDirectory, "versions", officialForgeId);
             string customDir = Path.Combine(gameDirectory, "versions", customVersionName);
@@ -1231,7 +1477,6 @@ namespace ObsMCLauncher.Core.Services.Installers
 
             Directory.Move(officialDir, customDir);
 
-            // 重命名 json/jar 文件（如果存在）
             var oldJson = Path.Combine(customDir, $"{officialForgeId}.json");
             var newJson = Path.Combine(customDir, $"{customVersionName}.json");
             if (File.Exists(oldJson)) File.Move(oldJson, newJson, true);
@@ -1240,7 +1485,6 @@ namespace ObsMCLauncher.Core.Services.Installers
             var newJar = Path.Combine(customDir, $"{customVersionName}.jar");
             if (File.Exists(oldJar)) File.Move(oldJar, newJar, true);
 
-            // 修正 json 内的 id 字段（尽量）
             if (File.Exists(newJson))
             {
                 try
@@ -1253,16 +1497,17 @@ namespace ObsMCLauncher.Core.Services.Installers
                         await File.WriteAllTextAsync(newJson, node.ToJsonString(new JsonSerializerOptions { WriteIndented = true }), cancellationToken);
                     }
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    DebugLogger.Warn("Forge", $"修改版本JSON的id字段失败: {ex.Message}");
+                }
             }
 
-            // 兜底：确保自定义版本主 JAR 存在（很多新版 Forge 并不会生成同名 JAR，会导致完整性检查失败）
             var customJar = Path.Combine(customDir, $"{customVersionName}.jar");
             if (!File.Exists(customJar))
             {
                 try
                 {
-                    // 优先尝试 Forge 目录内可能存在的父版本 JAR（例如 {mc}.jar）
                     var jarInForgeDir = Path.Combine(customDir, $"{gameVersion}.jar");
                     var jarInVanillaDir = Path.Combine(gameDirectory, "versions", gameVersion, $"{gameVersion}.jar");
 
