@@ -22,6 +22,7 @@
 - 适配 Minecraft 新版本号系统（基于年份的版本号格式，如 26.1）
 - 资源下载页面新增"全部"来源选项，可同时搜索 CurseForge 和 Modrinth
 - 版本实例管理支持启用/禁用Mod（兼容PCL2，通过.disabled后缀判断）
+- 资源详情页新增访问网站按钮，可跳转到CurseForge或Modrinth项目页面
 
 ### 优化
 

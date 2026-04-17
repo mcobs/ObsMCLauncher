@@ -34,6 +34,10 @@ public partial class ModDetailViewModel : ViewModelBase
     [ObservableProperty] private string _authorDisplay = "";
     [ObservableProperty] private string _downloadsDisplay = "";
     [ObservableProperty] private string _lastUpdateDisplay = "";
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(OpenWebsiteCommand))]
+    private string _websiteUrl = "";
+    [ObservableProperty] private string _websiteButtonText = "";
     [ObservableProperty] private Bitmap? _icon;
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsVersionsVisible))]
@@ -47,6 +51,7 @@ public partial class ModDetailViewModel : ViewModelBase
     public bool HasAnyGroup => VersionGroups.Count > 0;
 
     public IRelayCommand BackCommand { get; }
+    public IRelayCommand OpenWebsiteCommand { get; }
     public IAsyncRelayCommand<VersionEntryViewModel> DownloadVersionCommand { get; }
 
     public ModDetailViewModel(object rawData, string selectedVersionId, string resourceType, Action? onBack = null)
@@ -57,6 +62,7 @@ public partial class ModDetailViewModel : ViewModelBase
         _onBack = onBack;
 
         BackCommand = new RelayCommand(Back);
+        OpenWebsiteCommand = new RelayCommand(OpenWebsite, () => !string.IsNullOrEmpty(WebsiteUrl));
         DownloadVersionCommand = new AsyncRelayCommand<VersionEntryViewModel>(DownloadVersionAsync);
 
         LoadHeader();
@@ -67,6 +73,22 @@ public partial class ModDetailViewModel : ViewModelBase
     {
         _cts.Cancel();
         _onBack?.Invoke();
+    }
+
+    private void OpenWebsite()
+    {
+        if (string.IsNullOrEmpty(WebsiteUrl)) return;
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = WebsiteUrl,
+                UseShellExecute = true
+            });
+        }
+        catch
+        {
+        }
     }
 
     private void LoadHeader()
@@ -82,6 +104,8 @@ public partial class ModDetailViewModel : ViewModelBase
                 : "作者: 未知";
             DownloadsDisplay = $"下载量: {CurseForgeService.FormatDownloadCount(cf.DownloadCount)}";
             LastUpdateDisplay = $"更新: {cf.DateModified:yyyy-MM-dd}";
+            WebsiteUrl = cf.Links?.WebsiteUrl ?? "";
+            WebsiteButtonText = "访问curseforge";
 
             _ = LoadIconAsync(cf.Logo?.Url);
         }
@@ -93,6 +117,8 @@ public partial class ModDetailViewModel : ViewModelBase
             AuthorDisplay = $"作者: {hit.Author ?? "未知"}";
             DownloadsDisplay = $"下载量: {CurseForgeService.FormatDownloadCount(hit.Downloads)}";
             LastUpdateDisplay = string.Empty;
+            WebsiteUrl = $"https://modrinth.com/project/{hit.ProjectId}";
+            WebsiteButtonText = "访问modrinth";
 
             _ = LoadIconAsync(hit.IconUrl);
         }

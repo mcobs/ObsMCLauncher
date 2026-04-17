@@ -28,6 +28,12 @@
               <TextBlock Text="{Binding LastUpdateDisplay}" FontSize="12" Opacity="0.8"/>
             </StackPanel>
           </StackPanel>
+
+          <Button Grid.Column="2"
+                  Content="{Binding WebsiteButtonText}"
+                  Command="{Binding OpenWebsiteCommand}"
+                  IsVisible="{Binding WebsiteUrl, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                  VerticalAlignment="Center"/>        
         </Grid>
       </Border>
     </StackPanel>
