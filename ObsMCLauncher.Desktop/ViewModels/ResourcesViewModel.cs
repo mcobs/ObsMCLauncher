@@ -155,10 +155,14 @@ public partial class ResourcesViewModel : ViewModelBase
                     InstalledVersions.Add(name);
             }
 
+            FilterVersionsByResourceType();
+
             if (!string.IsNullOrEmpty(config.SelectedVersion) && InstalledVersions.Contains(config.SelectedVersion))
                 SelectedVersionId = config.SelectedVersion;
             else if (InstalledVersions.Count > 0)
                 SelectedVersionId = InstalledVersions[0];
+            else
+                SelectedVersionId = null;
 
             OnPropertyChanged(nameof(HasInstalledVersions));
             OnPropertyChanged(nameof(VersionHintText));
@@ -169,12 +173,32 @@ public partial class ResourcesViewModel : ViewModelBase
         }
     }
 
+    private void FilterVersionsByResourceType()
+    {
+        if (CurrentResourceType != "Mods")
+            return;
+
+        var moddableVersions = new List<string>();
+        foreach (var version in InstalledVersions.ToList())
+        {
+            var type = DetectVersionType(version);
+            if (type != "vanilla" && type != "optifine")
+                moddableVersions.Add(version);
+        }
+
+        InstalledVersions.Clear();
+        foreach (var v in moddableVersions)
+            InstalledVersions.Add(v);
+    }
+
     private void ChangeType(string? type)
     {
         if (string.IsNullOrEmpty(type) || type == CurrentResourceType) return;
 
         SaveCurrentState();
         CurrentResourceType = type;
+
+        LoadInstalledVersions();
 
         if (_typeStates.TryGetValue(type, out var state))
         {

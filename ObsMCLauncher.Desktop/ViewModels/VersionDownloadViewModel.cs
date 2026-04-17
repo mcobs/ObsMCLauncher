@@ -225,9 +225,36 @@ public partial class VersionDownloadViewModel : ViewModelBase
 
             if (hasIssue && ObsMCLauncher.Core.Services.GameLauncher.MissingLibraries.Count > 0)
             {
-                _notificationService.Show("缺少依赖", "请先在版本详情中修复依赖", NotificationType.Error);
-                _notificationService.Remove(notifId);
-                return;
+                var missingCount = ObsMCLauncher.Core.Services.GameLauncher.MissingLibraries.Count;
+                _notificationService.Update(notifId, $"正在补全 {missingCount} 个缺失依赖...", 0);
+
+                try
+                {
+                    var (successCount, failedCount) = await ObsMCLauncher.Core.Services.LibraryDownloader.DownloadMissingLibrariesAsync(
+                        config.GameDirectory,
+                        version.Id,
+                        ObsMCLauncher.Core.Services.GameLauncher.MissingLibraries,
+                        (progress, current, total) =>
+                        {
+                            _notificationService.Update(notifId, progress, current * 100.0 / Math.Max(1, total));
+                        },
+                        launchCts.Token);
+
+                    if (failedCount > 0)
+                    {
+                        _notificationService.Show("依赖补全失败", $"{failedCount} 个必需库文件下载失败，请检查网络后重试", NotificationType.Error);
+                        _notificationService.Remove(notifId);
+                        return;
+                    }
+
+                    _notificationService.Update(notifId, $"已成功补全 {successCount} 个依赖", 100);
+                }
+                catch (Exception dlEx)
+                {
+                    _notificationService.Show("依赖补全失败", dlEx.Message, NotificationType.Error);
+                    _notificationService.Remove(notifId);
+                    return;
+                }
             }
 
             _notificationService.Update(notifId, "正在启动 Minecraft...");
