@@ -65,6 +65,7 @@
 - 修复设为默认账号后界面更新不及时的问题（GameAccount.IsDefault未触发PropertyChanged）
 - 修复设为默认账号时动画不播放的问题（改用Opacity+RenderTransform绑定替代IsVisible）
 - 修复刷新账号列表时所有项误触发动画的问题（仅对IsDefault实际变化的项更新属性）
+- 修复主页选择账号后账号管理页面默认账号不刷新的问题（在HomeViewModel中通知AccountManagementViewModel刷新）
 - 为默认账号标签添加淡入淡出和缩放过渡动画效果
 - 版本详情不再显示在左侧导航栏，改为覆盖层显示
 - 修复崩溃窗口弹出后立即被关闭的问题

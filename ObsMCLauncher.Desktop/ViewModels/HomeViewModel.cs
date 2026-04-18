@@ -54,12 +54,19 @@ public partial class HomeViewModel : ViewModelBase
             {
                 if (value != null)
                 {
-                    ObsMCLauncher.Core.Services.Accounts.AccountService.Instance.UpdateLastUsed(value.Id);
+                    // 设置为默认账号
+                    ObsMCLauncher.Core.Services.Accounts.AccountService.Instance.SetDefaultAccount(value.Id);
                     
                     // 保存选择的账号到配置
                     var config = LauncherConfig.Load();
                     config.SelectedAccountId = value.Id;
                     config.Save();
+                    
+                    // 通知账号管理页面刷新
+                    if (NavigationStore.MainWindow?.NavItems.FirstOrDefault(x => x.Title == "账号管理")?.Page is AccountManagementViewModel accountVm)
+                    {
+                        accountVm.Load();
+                    }
                 }
             }
         }
