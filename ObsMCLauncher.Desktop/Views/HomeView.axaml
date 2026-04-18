@@ -188,6 +188,10 @@
                               IsVisible="{Binding Avatar, Converter={x:Static converters:NullToBoolConverter.Instance}}">
                         <Image Source="{Binding Avatar}" Stretch="Uniform" />
                       </Border>
+                      <TextBlock Grid.Column="0" Width="24" Height="24"
+                                 Text="{Binding Type, Converter={x:Static converters:EnumToChineseTextConverter.Instance}, ConverterParameter=Icon}"
+                                 FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                 IsVisible="{Binding Avatar, Converter={x:Static converters:NullToBoolConverter.Instance}, ConverterParameter=Invert}"/>
                       <TextBlock Grid.Column="1" Text="{Binding Username}" VerticalAlignment="Center" Margin="8,0,0,0" FontSize="13" FontWeight="SemiBold"/>
                     </Grid>
                   </DataTemplate>

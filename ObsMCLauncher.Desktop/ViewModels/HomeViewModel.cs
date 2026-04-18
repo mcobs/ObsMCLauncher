@@ -534,9 +534,6 @@ public partial class HomeViewModel : ViewModelBase
                             await _dispatcher.InvokeAsync(() =>
                             {
                                 acc.Avatar = bitmap;
-                                // 强制 UI 刷新项
-                                var index = Accounts.IndexOf(acc);
-                                if (index >= 0) Accounts[index] = acc;
                             });
                             return;
                         }
@@ -547,15 +544,12 @@ public partial class HomeViewModel : ViewModelBase
                     {
                         try
                         {
-                            // 使用默认头像资源 (假设已存在，若不存在则使用 logo 代替)
                             var defaultAvatar = AssetLoader.Open(new Uri("avares://ObsMCLauncher.Desktop/Assets/logo.png"));
                             if (defaultAvatar != null)
                             {
                                 acc.Avatar = new Avalonia.Media.Imaging.Bitmap(defaultAvatar);
-                                var index = Accounts.IndexOf(acc);
-                                if (index >= 0) Accounts[index] = acc;
+                            }
                         }
-                    }
                         catch { }
                     });
                 }

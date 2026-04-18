@@ -1,4 +1,6 @@
 using System;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 
 namespace ObsMCLauncher.Core.Models;
 
@@ -9,7 +11,7 @@ public enum AccountType
     Yggdrasil
 }
 
-public class GameAccount
+public class GameAccount : INotifyPropertyChanged
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
 
@@ -49,8 +51,21 @@ public class GameAccount
 
     public DateTime? SkinLastUpdated { get; set; }
 
+    private object? _avatar;
+
     [System.Text.Json.Serialization.JsonIgnore]
-    public object? Avatar { get; set; }
+    public object? Avatar
+    {
+        get => _avatar;
+        set
+        {
+            if (_avatar != value)
+            {
+                _avatar = value;
+                OnPropertyChanged();
+            }
+        }
+    }
 
     public string DisplayName => Type switch
     {
@@ -65,5 +80,12 @@ public class GameAccount
         if (Type == AccountType.Offline) return false;
         if (ExpiresAt == null) return true;
         return DateTime.Now >= ExpiresAt.Value.AddMinutes(-5);
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 }
