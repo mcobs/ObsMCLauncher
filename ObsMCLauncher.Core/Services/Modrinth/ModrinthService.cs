@@ -84,11 +84,22 @@ public class ModrinthService
 
     public async Task<ModrinthProject?> GetProjectAsync(string projectId, CancellationToken cancellationToken = default)
     {
+        // 1. 检查内存缓存
         if (_projectCache.TryGetValue(projectId, out var cached) && cached.expiry > DateTime.Now)
         {
             return cached.data;
         }
 
+        // 2. 检查磁盘缓存
+        var cachedFromDisk = await ResourceCacheService.GetCachedDataAsync<ModrinthProject>(projectId, "modrinth");
+        if (cachedFromDisk != null)
+        {
+            // 更新内存缓存
+            _projectCache[projectId] = (cachedFromDisk, DateTime.Now + _cacheDuration);
+            return cachedFromDisk;
+        }
+
+        // 3. 从API获取
         var json = await RequestWithFallbackAsync($"/project/{projectId}", cancellationToken).ConfigureAwait(false);
         if (json == null) return null;
 
@@ -100,7 +111,10 @@ public class ModrinthService
             });
             if (project != null)
             {
+                // 更新内存缓存
                 _projectCache[projectId] = (project, DateTime.Now + _cacheDuration);
+                // 写入磁盘缓存
+                await ResourceCacheService.CacheDataAsync(projectId, project, "modrinth");
             }
             return project;
         }
@@ -163,11 +177,23 @@ public class ModrinthService
         CancellationToken cancellationToken = default)
     {
         var cacheKey = $"{projectId}_v{gameVersion}_l{loader}";
+        
+        // 1. 检查内存缓存
         if (_versionCache.TryGetValue(cacheKey, out var cached) && cached.expiry > DateTime.Now)
         {
             return cached.data;
         }
 
+        // 2. 检查磁盘缓存
+        var cachedFromDisk = await ResourceCacheService.GetCachedDataAsync<List<ModrinthVersion>>(cacheKey, "modrinth");
+        if (cachedFromDisk != null)
+        {
+            // 更新内存缓存
+            _versionCache[cacheKey] = (cachedFromDisk, DateTime.Now + _cacheDuration);
+            return cachedFromDisk;
+        }
+
+        // 3. 从API获取
         var path = $"/project/{projectId}/version";
 
         var hasQuery = false;
@@ -193,6 +219,7 @@ public class ModrinthService
             });
             if (versions != null)
             {
+                // 更新内存缓存
                 _versionCache[cacheKey] = (versions, DateTime.Now + _cacheDuration);
                 var allKey = $"{projectId}_v_l";
                 if (!_versionCache.ContainsKey(allKey) || _versionCache[allKey].expiry <= DateTime.Now)
@@ -200,8 +227,12 @@ public class ModrinthService
                     if (string.IsNullOrEmpty(gameVersion) && string.IsNullOrEmpty(loader))
                     {
                         _versionCache[allKey] = (versions, DateTime.Now + _cacheDuration);
+                        // 写入全量版本的磁盘缓存
+                        await ResourceCacheService.CacheDataAsync(allKey, versions, "modrinth");
                     }
                 }
+                // 写入当前查询的磁盘缓存
+                await ResourceCacheService.CacheDataAsync(cacheKey, versions, "modrinth");
             }
             return versions;
         }

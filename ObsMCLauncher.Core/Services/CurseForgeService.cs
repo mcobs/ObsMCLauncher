@@ -102,11 +102,22 @@ public static class CurseForgeService
 
     public static async Task<CurseForgeResponse<CurseForgeMod>?> GetModAsync(int modId)
     {
+        // 1. 检查内存缓存
         if (_modCache.TryGetValue(modId, out var cached) && cached.expiry > DateTime.Now)
         {
             return new CurseForgeResponse<CurseForgeMod> { Data = cached.data };
         }
 
+        // 2. 检查磁盘缓存
+        var cachedFromDisk = await ResourceCacheService.GetCachedDataAsync<CurseForgeMod>(modId.ToString(), "curseforge");
+        if (cachedFromDisk != null)
+        {
+            // 更新内存缓存
+            _modCache[modId] = (cachedFromDisk, DateTime.Now + _cacheDuration);
+            return new CurseForgeResponse<CurseForgeMod> { Data = cachedFromDisk };
+        }
+
+        // 3. 从API获取
         var json = await RequestWithFallbackAsync($"/v1/mods/{modId}").ConfigureAwait(false);
         if (json == null) return null;
 
@@ -116,7 +127,10 @@ public static class CurseForgeService
             var result = JsonSerializer.Deserialize<CurseForgeResponse<CurseForgeMod>>(json, options);
             if (result?.Data != null)
             {
+                // 更新内存缓存
                 _modCache[modId] = (result.Data, DateTime.Now + _cacheDuration);
+                // 写入磁盘缓存
+                await ResourceCacheService.CacheDataAsync(modId.ToString(), result.Data, "curseforge");
             }
             return result;
         }
