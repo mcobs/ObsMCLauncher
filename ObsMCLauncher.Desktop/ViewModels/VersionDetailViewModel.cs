@@ -398,33 +398,55 @@ public class VersionDetailViewModel : ViewModelBase
 
     private void UpdateDefaultVersionName()
     {
-        if (string.IsNullOrWhiteSpace(SelectedMcVersion)) return;
+        var parts = new List<string>();
 
-        var parts = new List<string> { SelectedMcVersion };
+        if (!string.IsNullOrWhiteSpace(SelectedMcVersion))
+        {
+            parts.Add(SelectedMcVersion);
 
-        if (IsForgeSelected && !string.IsNullOrWhiteSpace(ForgeVersion))
-        {
-            parts.Add($"Forge_{ForgeVersion}");
-        }
-        else if (IsNeoForgeSelected && !string.IsNullOrWhiteSpace(NeoForgeVersion))
-        {
-            parts.Add($"NeoForge_{NeoForgeVersion}");
-        }
-        else if (IsFabricSelected && !string.IsNullOrWhiteSpace(FabricLoaderVersion))
-        {
-            parts.Add($"Fabric_{FabricLoaderVersion}");
-        }
-        else if (IsQuiltSelected && !string.IsNullOrWhiteSpace(QuiltLoaderVersion))
-        {
-            parts.Add($"Quilt_{QuiltLoaderVersion}");
+            if (IsForgeSelected && !string.IsNullOrWhiteSpace(ForgeVersion))
+            {
+                parts.Add($"Forge_{ForgeVersion}");
+            }
+            else if (IsNeoForgeSelected && !string.IsNullOrWhiteSpace(NeoForgeVersion))
+            {
+                parts.Add($"NeoForge_{NeoForgeVersion}");
+            }
+            else if (IsFabricSelected && !string.IsNullOrWhiteSpace(FabricLoaderVersion))
+            {
+                parts.Add($"Fabric_{FabricLoaderVersion}");
+            }
+            else if (IsQuiltSelected && !string.IsNullOrWhiteSpace(QuiltLoaderVersion))
+            {
+                parts.Add($"Quilt_{QuiltLoaderVersion}");
+            }
         }
 
         if (IsOptiFineEnabled && SelectedOptiFineVersion != null)
         {
-            parts.Add($"OptiFine_{SelectedOptiFineVersion.FullVersion}");
+            if (parts.Count == 0)
+            {
+                // 单独选择OptiFine时，使用OptiFine版本作为基础
+                parts.Add($"OptiFine_{SelectedOptiFineVersion.FullVersion}");
+            }
+            else
+            {
+                parts.Add($"OptiFine_{SelectedOptiFineVersion.FullVersion}");
+            }
         }
 
-        CustomVersionName = string.Join("-", parts);
+        if (parts.Count > 0)
+        {
+            CustomVersionName = string.Join("-", parts);
+        }
+        else if (!string.IsNullOrWhiteSpace(SelectedMcVersion))
+        {
+            CustomVersionName = SelectedMcVersion;
+        }
+        else
+        {
+            CustomVersionName = "";
+        }
     }
 
     private OptifineVersionModel? _selectedOptiFineVersion;
