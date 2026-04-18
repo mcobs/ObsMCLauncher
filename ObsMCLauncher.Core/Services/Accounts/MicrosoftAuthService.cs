@@ -40,7 +40,7 @@ public sealed class MicrosoftAuthService
             Timeout = TimeSpan.FromSeconds(30)
         };
 
-        client.DefaultRequestHeaders.Add("User-Agent", "ObsMCLauncher/1.0");
+        client.DefaultRequestHeaders.Add("User-Agent", VersionInfo.UserAgent);
         return client;
     }
 

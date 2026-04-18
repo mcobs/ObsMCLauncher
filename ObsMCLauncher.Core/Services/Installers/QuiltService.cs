@@ -68,6 +68,7 @@ namespace ObsMCLauncher.Core.Services.Installers
 
         static QuiltService()
         {
+            _httpClient.DefaultRequestHeaders.Add("User-Agent", VersionInfo.UserAgent);
             _httpClient.Timeout = TimeSpan.FromMinutes(5);
         }
 

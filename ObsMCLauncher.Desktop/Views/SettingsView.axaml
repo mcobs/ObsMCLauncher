@@ -144,6 +144,22 @@
 
               <Grid ColumnDefinitions="*,Auto">
                 <StackPanel>
+                  <TextBlock Text="社区镜像源" FontSize="14"/>
+                  <TextBlock Text="{Binding MirrorSourceModeDescription}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap"/>
+                </StackPanel>
+                <ComboBox Grid.Column="1" Width="250" ItemsSource="{Binding MirrorSourceModeOptions}" SelectedItem="{Binding MirrorSourceMode}">
+                  <ComboBox.ItemTemplate>
+                    <DataTemplate>
+                      <TextBlock Text="{Binding Converter={x:Static converters:EnumToChineseTextConverter.Instance}}"/>
+                    </DataTemplate>
+                  </ComboBox.ItemTemplate>
+                </ComboBox>
+              </Grid>
+
+              <Separator Background="{DynamicResource BorderBrush}"/>
+
+              <Grid ColumnDefinitions="*,Auto">
+                <StackPanel>
                   <TextBlock Text="最大下载线程" FontSize="14"/>
                   <TextBlock Text="同时下载的文件数量" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}"/>
                 </StackPanel>

@@ -18,6 +18,7 @@ using Avalonia.Styling;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.Input;
 using ObsMCLauncher.Core.Models;
+using ObsMCLauncher.Core.Services.Mirror;
 using ObsMCLauncher.Core.Utils;
 using ObsMCLauncher.Desktop.ViewModels.Notifications;
 
@@ -40,6 +41,8 @@ public class SettingsViewModel : ViewModelBase
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(MinMemory)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(DownloadSource)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(DownloadSourceDescription)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(MirrorSourceMode)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(MirrorSourceModeDescription)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(MaxDownloadThreads)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(DownloadAssetsWithGame)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(AutoCheckUpdate)));
@@ -73,6 +76,7 @@ public class SettingsViewModel : ViewModelBase
 
         DownloadSourceOptions = new ObservableCollection<DownloadSource>(((DownloadSource[])Enum.GetValues(typeof(DownloadSource)))
             .Where(x => x != DownloadSource.MCBBS && x != DownloadSource.Custom));
+        MirrorSourceModeOptions = new ObservableCollection<MirrorSourceMode>((MirrorSourceMode[])Enum.GetValues(typeof(MirrorSourceMode)));
         GameDirectoryLocationOptions = new ObservableCollection<DirectoryLocation>((DirectoryLocation[])Enum.GetValues(typeof(DirectoryLocation)));
         GameDirectoryTypeOptions = new ObservableCollection<GameDirectoryType>((GameDirectoryType[])Enum.GetValues(typeof(GameDirectoryType)));
         MaxDownloadThreadsOptions = new ObservableCollection<int> { 4, 8, 16, 32, 64 };
@@ -140,6 +144,8 @@ public class SettingsViewModel : ViewModelBase
     public IRelayCommand<HomeCardInfo> MoveCardDownCommand { get; }
 
     public ObservableCollection<DownloadSource> DownloadSourceOptions { get; }
+
+    public ObservableCollection<MirrorSourceMode> MirrorSourceModeOptions { get; }
 
     public ObservableCollection<DirectoryLocation> GameDirectoryLocationOptions { get; }
 
@@ -247,6 +253,38 @@ public class SettingsViewModel : ViewModelBase
         => DownloadSource == DownloadSource.BMCLAPI
             ? "使用BMCLAPI镜像加速下载，适合中国大陆用户"
             : "使用官方源（可能较慢，但更稳定）";
+
+    public MirrorSourceMode MirrorSourceMode
+    {
+        get => _config.MirrorSourceMode;
+        set
+        {
+            if (_config.MirrorSourceMode != value)
+            {
+                _config.MirrorSourceMode = value;
+                OnPropertyChanged(new PropertyChangedEventArgs(nameof(MirrorSourceMode)));
+                OnPropertyChanged(new PropertyChangedEventArgs(nameof(MirrorSourceModeDescription)));
+                AutoSave();
+
+                if (value == MirrorSourceMode.PreferMirror)
+                {
+                    Task.Run(async () =>
+                    {
+                        try
+                        {
+                            await MirrorHealthChecker.CheckAvailabilityAsync().ConfigureAwait(false);
+                        }
+                        catch { }
+                    });
+                }
+            }
+        }
+    }
+
+    public string MirrorSourceModeDescription
+        => MirrorSourceMode == MirrorSourceMode.PreferMirror
+            ? "优先从MCIM镜像源下载Mod资源，失败时自动回退至官方源"
+            : "所有资源均从官方源下载，不使用镜像加速";
 
     public int MaxDownloadThreads
     {

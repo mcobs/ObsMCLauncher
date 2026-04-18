@@ -33,6 +33,11 @@ public class YggdrasilAuthService
         Timeout = TimeSpan.FromSeconds(30)
     };
 
+    static YggdrasilAuthService()
+    {
+        _httpClient.DefaultRequestHeaders.Add("User-Agent", VersionInfo.UserAgent);
+    }
+
     public Action<string>? OnProgressUpdate { get; set; }
 
     public async Task<GameAccount?> LoginAsync(YggdrasilServer server, string username, string password)

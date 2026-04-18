@@ -64,7 +64,7 @@ public static class UpdateService
             Timeout = TimeSpan.FromSeconds(30)
         };
 
-        _httpClient.DefaultRequestHeaders.Add("User-Agent", $"ObsMCLauncher/{Utils.VersionInfo.ShortVersion}");
+        _httpClient.DefaultRequestHeaders.Add("User-Agent", Utils.VersionInfo.UserAgent);
     }
 
     public static async Task<GitHubRelease?> CheckForUpdatesAsync(bool includePrerelease = false)

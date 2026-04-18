@@ -95,6 +95,12 @@ namespace ObsMCLauncher.Core.Services.Installers
     {
         private static readonly HttpClient _httpClient = new HttpClient();
 
+        static FabricService()
+        {
+            _httpClient.DefaultRequestHeaders.Add("User-Agent", VersionInfo.UserAgent);
+            _httpClient.Timeout = TimeSpan.FromMinutes(5);
+        }
+
         // Fabric Meta API
         private const string FABRIC_META_URL = "https://meta.fabricmc.net";
         
@@ -104,11 +110,6 @@ namespace ObsMCLauncher.Core.Services.Installers
 
         // 官方Maven仓库
         private const string FABRIC_MAVEN_URL = "https://maven.fabricmc.net";
-
-        static FabricService()
-        {
-            _httpClient.Timeout = TimeSpan.FromMinutes(5);
-        }
 
         /// <summary>
         /// 获取Fabric支持的Minecraft版本列表

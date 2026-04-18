@@ -9,6 +9,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
+using ObsMCLauncher.Core.Utils;
 
 namespace ObsMCLauncher.Core.Services;
 
@@ -17,6 +18,11 @@ public class MciLmLinkService : IDisposable
     public event EventHandler<int>? ProcessExited;
 
     private static readonly HttpClient _httpClient = new();
+
+    static MciLmLinkService()
+    {
+        _httpClient.DefaultRequestHeaders.Add("User-Agent", VersionInfo.UserAgent);
+    }
     private const string ApiUrl = "https://api.shlm.top/mcilm-link/download";
     private const string ExeNameWin = "MciLm-linkc-windows-{0}.exe";
     private const string ExeNameMac = "MciLm-linkc-macos-{0}";

@@ -7,3 +7,9 @@ public enum DownloadSource
     MCBBS,
     Custom
 }
+
+public enum MirrorSourceMode
+{
+    PreferMirror,
+    OfficialOnly
+}

@@ -3,6 +3,7 @@ using System.IO;
 using System.Net.Http;
 using System.Threading.Tasks;
 using ObsMCLauncher.Core.Models;
+using ObsMCLauncher.Core.Utils;
 
 namespace ObsMCLauncher.Core.Services;
 
@@ -15,6 +16,11 @@ public class AuthlibInjectorService
     {
         Timeout = TimeSpan.FromMinutes(5)
     };
+
+    static AuthlibInjectorService()
+    {
+        _httpClient.DefaultRequestHeaders.Add("User-Agent", VersionInfo.UserAgent);
+    }
 
     // GitHub 官方源
     private const string GITHUB_RELEASE_URL = "https://github.com/yushijinhun/authlib-injector/releases/latest/download/authlib-injector.jar";

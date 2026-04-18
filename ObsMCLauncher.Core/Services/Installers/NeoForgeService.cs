@@ -163,7 +163,7 @@ namespace ObsMCLauncher.Core.Services.Installers
             {
                 Timeout = TimeSpan.FromSeconds(30)
             };
-            _httpClient.DefaultRequestHeaders.Add("User-Agent", "ObsMCLauncher/1.0");
+            _httpClient.DefaultRequestHeaders.Add("User-Agent", VersionInfo.UserAgent);
         }
 
         #region 版本列表获取

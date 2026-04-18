@@ -186,7 +186,7 @@ namespace ObsMCLauncher.Core.Plugins
                 ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
             };
             _httpClient = new HttpClient(handler);
-            _httpClient.DefaultRequestHeaders.Add("User-Agent", "ObsMCLauncher/1.0");
+            _httpClient.DefaultRequestHeaders.Add("User-Agent", VersionInfo.UserAgent);
             _httpClient.Timeout = TimeSpan.FromSeconds(30);
         }
         

@@ -36,7 +36,7 @@ public class AssetsDownloadService
         {
             Timeout = TimeSpan.FromSeconds(60) // 整体超时 60s
         };
-        _httpClient.DefaultRequestHeaders.Add("User-Agent", "ObsMCLauncher/1.0");
+        _httpClient.DefaultRequestHeaders.Add("User-Agent", Utils.VersionInfo.UserAgent);
     }
 
     public static async Task<AssetsDownloadResult> DownloadAndCheckAssetsAsync(

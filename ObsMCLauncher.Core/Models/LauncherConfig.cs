@@ -68,6 +68,9 @@ public class LauncherConfig
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public DownloadSource DownloadSource { get; set; } = DownloadSource.BMCLAPI;
 
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public MirrorSourceMode MirrorSourceMode { get; set; } = MirrorSourceMode.PreferMirror;
+
     public int MaxMemory { get; set; } = 4096;
 
     public int MinMemory { get; set; } = 1024;

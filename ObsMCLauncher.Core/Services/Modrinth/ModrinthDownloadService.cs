@@ -3,7 +3,10 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using ObsMCLauncher.Core.Models;
 using ObsMCLauncher.Core.Services.Download;
+using ObsMCLauncher.Core.Services.Mirror;
+using ObsMCLauncher.Core.Utils;
 
 namespace ObsMCLauncher.Core.Services.Modrinth;
 
@@ -30,7 +33,32 @@ public static class ModrinthDownloadService
 
         try
         {
-            await HttpDownloadService.DownloadFileToPathAsync(file.Url, savePath, task.Id, cts.Token).ConfigureAwait(false);
+            var config = LauncherConfig.Load();
+            var originalUrl = file.Url;
+            var mirrorUrl = MirrorUrlHelper.RewriteUrl(originalUrl);
+            var usedMirror = mirrorUrl != originalUrl;
+
+            if (usedMirror && config.MirrorSourceMode == MirrorSourceMode.PreferMirror && MirrorHealthChecker.IsMirrorAvailable)
+            {
+                try
+                {
+                    await HttpDownloadService.DownloadFileToPathAsync(mirrorUrl, savePath, task.Id, cts.Token).ConfigureAwait(false);
+                    DownloadTaskManager.Instance.CompleteTask(task.Id);
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    DebugLogger.Warn("Modrinth", $"镜像源下载失败: {ex.Message}, 回退到官方源");
+                    MirrorHealthChecker.MarkUnavailable();
+
+                    if (File.Exists(savePath))
+                    {
+                        try { File.Delete(savePath); } catch { }
+                    }
+                }
+            }
+
+            await HttpDownloadService.DownloadFileToPathAsync(originalUrl, savePath, task.Id, cts.Token).ConfigureAwait(false);
             DownloadTaskManager.Instance.CompleteTask(task.Id);
         }
         catch (OperationCanceledException)

@@ -30,6 +30,7 @@ namespace ObsMCLauncher.Core.Services.Installers
             {
                 Timeout = TimeSpan.FromMinutes(10)
             };
+            _httpClient.DefaultRequestHeaders.Add("User-Agent", VersionInfo.UserAgent);
         }
 
         /// <summary>

@@ -5,6 +5,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using ObsMCLauncher.Core.Models;
 using ObsMCLauncher.Core.Services.Download;
+using ObsMCLauncher.Core.Services.Mirror;
+using ObsMCLauncher.Core.Utils;
 
 namespace ObsMCLauncher.Core.Services;
 
@@ -21,7 +23,6 @@ public static class CurseForgeDownloadService
 
         Directory.CreateDirectory(targetDirectory);
 
-        // 优先使用 LatestFilesIndexes 选择更匹配的文件
         CurseForgeFileIndex? index = null;
 
         if (!string.IsNullOrEmpty(gameVersion) && mod.LatestFilesIndexes.Count > 0)
@@ -46,7 +47,6 @@ public static class CurseForgeDownloadService
             file = await CurseForgeService.GetModFileInfoAsync(mod.Id, index.FileId).ConfigureAwait(false);
         }
 
-        // 兜底：取 latestFiles 里第一个
         file ??= mod.LatestFiles.FirstOrDefault();
 
         if (file == null)
@@ -59,8 +59,32 @@ public static class CurseForgeDownloadService
 
         try
         {
-            var url = file.GetDownloadUrl();
-            await HttpDownloadService.DownloadFileToPathAsync(url, savePath, task.Id, cts.Token).ConfigureAwait(false);
+            var config = LauncherConfig.Load();
+            var originalUrl = file.GetDownloadUrl();
+            var mirrorUrl = MirrorUrlHelper.RewriteUrl(originalUrl);
+            var usedMirror = mirrorUrl != originalUrl;
+
+            if (usedMirror && config.MirrorSourceMode == MirrorSourceMode.PreferMirror && MirrorHealthChecker.IsMirrorAvailable)
+            {
+                try
+                {
+                    await HttpDownloadService.DownloadFileToPathAsync(mirrorUrl, savePath, task.Id, cts.Token).ConfigureAwait(false);
+                    DownloadTaskManager.Instance.CompleteTask(task.Id);
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    DebugLogger.Warn("CurseForge", $"镜像源下载失败: {ex.Message}, 回退到官方源");
+                    MirrorHealthChecker.MarkUnavailable();
+
+                    if (File.Exists(savePath))
+                    {
+                        try { File.Delete(savePath); } catch { }
+                    }
+                }
+            }
+
+            await HttpDownloadService.DownloadFileToPathAsync(originalUrl, savePath, task.Id, cts.Token).ConfigureAwait(false);
             DownloadTaskManager.Instance.CompleteTask(task.Id);
         }
         catch (OperationCanceledException)

@@ -29,6 +29,7 @@ namespace ObsMCLauncher.Core.Services
             };
             _httpClient = new HttpClient(handler);
             _httpClient.Timeout = TimeSpan.FromSeconds(30);
+            _httpClient.DefaultRequestHeaders.Add("User-Agent", VersionInfo.UserAgent);
 
             var config = LauncherConfig.Load();
             _skinCacheDir = Path.Combine(config.GetDataDirectory(), "cache", "skins");

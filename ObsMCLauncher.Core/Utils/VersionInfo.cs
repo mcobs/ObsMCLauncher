@@ -25,6 +25,8 @@ public static class VersionInfo
 
     public static string ShortVersion => Version;
 
+    public static string UserAgent => $"{ProductName}/{Version}";
+
     public static string DisplayVersion
     {
         get

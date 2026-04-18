@@ -3,6 +3,7 @@ using System.IO;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using ObsMCLauncher.Core.Utils;
 
 namespace ObsMCLauncher.Core.Services.Download;
 
@@ -27,7 +28,7 @@ public static class HttpDownloadService
         {
             Timeout = TimeSpan.FromMinutes(30)
         };
-        _httpClient.DefaultRequestHeaders.Add("User-Agent", "ObsMCLauncher/1.0");
+        _httpClient.DefaultRequestHeaders.Add("User-Agent", VersionInfo.UserAgent);
         _httpClient.DefaultRequestHeaders.ConnectionClose = false;
     }
 

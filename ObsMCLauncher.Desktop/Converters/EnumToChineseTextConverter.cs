@@ -43,6 +43,16 @@ public class EnumToChineseTextConverter : IValueConverter
             };
         }
 
+        if (value is MirrorSourceMode msm)
+        {
+            return msm switch
+            {
+                MirrorSourceMode.PreferMirror => "优先镜像源",
+                MirrorSourceMode.OfficialOnly => "只使用官方源",
+                _ => msm.ToString()
+            };
+        }
+
         if (value is AccountType at)
         {
             if (parameter?.ToString() == "Icon")

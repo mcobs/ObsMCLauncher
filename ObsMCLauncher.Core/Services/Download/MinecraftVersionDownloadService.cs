@@ -6,6 +6,7 @@ using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using ObsMCLauncher.Core.Models;
+using ObsMCLauncher.Core.Utils;
 
 namespace ObsMCLauncher.Core.Services.Download;
 
@@ -31,7 +32,7 @@ public static class MinecraftVersionDownloadService
             Timeout = TimeSpan.FromMinutes(10)
         };
 
-        _httpClient.DefaultRequestHeaders.Add("User-Agent", "ObsMCLauncher/1.0");
+        _httpClient.DefaultRequestHeaders.Add("User-Agent", Utils.VersionInfo.UserAgent);
         _httpClient.DefaultRequestHeaders.ConnectionClose = false;
     }
 

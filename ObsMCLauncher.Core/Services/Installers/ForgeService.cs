@@ -574,6 +574,12 @@ namespace ObsMCLauncher.Core.Services.Installers
 
         private static readonly HttpClient _httpClient = new HttpClient();
 
+        static ForgeService()
+        {
+            _httpClient.DefaultRequestHeaders.Add("User-Agent", VersionInfo.UserAgent);
+            _httpClient.Timeout = TimeSpan.FromMinutes(10);
+        }
+
         private static async Task ExecuteInstallProfileProcessorsAsync(
             ForgeInstallProfile profile,
             string gameDirectory,

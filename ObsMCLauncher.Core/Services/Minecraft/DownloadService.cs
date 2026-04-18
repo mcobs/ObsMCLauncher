@@ -74,7 +74,7 @@ namespace ObsMCLauncher.Core.Services.Minecraft
                 Timeout = TimeSpan.FromMinutes(10)
             };
 
-            _httpClient.DefaultRequestHeaders.Add("User-Agent", "ObsMCLauncher/1.0");
+            _httpClient.DefaultRequestHeaders.Add("User-Agent", Utils.VersionInfo.UserAgent);
             _httpClient.DefaultRequestHeaders.ConnectionClose = false;
             
             DebugLogger.Info("Download", "HttpClient 已配置 (TLS 1.2/1.3)");

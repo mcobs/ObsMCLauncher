@@ -18,6 +18,7 @@ public class ImageCacheService
 
     static ImageCacheService()
     {
+        _httpClient.DefaultRequestHeaders.Add("User-Agent", VersionInfo.UserAgent);
         if (!Directory.Exists(CacheDir))
         {
             Directory.CreateDirectory(CacheDir);

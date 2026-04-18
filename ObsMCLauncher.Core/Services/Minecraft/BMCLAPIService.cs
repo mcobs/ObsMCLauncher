@@ -27,7 +27,7 @@ namespace ObsMCLauncher.Core.Services.Minecraft
                 Timeout = TimeSpan.FromSeconds(30)
             };
 
-            httpClient.DefaultRequestHeaders.Add("User-Agent", "ObsMCLauncher/1.0");
+            httpClient.DefaultRequestHeaders.Add("User-Agent", VersionInfo.UserAgent);
         }
 
         /// <summary>
