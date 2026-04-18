@@ -1011,6 +1011,24 @@ public class VersionDetailViewModel : ViewModelBase
             IsQuiltVersionsLoaded = false;
             IsOptiFineVersionsLoaded = false;
 
+            ForgeVersionOptions.Clear();
+            ForgeVersionOptions.Add("加载中...");
+            ForgeVersion = "加载中...";
+
+            NeoForgeVersionOptions.Clear();
+            NeoForgeVersionOptions.Add("加载中...");
+            NeoForgeVersion = "加载中...";
+
+            FabricLoaderVersionOptions.Clear();
+            FabricLoaderVersionOptions.Add("加载中...");
+            FabricLoaderVersion = "加载中...";
+
+            QuiltLoaderVersionOptions.Clear();
+            QuiltLoaderVersionOptions.Add("加载中...");
+            QuiltLoaderVersion = "加载中...";
+
+            OptiFineVersionOptions.Clear();
+
             var forgeTask = ForgeService.GetForgeVersionsAsync(SelectedMcVersion);
             var fabricTask = FabricService.GetFabricVersionsAsync(SelectedMcVersion);
             var quiltTask = QuiltService.GetQuiltVersionsAsync(SelectedMcVersion);
@@ -1035,42 +1053,112 @@ public class VersionDetailViewModel : ViewModelBase
         catch (Exception ex)
         {
             Status = $"加载失败: {ex.Message}";
+            SetNoVersionPlaceholders();
+        }
+    }
+
+    private void SetNoVersionPlaceholders()
+    {
+        if (!IsForgeVersionsLoaded)
+        {
+            ForgeVersionOptions.Clear();
+            ForgeVersionOptions.Add("暂无版本");
+            ForgeVersion = "暂无版本";
+        }
+        if (!IsNeoForgeVersionsLoaded)
+        {
+            NeoForgeVersionOptions.Clear();
+            NeoForgeVersionOptions.Add("暂无版本");
+            NeoForgeVersion = "暂无版本";
+        }
+        if (!IsFabricVersionsLoaded)
+        {
+            FabricLoaderVersionOptions.Clear();
+            FabricLoaderVersionOptions.Add("暂无版本");
+            FabricLoaderVersion = "暂无版本";
+        }
+        if (!IsQuiltVersionsLoaded)
+        {
+            QuiltLoaderVersionOptions.Clear();
+            QuiltLoaderVersionOptions.Add("暂无版本");
+            QuiltLoaderVersion = "暂无版本";
+        }
+        if (!IsOptiFineVersionsLoaded)
+        {
+            OptiFineVersionOptions.Clear();
         }
     }
 
     private void UpdateOptions(IEnumerable<string> forge, IEnumerable<string> fabric, IEnumerable<string> quilt, IEnumerable<string> neoForge, IEnumerable<OptifineVersionModel> opti)
     {
         ForgeVersionOptions.Clear();
-        foreach (var v in forge.Distinct()) ForgeVersionOptions.Add(v);
-        ForgeVersion = ForgeVersionOptions.FirstOrDefault() ?? "";
-        IsForgeVersionsLoaded = ForgeVersionOptions.Any();
+        var forgeList = forge.Distinct().ToList();
+        if (forgeList.Count > 0)
+        {
+            foreach (var v in forgeList) ForgeVersionOptions.Add(v);
+            ForgeVersion = ForgeVersionOptions.FirstOrDefault() ?? "";
+            IsForgeVersionsLoaded = true;
+        }
+        else
+        {
+            ForgeVersionOptions.Add("暂无版本");
+            ForgeVersion = "暂无版本";
+            IsForgeVersionsLoaded = false;
+        }
 
         NeoForgeVersionOptions.Clear();
-        foreach (var v in neoForge.Distinct()) NeoForgeVersionOptions.Add(v);
-        NeoForgeVersion = NeoForgeVersionOptions.FirstOrDefault() ?? "";
-        IsNeoForgeVersionsLoaded = NeoForgeVersionOptions.Any();
+        var neoForgeList = neoForge.Distinct().ToList();
+        if (neoForgeList.Count > 0)
+        {
+            foreach (var v in neoForgeList) NeoForgeVersionOptions.Add(v);
+            NeoForgeVersion = NeoForgeVersionOptions.FirstOrDefault() ?? "";
+            IsNeoForgeVersionsLoaded = true;
+        }
+        else
+        {
+            NeoForgeVersionOptions.Add("暂无版本");
+            NeoForgeVersion = "暂无版本";
+            IsNeoForgeVersionsLoaded = false;
+        }
 
         FabricLoaderVersionOptions.Clear();
-        foreach (var v in fabric.Distinct()) FabricLoaderVersionOptions.Add(v);
-        FabricLoaderVersion = FabricLoaderVersionOptions.FirstOrDefault() ?? "";
-        IsFabricVersionsLoaded = FabricLoaderVersionOptions.Any();
+        var fabricList = fabric.Distinct().ToList();
+        if (fabricList.Count > 0)
+        {
+            foreach (var v in fabricList) FabricLoaderVersionOptions.Add(v);
+            FabricLoaderVersion = FabricLoaderVersionOptions.FirstOrDefault() ?? "";
+            IsFabricVersionsLoaded = true;
+        }
+        else
+        {
+            FabricLoaderVersionOptions.Add("暂无版本");
+            FabricLoaderVersion = "暂无版本";
+            IsFabricVersionsLoaded = false;
+        }
 
         QuiltLoaderVersionOptions.Clear();
-        foreach (var v in quilt.Distinct()) QuiltLoaderVersionOptions.Add(v);
-        QuiltLoaderVersion = QuiltLoaderVersionOptions.FirstOrDefault() ?? "";
-        IsQuiltVersionsLoaded = QuiltLoaderVersionOptions.Any();
+        var quiltList = quilt.Distinct().ToList();
+        if (quiltList.Count > 0)
+        {
+            foreach (var v in quiltList) QuiltLoaderVersionOptions.Add(v);
+            QuiltLoaderVersion = QuiltLoaderVersionOptions.FirstOrDefault() ?? "";
+            IsQuiltVersionsLoaded = true;
+        }
+        else
+        {
+            QuiltLoaderVersionOptions.Add("暂无版本");
+            QuiltLoaderVersion = "暂无版本";
+            IsQuiltVersionsLoaded = false;
+        }
 
         OptiFineVersionOptions.Clear();
-        // 排序：按 FullVersion 降序排列（最新优先）
         var sortedOpti = opti.OrderByDescending(x => x.FullVersion).ToList();
         foreach (var v in sortedOpti) OptiFineVersionOptions.Add(v);
         SelectedOptiFineVersion = OptiFineVersionOptions.FirstOrDefault();
         IsOptiFineVersionsLoaded = OptiFineVersionOptions.Any();
 
-        if (!IsForgeVersionsLoaded) Status = "未能获取 Forge 版本列表，请检查网络或下载源";
-        else if (!IsNeoForgeVersionsLoaded) Status = "未能获取 NeoForge 版本列表，请检查网络或下载源";
-        else if (!IsFabricVersionsLoaded) Status = "未能获取 Fabric 版本列表，请检查网络或下载源";
-        else if (!IsQuiltVersionsLoaded) Status = "未能获取 Quilt 版本列表，请检查网络或下载源";
+        if (!IsForgeVersionsLoaded && !IsNeoForgeVersionsLoaded && !IsFabricVersionsLoaded && !IsQuiltVersionsLoaded)
+            Status = "未能获取加载器版本列表，请检查网络或下载源";
         else Status = "加载器列表已更新";
     }
 }

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Text.Json;
@@ -16,6 +17,10 @@ public class ModrinthService
     private const string MirrorBaseUrl = "https://mod.mcimirror.top/modrinth/v2";
 
     private static readonly HttpClient _httpClient;
+    private static readonly ConcurrentDictionary<string, (ModrinthProject data, DateTime expiry)> _projectCache = new();
+    private static readonly ConcurrentDictionary<string, (List<ModrinthVersion> data, DateTime expiry)> _versionCache = new();
+    private static readonly ConcurrentDictionary<string, (Dictionary<string, ModrinthProject> data, DateTime expiry)> _projectsBatchCache = new();
+    private static readonly TimeSpan _cacheDuration = TimeSpan.FromMinutes(5);
 
     static ModrinthService()
     {
@@ -79,19 +84,75 @@ public class ModrinthService
 
     public async Task<ModrinthProject?> GetProjectAsync(string projectId, CancellationToken cancellationToken = default)
     {
+        if (_projectCache.TryGetValue(projectId, out var cached) && cached.expiry > DateTime.Now)
+        {
+            return cached.data;
+        }
+
         var json = await RequestWithFallbackAsync($"/project/{projectId}", cancellationToken).ConfigureAwait(false);
         if (json == null) return null;
 
         try
         {
-            return JsonSerializer.Deserialize<ModrinthProject>(json, new JsonSerializerOptions
+            var project = JsonSerializer.Deserialize<ModrinthProject>(json, new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true
             });
+            if (project != null)
+            {
+                _projectCache[projectId] = (project, DateTime.Now + _cacheDuration);
+            }
+            return project;
         }
         catch
         {
             return null;
+        }
+    }
+
+    public async Task<Dictionary<string, ModrinthProject>?> GetProjectsAsync(IEnumerable<string> projectIds, CancellationToken cancellationToken = default)
+    {
+        var idList = projectIds.Distinct().ToList();
+        if (idList.Count == 0) return new Dictionary<string, ModrinthProject>();
+
+        var result = new Dictionary<string, ModrinthProject>();
+        var uncachedIds = new List<string>();
+
+        foreach (var id in idList)
+        {
+            if (_projectCache.TryGetValue(id, out var cached) && cached.expiry > DateTime.Now)
+            {
+                result[id] = cached.data;
+            }
+            else
+            {
+                uncachedIds.Add(id);
+            }
+        }
+
+        if (uncachedIds.Count == 0) return result;
+
+        var idsParam = Uri.EscapeDataString(JsonSerializer.Serialize(uncachedIds));
+        var json = await RequestWithFallbackAsync($"/projects?ids={idsParam}", cancellationToken).ConfigureAwait(false);
+        if (json == null) return result.Count > 0 ? result : null;
+
+        try
+        {
+            var projects = JsonSerializer.Deserialize<List<ModrinthProject>>(json, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+            if (projects == null) return result.Count > 0 ? result : null;
+            foreach (var p in projects)
+            {
+                result[p.Id] = p;
+                _projectCache[p.Id] = (p, DateTime.Now + _cacheDuration);
+            }
+            return result;
+        }
+        catch
+        {
+            return result.Count > 0 ? result : null;
         }
     }
 
@@ -101,6 +162,12 @@ public class ModrinthService
         string? loader = null,
         CancellationToken cancellationToken = default)
     {
+        var cacheKey = $"{projectId}_v{gameVersion}_l{loader}";
+        if (_versionCache.TryGetValue(cacheKey, out var cached) && cached.expiry > DateTime.Now)
+        {
+            return cached.data;
+        }
+
         var path = $"/project/{projectId}/version";
 
         var hasQuery = false;
@@ -120,10 +187,23 @@ public class ModrinthService
 
         try
         {
-            return JsonSerializer.Deserialize<List<ModrinthVersion>>(json, new JsonSerializerOptions
+            var versions = JsonSerializer.Deserialize<List<ModrinthVersion>>(json, new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true
             });
+            if (versions != null)
+            {
+                _versionCache[cacheKey] = (versions, DateTime.Now + _cacheDuration);
+                var allKey = $"{projectId}_v_l";
+                if (!_versionCache.ContainsKey(allKey) || _versionCache[allKey].expiry <= DateTime.Now)
+                {
+                    if (string.IsNullOrEmpty(gameVersion) && string.IsNullOrEmpty(loader))
+                    {
+                        _versionCache[allKey] = (versions, DateTime.Now + _cacheDuration);
+                    }
+                }
+            }
+            return versions;
         }
         catch
         {

@@ -53,6 +53,19 @@ public partial class ModDetailViewModel : ViewModelBase
     public IRelayCommand BackCommand { get; }
     public IRelayCommand OpenWebsiteCommand { get; }
     public IAsyncRelayCommand<VersionEntryViewModel> DownloadVersionCommand { get; }
+    public IRelayCommand<DependencyItemViewModel> NavigateToDependencyCommand { get; }
+
+    public event Action<object>? DependencyNavigationRequested;
+
+    private static bool IsIncompleteCurseForgeData(CurseForgeMod cf)
+    {
+        return cf.Logo == null || cf.Authors.Count == 0 || string.IsNullOrEmpty(cf.Summary);
+    }
+
+    private static bool IsIncompleteModrinthData(ModrinthSearchHit hit)
+    {
+        return string.IsNullOrEmpty(hit.IconUrl) || string.IsNullOrEmpty(hit.Author);
+    }
 
     public ModDetailViewModel(object rawData, string selectedVersionId, string resourceType, Action? onBack = null)
     {
@@ -64,9 +77,77 @@ public partial class ModDetailViewModel : ViewModelBase
         BackCommand = new RelayCommand(Back);
         OpenWebsiteCommand = new RelayCommand(OpenWebsite, () => !string.IsNullOrEmpty(WebsiteUrl));
         DownloadVersionCommand = new AsyncRelayCommand<VersionEntryViewModel>(DownloadVersionAsync);
+        NavigateToDependencyCommand = new RelayCommand<DependencyItemViewModel>(NavigateToDependency);
 
         LoadHeader();
-        _ = LoadVersionsAsync();
+        _ = LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        try
+        {
+            if (RawData is CurseForgeMod cf && IsIncompleteCurseForgeData(cf))
+            {
+                await LoadHeaderFromFullCurseForgeDataAsync(cf);
+            }
+            else if (RawData is ModrinthSearchHit hit && IsIncompleteModrinthData(hit))
+            {
+                await LoadHeaderFromFullModrinthDataAsync(hit);
+            }
+
+            await LoadVersionsAsync();
+        }
+        finally
+        {
+            IsLoading = false;
+            OnPropertyChanged(nameof(HasAnyGroup));
+        }
+    }
+
+    private async Task LoadHeaderFromFullCurseForgeDataAsync(CurseForgeMod cf)
+    {
+        try
+        {
+            var response = await CurseForgeService.GetModAsync(cf.Id);
+            if (response?.Data is { } fullMod)
+            {
+                var translation = ModTranslationService.Instance.GetTranslationByCurseForgeId(fullMod.Slug)
+                                  ?? ModTranslationService.Instance.GetTranslationByCurseForgeId(fullMod.Id);
+                DisplayName = ModTranslationService.Instance.GetDisplayName(fullMod.Name, translation);
+                Summary = fullMod.Summary;
+                AuthorDisplay = fullMod.Authors.Count > 0
+                    ? $"作者: {string.Join(", ", fullMod.Authors.Select(a => a.Name))}"
+                    : "作者: 未知";
+                DownloadsDisplay = $"下载量: {CurseForgeService.FormatDownloadCount(fullMod.DownloadCount)}";
+                LastUpdateDisplay = $"更新: {fullMod.DateModified:yyyy-MM-dd}";
+                WebsiteUrl = fullMod.Links?.WebsiteUrl ?? "";
+                WebsiteButtonText = "访问curseforge";
+                await LoadIconAsync(fullMod.Logo?.Url);
+            }
+        }
+        catch { }
+    }
+
+    private async Task LoadHeaderFromFullModrinthDataAsync(ModrinthSearchHit hit)
+    {
+        try
+        {
+            var project = await _modrinth.GetProjectAsync(hit.ProjectId, _cts.Token);
+            if (project != null)
+            {
+                var translation = ModTranslationService.Instance.GetTranslationByCurseForgeId(project.Id);
+                DisplayName = ModTranslationService.Instance.GetDisplayName(project.Title, translation);
+                Summary = project.Description ?? string.Empty;
+                AuthorDisplay = !string.IsNullOrEmpty(project.Author) ? $"作者: {project.Author}" : "作者: 未知";
+                DownloadsDisplay = $"下载量: {CurseForgeService.FormatDownloadCount(project.Downloads)}";
+                LastUpdateDisplay = project.DateModified != default ? $"更新: {project.DateModified:yyyy-MM-dd}" : string.Empty;
+                WebsiteUrl = $"https://modrinth.com/project/{project.Id}";
+                WebsiteButtonText = "访问modrinth";
+                await LoadIconAsync(project.IconUrl);
+            }
+        }
+        catch { }
     }
 
     private void Back()
@@ -88,6 +169,22 @@ public partial class ModDetailViewModel : ViewModelBase
         }
         catch
         {
+        }
+    }
+
+    private void NavigateToDependency(DependencyItemViewModel? dep)
+    {
+        if (dep == null) return;
+
+        if (dep.BackendType == VersionBackendType.CurseForge && dep.CurseForgeModId > 0)
+        {
+            var fakeMod = new CurseForgeMod { Id = dep.CurseForgeModId, Name = dep.Name, Slug = "" };
+            DependencyNavigationRequested?.Invoke(fakeMod);
+        }
+        else if (dep.BackendType == VersionBackendType.Modrinth && !string.IsNullOrEmpty(dep.ProjectId))
+        {
+            var fakeHit = new ModrinthSearchHit { ProjectId = dep.ProjectId, Title = dep.Name };
+            DependencyNavigationRequested?.Invoke(fakeHit);
         }
     }
 
@@ -142,24 +239,137 @@ public partial class ModDetailViewModel : ViewModelBase
 
     private async Task LoadVersionsAsync()
     {
-        try
-        {
-            IsLoading = true;
-            VersionGroups.Clear();
+        IsLoading = true;
+        VersionGroups.Clear();
 
-            if (RawData is CurseForgeMod cf)
+        if (RawData is CurseForgeMod cf)
+        {
+            await LoadCurseForgeVersionsAsync(cf, _cts.Token);
+        }
+        else if (RawData is ModrinthSearchHit hit)
+        {
+            await LoadModrinthVersionsAsync(hit, _cts.Token);
+        }
+
+        await LoadDependenciesAsync();
+    }
+
+    private async Task LoadDependenciesAsync()
+    {
+        var cfDepModIds = new HashSet<int>();
+        var modrinthDepProjectIds = new HashSet<string>();
+
+        foreach (var group in VersionGroups)
+        {
+            foreach (var entry in group.Files)
             {
-                await LoadCurseForgeVersionsAsync(cf, _cts.Token);
-            }
-            else if (RawData is ModrinthSearchHit hit)
-            {
-                await LoadModrinthVersionsAsync(hit, _cts.Token);
+                if (entry.BackendType == VersionBackendType.CurseForge && entry.CurseForgeFile?.Dependencies != null)
+                {
+                    foreach (var dep in entry.CurseForgeFile.Dependencies)
+                    {
+                        if (dep.ModId > 0 && dep.RelationTypeKind is CurseForgeDependencyType.Required or CurseForgeDependencyType.Optional)
+                            cfDepModIds.Add(dep.ModId);
+                    }
+                }
+                else if (entry.BackendType == VersionBackendType.Modrinth && entry.ModrinthVersion?.Dependencies != null)
+                {
+                    foreach (var dep in entry.ModrinthVersion.Dependencies)
+                    {
+                        if (!string.IsNullOrEmpty(dep.ProjectId) && dep is { IsRequired: true } or { IsOptional: true })
+                            modrinthDepProjectIds.Add(dep.ProjectId);
+                    }
+                }
             }
         }
-        finally
+
+        Dictionary<int, CurseForgeMod>? cfMods = null;
+        Dictionary<string, ModrinthProject>? modrinthProjects = null;
+
+        var tasks = new List<Task>();
+        if (cfDepModIds.Count > 0)
         {
-            IsLoading = false;
-            OnPropertyChanged(nameof(HasAnyGroup));
+            tasks.Add(Task.Run(async () =>
+            {
+                try { cfMods = await CurseForgeService.GetModsAsync(cfDepModIds).ConfigureAwait(false); }
+                catch { }
+            }));
+        }
+        if (modrinthDepProjectIds.Count > 0)
+        {
+            tasks.Add(Task.Run(async () =>
+            {
+                try { modrinthProjects = await _modrinth.GetProjectsAsync(modrinthDepProjectIds, _cts.Token).ConfigureAwait(false); }
+                catch { }
+            }));
+        }
+        if (tasks.Count > 0)
+            await Task.WhenAll(tasks).ConfigureAwait(false);
+
+        foreach (var group in VersionGroups)
+        {
+            foreach (var entry in group.Files)
+            {
+                if (entry.BackendType == VersionBackendType.CurseForge && entry.CurseForgeFile?.Dependencies != null)
+                {
+                    foreach (var dep in entry.CurseForgeFile.Dependencies)
+                    {
+                        if (dep.ModId <= 0) continue;
+                        var isRequired = dep.RelationTypeKind is CurseForgeDependencyType.Required;
+                        var isOptional = dep.RelationTypeKind is CurseForgeDependencyType.Optional;
+                        if (!isRequired && !isOptional) continue;
+
+                        var depName = cfMods?.TryGetValue(dep.ModId, out var mod) == true ? mod.Name : $"Mod #{dep.ModId}";
+                        var translation = cfMods?.TryGetValue(dep.ModId, out var tmod) == true
+                            ? ModTranslationService.Instance.GetTranslationByCurseForgeId(tmod.Slug)
+                              ?? ModTranslationService.Instance.GetTranslationByCurseForgeId(tmod.Id)
+                            : null;
+                        if (translation != null)
+                            depName = ModTranslationService.Instance.GetDisplayName(depName, translation);
+
+                        entry.Dependencies.Add(new DependencyItemViewModel
+                        {
+                            BackendType = VersionBackendType.CurseForge,
+                            Name = depName,
+                            DependencyType = isRequired ? "必需" : "可选",
+                            IsRequired = isRequired,
+                            CurseForgeModId = dep.ModId
+                        });
+                    }
+                }
+                else if (entry.BackendType == VersionBackendType.Modrinth && entry.ModrinthVersion?.Dependencies != null)
+                {
+                    foreach (var dep in entry.ModrinthVersion.Dependencies)
+                    {
+                        if (string.IsNullOrEmpty(dep.ProjectId)) continue;
+                        if (!dep.IsRequired && !dep.IsOptional) continue;
+
+                        var depName = modrinthProjects?.TryGetValue(dep.ProjectId, out var proj) == true ? proj.Title : dep.ProjectId;
+                        var translation = ModTranslationService.Instance.GetTranslationByCurseForgeId(dep.ProjectId);
+                        if (translation != null)
+                            depName = ModTranslationService.Instance.GetDisplayName(depName, translation);
+
+                        entry.Dependencies.Add(new DependencyItemViewModel
+                        {
+                            BackendType = VersionBackendType.Modrinth,
+                            Name = depName,
+                            DependencyType = dep.IsRequired ? "必需" : "可选",
+                            IsRequired = dep.IsRequired,
+                            ProjectId = dep.ProjectId
+                        });
+                    }
+                }
+
+                if (entry.Dependencies.Count > 0)
+                {
+                    entry.HasDependencies = true;
+                    var requiredCount = entry.Dependencies.Count(d => d.IsRequired);
+                    var optionalCount = entry.Dependencies.Count(d => !d.IsRequired);
+                    var parts = new List<string>();
+                    if (requiredCount > 0) parts.Add($"{requiredCount} 个必需");
+                    if (optionalCount > 0) parts.Add($"{optionalCount} 个可选");
+                    entry.DependenciesDisplay = $"前置: {string.Join(", ", parts)}";
+                }
+            }
         }
     }
 
@@ -725,4 +935,22 @@ public partial class VersionEntryViewModel : ObservableObject
     [ObservableProperty] private string _dateDisplay = string.Empty;
     [ObservableProperty] private string _mcVersionsDisplay = string.Empty;
     [ObservableProperty] private string _sizeDisplay = string.Empty;
+    [ObservableProperty] private bool _hasDependencies;
+    [ObservableProperty] private string _dependenciesDisplay = string.Empty;
+
+    public ObservableCollection<DependencyItemViewModel> Dependencies { get; } = new();
+}
+
+public partial class DependencyItemViewModel : ObservableObject
+{
+    public VersionBackendType BackendType { get; set; }
+
+    [ObservableProperty] private string _name = string.Empty;
+    [ObservableProperty] private string _dependencyType = string.Empty;
+    [ObservableProperty] private bool _isRequired;
+    [ObservableProperty] private string _projectId = string.Empty;
+    [ObservableProperty] private int _curseForgeModId;
+
+    public string TypeTag => IsRequired ? "必需" : "可选";
+    public string TypeTagColor => IsRequired ? "#E74C3C" : "#95A5A6";
 }

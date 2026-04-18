@@ -34,6 +34,10 @@ public partial class ResourcesViewModel : ViewModelBase
     private readonly System.Collections.Concurrent.ConcurrentDictionary<string, List<string>> _modrinthVersionCache = new();
     private readonly SemaphoreSlim _modrinthVersionsSemaphore = new(6, 6);
 
+    private CancellationTokenSource? _searchCts;
+    private readonly SemaphoreSlim _debounceLock = new(1, 1);
+    private CancellationTokenSource? _debounceCts;
+
     // --- 状态定义 ---
     [ObservableProperty] private string _query = "";
     [ObservableProperty] private string _status = "输入关键词开始搜索";
@@ -89,6 +93,33 @@ public partial class ResourcesViewModel : ViewModelBase
 
         LoadInstalledVersions();
         _ = SearchAsync();
+    }
+
+    partial void OnQueryChanged(string value)
+    {
+        if (!IsViewReady) return;
+
+        _debounceCts?.Cancel();
+        _debounceCts = new CancellationTokenSource();
+        _ = DebouncedSearchAsync(_debounceCts.Token);
+    }
+
+    private async Task DebouncedSearchAsync(CancellationToken ct)
+    {
+        try
+        {
+            await Task.Delay(300, ct).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+
+        await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(async () =>
+        {
+            if (!ct.IsCancellationRequested)
+                await SearchAsync();
+        });
     }
 
     private void UpdateAvailableSortOptions()
@@ -228,12 +259,26 @@ public partial class ResourcesViewModel : ViewModelBase
     {
         if (item?.RawData == null) return;
         var selectedVersion = SelectedVersionId ?? LauncherConfig.Load().SelectedVersion ?? string.Empty;
-        DetailViewModel = new ModDetailViewModel(item.RawData, selectedVersion, CurrentResourceType, () => DetailViewModel = null);
+        var detailVm = new ModDetailViewModel(item.RawData, selectedVersion, CurrentResourceType, () => DetailViewModel = null);
+        detailVm.DependencyNavigationRequested += rawDep => OpenDetailByRawData(rawDep);
+        DetailViewModel = detailVm;
+    }
+
+    private void OpenDetailByRawData(object rawData)
+    {
+        var selectedVersion = SelectedVersionId ?? LauncherConfig.Load().SelectedVersion ?? string.Empty;
+        var detailVm = new ModDetailViewModel(rawData, selectedVersion, CurrentResourceType, () => DetailViewModel = null);
+        detailVm.DependencyNavigationRequested += rawDep => OpenDetailByRawData(rawDep);
+        DetailViewModel = detailVm;
     }
 
     private async Task SearchAsync()
     {
         if (IsLoading) return;
+
+        _searchCts?.Cancel();
+        _searchCts = new CancellationTokenSource();
+        var ct = _searchCts.Token;
 
         try
         {
@@ -245,23 +290,38 @@ public partial class ResourcesViewModel : ViewModelBase
             if (VersionFilter != "全部版本") gameVersion = VersionFilter;
             else if (!string.IsNullOrEmpty(SelectedVersionId)) gameVersion = ExtractGameVersion(SelectedVersionId);
 
+            var chineseMatchTasks = SearchByChineseTranslation(gameVersion, ct);
+
             if (CurrentSource == ResourceSource.Both)
             {
                 await Task.WhenAll(
-                    SearchCurseForge(gameVersion),
-                    SearchModrinth(gameVersion)
+                    SearchCurseForge(gameVersion, ct),
+                    SearchModrinth(gameVersion, ct),
+                    chineseMatchTasks
                 );
             }
             else if (CurrentSource == ResourceSource.CurseForge)
             {
-                await SearchCurseForge(gameVersion).ConfigureAwait(false);
+                await Task.WhenAll(
+                    SearchCurseForge(gameVersion, ct),
+                    chineseMatchTasks
+                );
             }
             else
             {
-                await SearchModrinth(gameVersion).ConfigureAwait(false);
+                await Task.WhenAll(
+                    SearchModrinth(gameVersion, ct),
+                    chineseMatchTasks
+                );
             }
 
+            ApplyFuzzyFilter();
+
             Status = Results.Count > 0 ? $"找到 {Results.Count} 个资源" : "未找到匹配资源";
+        }
+        catch (OperationCanceledException)
+        {
+            Status = "搜索已取消";
         }
         catch (Exception ex)
         {
@@ -273,13 +333,164 @@ public partial class ResourcesViewModel : ViewModelBase
         }
     }
 
+    private async Task SearchByChineseTranslation(string gameVersion, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(Query)) return;
+
+        var allTranslations = _translation.GetAllTranslations();
+        var lowerQuery = Query.ToLowerInvariant();
+        var matchedTranslations = allTranslations.Where(t =>
+        {
+            if (t.ChineseName.Contains(lowerQuery, StringComparison.OrdinalIgnoreCase)) return true;
+            if (!string.IsNullOrWhiteSpace(t.Abbreviation) &&
+                t.Abbreviation.Contains(lowerQuery, StringComparison.OrdinalIgnoreCase)) return true;
+            return false;
+        }).ToList();
+
+        if (matchedTranslations.Count == 0) return;
+
+        var existingIds = new HashSet<string>();
+        await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            foreach (var item in Results)
+                existingIds.Add(item.Id);
+        });
+
+        var curseForgeIds = matchedTranslations
+            .Where(t => int.TryParse(t.CurseForgeId, out _))
+            .Select(t => int.Parse(t.CurseForgeId))
+            .Where(id => !existingIds.Contains(id.ToString()))
+            .Take(10)
+            .ToList();
+
+        if (curseForgeIds.Count > 0 && (CurrentSource == ResourceSource.CurseForge || CurrentSource == ResourceSource.Both))
+        {
+            try
+            {
+                var mods = await CurseForgeService.GetModsAsync(curseForgeIds).ConfigureAwait(false);
+                if (mods != null)
+                {
+                    var items = new List<ResourceItemViewModel>();
+                    var tasks = new List<Task>();
+                    foreach (var mod in mods.Values)
+                    {
+                        if (existingIds.Contains(mod.Id.ToString())) continue;
+                        var translation = _translation.GetTranslationByCurseForgeId(mod.Slug)
+                                       ?? _translation.GetTranslationByCurseForgeId(mod.Id);
+                        var item = new ResourceItemViewModel(mod, translation);
+                        items.Add(item);
+                        tasks.Add(item.LoadIconAsync());
+                        existingIds.Add(mod.Id.ToString());
+                    }
+                    await Task.WhenAll(tasks);
+                    await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+                    {
+                        foreach (var item in items)
+                            Results.Add(item);
+                    });
+                }
+            }
+            catch (OperationCanceledException) { throw; }
+            catch { }
+        }
+
+        var modrinthIds = matchedTranslations
+            .SelectMany(t => t.ModIds)
+            .Where(id => !string.IsNullOrWhiteSpace(id) && !existingIds.Contains(id))
+            .Take(10)
+            .ToList();
+
+        if (modrinthIds.Count > 0 && (CurrentSource == ResourceSource.Modrinth || CurrentSource == ResourceSource.Both))
+        {
+            try
+            {
+                var projects = await _modrinth.GetProjectsAsync(modrinthIds, ct).ConfigureAwait(false);
+                if (projects != null)
+                {
+                    var items = new List<ResourceItemViewModel>();
+                    var tasks = new List<Task>();
+                    foreach (var project in projects.Values)
+                    {
+                        if (existingIds.Contains(project.Id)) continue;
+                        var translation = _translation.GetTranslationByCurseForgeId(project.Id);
+                        var hit = new ModrinthSearchHit
+                        {
+                            ProjectId = project.Id,
+                            Title = project.Title,
+                            Description = project.Description,
+                            IconUrl = null
+                        };
+                        var item = new ResourceItemViewModel(hit, translation);
+                        items.Add(item);
+                        tasks.Add(item.LoadIconAsync());
+                        existingIds.Add(project.Id);
+                    }
+                    await Task.WhenAll(tasks);
+                    await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+                    {
+                        foreach (var item in items)
+                            Results.Add(item);
+                    });
+                }
+            }
+            catch (OperationCanceledException) { throw; }
+            catch { }
+        }
+    }
+
+    private void ApplyFuzzyFilter()
+    {
+        if (string.IsNullOrWhiteSpace(Query)) return;
+
+        var lowerQuery = Query.ToLowerInvariant();
+        var toRemove = new List<ResourceItemViewModel>();
+
+        foreach (var item in Results)
+        {
+            var translation = _translation.GetTranslationByCurseForgeId(item.Id);
+            if (translation == null && item.RawData is CurseForgeMod cf)
+                translation = _translation.GetTranslationByCurseForgeId(cf.Slug)
+                           ?? _translation.GetTranslationByCurseForgeId(cf.Id);
+
+            bool matches = item.Title.Contains(lowerQuery, StringComparison.OrdinalIgnoreCase)
+                        || item.DisplayName.Contains(lowerQuery, StringComparison.OrdinalIgnoreCase)
+                        || item.Description.Contains(lowerQuery, StringComparison.OrdinalIgnoreCase);
+
+            if (!matches && translation != null)
+            {
+                matches = _translation.MatchesSearch(item.Title, translation, Query);
+            }
+
+            if (!matches)
+            {
+                var words = lowerQuery.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                if (words.Length > 1)
+                {
+                    matches = words.All(w =>
+                        item.Title.Contains(w, StringComparison.OrdinalIgnoreCase)
+                        || item.DisplayName.Contains(w, StringComparison.OrdinalIgnoreCase)
+                        || (translation != null && (
+                            translation.ChineseName.Contains(w, StringComparison.OrdinalIgnoreCase)
+                            || (translation.Abbreviation?.Contains(w, StringComparison.OrdinalIgnoreCase) ?? false)))
+                    );
+                }
+            }
+
+            if (!matches)
+                toRemove.Add(item);
+        }
+
+        foreach (var item in toRemove)
+            Results.Remove(item);
+    }
+
     private static string ExtractGameVersion(string versionId)
     {
         var match = System.Text.RegularExpressions.Regex.Match(versionId, @"^(\d+\.\d+(?:\.\d+)?)");
         return match.Success ? match.Groups[1].Value : "";
     }
 
-    private async Task SearchCurseForge(string gameVersion)
+    private async Task SearchCurseForge(string gameVersion, CancellationToken ct)
     {
         int classId = CurrentResourceType switch
         {
@@ -304,6 +515,7 @@ public partial class ResourcesViewModel : ViewModelBase
         var tasks = new List<Task>();
         foreach (var mod in response.Data)
         {
+            ct.ThrowIfCancellationRequested();
             var translation = _translation.GetTranslationByCurseForgeId(mod.Slug)
                            ?? _translation.GetTranslationByCurseForgeId(mod.Id);
 
@@ -320,7 +532,7 @@ public partial class ResourcesViewModel : ViewModelBase
         });
     }
 
-    private async Task SearchModrinth(string gameVersion)
+    private async Task SearchModrinth(string gameVersion, CancellationToken ct)
     {
         string projectType = CurrentResourceType switch
         {
@@ -345,6 +557,7 @@ public partial class ResourcesViewModel : ViewModelBase
         var tasks = new List<Task>();
         foreach (var hit in response.Hits)
         {
+            ct.ThrowIfCancellationRequested();
             var translation = _translation.GetTranslationByCurseForgeId(hit.ProjectId);
 
             var item = new ResourceItemViewModel(hit, translation);

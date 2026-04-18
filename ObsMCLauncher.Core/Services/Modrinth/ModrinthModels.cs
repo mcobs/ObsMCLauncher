@@ -56,6 +56,18 @@ public class ModrinthProject
 
     [JsonPropertyName("body")]
     public string Body { get; set; } = "";
+
+    [JsonPropertyName("icon_url")]
+    public string? IconUrl { get; set; }
+
+    [JsonPropertyName("author")]
+    public string? Author { get; set; }
+
+    [JsonPropertyName("downloads")]
+    public int Downloads { get; set; }
+
+    [JsonPropertyName("updated")]
+    public DateTime DateModified { get; set; }
 }
 
 public class ModrinthVersion
@@ -77,6 +89,25 @@ public class ModrinthVersion
 
     [JsonPropertyName("files")]
     public List<ModrinthVersionFile> Files { get; set; } = new();
+
+    [JsonPropertyName("dependencies")]
+    public List<ModrinthDependency> Dependencies { get; set; } = new();
+}
+
+public class ModrinthDependency
+{
+    [JsonPropertyName("project_id")]
+    public string? ProjectId { get; set; }
+
+    [JsonPropertyName("version_id")]
+    public string? VersionId { get; set; }
+
+    [JsonPropertyName("dependency_type")]
+    public string DependencyType { get; set; } = "";
+
+    public bool IsRequired => string.Equals(DependencyType, "required", StringComparison.OrdinalIgnoreCase);
+    public bool IsOptional => string.Equals(DependencyType, "optional", StringComparison.OrdinalIgnoreCase);
+    public bool IsIncompatible => string.Equals(DependencyType, "incompatible", StringComparison.OrdinalIgnoreCase);
 }
 
 public class ModrinthVersionFile

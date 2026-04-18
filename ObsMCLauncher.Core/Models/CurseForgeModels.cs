@@ -313,6 +313,18 @@ public class CurseForgeDependency
 
     [JsonPropertyName("relationType")]
     public int RelationType { get; set; }
+
+    public CurseForgeDependencyType RelationTypeKind => (CurseForgeDependencyType)RelationType;
+}
+
+public enum CurseForgeDependencyType
+{
+    Embedded = 1,
+    Optional = 2,
+    Required = 3,
+    Tool = 4,
+    Incompatible = 5,
+    Include = 6
 }
 
 public class CurseForgeModule

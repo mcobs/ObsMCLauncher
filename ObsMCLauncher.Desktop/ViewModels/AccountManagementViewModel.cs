@@ -211,10 +211,18 @@ public partial class AccountManagementViewModel : ViewModelBase
                 }
 
                 Status = "已设置为默认账号";
-                
+
                 if (NavigationStore.MainWindow?.NavItems.FirstOrDefault(x => x.Title == "主页")?.Page is HomeViewModel homeVm)
                 {
-                    homeVm.RefreshAccounts();
+                    foreach (var a in homeVm.Accounts)
+                    {
+                        a.IsDefault = a.Id == acc.Id;
+                    }
+                    var homeAcc = homeVm.Accounts.FirstOrDefault(a => a.Id == acc.Id);
+                    if (homeAcc != null)
+                    {
+                        homeVm.SelectedAccount = homeAcc;
+                    }
                 }
             }
             catch (Exception ex)

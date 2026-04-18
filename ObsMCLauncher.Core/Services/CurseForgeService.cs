@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -25,6 +26,10 @@ public static class CurseForgeService
     public const int SECTION_WORLDS = 17;
 
     private const int MINECRAFT_GAME_ID = 432;
+
+    private static readonly ConcurrentDictionary<int, (CurseForgeMod data, DateTime expiry)> _modCache = new();
+    private static readonly ConcurrentDictionary<string, (List<CurseForgeFile> data, DateTime expiry)> _filesCache = new();
+    private static readonly TimeSpan _cacheDuration = TimeSpan.FromMinutes(5);
 
     static CurseForgeService()
     {
@@ -97,18 +102,72 @@ public static class CurseForgeService
 
     public static async Task<CurseForgeResponse<CurseForgeMod>?> GetModAsync(int modId)
     {
+        if (_modCache.TryGetValue(modId, out var cached) && cached.expiry > DateTime.Now)
+        {
+            return new CurseForgeResponse<CurseForgeMod> { Data = cached.data };
+        }
+
         var json = await RequestWithFallbackAsync($"/v1/mods/{modId}").ConfigureAwait(false);
         if (json == null) return null;
 
         try
         {
             var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-            return JsonSerializer.Deserialize<CurseForgeResponse<CurseForgeMod>>(json, options);
+            var result = JsonSerializer.Deserialize<CurseForgeResponse<CurseForgeMod>>(json, options);
+            if (result?.Data != null)
+            {
+                _modCache[modId] = (result.Data, DateTime.Now + _cacheDuration);
+            }
+            return result;
         }
         catch (Exception ex)
         {
             DebugLogger.Error("CurseForge", $"获取MOD详情解析失败: {ex.Message}");
             return null;
+        }
+    }
+
+    public static async Task<Dictionary<int, CurseForgeMod>?> GetModsAsync(IEnumerable<int> modIds)
+    {
+        var idList = modIds.Distinct().ToList();
+        if (idList.Count == 0) return new Dictionary<int, CurseForgeMod>();
+
+        var result = new Dictionary<int, CurseForgeMod>();
+        var uncachedIds = new List<int>();
+
+        foreach (var id in idList)
+        {
+            if (_modCache.TryGetValue(id, out var cached) && cached.expiry > DateTime.Now)
+            {
+                result[id] = cached.data;
+            }
+            else
+            {
+                uncachedIds.Add(id);
+            }
+        }
+
+        if (uncachedIds.Count == 0) return result;
+
+        var json = await RequestWithFallbackAsync($"/v1/mods?modIds={Uri.EscapeDataString(JsonSerializer.Serialize(uncachedIds))}").ConfigureAwait(false);
+        if (json == null) return result.Count > 0 ? result : null;
+
+        try
+        {
+            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            var response = JsonSerializer.Deserialize<CurseForgeResponse<List<CurseForgeMod>>>(json, options);
+            if (response?.Data == null) return result.Count > 0 ? result : null;
+            foreach (var mod in response.Data)
+            {
+                result[mod.Id] = mod;
+                _modCache[mod.Id] = (mod, DateTime.Now + _cacheDuration);
+            }
+            return result;
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Error("CurseForge", $"批量获取MOD信息解析失败: {ex.Message}");
+            return result.Count > 0 ? result : null;
         }
     }
 
