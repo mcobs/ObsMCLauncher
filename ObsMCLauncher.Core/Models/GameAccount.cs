@@ -15,7 +15,20 @@ public class GameAccount : INotifyPropertyChanged
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
 
-    public string Username { get; set; } = string.Empty;
+    private string _username = string.Empty;
+
+    public string Username
+    {
+        get => _username;
+        set
+        {
+            if (_username != value)
+            {
+                _username = value;
+                OnPropertyChanged();
+            }
+        }
+    }
 
     public AccountType Type { get; set; }
 
@@ -23,7 +36,20 @@ public class GameAccount : INotifyPropertyChanged
 
     public string UUID { get; set; } = Guid.NewGuid().ToString("N");
 
-    public bool IsDefault { get; set; }
+    private bool _isDefault;
+
+    public bool IsDefault
+    {
+        get => _isDefault;
+        set
+        {
+            if (_isDefault != value)
+            {
+                _isDefault = value;
+                OnPropertyChanged();
+            }
+        }
+    }
 
     public DateTime CreatedAt { get; set; } = DateTime.Now;
 

@@ -204,10 +204,14 @@ public partial class AccountManagementViewModel : ViewModelBase
             try
             {
                 AccountService.Instance.SetDefaultAccount(acc.Id);
-                Load();
+
+                foreach (var a in Accounts)
+                {
+                    a.IsDefault = a.Id == acc.Id;
+                }
+
                 Status = "已设置为默认账号";
                 
-                // 通知主页刷新账号列表
                 if (NavigationStore.MainWindow?.NavItems.FirstOrDefault(x => x.Title == "主页")?.Page is HomeViewModel homeVm)
                 {
                     homeVm.RefreshAccounts();
@@ -496,24 +500,33 @@ public partial class AccountManagementViewModel : ViewModelBase
             AccountService.Instance.ReloadAccountsPath();
             var list = AccountService.Instance.GetAllAccounts();
 
-            // 修复：使用更稳健的同步逻辑，避免清空列表导致的 UI 闪烁或状态丢失
             var toRemove = Accounts.Where(a => !list.Any(l => l.Id == a.Id)).ToList();
             foreach (var a in toRemove) Accounts.Remove(a);
 
-            foreach (var a in list)
+            for (var i = 0; i < list.Count; i++)
             {
+                var a = list[i];
                 var existing = Accounts.FirstOrDefault(acc => acc.Id == a.Id);
                 if (existing == null)
                 {
-                    Accounts.Add(a);
+                    var insertIndex = Accounts.Count > i ? i : Accounts.Count;
+                    Accounts.Insert(insertIndex, a);
                     LoadSingleAccountAvatar(a);
                 }
                 else
                 {
-                    // 更新现有账号属性
-                    existing.Username = a.Username;
-                    existing.IsDefault = a.IsDefault;
+                    if (existing.Username != a.Username)
+                        existing.Username = a.Username;
+                    if (existing.IsDefault != a.IsDefault)
+                        existing.IsDefault = a.IsDefault;
                     if (existing.Avatar == null) LoadSingleAccountAvatar(existing);
+
+                    var currentIndex = Accounts.IndexOf(existing);
+                    if (currentIndex != i)
+                    {
+                        Accounts.Remove(existing);
+                        Accounts.Insert(i, existing);
+                    }
                 }
             }
 

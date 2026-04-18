@@ -86,7 +86,17 @@
                   <StackPanel Grid.Column="1" VerticalAlignment="Center">
                     <StackPanel Orientation="Horizontal" Spacing="6">
                       <TextBlock Text="{Binding Username}" FontSize="15" FontWeight="SemiBold"/>
-                      <Border Background="{DynamicResource PrimaryBrush}" CornerRadius="4" Padding="6,1" IsVisible="{Binding IsDefault}" VerticalAlignment="Center">
+                      <Border Background="{DynamicResource PrimaryBrush}" CornerRadius="4" Padding="6,1"
+                              VerticalAlignment="Center"
+                              Opacity="{Binding IsDefault, Converter={x:Static converters:BoolToDoubleConverter.Instance}, ConverterParameter='1,0'}"
+                              RenderTransform="{Binding IsDefault, Converter={x:Static converters:BoolToTransformConverter.Instance}, ConverterParameter='scale(1)|scale(0.8)'}"
+                              IsHitTestVisible="False">
+                        <Border.Transitions>
+                          <Transitions>
+                            <DoubleTransition Property="Opacity" Duration="0:0:0.3" Easing="CircularEaseOut"/>
+                            <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.3" Easing="CircularEaseOut"/>
+                          </Transitions>
+                        </Border.Transitions>
                         <TextBlock Text="默认" FontSize="10" FontWeight="SemiBold" Foreground="White"/>
                       </Border>
                     </StackPanel>
@@ -94,10 +104,10 @@
                   </StackPanel>
 
                   <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
-                    <Button Command="{Binding #AccountPage.DataContext.RefreshAccountCommand}" 
+                    <Button Command="{Binding #AccountPage.DataContext.RefreshAccountCommand}"
                             CommandParameter="{Binding}"
                             Classes="ghost"
-                            IsEnabled="{Binding #AccountPage.DataContext.IsRefreshing}"
+                            IsEnabled="{Binding #AccountPage.DataContext.IsRefreshing, Converter={x:Static converters:NotConverter.Instance}}"
                             ToolTip.Tip="刷新账号">
                       <Panel Width="18" Height="18">
                         <Path Data="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"
