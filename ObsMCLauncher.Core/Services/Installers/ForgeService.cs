@@ -184,7 +184,9 @@ namespace ObsMCLauncher.Core.Services.Installers
             Action<string, double>? progressCallback = null,
             Action<ObsMCLauncher.Core.Services.Minecraft.DownloadProgress>? detailedProgressCallback = null,
             bool isModpackMode = false,
-            string? realGameDirectory = null)
+            string? realGameDirectory = null,
+            Action<string>? onInstallerOutput = null,
+            CancellationToken cancellationToken = default)
         {
             var finalRealGameDir = realGameDirectory ?? gameDirectory;
             var config = LauncherConfig.Load();
@@ -234,7 +236,7 @@ namespace ObsMCLauncher.Core.Services.Installers
                             double percentage = totalBytes > 0 ? (double)currentBytes / totalBytes * 100 : 0;
                             progressCallback?.Invoke("正在下载Forge安装器...", Math.Min(30, percentage * 0.3));
                         },
-                        default))
+                        cancellationToken))
                 {
                     throw new Exception("Forge安装器下载失败，请检查网络连接");
                 }
@@ -242,7 +244,7 @@ namespace ObsMCLauncher.Core.Services.Installers
                 // === 阶段2: 在.temp中准备原版MC (30-45%) ===
                 Directory.CreateDirectory(tempVersionsDir);
                 progressCallback?.Invoke("正在下载原版Minecraft...", 30);
-                await DownloadVanillaForForge(tempGameDir, mcVersion, tempVanillaDir, progress, default);
+                await DownloadVanillaForForge(tempGameDir, mcVersion, tempVanillaDir, progress, cancellationToken);
 
                 // === 阶段3: 运行官方安装器 (45-80%) ===
                 progressCallback?.Invoke("执行Forge安装器...", 45);
@@ -280,22 +282,22 @@ namespace ObsMCLauncher.Core.Services.Installers
                 {
                     // 新版Forge(1.13+): 先下载install_profile中的库，再运行安装器
                     progressCallback?.Invoke("正在准备Forge依赖库...", 48);
-                    await DownloadInstallerLibrariesAsync(installerPath, tempGameDir, progressCallback, default);
+                    await DownloadInstallerLibrariesAsync(installerPath, tempGameDir, progressCallback, cancellationToken);
 
                     progressCallback?.Invoke("正在运行Forge安装器...", 55);
-                    installSuccess = await RunForgeInstallerAsync(installerPath, tempGameDir, mcVersion, forgeVersion, config, default);
+                    installSuccess = await RunForgeInstallerAsync(installerPath, tempGameDir, mcVersion, forgeVersion, config, cancellationToken, onInstallerOutput);
                 }
                 else
                 {
                     // 旧版Forge: 尝试运行安装器，失败则手动安装
                     progressCallback?.Invoke("正在运行Forge安装器...", 55);
-                    installSuccess = await RunForgeInstallerAsync(installerPath, tempGameDir, mcVersion, forgeVersion, config, default);
+                    installSuccess = await RunForgeInstallerAsync(installerPath, tempGameDir, mcVersion, forgeVersion, config, cancellationToken, onInstallerOutput);
 
                     if (!installSuccess && (isVeryOldVersion || !isNewVersion))
                     {
                         DebugLogger.Info("Forge", $"安装器执行失败，尝试手动安装: {mcVersion}");
                         progressCallback?.Invoke("正在手动安装Forge...", 60);
-                        installSuccess = await ManualInstallVeryOldForgeClient(installerPath, tempGameDir, mcVersion, officialForgeId, tempForgeDir, config, default);
+                        installSuccess = await ManualInstallVeryOldForgeClient(installerPath, tempGameDir, mcVersion, officialForgeId, tempForgeDir, config, cancellationToken);
                     }
                 }
 
@@ -408,7 +410,7 @@ namespace ObsMCLauncher.Core.Services.Installers
                 {
                     try
                     {
-                        await MergeVanillaIntoForgeJson(finalJsonPath, customVersionName, finalRealGameDir, mcVersion, default);
+                        await MergeVanillaIntoForgeJson(finalJsonPath, customVersionName, finalRealGameDir, mcVersion, cancellationToken);
                     }
                     catch (Exception mergeEx)
                     {
@@ -1037,7 +1039,8 @@ namespace ObsMCLauncher.Core.Services.Installers
             string mcVersion,
             string forgeVersion,
             LauncherConfig config,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default,
+            Action<string>? onInstallerOutput = null)
         {
             // 这里实现 VersionDetailPage 同款参数尝试逻辑的最小可用版
             // 说明：完整逻辑很长（包含旧版本手动安装等），可后续继续补齐。
@@ -1085,7 +1088,7 @@ namespace ObsMCLauncher.Core.Services.Installers
 
             foreach (var args in argsList)
             {
-                if (await TryRunForgeInstallerWithArgs(installerPath, gameDirectory, mcVersion, args, cancellationToken))
+                if (await TryRunForgeInstallerWithArgs(installerPath, gameDirectory, mcVersion, args, cancellationToken, onInstallerOutput))
                     return true;
             }
 
@@ -1107,7 +1110,8 @@ namespace ObsMCLauncher.Core.Services.Installers
             string gameDirectory,
             string mcVersion,
             string arguments,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default,
+            Action<string>? onInstallerOutput = null)
         {
             // 根据Minecraft版本选择Java，这对于旧版本Forge兼容性至关重要
             var config = LauncherConfig.Load();
@@ -1152,6 +1156,7 @@ namespace ObsMCLauncher.Core.Services.Installers
                 {
                     stdout.AppendLine(e.Data);
                     DebugLogger.Info("Forge", $"Installer: {e.Data}");
+                    onInstallerOutput?.Invoke(e.Data);
                 }
             };
 
@@ -1161,6 +1166,8 @@ namespace ObsMCLauncher.Core.Services.Installers
                 {
                     stderr.AppendLine(e.Data);
                     DebugLogger.Error("Forge", $"Installer ERROR: {e.Data}");
+                    if (!e.Data.Contains("joptsimple") && !e.Data.Contains("Exception in thread"))
+                        onInstallerOutput?.Invoke(e.Data);
                 }
             };
 
@@ -1168,16 +1175,24 @@ namespace ObsMCLauncher.Core.Services.Installers
             process.BeginOutputReadLine();
             process.BeginErrorReadLine();
 
-            // 给 Forge 安装器足够时间
-            var waitTask = process.WaitForExitAsync(cancellationToken);
-            var timeoutTask = Task.Delay(TimeSpan.FromMinutes(10), cancellationToken);
-            var completed = await Task.WhenAny(waitTask, timeoutTask);
+            try
+            {
+                var waitTask = process.WaitForExitAsync(cancellationToken);
+                var timeoutTask = Task.Delay(TimeSpan.FromMinutes(10), cancellationToken);
+                var completed = await Task.WhenAny(waitTask, timeoutTask);
 
-            if (completed == timeoutTask)
+                if (completed == timeoutTask)
+                {
+                    try { if (!process.HasExited) process.Kill(true); } catch { }
+                    DebugLogger.Warn("Forge", "安装器超时（10分钟），已终止进程");
+                    return false;
+                }
+            }
+            catch (OperationCanceledException)
             {
                 try { if (!process.HasExited) process.Kill(true); } catch { }
-                DebugLogger.Warn("Forge", "安装器超时（10分钟），已终止进程");
-                return false;
+                DebugLogger.Info("Forge", "安装器已取消，进程已终止");
+                throw;
             }
 
             DebugLogger.Info("Forge", $"安装器退出码: {process.ExitCode}");

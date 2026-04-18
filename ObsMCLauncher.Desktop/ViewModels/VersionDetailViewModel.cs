@@ -586,7 +586,7 @@ public class VersionDetailViewModel : ViewModelBase
 
     public IRelayCommand BackCommand { get; }
     public IAsyncRelayCommand InstallCommand { get; }
-    public IRelayCommand CancelInstallCommand { get; }
+    public IAsyncRelayCommand CancelInstallCommand { get; }
     public IAsyncRelayCommand LoadLoaderVersionsCommand { get; }
 
     public VersionDetailViewModel(ObsMCLauncher.Core.Services.Ui.IDispatcher? dispatcher, NotificationService notificationService)
@@ -599,7 +599,7 @@ public class VersionDetailViewModel : ViewModelBase
         // 必须先初始化命令，因为后续的属性赋值会触发 NotifyCanExecuteChanged()
         BackCommand = new RelayCommand(BackToVersionList);
         InstallCommand = new AsyncRelayCommand(InstallAsync, CanInstall);
-        CancelInstallCommand = new RelayCommand(CancelInstall, () => IsBusy);
+        CancelInstallCommand = new AsyncRelayCommand(CancelInstallAsync, () => IsBusy);
         LoadLoaderVersionsCommand = new AsyncRelayCommand(LoadLoaderVersionsAsync, () => !IsBusy);
 
         var cfg = LauncherConfig.Load();
@@ -651,7 +651,51 @@ public class VersionDetailViewModel : ViewModelBase
         return true;
     }
 
-    private void CancelInstall() => _installCts?.Cancel();
+    private async Task CancelInstallAsync()
+    {
+        var result = await _dialogService.ShowQuestion("确认取消", "确定要取消当前安装吗？\n已下载的临时文件将被清理。");
+        if (result != DialogResult.Yes) return;
+
+        _installCts?.Cancel();
+        Status = "正在取消安装...";
+    }
+
+    private static string TranslateInstallerOutput(string line)
+    {
+        if (string.IsNullOrEmpty(line)) return line;
+
+        var l = line.Trim();
+        if (l.Contains("Downloading") && l.Contains("lib"))
+            return "正在下载依赖库...";
+        if (l.Contains("Downloading") && (l.Contains("maven") || l.Contains("repo")))
+            return "正在从Maven仓库下载...";
+        if (l.Contains("Extracting") || l.Contains("extracting"))
+            return "正在解压文件...";
+        if (l.Contains("Processing"))
+            return "正在处理安装组件...";
+        if (l.Contains("Installing") || l.Contains("installing"))
+            return "正在安装组件...";
+        if (l.Contains("Validating") || l.Contains("validating"))
+            return "正在校验文件完整性...";
+        if (l.Contains("Replacing") || l.Contains("replacing"))
+            return "正在替换文件...";
+        if (l.Contains("Renaming") || l.Contains("renaming"))
+            return "正在重命名文件...";
+        if (l.Contains("Creating") || l.Contains("creating"))
+            return "正在创建配置文件...";
+        if (l.Contains("Generating") || l.Contains("generating"))
+            return "正在生成配置...";
+        if (l.Contains("Mapping") || l.Contains("mapping"))
+            return "正在处理混淆映射...";
+        if (l.Contains("patching", StringComparison.OrdinalIgnoreCase))
+            return "正在应用补丁...";
+        if (l.Contains("jar") && l.Contains("sign"))
+            return "正在签名JAR文件...";
+        if (l.Contains("Successfully") || l.Contains("completed", StringComparison.OrdinalIgnoreCase))
+            return "安装步骤完成";
+
+        return "";
+    }
 
     private async Task InstallAsync()
     {
@@ -668,7 +712,17 @@ public class VersionDetailViewModel : ViewModelBase
             var cfg = LauncherConfig.Load();
             var gameDir = cfg.GameDirectory;
 
-            // 定义进度处理本地函数
+            var hasLoader = IsForgeSelected || IsFabricSelected || IsQuiltSelected || IsNeoForgeSelected;
+            var hasOptiFine = IsOptiFineEnabled && SelectedOptiFineVersion != null;
+
+            // 进度分配：
+            // 有加载器+OptiFine: 加载器 0-70, OptiFine 70-95, 完成 95-100
+            // 有加载器无OptiFine: 加载器 0-90, 完成 90-100
+            // 仅OptiFine: OptiFine 0-90, 完成 90-100
+            // 原版: 下载 0-90, 完成 90-100
+            double loaderEnd = hasOptiFine ? 70 : 90;
+            double optiFineEnd = hasLoader ? 95 : 90;
+
             void HandleDetailedProgress(ObsMCLauncher.Core.Services.Minecraft.DownloadProgress p, double offset, double scale)
             {
                 Status = p.Status;
@@ -680,15 +734,24 @@ public class VersionDetailViewModel : ViewModelBase
                 Progress = offset + (p.OverallPercentage * scale / 100.0);
             }
 
-            // 1. 处理加载器安装
+            // === 阶段1: 加载器安装 ===
             if (IsForgeSelected)
             {
-                await ForgeService.InstallForgeAsync(SelectedMcVersion, ForgeVersion, gameDir, CustomVersionName, 
-                    null, // 忽略简易回调
-                    p => HandleDetailedProgress(p, 0, 80)); // 0-80% 为加载器安装
+                Status = "正在安装Forge...";
+                await ForgeService.InstallForgeAsync(SelectedMcVersion, ForgeVersion, gameDir, CustomVersionName,
+                    null,
+                    p => HandleDetailedProgress(p, 0, loaderEnd),
+                    onInstallerOutput: line =>
+                    {
+                        var translated = TranslateInstallerOutput(line);
+                        if (!string.IsNullOrEmpty(translated))
+                            Status = translated;
+                    },
+                    cancellationToken: token);
             }
             else if (IsFabricSelected)
             {
+                Status = "正在安装Fabric...";
                 await FabricService.InstallFabricAsync(SelectedMcVersion, FabricLoaderVersion, gameDir, CustomVersionName, (msg, done, speed, total) =>
                 {
                     Status = msg;
@@ -696,12 +759,13 @@ public class VersionDetailViewModel : ViewModelBase
                     DownloadSpeed = FormatSpeed(speed);
                     DownloadSizeStatus = $"{FormatFileSize(done)} / {FormatFileSize(total)}";
                     var pct = total > 0 ? (double)done / total * 100.0 : 0;
-                    Progress = pct * 0.8;
+                    Progress = pct * loaderEnd / 100.0;
                     CurrentFileProgress = pct;
                 }, token);
             }
             else if (IsQuiltSelected)
             {
+                Status = "正在安装Quilt...";
                 await QuiltService.InstallQuiltAsync(SelectedMcVersion, QuiltLoaderVersion, gameDir, CustomVersionName, (msg, done, speed, total) =>
                 {
                     Status = msg;
@@ -709,25 +773,25 @@ public class VersionDetailViewModel : ViewModelBase
                     DownloadSpeed = FormatSpeed(speed);
                     DownloadSizeStatus = $"{FormatFileSize(done)} / {FormatFileSize(total)}";
                     var pct = total > 0 ? (double)done / total * 100.0 : 0;
-                    Progress = pct * 0.8;
+                    Progress = pct * loaderEnd / 100.0;
                     CurrentFileProgress = pct;
                 }, token);
             }
             else if (IsNeoForgeSelected)
             {
+                Status = "正在安装NeoForge...";
                 await NeoForgeService.InstallNeoForgeAsync(SelectedMcVersion, NeoForgeVersion, gameDir, CustomVersionName, (msg, pct) =>
                 {
-                    Status = msg;
+                    if (!string.IsNullOrEmpty(msg)) Status = msg;
                     CurrentFileName = msg;
-                    Progress = pct * 0.8;
+                    Progress = pct * loaderEnd / 100.0;
                     CurrentFileProgress = pct;
                 });
             }
 
-            // 2. 处理 OptiFine 安装
-            if (IsOptiFineEnabled && SelectedOptiFineVersion != null)
+            // === 阶段2: OptiFine安装 ===
+            if (hasOptiFine)
             {
-                // 兼容性校验
                 if (IsForgeSelected && !string.IsNullOrEmpty(SelectedOptiFineVersion.Forge))
                 {
                     if (!SelectedOptiFineVersion.Forge.Contains(ForgeVersion))
@@ -736,42 +800,55 @@ public class VersionDetailViewModel : ViewModelBase
                     }
                 }
 
-                Status = "正在准备 OptiFine 安装...";
+                Status = "正在下载OptiFine安装器...";
                 var tempDir = Path.Combine(gameDir, "temp");
                 if (!Directory.Exists(tempDir)) Directory.CreateDirectory(tempDir);
                 var optiPath = Path.Combine(tempDir, SelectedOptiFineVersion.Filename);
-                
+
+                var optiFineStart = loaderEnd;
+                var optiFineDownloadEnd = optiFineStart + (optiFineEnd - optiFineStart) * 0.5;
+
                 await _optiFineService.DownloadOptifineInstallerAsync(SelectedOptiFineVersion, optiPath, (msg, p, tp, b, tb) =>
                 {
-                    Status = msg;
+                    Status = "正在下载OptiFine安装器...";
                     CurrentFileName = SelectedOptiFineVersion.Filename;
                     CurrentFileProgress = p;
                     DownloadSizeStatus = $"{FormatFileSize(b)} / {FormatFileSize(tb)}";
-                    Progress = 80 + (p * 0.1);
+                    Progress = optiFineStart + (p / 100.0) * (optiFineDownloadEnd - optiFineStart);
                 }, token);
 
                 if (IsForgeSelected || IsNeoForgeSelected)
                 {
+                    Status = "正在将OptiFine安装为Mod...";
                     var modsDir = cfg.GetModsDirectory(CustomVersionName);
                     await _optiFineService.DownloadOptiFineAsModAsync(SelectedOptiFineVersion, modsDir, (msg, p, tp, b, tb) =>
                     {
-                        Status = "正在将 OptiFine 安装为 Mod...";
+                        Status = "正在将OptiFine安装为Mod...";
                         CurrentFileName = SelectedOptiFineVersion.Filename;
                         CurrentFileProgress = p;
-                        Progress = 90 + (p * 0.1);
+                        Progress = optiFineDownloadEnd + (p / 100.0) * (optiFineEnd - optiFineDownloadEnd);
                     }, token);
                 }
                 else
                 {
+                    Status = "正在安装OptiFine...";
                     var javaPath = cfg.GetActualJavaPath(SelectedMcVersion);
                     await _optiFineService.InstallOptifineAsync(SelectedOptiFineVersion, optiPath, gameDir, SelectedMcVersion, javaPath, CustomVersionName, null, (msg, p, tp, b, tb) =>
                     {
                         Status = msg;
                         CurrentFileProgress = p;
-                        Progress = 80 + (p * 0.2);
+                        Progress = optiFineDownloadEnd + (p / 100.0) * (optiFineEnd - optiFineDownloadEnd);
                     }, token);
                 }
             }
+
+            // === 阶段3: 完成 ===
+            Status = "正在完成安装...";
+            Progress = optiFineEnd;
+            CurrentFileProgress = 100;
+            DownloadSpeed = "";
+            DownloadSizeStatus = "";
+            FileCountStatus = "";
 
             Progress = 100;
             Status = "安装成功！";
@@ -811,6 +888,29 @@ public class VersionDetailViewModel : ViewModelBase
         catch (OperationCanceledException)
         {
             Status = "安装已取消";
+            Progress = 0;
+            CurrentFileProgress = 0;
+            CurrentFileName = "";
+            DownloadSpeed = "";
+            DownloadSizeStatus = "";
+            FileCountStatus = "";
+
+            var cfg = LauncherConfig.Load();
+            var tempDir = Path.Combine(cfg.GameDirectory, ".temp");
+            if (Directory.Exists(tempDir))
+            {
+                try { Directory.Delete(tempDir, true); }
+                catch { }
+            }
+
+            var tempDir2 = Path.Combine(cfg.GameDirectory, "temp");
+            if (Directory.Exists(tempDir2))
+            {
+                try { Directory.Delete(tempDir2, true); }
+                catch { }
+            }
+
+            _notificationService.Show("安装已取消", "版本安装已取消，临时文件已清理", NotificationType.Info);
         }
         catch (Exception ex)
         {

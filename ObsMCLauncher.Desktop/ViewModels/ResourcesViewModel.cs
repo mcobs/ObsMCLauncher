@@ -585,6 +585,11 @@ public partial class ResourcesViewModel : ViewModelBase
             var storage = desktop.MainWindow?.StorageProvider;
             if (storage == null) return null;
 
+            if (!Directory.Exists(defaultDir))
+            {
+                Directory.CreateDirectory(defaultDir);
+            }
+
             var options = new Avalonia.Platform.Storage.FilePickerSaveOptions
             {
                 Title = "保存资源",
