@@ -11,8 +11,8 @@
             Background="{DynamicResource SurfaceBrush}"
             BorderBrush="{DynamicResource BorderBrush}"
             BorderThickness="0,0,0,1"
-            Padding="24,12"
-            Height="60">
+            Padding="24,8"
+            Height="56">
       <TabControl SelectedIndex="{Binding SelectedTabIndex}"
                   Background="Transparent"
                   BorderThickness="0"
@@ -20,9 +20,9 @@
                   ItemsSource="{Binding Tabs}">
         <TabControl.ItemTemplate>
           <DataTemplate x:DataType="vm:TabItemViewModel">
-            <Border CornerRadius="6"
+            <Border CornerRadius="8"
                     Background="Transparent"
-                    Padding="16,8">
+                    Padding="16,6">
               <TextBlock Text="{Binding Header}"
                          FontSize="14"
                          FontWeight="SemiBold"/>
@@ -40,7 +40,7 @@
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Padding" Value="0"/>
-            <Setter Property="Margin" Value="0,0,8,0"/>
+            <Setter Property="Margin" Value="0,0,6,0"/>
           </Style>
 
           <Style Selector="TabItem:selected /template/ Border">
@@ -70,30 +70,32 @@
         </ScrollViewer.IsVisible>
         <StackPanel MaxWidth="800" DataContext="{Binding About}">
           <Border Background="{DynamicResource SurfaceElevatedBrush}"
-                  CornerRadius="10" Padding="20" Margin="0,0,0,16">
+                  CornerRadius="12" Padding="24" Margin="0,0,0,16"
+                  BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
             <StackPanel HorizontalAlignment="Center">
               <Image Source="avares://ObsMCLauncher.Desktop/Assets/logo.png"
-                     Width="140" Height="140" Margin="0,0,0,24"
+                     Width="120" Height="120" Margin="0,0,0,20"
                      Stretch="Uniform"/>
 
               <TextBlock Text="ObsMCLauncher"
-                         FontSize="32" FontWeight="Bold"
-                         HorizontalAlignment="Center" Margin="0,0,0,8"
+                         FontSize="28" FontWeight="Bold"
+                         HorizontalAlignment="Center" Margin="0,0,0,6"
                          PointerPressed="TitleText_PointerPressed"/>
 
               <TextBlock Text="黑曜石 Minecraft 启动器"
-                         FontSize="16" Foreground="{DynamicResource TextSecondaryBrush}"
-                         HorizontalAlignment="Center" Margin="0,0,0,16"/>
+                         FontSize="14" Foreground="{DynamicResource TextSecondaryBrush}"
+                         HorizontalAlignment="Center" Margin="0,0,0,12"/>
 
               <TextBlock Text="{Binding VersionText}"
-                         FontSize="14" Foreground="{DynamicResource TextTertiaryBrush}"
-                         HorizontalAlignment="Center" Margin="0,0,0,12"/>
+                         FontSize="13" Foreground="{DynamicResource TextTertiaryBrush}"
+                         HorizontalAlignment="Center" Margin="0,0,0,16"/>
 
               <Button Command="{Binding CheckUpdateCommand}"
                       IsEnabled="{Binding !IsCheckingUpdate}"
-                      Height="32" Padding="20,0" HorizontalAlignment="Center">
-                <StackPanel Orientation="Horizontal">
-                  <TextBlock Text="🔄" FontSize="16" Margin="0,0,8,0"/>
+                      Height="34" Padding="20,0" HorizontalAlignment="Center">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <Path Data="M17.65 6.35C16.2 4.9 14.21 4 12 4C7.58 4 4.01 7.58 4.01 12S7.58 20 12 20C15.73 20 18.84 17.45 19.73 14H17.65C16.83 16.33 14.61 18 12 18C8.69 18 6 15.31 6 12S8.69 6 12 6C13.66 6 15.14 6.69 16.22 7.78L13 11H20V4L17.65 6.35Z"
+                        Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource TextBrush}" VerticalAlignment="Center"/>
                   <TextBlock Text="检查更新" VerticalAlignment="Center" FontSize="13"/>
                 </StackPanel>
               </Button>
@@ -101,20 +103,20 @@
           </Border>
 
           <Border Background="{DynamicResource SurfaceElevatedBrush}"
-                  CornerRadius="10" Padding="20" Margin="0,0,0,16">
-            <Grid ColumnDefinitions="*,12,*">
-              <!-- 相关链接 -->
+                  CornerRadius="12" Padding="20" Margin="0,0,0,16"
+                  BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
+            <Grid ColumnDefinitions="*,16,*">
               <StackPanel Grid.Column="0">
-                <TextBlock Text="相关链接" FontSize="16" FontWeight="Bold" Margin="0,0,0,12"/>
+                <TextBlock Text="相关链接" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,12"/>
 
                 <Button Command="{Binding OpenGitHubCommand}"
-                        Background="{DynamicResource SurfaceBrush}"
+                        Classes="ghost"
                         HorizontalContentAlignment="Left"
-                        Padding="12,10" Margin="0,0,0,8" CornerRadius="6" HorizontalAlignment="Stretch">
-                  <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="🔗" FontSize="16" Margin="0,0,8,0"/>
+                        Padding="12,10" Margin="0,0,0,8" CornerRadius="8" HorizontalAlignment="Stretch">
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Path Data="M12 2C6.48 2 2 6.48 2 12C2 16.42 4.87 20.17 8.84 21.5C9.34 21.58 9.5 21.27 9.5 21C9.5 20.77 9.5 20.14 9.5 19.31C6.73 19.91 6.14 17.97 6.14 17.97C5.68 16.81 5.03 16.5 5.03 16.5C4.12 15.88 5.1 15.9 5.1 15.9C6.1 15.97 6.63 16.93 6.63 16.93C7.5 18.45 8.97 18 9.54 17.76C9.63 17.11 9.89 16.67 10.17 16.42C7.95 16.17 5.62 15.31 5.62 11.5C5.62 10.39 6 9.5 6.65 8.79C6.55 8.54 6.2 7.5 6.75 6.15C6.75 6.15 7.59 5.88 9.5 7.17C10.29 6.95 11.15 6.84 12 6.84C12.85 6.84 13.71 6.95 14.5 7.17C16.41 5.88 17.25 6.15 17.25 6.15C17.8 7.5 17.45 8.54 17.35 8.79C18 9.5 18.38 10.39 18.38 11.5C18.38 15.32 16.04 16.16 13.81 16.41C14.17 16.72 14.5 17.33 14.5 18.26C14.5 19.6 14.5 20.68 14.5 21C14.5 21.27 14.66 21.59 15.17 21.5C19.14 20.16 22 16.42 22 12C22 6.48 17.52 2 12 2Z" Width="16" Height="16" Stretch="Uniform" Fill="{DynamicResource TextBrush}" VerticalAlignment="Center"/>
                     <StackPanel>
-                      <TextBlock Text="GitHub 开源仓库" FontWeight="SemiBold"/>
+                      <TextBlock Text="GitHub 开源仓库" FontWeight="SemiBold" FontSize="13"/>
                       <TextBlock Text="github.com/mcobs/ObsMCLauncher"
                                  FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" Margin="0,2,0,0"/>
                     </StackPanel>
@@ -122,13 +124,13 @@
                 </Button>
 
                 <Button Command="{Binding OpenForumCommand}"
-                        Background="{DynamicResource SurfaceBrush}"
+                        Classes="ghost"
                         HorizontalContentAlignment="Left"
-                        Padding="12,10" Margin="0,0,0,8" CornerRadius="6" HorizontalAlignment="Stretch">
-                  <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="🌐" FontSize="16" Margin="0,0,8,0"/>
+                        Padding="12,10" Margin="0,0,0,8" CornerRadius="8" HorizontalAlignment="Stretch">
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Path Data="M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2M20 16H6L4 18V4H20V16Z" Width="16" Height="16" Stretch="Uniform" Fill="{DynamicResource TextBrush}" VerticalAlignment="Center"/>
                     <StackPanel>
-                      <TextBlock Text="黑曜石论坛" FontWeight="SemiBold"/>
+                      <TextBlock Text="黑曜石论坛" FontWeight="SemiBold" FontSize="13"/>
                       <TextBlock Text="mcobs.cn"
                                  FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" Margin="0,2,0,0"/>
                     </StackPanel>
@@ -136,13 +138,13 @@
                 </Button>
 
                 <Button Command="{Binding OpenMciLmLinkCommand}"
-                        Background="{DynamicResource SurfaceBrush}"
+                        Classes="ghost"
                         HorizontalContentAlignment="Left"
-                        Padding="12,10" Margin="0,0,0,8" CornerRadius="6" HorizontalAlignment="Stretch">
-                  <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="🔗" FontSize="16" Margin="0,0,8,0"/>
+                        Padding="12,10" Margin="0,0,0,8" CornerRadius="8" HorizontalAlignment="Stretch">
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Path Data="M10.59 13.41C11.21 14.03 12.05 14.42 13 14.42C13.95 14.42 14.79 14.03 15.41 13.41L19.41 9.41C20.63 8.19 20.63 6.19 19.41 4.97C18.19 3.75 16.19 3.75 14.97 4.97L13.41 6.54" Width="16" Height="16" Stretch="Uniform" Fill="{DynamicResource TextBrush}" VerticalAlignment="Center"/>
                     <StackPanel>
-                      <TextBlock Text="MciLm-link" FontWeight="SemiBold"/>
+                      <TextBlock Text="MciLm-link" FontWeight="SemiBold" FontSize="13"/>
                       <TextBlock Text="link.mcilm.top"
                                  FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" Margin="0,2,0,0"/>
                     </StackPanel>
@@ -150,13 +152,13 @@
                 </Button>
 
                 <Button Command="{Binding OpenMCIMCommand}"
-                        Background="{DynamicResource SurfaceBrush}"
+                        Classes="ghost"
                         HorizontalContentAlignment="Left"
-                        Padding="12,10" CornerRadius="6" HorizontalAlignment="Stretch">
-                  <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="🌐" FontSize="16" Margin="0,0,8,0"/>
+                        Padding="12,10" CornerRadius="8" HorizontalAlignment="Stretch">
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Path Data="M12 2C6.48 2 2 6.48 2 12S6.48 22 12 22 22 17.52 22 12 17.52 2 12 2M12 20C7.59 20 4 16.41 4 12S7.59 4 12 4 20 7.59 20 12 16.41 20 12 20M11 7H13V13H11V7M11 15H13V17H11V15Z" Width="16" Height="16" Stretch="Uniform" Fill="{DynamicResource TextBrush}" VerticalAlignment="Center"/>
                     <StackPanel>
-                      <TextBlock Text="MCIM" FontWeight="SemiBold"/>
+                      <TextBlock Text="MCIM" FontWeight="SemiBold" FontSize="13"/>
                       <TextBlock Text="www.mcimirror.top"
                                  FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" Margin="0,2,0,0"/>
                     </StackPanel>
@@ -164,72 +166,76 @@
                 </Button>
               </StackPanel>
 
-              <!-- 特别感谢 -->
               <StackPanel Grid.Column="2">
-                <TextBlock Text="特别感谢" FontSize="16" FontWeight="Bold" Margin="0,0,0,12"/>
+                <TextBlock Text="特别感谢" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,12"/>
 
                 <Border Background="{DynamicResource SurfaceBrush}"
-                        CornerRadius="6" Padding="12" Margin="0,0,0,8">
+                        CornerRadius="8" Padding="12" Margin="0,0,0,8"
+                        BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
                   <StackPanel>
-                    <StackPanel Orientation="Horizontal">
-                      <TextBlock Text="💝" FontSize="16" Margin="0,0,6,0"/>
-                      <TextBlock Text="bangbang93" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                      <Path Data="M12 21.35L10.55 20.03C5.4 15.36 2 12.27 2 8.5C2 5.41 4.42 3 7.5 3C9.24 3 10.91 3.81 12 5.08C13.09 3.81 14.76 3 16.5 3C19.58 3 22 5.41 22 8.5C22 12.27 18.6 15.36 13.45 20.03L12 21.35Z" Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource DangerBrush}" VerticalAlignment="Center"/>
+                      <TextBlock Text="bangbang93" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
                     </StackPanel>
                     <TextBlock Text="BMCLAPI 镜像源服务"
-                               FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}"
-                               Margin="22,4,0,0" TextWrapping="Wrap"/>
+                               FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"
+                               Margin="20,4,0,0" TextWrapping="Wrap"/>
                   </StackPanel>
                 </Border>
 
                 <Border Background="{DynamicResource SurfaceBrush}"
-                        CornerRadius="6" Padding="12" Margin="0,0,0,8">
+                        CornerRadius="8" Padding="12" Margin="0,0,0,8"
+                        BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
                   <StackPanel>
-                    <StackPanel Orientation="Horizontal">
-                      <TextBlock Text="🎨" FontSize="16" Margin="0,0,6,0"/>
-                      <TextBlock Text="路过的京局DF7C" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                      <Path Data="M12 2C6.49 2 2 6.49 2 12S6.49 22 12 22S22 17.51 22 12S17.51 2 12 2M12 20C7.59 20 4 16.41 4 12S7.59 4 12 4S20 7.59 20 12S16.41 20 12 20M12.5 7V12.25L17 14.92L16.25 16.15L11 13V7H12.5Z" Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource PrimaryBrush}" VerticalAlignment="Center"/>
+                      <TextBlock Text="路过的京局DF7C" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
                     </StackPanel>
                     <TextBlock Text="软件图标设计"
-                               FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}"
-                               Margin="22,4,0,0" TextWrapping="Wrap"/>
+                               FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"
+                               Margin="20,4,0,0" TextWrapping="Wrap"/>
                   </StackPanel>
                 </Border>
 
                 <Border Background="{DynamicResource SurfaceBrush}"
-                        CornerRadius="6" Padding="12" Margin="0,0,0,8">
+                        CornerRadius="8" Padding="12" Margin="0,0,0,8"
+                        BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
                   <StackPanel>
-                    <StackPanel Orientation="Horizontal">
-                      <TextBlock Text="🌐" FontSize="16" Margin="0,0,6,0"/>
-                      <TextBlock Text="MciLm-link" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                      <Path Data="M10.59 13.41C11.21 14.03 12.05 14.42 13 14.42C13.95 14.42 14.79 14.03 15.41 13.41L19.41 9.41C20.63 8.19 20.63 6.19 19.41 4.97C18.19 3.75 16.19 3.75 14.97 4.97L13.41 6.54" Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource InfoBrush}" VerticalAlignment="Center"/>
+                      <TextBlock Text="MciLm-link" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
                     </StackPanel>
                     <TextBlock Text="多人联机/内网穿透服务"
-                               FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}"
-                               Margin="22,4,0,0" TextWrapping="Wrap"/>
+                               FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"
+                               Margin="20,4,0,0" TextWrapping="Wrap"/>
                   </StackPanel>
                 </Border>
 
                 <Border Background="{DynamicResource SurfaceBrush}"
-                        CornerRadius="6" Padding="12" Margin="0,0,0,8">
+                        CornerRadius="8" Padding="12" Margin="0,0,0,8"
+                        BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
                   <StackPanel>
-                    <StackPanel Orientation="Horizontal">
-                      <TextBlock Text="🔐" FontSize="16" Margin="0,0,6,0"/>
-                      <TextBlock Text="authlib-injector" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                      <Path Data="M12 1L3 5V11C3 16.5 6.8 21.7 12 23C17.2 21.7 21 16.5 21 11V5L12 1M12 11H19C18.5 15.5 15.7 19.6 12 20.9V11H5V6.3L12 3.2V11Z" Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource WarningBrush}" VerticalAlignment="Center"/>
+                      <TextBlock Text="authlib-injector" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
                     </StackPanel>
                     <TextBlock Text="Yggdrasil 外置登录支持"
-                               FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}"
-                               Margin="22,4,0,0" TextWrapping="Wrap"/>
+                               FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"
+                               Margin="20,4,0,0" TextWrapping="Wrap"/>
                   </StackPanel>
                 </Border>
 
                 <Border Background="{DynamicResource SurfaceBrush}"
-                        CornerRadius="6" Padding="12">
+                        CornerRadius="8" Padding="12"
+                        BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
                   <StackPanel>
-                    <StackPanel Orientation="Horizontal">
-                      <TextBlock Text="🌐" FontSize="16" Margin="0,0,6,0"/>
-                      <TextBlock Text="MCIM" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                      <Path Data="M12 2C6.48 2 2 6.48 2 12S6.48 22 12 22 22 17.52 22 12 17.52 2 12 2M12 20C7.59 20 4 16.41 4 12S7.59 4 12 4 20 7.59 20 12 16.41 20 12 20M11 7H13V13H11V7M11 15H13V17H11V15Z" Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource InfoBrush}" VerticalAlignment="Center"/>
+                      <TextBlock Text="MCIM" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
                     </StackPanel>
                     <TextBlock Text="社区资源镜像源服务 (https://www.mcimirror.top/)"
-                               FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}"
-                               Margin="22,4,0,0" TextWrapping="Wrap"/>
+                               FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"
+                               Margin="20,4,0,0" TextWrapping="Wrap"/>
                   </StackPanel>
                 </Border>
               </StackPanel>
@@ -237,30 +243,34 @@
           </Border>
 
           <Border Background="{DynamicResource SurfaceElevatedBrush}"
-                  CornerRadius="10" Padding="20" Margin="0,0,0,16">
+                  CornerRadius="12" Padding="20" Margin="0,0,0,16"
+                  BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
             <StackPanel>
-              <TextBlock Text="关于" FontSize="16" FontWeight="Bold" Margin="0,0,0,12"/>
+              <TextBlock Text="关于" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,12"/>
               <TextBlock Text="ObsMCLauncher 是一款现代化的 Minecraft 启动器，采用 .NET 8.0 和 Avalonia 技术开发，提供流畅的游戏管理体验。"
-                         FontSize="14" Foreground="{DynamicResource TextSecondaryBrush}"
+                         FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}"
                          TextWrapping="Wrap" LineHeight="22" Margin="0,0,0,16"/>
 
               <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                <TextBlock Text="开源协议：" FontSize="14" Foreground="{DynamicResource TextTertiaryBrush}" Width="80"/>
-                <TextBlock Text="GNU GPL v3.0" FontSize="14"/>
+                <TextBlock Text="开源协议：" FontSize="13" Foreground="{DynamicResource TextTertiaryBrush}" Width="80"/>
+                <TextBlock Text="GNU GPL v3.0" FontSize="13"/>
               </StackPanel>
 
               <StackPanel Orientation="Horizontal">
-                <TextBlock Text="技术栈：" FontSize="14" Foreground="{DynamicResource TextTertiaryBrush}" Width="80"/>
-                <TextBlock Text=".NET 8.0 | Avalonia | C#" FontSize="14"/>
+                <TextBlock Text="技术栈：" FontSize="13" Foreground="{DynamicResource TextTertiaryBrush}" Width="80"/>
+                <TextBlock Text=".NET 8.0 | Avalonia | C#" FontSize="13"/>
               </StackPanel>
             </StackPanel>
           </Border>
 
           <Border Background="{DynamicResource SurfaceElevatedBrush}"
-                  CornerRadius="10" Padding="20" Margin="0,0,0,16">
+                  CornerRadius="12" Padding="20" Margin="0,0,0,16"
+                  BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
             <StackPanel>
-              <TextBlock Text="⚠️ 免责声明" FontSize="16" FontWeight="Bold"
-                         Foreground="{DynamicResource PrimaryBrush}" Margin="0,0,0,12"/>
+              <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,12">
+                <Path Data="M12 2C6.48 2 2 6.48 2 12S6.48 22 12 22 22 17.52 22 12 17.52 2 12 2M13 17H11V15H13V17M13 13H11V7H13V13Z" Width="18" Height="18" Stretch="Uniform" Fill="{DynamicResource WarningBrush}" VerticalAlignment="Center"/>
+                <TextBlock Text="免责声明" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+              </StackPanel>
               <TextBlock FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}"
                          TextWrapping="Wrap" LineHeight="20">
                 <Run Text="本启动器为第三方工具，与 Mojang Studios 和 Microsoft 无关。"/>
@@ -272,7 +282,7 @@
             </StackPanel>
           </Border>
 
-          <TextBlock Text="© 2025 ObsMCLauncher - 使用 ❤️ 和 C# 构建"
+          <TextBlock Text="(c) 2025 ObsMCLauncher"
                      FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}"
                      HorizontalAlignment="Center" Margin="0,8,0,20"/>
         </StackPanel>
@@ -293,7 +303,8 @@
             <ColumnDefinition Width="*"/>
           </Grid.ColumnDefinitions>
 
-          <Border Grid.Column="0" Background="{DynamicResource SurfaceBrush}" CornerRadius="8" Padding="16">
+          <Border Grid.Column="0" Background="{DynamicResource SurfaceBrush}" CornerRadius="12" Padding="16"
+                  BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
             <Grid RowDefinitions="Auto,Auto,*">
               <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,12">
                 <RadioButton Content="市场"
@@ -346,7 +357,7 @@
                                          Foreground="{DynamicResource TextSecondaryBrush}"/>
                             </StackPanel>
                             <TextBlock Grid.Column="2" Text="!" FontSize="14" FontWeight="Bold"
-                                       Foreground="#FF4747" VerticalAlignment="Center"
+                                       Foreground="{DynamicResource DangerBrush}" VerticalAlignment="Center"
                                        IsVisible="{Binding HasError}"/>
                           </Grid>
                         </Border>
@@ -369,7 +380,8 @@
             </Grid>
           </Border>
 
-          <Border Grid.Column="2" Background="{DynamicResource SurfaceBrush}" CornerRadius="8" Padding="16">
+          <Border Grid.Column="2" Background="{DynamicResource SurfaceBrush}" CornerRadius="12" Padding="16"
+                  BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
             <Grid RowDefinitions="Auto,Auto,Auto,*">
               <TextBlock Grid.Row="0" Text="{Binding Detail.Title}" FontSize="18" FontWeight="Bold" Margin="0,0,0,4"/>
               <TextBlock Grid.Row="1" Text="{Binding Detail.Meta}" FontSize="12"
@@ -380,7 +392,7 @@
                         Command="{Binding PrimaryActionCommand}"
                         IsEnabled="{Binding Detail.PrimaryActionEnabled}"
                         IsVisible="{Binding Detail.PrimaryActionVisible}"
-                        Background="{DynamicResource PrimaryBrush}"
+                        Classes="accent"
                         Height="32" Padding="16,0"/>
                 <Button Content="{Binding Detail.SecondaryActionText}"
                         Command="{Binding SecondaryActionCommand}"
@@ -389,10 +401,12 @@
                 <Button Content="主页"
                         Command="{Binding OpenHomeCommand}"
                         IsVisible="{Binding Detail.HomeVisible}"
+                        Classes="ghost"
                         Height="32" Padding="12,0" Margin="10,0,0,0"/>
                 <Button Content="仓库"
                         Command="{Binding OpenRepoCommand}"
                         IsVisible="{Binding Detail.RepoVisible}"
+                        Classes="ghost"
                         Height="32" Padding="12,0" Margin="6,0,0,0"/>
               </StackPanel>
 
@@ -431,7 +445,8 @@
             </Grid.RowDefinitions>
 
         <Border Grid.Row="0" Background="{DynamicResource SurfaceBrush}"
-                CornerRadius="10" Padding="20" Margin="24,24,24,16">
+                CornerRadius="12" Padding="16" Margin="24,24,24,12"
+                BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
           <Grid ColumnDefinitions="*,Auto,Auto,Auto">
             <TextBox Grid.Column="0" Text="{Binding SearchText}"
                      Watermark="搜索截图..." Margin="0,0,12,0"/>
@@ -455,9 +470,10 @@
             <ItemsControl.ItemTemplate>
               <DataTemplate>
                 <Border Background="{DynamicResource SurfaceBrush}"
-                        CornerRadius="12" Padding="8" Margin="0,0,16,16" Width="200">
+                        CornerRadius="12" Padding="8" Margin="0,0,14,14" Width="200"
+                        BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
                   <Grid RowDefinitions="150,Auto,Auto,Auto">
-                    <Border Grid.Row="0" CornerRadius="8" Background="#2C2C2C" Margin="0,0,0,8">
+                    <Border Grid.Row="0" CornerRadius="8" Background="{DynamicResource SurfaceElevatedBrush}" Margin="0,0,0,8">
                       <Image Source="{Binding FullPath}" Stretch="UniformToFill"/>
                     </Border>
                     <TextBlock Grid.Row="1" Text="{Binding FileName}" FontSize="13"
@@ -471,10 +487,10 @@
                       </TextBlock>
                     </StackPanel>
                     <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right">
-                      <Button Content="查看" Padding="8,4" Margin="0,0,4,0"
+                      <Button Content="查看" Classes="ghost" Padding="8,4" Margin="0,0,4,0"
                               Command="{Binding $parent[ItemsControl].((vm:ScreenshotsViewModel)DataContext).ViewScreenshotCommand}"
                               CommandParameter="{Binding}"/>
-                      <Button Content="删除" Padding="8,4" Foreground="#DC3545"
+                      <Button Content="删除" Classes="danger" Padding="8,4"
                               Command="{Binding $parent[ItemsControl].((vm:ScreenshotsViewModel)DataContext).DeleteScreenshotCommand}"
                               CommandParameter="{Binding}"/>
                     </StackPanel>
@@ -487,8 +503,7 @@
 
         <StackPanel Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center"
                     IsVisible="{Binding IsEmpty}">
-          <TextBlock Text="📷" FontSize="64" HorizontalAlignment="Center" Margin="0,0,0,16"
-                     Foreground="{DynamicResource TextSecondaryBrush}"/>
+          <Path Data="M8.5 13.5L2.5 15.5L4.5 9.5L15.5 3.5L20.5 8.5L14.5 19.5L8.5 13.5ZM12 16L13.5 14.5L9.5 10.5L8 12L12 16ZM14.5 4.5L19.5 9.5L20.5 8.5L15.5 3.5L14.5 4.5Z" Width="64" Height="64" Stretch="Uniform" Fill="{DynamicResource TextTertiaryBrush}" HorizontalAlignment="Center" Margin="0,0,0,16"/>
           <TextBlock Text="暂无截图" FontSize="18" FontWeight="SemiBold"
                      HorizontalAlignment="Center" Margin="0,0,0,8"
                      Foreground="{DynamicResource TextSecondaryBrush}"/>
@@ -515,18 +530,18 @@
             </Grid.RowDefinitions>
 
         <Border Grid.Row="0" Background="{DynamicResource SurfaceBrush}"
-                CornerRadius="10" Padding="20" Margin="24,24,24,16">
+                CornerRadius="12" Padding="16" Margin="24,24,24,12"
+                BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
           <Grid ColumnDefinitions="*,Auto,Auto,Auto">
             <TextBox Grid.Column="0" Text="{Binding SearchText}"
                      Watermark="搜索服务器..." Margin="0,0,12,0"/>
             <ComboBox Grid.Column="1" ItemsSource="{Binding Groups}"
                       SelectedItem="{Binding SelectedGroup}"
                       Width="150" Margin="0,0,12,0"/>
-            <Button Grid.Column="2" Content="刷新状态"
+            <Button Grid.Column="2" Content="刷新状态" Classes="ghost"
                     Command="{Binding RefreshStatusCommand}" Margin="0,0,12,0"/>
-            <Button Grid.Column="3" Content="添加服务器"
-                    Command="{Binding AddServerCommand}"
-                    Background="{DynamicResource PrimaryBrush}"/>
+            <Button Grid.Column="3" Content="添加服务器" Classes="accent"
+                    Command="{Binding AddServerCommand}"/>
           </Grid>
         </Border>
 
@@ -540,10 +555,11 @@
             <ItemsControl.ItemTemplate>
               <DataTemplate>
                 <Border Background="{DynamicResource SurfaceBrush}"
-                        CornerRadius="12" Padding="20" Margin="0,0,16,16" Width="320" MinHeight="180">
+                        CornerRadius="12" Padding="20" Margin="0,0,14,14" Width="320" MinHeight="180"
+                        BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
                   <Grid RowDefinitions="Auto,Auto,*,Auto">
                     <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,12">
-                      <TextBlock Grid.Column="0" Text="{Binding Name}" FontSize="18"
+                      <TextBlock Grid.Column="0" Text="{Binding Name}" FontSize="16"
                                  FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
                       <Ellipse Grid.Column="1" Width="12" Height="12" Margin="8,0,0,0"
                                VerticalAlignment="Center">
@@ -566,14 +582,14 @@
                       </TextBlock>
                     </StackPanel>
                     <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right">
-                      <Button Content="连接" Background="{DynamicResource PrimaryBrush}"
+                      <Button Content="连接" Classes="accent"
                               Padding="12,6" Margin="0,0,8,0"
                               Command="{Binding $parent[ItemsControl].((vm:ServersViewModel)DataContext).ConnectServerCommand}"
                               CommandParameter="{Binding}"/>
-                      <Button Content="编辑" Padding="12,6" Margin="0,0,8,0"
+                      <Button Content="编辑" Classes="ghost" Padding="12,6" Margin="0,0,8,0"
                               Command="{Binding $parent[ItemsControl].((vm:ServersViewModel)DataContext).EditServerCommand}"
                               CommandParameter="{Binding}"/>
-                      <Button Content="删除" Padding="12,6" Foreground="#DC3545"
+                      <Button Content="删除" Classes="danger" Padding="12,6"
                               Command="{Binding $parent[ItemsControl].((vm:ServersViewModel)DataContext).DeleteServerCommand}"
                               CommandParameter="{Binding}"/>
                     </StackPanel>
@@ -586,8 +602,7 @@
 
         <StackPanel Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center"
                     IsVisible="{Binding IsEmpty}">
-          <TextBlock Text="🖥️" FontSize="64" HorizontalAlignment="Center" Margin="0,0,0,16"
-                     Foreground="{DynamicResource TextSecondaryBrush}"/>
+          <Path Data="M4 1C2.89 1 2 1.89 2 3V7C2 8.11 2.89 9 4 9H1V11H13V9H10C11.11 9 12 8.11 12 7V3C12 1.89 11.11 1 10 1H4M4 3H10V7H4V3M14 13C12.89 13 12 13.89 12 15V19C12 20.11 12.89 21 14 21H10V23H22V21H18C19.11 21 20 20.11 20 19V15C20 13.89 19.11 13 18 13H14M14 15H18V19H14V15Z" Width="64" Height="64" Stretch="Uniform" Fill="{DynamicResource TextTertiaryBrush}" HorizontalAlignment="Center" Margin="0,0,0,16"/>
           <TextBlock Text="暂无服务器" FontSize="18" FontWeight="SemiBold"
                      HorizontalAlignment="Center" Margin="0,0,0,8"
                      Foreground="{DynamicResource TextSecondaryBrush}"/>
@@ -596,7 +611,6 @@
                      Foreground="{DynamicResource TextTertiaryBrush}"/>
         </StackPanel>
 
-        <!-- 添加服务器对话框 -->
         <Border Grid.Row="0" Grid.RowSpan="2"
                 Background="#80000000"
                 IsVisible="{Binding IsAddServerDialogOpen}"
@@ -604,43 +618,43 @@
                 VerticalAlignment="Stretch">
           <Border Background="{DynamicResource SurfaceElevatedBrush}"
                   CornerRadius="12" Padding="24"
-                  Width="400" HorizontalAlignment="Center" VerticalAlignment="Center">
+                  Width="400" HorizontalAlignment="Center" VerticalAlignment="Center"
+                  BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
             <StackPanel Spacing="16">
               <TextBlock Text="添加服务器" FontSize="18" FontWeight="Bold"/>
               
               <StackPanel Spacing="12">
                 <StackPanel Spacing="4">
-                  <TextBlock Text="服务器名称" FontSize="13"/>
+                  <TextBlock Text="服务器名称" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}"/>
                   <TextBox Text="{Binding AddServerDialog.Name}" Watermark="输入服务器名称"/>
                 </StackPanel>
                 
                 <StackPanel Spacing="4">
-                  <TextBlock Text="服务器地址" FontSize="13"/>
+                  <TextBlock Text="服务器地址" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}"/>
                   <TextBox Text="{Binding AddServerDialog.Address}" Watermark="例如: mc.example.com"/>
                 </StackPanel>
                 
                 <Grid ColumnDefinitions="*,12,*">
                   <StackPanel Grid.Column="0" Spacing="4">
-                    <TextBlock Text="端口" FontSize="13"/>
+                    <TextBlock Text="端口" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}"/>
                     <NumericUpDown Value="{Binding AddServerDialog.Port}" Minimum="1" Maximum="65535"/>
                   </StackPanel>
                   
                   <StackPanel Grid.Column="2" Spacing="4">
-                    <TextBlock Text="分组（可选）" FontSize="13"/>
+                    <TextBlock Text="分组（可选）" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}"/>
                     <TextBox Text="{Binding AddServerDialog.Group}" Watermark="输入分组名"/>
                   </StackPanel>
                 </Grid>
               </StackPanel>
               
               <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="12">
-                <Button Content="取消" Command="{Binding CancelAddServerCommand}" Classes="outline"/>
-                <Button Content="确定" Command="{Binding ConfirmAddServerCommand}" Background="{DynamicResource PrimaryBrush}"/>
+                <Button Content="取消" Command="{Binding CancelAddServerCommand}"/>
+                <Button Content="确定" Classes="accent" Command="{Binding ConfirmAddServerCommand}"/>
               </StackPanel>
             </StackPanel>
           </Border>
         </Border>
 
-        <!-- 编辑服务器对话框 -->
         <Border Grid.Row="0" Grid.RowSpan="2"
                 Background="#80000000"
                 IsVisible="{Binding IsEditServerDialogOpen}"
@@ -648,37 +662,38 @@
                 VerticalAlignment="Stretch">
           <Border Background="{DynamicResource SurfaceElevatedBrush}"
                   CornerRadius="12" Padding="24"
-                  Width="400" HorizontalAlignment="Center" VerticalAlignment="Center">
+                  Width="400" HorizontalAlignment="Center" VerticalAlignment="Center"
+                  BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
             <StackPanel Spacing="16">
               <TextBlock Text="编辑服务器" FontSize="18" FontWeight="Bold"/>
               
               <StackPanel Spacing="12">
                 <StackPanel Spacing="4">
-                  <TextBlock Text="服务器名称" FontSize="13"/>
+                  <TextBlock Text="服务器名称" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}"/>
                   <TextBox Text="{Binding EditServerDialog.Name}"/>
                 </StackPanel>
                 
                 <StackPanel Spacing="4">
-                  <TextBlock Text="服务器地址" FontSize="13"/>
+                  <TextBlock Text="服务器地址" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}"/>
                   <TextBox Text="{Binding EditServerDialog.Address}"/>
                 </StackPanel>
                 
                 <Grid ColumnDefinitions="*,12,*">
                   <StackPanel Grid.Column="0" Spacing="4">
-                    <TextBlock Text="端口" FontSize="13"/>
+                    <TextBlock Text="端口" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}"/>
                     <NumericUpDown Value="{Binding EditServerDialog.Port}" Minimum="1" Maximum="65535"/>
                   </StackPanel>
                   
                   <StackPanel Grid.Column="2" Spacing="4">
-                    <TextBlock Text="分组（可选）" FontSize="13"/>
+                    <TextBlock Text="分组（可选）" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}"/>
                     <TextBox Text="{Binding EditServerDialog.Group}"/>
                   </StackPanel>
                 </Grid>
               </StackPanel>
               
               <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="12">
-                <Button Content="取消" Command="{Binding CancelEditServerCommand}" Classes="outline"/>
-                <Button Content="保存" Command="{Binding ConfirmEditServerCommand}" Background="{DynamicResource PrimaryBrush}"/>
+                <Button Content="取消" Command="{Binding CancelEditServerCommand}"/>
+                <Button Content="保存" Classes="accent" Command="{Binding ConfirmEditServerCommand}"/>
               </StackPanel>
             </StackPanel>
           </Border>
@@ -687,7 +702,6 @@
         </ScrollViewer>
       </Grid>
 
-      <!-- 插件标签页显示区域 -->
       <ScrollViewer VerticalScrollBarVisibility="Auto"
                     HorizontalScrollBarVisibility="Disabled"
                     Padding="24">

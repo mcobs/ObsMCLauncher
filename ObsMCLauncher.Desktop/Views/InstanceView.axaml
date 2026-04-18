@@ -1,177 +1,201 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:ObsMCLauncher.Desktop.ViewModels"
+             xmlns:converters="using:ObsMCLauncher.Desktop.Converters"
              x:Class="ObsMCLauncher.Desktop.Views.InstanceView"
              x:DataType="vm:InstanceViewModel">
 
-  <Border Background="{DynamicResource BackgroundBrush}" IsVisible="{Binding IsVisible}">
-    <Grid RowDefinitions="Auto,*">
-      <!-- 顶部导航栏 -->
+  <Border Background="{DynamicResource BackgroundBrush}"
+          IsVisible="{Binding IsVisible}"
+          ZIndex="10"
+          HorizontalAlignment="Stretch"
+          VerticalAlignment="Stretch">
+    <Grid RowDefinitions="Auto,*,Auto">
       <Border Grid.Row="0"
               Background="{DynamicResource SurfaceBrush}"
-              BorderBrush="{DynamicResource BorderBrush}"
+              Padding="16,12"
               BorderThickness="0,0,0,1"
-              Padding="24,12"
-              Height="60">
+              BorderBrush="{DynamicResource BorderBrush}">
         <Grid ColumnDefinitions="Auto,*,Auto">
-          <Button Grid.Column="0"
-                  Command="{Binding CloseCommand}"
-                  Width="36" Height="36"
-                  CornerRadius="18"
-                  Background="Transparent">
-            <Path Data="M20 11H7.83L13.42 5.41L12 4L4 12L12 20L13.41 18.59L7.83 13H20V11Z"
-                  Width="18" Height="18"
-                  Stretch="Uniform"
-                  Fill="{DynamicResource TextBrush}" />
+          <Button Command="{Binding CloseCommand}" Classes="ghost">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <Path Data="M20 11H7.83L13.42 5.41L12 4L4 12L12 20L13.41 18.59L7.83 13H20V11Z" Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource TextBrush}" VerticalAlignment="Center"/>
+              <TextBlock Text="返回" VerticalAlignment="Center"/>
+            </StackPanel>
           </Button>
 
-          <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="16,0,0,0" Orientation="Horizontal" Spacing="12">
-            <TextBlock Text="版本实例管理" FontSize="18" FontWeight="Bold" VerticalAlignment="Center"/>
-            <TextBlock Text="{Binding VersionId}" FontSize="14" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
-          </StackPanel>
+          <TextBlock Grid.Column="1"
+                     Text="{Binding VersionId}"
+                     FontSize="16"
+                     FontWeight="SemiBold"
+                     HorizontalAlignment="Center"
+                     VerticalAlignment="Center"/>
         </Grid>
       </Border>
 
-      <!-- 内容区域 -->
-      <ScrollViewer Grid.Row="1" Padding="24">
-        <StackPanel Spacing="12" MaxWidth="900">
-          
-          <!-- 版本信息 -->
-          <Border Background="{DynamicResource SurfaceElevatedBrush}" CornerRadius="8" Padding="16">
-            <Grid ColumnDefinitions="*,*">
-              <StackPanel Grid.Column="0" Spacing="8">
-                <TextBlock Text="版本信息" FontSize="14" FontWeight="Bold" Margin="0,0,0,8"/>
-                <Grid ColumnDefinitions="80,*">
-                  <TextBlock Grid.Column="0" Text="实际版本：" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="12"/>
-                  <TextBlock Grid.Column="1" Text="{Binding ActualVersion}" FontSize="12"/>
-                </Grid>
-                <Grid ColumnDefinitions="80,*">
-                  <TextBlock Grid.Column="0" Text="版本类型：" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="12"/>
-                  <TextBlock Grid.Column="1" Text="{Binding VersionType}" FontSize="12"/>
-                </Grid>
-                <Grid ColumnDefinitions="80,*">
-                  <TextBlock Grid.Column="0" Text="上次游玩：" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="12"/>
-                  <TextBlock Grid.Column="1" Text="{Binding LastPlayed}" FontSize="12"/>
-                </Grid>
+      <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="20" Spacing="16">
+          <Border Background="{DynamicResource SurfaceBrush}"
+                  CornerRadius="12"
+                  Padding="20"
+                  BorderThickness="1"
+                  BorderBrush="{DynamicResource BorderBrush}">
+            <Grid ColumnDefinitions="Auto,Auto,Auto" RowDefinitions="Auto,Auto">
+              <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,32,0">
+                <TextBlock Text="实际版本" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" Margin="0,0,0,4"/>
+                <TextBlock Text="{Binding ActualVersion}" FontSize="14" FontWeight="SemiBold"/>
               </StackPanel>
-              <StackPanel Grid.Column="1" Spacing="8">
-                <TextBlock Text="版本设置" FontSize="14" FontWeight="Bold" Margin="0,0,0,8"/>
-                <Grid ColumnDefinitions="80,*">
-                  <TextBlock Grid.Column="0" Text="版本隔离：" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="12"/>
-                  <ComboBox Grid.Column="1" SelectedIndex="{Binding IsolationMode}" FontSize="12" Height="28">
-                    <ComboBoxItem Content="跟随全局设置"/>
-                    <ComboBoxItem Content="启用版本隔离"/>
-                    <ComboBoxItem Content="禁用版本隔离"/>
-                  </ComboBox>
-                </Grid>
-                <Grid ColumnDefinitions="80,*">
-                  <TextBlock Grid.Column="0" Text="存储路径：" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="12" VerticalAlignment="Center"/>
-                  <Button Grid.Column="1" Command="{Binding OpenFolderCommand}"
-                          Background="Transparent" Padding="0" HorizontalAlignment="Left" Height="20">
-                    <TextBlock Text="{Binding StoragePath}" Foreground="{DynamicResource PrimaryBrush}" FontSize="12" TextDecorations="Underline" TextTrimming="CharacterEllipsis" MaxWidth="250"/>
-                  </Button>
-                </Grid>
+
+              <StackPanel Grid.Row="0" Grid.Column="1" Margin="0,0,32,0">
+                <TextBlock Text="版本类型" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" Margin="0,0,0,4"/>
+                <TextBlock Text="{Binding VersionType}" FontSize="14" FontWeight="SemiBold"/>
+              </StackPanel>
+
+              <StackPanel Grid.Row="0" Grid.Column="2">
+                <TextBlock Text="上次游玩" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" Margin="0,0,0,4"/>
+                <TextBlock Text="{Binding LastPlayed}" FontSize="14" FontWeight="SemiBold"/>
               </StackPanel>
             </Grid>
           </Border>
 
-          <!-- 存档和Mod管理并排 -->
-          <Grid ColumnDefinitions="*,12,*">
-            <!-- 存档管理 -->
-            <Border Grid.Column="0" Background="{DynamicResource SurfaceElevatedBrush}" CornerRadius="8" Padding="16">
-              <Grid RowDefinitions="Auto,Auto,*">
-                <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
-                  <TextBlock Grid.Column="0" Text="存档管理" FontSize="14" FontWeight="Bold"/>
-                  <Button Grid.Column="1" Command="{Binding OpenSavesFolderCommand}"
-                          Background="Transparent" Padding="8,4" Height="24">
-                    <Path Data="M20 6H12L10 4H4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V8C22 6.9 21.1 6 20 6M20 18H4V8H20V18Z"
-                          Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource TextSecondaryBrush}"/>
-                  </Button>
-                </Grid>
-                <TextBlock Grid.Row="1" Text="{Binding Worlds.Count, StringFormat='共 {0} 个存档'}" 
-                           Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11" Margin="0,4,0,8"/>
+          <Border Background="{DynamicResource SurfaceBrush}"
+                  CornerRadius="12"
+                  Padding="20"
+                  BorderThickness="1"
+                  BorderBrush="{DynamicResource BorderBrush}">
+            <StackPanel Spacing="14">
+              <TextBlock Text="版本设置" FontSize="16" FontWeight="SemiBold"/>
 
-                <ScrollViewer Grid.Row="2" MaxHeight="200">
-                  <ItemsControl ItemsSource="{Binding Worlds}" IsVisible="{Binding HasWorlds}">
-                    <ItemsControl.ItemTemplate>
-                      <DataTemplate>
-                        <Border Background="{DynamicResource SurfaceBrush}" CornerRadius="4" Padding="10" Margin="0,0,0,6">
-                          <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="12" TextTrimming="CharacterEllipsis"/>
-                        </Border>
-                      </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                  </ItemsControl>
-                </ScrollViewer>
-
-                <TextBlock Grid.Row="2" Text="暂无存档" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="12"
-                           IsVisible="{Binding !HasWorlds}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+              <Grid ColumnDefinitions="*,Auto">
+                <StackPanel>
+                  <TextBlock Text="版本隔离" FontSize="13" FontWeight="SemiBold"/>
+                  <TextBlock Text="开启后此版本使用独立的游戏目录" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                </StackPanel>
+                <ComboBox Grid.Column="1" Width="150" SelectedIndex="{Binding IsolationMode}">
+                  <ComboBoxItem Content="跟随全局"/>
+                  <ComboBoxItem Content="开启"/>
+                  <ComboBoxItem Content="关闭"/>
+                </ComboBox>
               </Grid>
-            </Border>
 
-            <!-- Mod管理 -->
-            <Border Grid.Column="2" Background="{DynamicResource SurfaceElevatedBrush}" CornerRadius="8" Padding="16">
-              <Grid RowDefinitions="Auto,Auto,*">
-                <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto">
-                  <TextBlock Grid.Column="0" Text="Mod管理" FontSize="14" FontWeight="Bold"/>
-                  <Button Grid.Column="1" Command="{Binding RefreshModsCommand}"
-                          Background="Transparent" Padding="8,4" Height="24" Margin="0,0,4,0">
-                    <Path Data="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"
-                          Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource TextSecondaryBrush}"/>
-                  </Button>
-                  <Button Grid.Column="2" Command="{Binding OpenModsFolderCommand}"
-                          Background="Transparent" Padding="8,4" Height="24">
-                    <Path Data="M20 6H12L10 4H4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V8C22 6.9 21.1 6 20 6M20 18H4V8H20V18Z"
-                          Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource TextSecondaryBrush}"/>
-                  </Button>
-                </Grid>
-                <TextBlock Grid.Row="1" Text="{Binding Mods.Count, StringFormat='共 {0} 个Mod'}" 
-                           Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11" Margin="0,4,0,8"/>
+              <Separator/>
 
-                <ScrollViewer Grid.Row="2" MaxHeight="200">
-                  <ItemsControl ItemsSource="{Binding Mods}" IsVisible="{Binding HasMods}">
-                    <ItemsControl.ItemTemplate>
-                      <DataTemplate>
-                        <Border Background="{DynamicResource SurfaceBrush}" CornerRadius="4" Padding="10,8" Margin="0,0,0,6">
-                          <Grid ColumnDefinitions="*,Auto">
-                            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
-                              <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" FontSize="12" TextTrimming="CharacterEllipsis"
-                                         IsVisible="{Binding IsEnabled}"/>
-                              <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" FontSize="12" TextTrimming="CharacterEllipsis"
-                                         Foreground="{DynamicResource TextSecondaryBrush}" TextDecorations="Strikethrough"
-                                         IsVisible="{Binding !IsEnabled}"/>
-                            </StackPanel>
-                            <Button Grid.Column="1" 
-                                    Command="{Binding $parent[ItemsControl].((vm:InstanceViewModel)DataContext).ToggleModEnabledCommand}"
-                                    CommandParameter="{Binding}"
-                                    Background="Transparent" Padding="8,4" Height="24">
-                              <Panel>
-                                <TextBlock Text="禁用" FontSize="11" Foreground="{DynamicResource PrimaryBrush}"
-                                           IsVisible="{Binding IsEnabled}"/>
-                                <TextBlock Text="启用" FontSize="11" Foreground="{DynamicResource PrimaryBrush}"
-                                           IsVisible="{Binding !IsEnabled}"/>
-                              </Panel>
-                            </Button>
-                          </Grid>
-                        </Border>
-                      </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                  </ItemsControl>
-                </ScrollViewer>
+              <StackPanel Spacing="4">
+                <TextBlock Text="存储路径" FontSize="13" FontWeight="SemiBold"/>
+                <Border Background="{DynamicResource SurfaceElevatedBrush}" CornerRadius="6" Padding="10,8" BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
+                  <TextBlock Text="{Binding StoragePath}" FontSize="12" FontFamily="Consolas" TextWrapping="Wrap" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                </Border>
+              </StackPanel>
+            </StackPanel>
+          </Border>
 
-                <TextBlock Grid.Row="2" Text="暂无Mod" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="12"
-                           IsVisible="{Binding !HasMods}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+          <Border Background="{DynamicResource SurfaceBrush}"
+                  CornerRadius="12"
+                  Padding="20"
+                  BorderThickness="1"
+                  BorderBrush="{DynamicResource BorderBrush}">
+            <StackPanel Spacing="14">
+              <TextBlock Text="存档管理" FontSize="16" FontWeight="SemiBold"/>
+
+              <ItemsControl ItemsSource="{Binding Worlds}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <Border Background="{DynamicResource SurfaceElevatedBrush}"
+                            CornerRadius="8"
+                            Padding="14"
+                            Margin="0,0,0,8"
+                            BorderThickness="1"
+                            BorderBrush="{DynamicResource BorderBrush}">
+                      <Grid ColumnDefinitions="Auto,*,Auto">
+                        <Path Data="M12 2C6.48 2 2 6.48 2 12S6.48 22 12 22 22 17.52 22 12 17.52 2 12 2M12 20C7.59 20 4 16.41 4 12S7.59 4 12 4 20 7.59 20 12 16.41 20 12 20M11 7H13V13H11V7M11 15H13V17H11V15Z" Width="16" Height="16" Stretch="Uniform" Fill="{DynamicResource PrimaryBrush}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                          <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold"/>
+                          <TextBlock Text="{Binding Path}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis"/>
+                        </StackPanel>
+                        <Button Grid.Column="2" Classes="ghost" FontSize="12"
+                                Command="{Binding $parent[UserControl].DataContext.OpenSavesFolderCommand}">
+                          <StackPanel Orientation="Horizontal" Spacing="4">
+                            <Path Data="M20 6H12L10 4H4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V8C22 6.9 21.1 6 20 6M20 18H4V8H20V18Z" Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource TextBrush}" VerticalAlignment="Center"/>
+                            <TextBlock Text="打开" VerticalAlignment="Center"/>
+                          </StackPanel>
+                        </Button>
+                      </Grid>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+
+              <TextBlock Text="暂无存档"
+                         FontSize="13"
+                         Foreground="{DynamicResource TextTertiaryBrush}"
+                         HorizontalAlignment="Center"
+                         IsVisible="{Binding !HasWorlds}"/>
+            </StackPanel>
+          </Border>
+
+          <Border Background="{DynamicResource SurfaceBrush}"
+                  CornerRadius="12"
+                  Padding="20"
+                  BorderThickness="1"
+                  BorderBrush="{DynamicResource BorderBrush}">
+            <StackPanel Spacing="14">
+              <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Text="Mod 管理" FontSize="16" FontWeight="SemiBold"/>
+                <Button Grid.Column="1" Classes="ghost" FontSize="12"
+                        Command="{Binding OpenModsFolderCommand}">
+                  <StackPanel Orientation="Horizontal" Spacing="4">
+                    <Path Data="M20 6H12L10 4H4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V8C22 6.9 21.1 6 20 6M20 18H4V8H20V18Z" Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource TextBrush}" VerticalAlignment="Center"/>
+                    <TextBlock Text="打开Mod文件夹" VerticalAlignment="Center"/>
+                  </StackPanel>
+                </Button>
               </Grid>
-            </Border>
-          </Grid>
 
+              <ItemsControl ItemsSource="{Binding Mods}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <Border Background="{DynamicResource SurfaceElevatedBrush}"
+                            CornerRadius="8"
+                            Padding="14"
+                            Margin="0,0,0,8"
+                            BorderThickness="1"
+                            BorderBrush="{DynamicResource BorderBrush}">
+                      <Grid ColumnDefinitions="Auto,*,Auto">
+                        <Border Width="8" Height="8" CornerRadius="4" Margin="0,0,10,0" VerticalAlignment="Center">
+                          <Border.Background>
+                            <SolidColorBrush Color="{Binding IsEnabled, Converter={x:Static converters:BoolToColorConverter.Instance}}"/>
+                          </Border.Background>
+                        </Border>
+
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                          <TextBlock Text="{Binding FileName}" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                        </StackPanel>
+
+                        <ToggleSwitch Grid.Column="2"
+                                      IsChecked="{Binding IsEnabled}"
+                                      OnContent="" OffContent=""/>
+                      </Grid>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+
+              <TextBlock Text="暂无Mod"
+                         FontSize="13"
+                         Foreground="{DynamicResource TextTertiaryBrush}"
+                         HorizontalAlignment="Center"
+                         IsVisible="{Binding !HasMods}"/>
+            </StackPanel>
+          </Border>
         </StackPanel>
       </ScrollViewer>
 
-      <!-- 加载中遮罩 -->
-      <Border Grid.Row="1" Background="{DynamicResource BackgroundBrush}" Opacity="0.8" IsVisible="{Binding IsLoading}">
-        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
-          <ProgressBar IsIndeterminate="True" Width="100"/>
-          <TextBlock Text="加载中..." Margin="0,12,0,0" HorizontalAlignment="Center"/>
+      <Border Grid.Row="2"
+              Background="#C0000000"
+              IsVisible="{Binding IsLoading}"
+              ZIndex="20">
+        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10">
+          <ProgressBar IsIndeterminate="True" Width="120"/>
+          <TextBlock Text="加载中..." FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center"/>
         </StackPanel>
       </Border>
     </Grid>

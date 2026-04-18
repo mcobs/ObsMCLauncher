@@ -6,128 +6,99 @@
              x:DataType="vm:ResourcesViewModel"
              x:Name="Root">
 
-  <Grid RowDefinitions="Auto,Auto,*" Margin="16">
+  <Grid RowDefinitions="Auto,Auto,*" Margin="20">
 
-    <!-- 标题区域 -->
-    <StackPanel Grid.Row="0" Spacing="6" IsVisible="{Binding IsListVisible}">
-      <TextBlock Text="资源中心" FontSize="24" FontWeight="Bold" />
-      <TextBlock Text="下载 MOD、材质包、光影、数据包和整合包" Opacity="0.75" />
+    <StackPanel Grid.Row="0" Spacing="4" IsVisible="{Binding IsListVisible}">
+      <TextBlock Text="资源中心" FontSize="22" FontWeight="Bold" />
+      <TextBlock Text="下载 MOD、材质包、光影、数据包和整合包" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,10" />
     </StackPanel>
 
-    <!-- Tabs + 筛选栏 -->
     <Border Grid.Row="1" Margin="0,0,0,10" CornerRadius="10"
-            Background="{DynamicResource SurfaceBrush}" Padding="10"
+            Background="{DynamicResource SurfaceBrush}" Padding="12"
+            BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}"
             IsVisible="{Binding IsListVisible}">
       <StackPanel Spacing="8">
 
-        <!-- 分类 Tabs (紧凑单行模式) -->
-        <StackPanel Orientation="Horizontal" Spacing="12">
-          <TextBlock Text="资源类型:" FontSize="12" FontWeight="SemiBold" Opacity="0.6" VerticalAlignment="Center" />
-          <StackPanel Orientation="Horizontal" Spacing="4">
-            <RadioButton Content="MOD" GroupName="resType" 
+        <Grid ColumnDefinitions="Auto,*,Auto">
+          <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="2" Margin="0,0,12,0">
+            <RadioButton Content="MOD" GroupName="resType"
                          IsChecked="{Binding CurrentResourceType, Converter={x:Static converters:StringEqualsConverter.Instance}, ConverterParameter=Mods}"
-                         Command="{Binding ChangeTypeCommand}" CommandParameter="Mods" />
-            <RadioButton Content="材质包" GroupName="resType" 
+                         Command="{Binding ChangeTypeCommand}" CommandParameter="Mods" FontSize="12" Padding="8,4"/>
+            <RadioButton Content="材质包" GroupName="resType"
                          IsChecked="{Binding CurrentResourceType, Converter={x:Static converters:StringEqualsConverter.Instance}, ConverterParameter=Textures}"
-                         Command="{Binding ChangeTypeCommand}" CommandParameter="Textures" />
-            <RadioButton Content="光影" GroupName="resType" 
+                         Command="{Binding ChangeTypeCommand}" CommandParameter="Textures" FontSize="12" Padding="8,4"/>
+            <RadioButton Content="光影" GroupName="resType"
                          IsChecked="{Binding CurrentResourceType, Converter={x:Static converters:StringEqualsConverter.Instance}, ConverterParameter=Shaders}"
-                         Command="{Binding ChangeTypeCommand}" CommandParameter="Shaders" />
-            <RadioButton Content="数据包" GroupName="resType" 
+                         Command="{Binding ChangeTypeCommand}" CommandParameter="Shaders" FontSize="12" Padding="8,4"/>
+            <RadioButton Content="数据包" GroupName="resType"
                          IsChecked="{Binding CurrentResourceType, Converter={x:Static converters:StringEqualsConverter.Instance}, ConverterParameter=Datapacks}"
-                         Command="{Binding ChangeTypeCommand}" CommandParameter="Datapacks" />
-            <RadioButton Content="整合包" GroupName="resType" 
+                         Command="{Binding ChangeTypeCommand}" CommandParameter="Datapacks" FontSize="12" Padding="8,4"/>
+            <RadioButton Content="整合包" GroupName="resType"
                          IsChecked="{Binding CurrentResourceType, Converter={x:Static converters:StringEqualsConverter.Instance}, ConverterParameter=Modpacks}"
-                         Command="{Binding ChangeTypeCommand}" CommandParameter="Modpacks" />
-          </StackPanel>
-        </StackPanel>
-
-        <!-- 筛选详情 -->
-        <Grid ColumnDefinitions="*,70,130,130,130,160" RowDefinitions="Auto" ColumnSpacing="10">
-          
-          <!-- 1. 搜索框 -->
-          <StackPanel Grid.Column="0" Spacing="4">
-            <TextBlock Text="关键词搜索" FontSize="12" FontWeight="SemiBold" Opacity="0.6" />
-            <TextBox Text="{Binding Query}" Watermark="输入资源名称..." Height="32" VerticalAlignment="Center" />
+                         Command="{Binding ChangeTypeCommand}" CommandParameter="Modpacks" FontSize="12" Padding="8,4"/>
           </StackPanel>
 
-          <!-- 2. 搜索按钮 (移至搜索框后) -->
-          <StackPanel Grid.Column="1" Spacing="4">
-            <TextBlock Text=" " FontSize="12" /> <!-- 占位对齐 -->
-            <Button Content="搜索" Classes="accent" 
-                    Command="{Binding SearchCommand}" IsEnabled="{Binding !IsLoading}" 
-                    Height="32" Padding="0"
-                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" VerticalAlignment="Center" />
-          </StackPanel>
+          <TextBox Grid.Column="1" Text="{Binding Query}" Watermark="搜索资源..." FontSize="12" Margin="0,0,12,0"/>
 
-          <!-- 3. 下载源 -->
-          <StackPanel Grid.Column="2" Spacing="4">
-            <TextBlock Text="搜索来源" FontSize="12" FontWeight="SemiBold" Opacity="0.6" />
-            <ComboBox HorizontalAlignment="Stretch"
-                      SelectedIndex="{Binding CurrentSourceIndex}">
-              <ComboBoxItem Content="CurseForge" />
-              <ComboBoxItem Content="Modrinth" />
-              <ComboBoxItem Content="全部" />
-            </ComboBox>
-          </StackPanel>
+          <Button Grid.Column="2" Content="搜索" Classes="accent" FontSize="12"
+                  Command="{Binding SearchCommand}" IsEnabled="{Binding !IsLoading}"
+                  Padding="16,5" />
+        </Grid>
 
-          <!-- 4. 适用版本筛选 -->
-          <StackPanel Grid.Column="3" Spacing="4">
-            <TextBlock Text="适用游戏版本" FontSize="12" FontWeight="SemiBold" Opacity="0.6" />
-            <ComboBox HorizontalAlignment="Stretch"
-                      ItemsSource="{Binding VersionFilters}"
-                      SelectedItem="{Binding VersionFilter}" />
-          </StackPanel>
+        <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto" ColumnSpacing="8">
+          <ComboBox Grid.Column="0" Width="110" FontSize="12"
+                    SelectedIndex="{Binding CurrentSourceIndex}">
+            <ComboBoxItem Content="CurseForge" />
+            <ComboBoxItem Content="Modrinth" />
+            <ComboBoxItem Content="全部" />
+          </ComboBox>
 
-          <!-- 5. 排序方式 -->
-          <StackPanel Grid.Column="4" Spacing="4">
-            <TextBlock Text="排序方式" FontSize="12" FontWeight="SemiBold" Opacity="0.6" />
-            <ComboBox HorizontalAlignment="Stretch"
-                      ItemsSource="{Binding AvailableSortOptions}"
-                      SelectedIndex="{Binding SortFieldIndex}">
-              <ComboBox.ItemTemplate>
-                <DataTemplate>
-                  <TextBlock Text="{Binding Name}" />
-                </DataTemplate>
-              </ComboBox.ItemTemplate>
-            </ComboBox>
-          </StackPanel>
+          <ComboBox Grid.Column="1" Width="110" FontSize="12"
+                    ItemsSource="{Binding VersionFilters}"
+                    SelectedItem="{Binding VersionFilter}" />
 
-          <!-- 6. 游戏版本 -->
-          <StackPanel Grid.Column="5" Spacing="4">
-            <TextBlock Text="安装目标版本" FontSize="12" FontWeight="SemiBold" Opacity="0.6" />
-            <ComboBox HorizontalAlignment="Stretch"
+          <ComboBox Grid.Column="2" Width="110" FontSize="12"
+                    ItemsSource="{Binding AvailableSortOptions}"
+                    SelectedIndex="{Binding SortFieldIndex}">
+            <ComboBox.ItemTemplate>
+              <DataTemplate>
+                <TextBlock Text="{Binding Name}" FontSize="12"/>
+              </DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
+
+          <TextBlock Grid.Column="3" Text="{Binding Status}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+
+          <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="8">
+            <ComboBox Width="120" FontSize="12"
                       ItemsSource="{Binding InstalledVersions}"
                       SelectedItem="{Binding SelectedVersionId}"
                       IsEnabled="{Binding HasInstalledVersions}"
-                      PlaceholderText="请选择版本" />
-            <TextBlock Text="{Binding VersionHintText}" FontSize="10" Foreground="#E74C3C" 
-                       IsVisible="{Binding !HasInstalledVersions}" />
+                      PlaceholderText="目标版本" />
+            <TextBlock Text="{Binding VersionHintText}" FontSize="11" Foreground="{DynamicResource DangerBrush}"
+                       IsVisible="{Binding !HasInstalledVersions}" VerticalAlignment="Center"/>
           </StackPanel>
         </Grid>
-
-        <Separator Height="1" Background="{DynamicResource BorderBrush}" Opacity="0.3" Margin="0,4" />
-        <TextBlock Text="{Binding Status}" Opacity="0.8" FontSize="12" />
 
       </StackPanel>
     </Border>
 
-    <!-- 列表区域 -->
-    <Border Grid.Row="2" CornerRadius="10" Background="{DynamicResource SurfaceBrush}">
+    <Border Grid.Row="2" CornerRadius="10" Background="{DynamicResource SurfaceBrush}"
+            BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
       <Grid>
         <ContentControl Content="{Binding DetailViewModel}" IsVisible="{Binding DetailViewModel, Converter={x:Static converters:NotNullConverter.Instance}}" />
-        <!-- 加载状态：简化骨架屏 -->
-        <ItemsControl IsVisible="{Binding IsLoading}" Margin="20">
+
+        <ItemsControl IsVisible="{Binding IsLoading}" Margin="16">
           <ItemsControl.ItemTemplate>
             <DataTemplate>
-              <Border CornerRadius="8" Padding="12" Margin="0,0,0,12"
-                      Background="{DynamicResource SurfaceElevatedBrush}">
-                <Grid ColumnDefinitions="80,*" RowDefinitions="Auto,Auto,Auto">
-                  <Border Width="60" Height="60" CornerRadius="8" Background="{DynamicResource SurfaceHoverBrush}" />
-                  <StackPanel Grid.Column="1" Spacing="8">
-                    <Border Height="18" Width="260" Background="{DynamicResource SurfaceHoverBrush}" CornerRadius="4" />
-                    <Border Height="14" Width="420" Background="{DynamicResource SurfaceHoverBrush}" CornerRadius="4" />
-                    <Border Height="12" Width="320" Background="{DynamicResource SurfaceHoverBrush}" CornerRadius="4" />
+              <Border CornerRadius="6" Padding="10" Margin="0,0,0,6"
+                      Background="{DynamicResource SurfaceElevatedBrush}"
+                      BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}" Opacity="0.5">
+                <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto">
+                  <Border Width="40" Height="40" CornerRadius="6" Background="{DynamicResource SurfaceHoverBrush}" Margin="0,0,10,0"/>
+                  <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
+                    <Border Height="12" Width="160" Background="{DynamicResource SurfaceHoverBrush}" CornerRadius="3" />
+                    <Border Height="10" Width="280" Background="{DynamicResource SurfaceHoverBrush}" CornerRadius="3" />
                   </StackPanel>
                 </Grid>
               </Border>
@@ -135,46 +106,41 @@
           </ItemsControl.ItemTemplate>
         </ItemsControl>
 
-        <!-- 结果列表（卡片式） -->
         <ScrollViewer IsVisible="{Binding DetailViewModel, Converter={x:Static ObjectConverters.IsNull}}">
-          <ItemsControl ItemsSource="{Binding Results}" Margin="20">
+          <ItemsControl ItemsSource="{Binding Results}" Margin="12">
             <ItemsControl.ItemTemplate>
               <DataTemplate>
-                <Border CornerRadius="8" Padding="12" Margin="0,0,0,12"
-                        Background="{DynamicResource SurfaceElevatedBrush}">
-                  <Grid ColumnDefinitions="80,*,Auto" RowDefinitions="Auto,Auto,Auto">
+                <Border CornerRadius="8" Padding="10" Margin="0,0,0,6"
+                        Background="{DynamicResource SurfaceElevatedBrush}"
+                        BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
+                  <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
 
-                    <Border Grid.RowSpan="3" Width="60" Height="60" CornerRadius="8"
-                            Background="{DynamicResource SurfaceHoverBrush}" VerticalAlignment="Top">
-                      <Image Source="{Binding Icon}" Width="60" Height="60" />
+                    <Border Grid.RowSpan="2" Width="40" Height="40" CornerRadius="8"
+                            Background="{DynamicResource SurfaceHoverBrush}" VerticalAlignment="Center">
+                      <Image Source="{Binding Icon}" Width="40" Height="40" />
                     </Border>
 
-                    <TextBlock Grid.Column="1" Grid.Row="0" Text="{Binding DisplayName}" FontSize="16" FontWeight="SemiBold"
-                               TextTrimming="CharacterEllipsis" Margin="0,0,0,4" />
+                    <TextBlock Grid.Column="1" Grid.Row="0" Text="{Binding DisplayName}" FontSize="13" FontWeight="SemiBold"
+                               TextTrimming="CharacterEllipsis" Margin="10,0,0,2" />
 
-                    <TextBlock Grid.Column="1" Grid.Row="1" Text="{Binding Description}" Opacity="0.75"
-                               TextWrapping="Wrap" MaxHeight="40" TextTrimming="CharacterEllipsis" Margin="0,0,0,8" />
-
-                    <StackPanel Grid.Column="1" Grid.Row="2" Orientation="Horizontal" Spacing="16" Opacity="0.8" VerticalAlignment="Center">
-                      <StackPanel Orientation="Horizontal" Spacing="4">
-                        <TextBlock Text="👤" Opacity="0.5" />
-                        <TextBlock Text="{Binding Author}" FontSize="12" />
+                    <StackPanel Grid.Column="1" Grid.Row="1" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center" Margin="10,0,0,0">
+                      <TextBlock Text="{Binding Description}" Foreground="{DynamicResource TextSecondaryBrush}"
+                                 TextTrimming="CharacterEllipsis" FontSize="11" MaxWidth="300"/>
+                      <StackPanel Orientation="Horizontal" Spacing="3">
+                        <TextBlock Text="{Binding Author}" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}" />
                       </StackPanel>
-                      <StackPanel Orientation="Horizontal" Spacing="4">
-                        <TextBlock Text="📥" Opacity="0.5" />
-                        <TextBlock Text="{Binding Downloads}" FontSize="12" />
+                      <StackPanel Orientation="Horizontal" Spacing="3">
+                        <Path Data="M5 20H19V18H5M19 9H15V3H9V9H5L12 16L19 9Z" Width="10" Height="10" Stretch="Uniform" Fill="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center"/>
+                        <TextBlock Text="{Binding Downloads}" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}" />
                       </StackPanel>
-                      <StackPanel Orientation="Horizontal" Spacing="4">
-                        <TextBlock Text="🏷️" Opacity="0.5" />
-                        <TextBlock Text="{Binding VersionDisplay, StringFormat=版本: {0}}" FontSize="12" />
-                      </StackPanel>
+                      <TextBlock Text="{Binding VersionDisplay, StringFormat=v{0}}" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}" />
                     </StackPanel>
 
-                    <StackPanel Grid.Column="2" Grid.Row="0" Grid.RowSpan="3" Orientation="Vertical" Spacing="6" VerticalAlignment="Center" Margin="12,0,0,0">
-                      <Button Content="详情" 
+                    <StackPanel Grid.Column="2" Grid.Row="0" Grid.RowSpan="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" Margin="8,0,0,0">
+                      <Button Content="详情" Classes="ghost" FontSize="12" Padding="10,4"
                               Command="{Binding #Root.((vm:ResourcesViewModel)DataContext).OpenDetailCommand}"
                               CommandParameter="{Binding}" />
-                      <Button Content="下载" Classes="accent" 
+                      <Button Content="下载" Classes="accent" FontSize="12" Padding="10,4"
                               Command="{Binding #Root.((vm:ResourcesViewModel)DataContext).DownloadCommand}"
                               CommandParameter="{Binding}" />
                     </StackPanel>

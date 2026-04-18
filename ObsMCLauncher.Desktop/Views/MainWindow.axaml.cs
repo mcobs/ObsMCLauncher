@@ -109,4 +109,12 @@ public partial class MainWindow : Window
             Close();
         }
     }
+
+    private void AuthUrlOverlay_PointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (_vm?.Dialogs?.IsAuthUrlOpen == true)
+        {
+            _vm.Dialogs.CloseAuthUrlCommand.Execute(true);
+        }
+    }
 }

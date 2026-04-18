@@ -11,11 +11,11 @@
   </UserControl.Resources>
 
   <UserControl.Styles>
-    <!-- 卡片悬停缩放动画 -->
     <Style Selector="Border.home-card">
       <Setter Property="Transitions">
         <Transitions>
           <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.2" Easing="CubicEaseOut"/>
+          <BrushTransition Property="Background" Duration="0:0:0.15"/>
         </Transitions>
       </Setter>
       <Setter Property="RenderTransform" Value="scale(1.0)"/>
@@ -30,52 +30,54 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto">
       <Grid Margin="24" RowDefinitions="*,Auto">
         
-        <!-- 主页卡片区域 -->
-        <Grid Grid.Row="0" Margin="0,0,0,16" RowDefinitions="Auto,*">
-          <!-- 欢迎横幅卡片 -->
-          <Panel Grid.Row="0" Margin="0,0,0,16"
+        <Grid Grid.Row="0" Margin="0,0,0,20" RowDefinitions="Auto,*">
+          <Panel Grid.Row="0" Margin="0,0,0,20"
                  IsVisible="{Binding IsWelcomeCardEnabled}">
             <Border Classes="home-card"
-                    CornerRadius="16"
-                    MinHeight="120"
+                    CornerRadius="14"
+                    MinHeight="140"
                     ClipToBounds="True"
-                    BoxShadow="0 0 30 0 #4010B981"
+                    BoxShadow="0 4 20 0 #3010B981"
                     PointerPressed="Card_PointerPressed"
                     Cursor="Hand">
               <Border.Background>
                 <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
-                  <GradientStop Color="#1e3a8a" Offset="0"/>
+                  <GradientStop Color="#0f2b46" Offset="0"/>
+                  <GradientStop Color="#065f46" Offset="0.5"/>
                   <GradientStop Color="#059669" Offset="1"/>
                 </LinearGradientBrush>
               </Border.Background>
               
               <Panel>
                 <Canvas HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
-                  <Ellipse Width="200" Height="200" 
-                           Canvas.Right="-50" Canvas.Top="-50"
-                           Fill="White" Opacity="0.05"/>
-                  <Ellipse Width="150" Height="150" 
-                           Canvas.Left="-30" Canvas.Bottom="-30"
-                           Fill="White" Opacity="0.08"/>
-                  <Rectangle Width="40" Height="40" 
-                            Canvas.Right="120" Canvas.Top="60"
-                            Fill="White" Opacity="0.1"
-                            RadiusX="4" RadiusY="4">
+                  <Ellipse Width="260" Height="260" 
+                           Canvas.Right="-80" Canvas.Top="-80"
+                           Fill="White" Opacity="0.04"/>
+                  <Ellipse Width="180" Height="180" 
+                           Canvas.Left="-40" Canvas.Bottom="-40"
+                           Fill="White" Opacity="0.06"/>
+                  <Ellipse Width="100" Height="100" 
+                           Canvas.Right="180" Canvas.Bottom="-20"
+                           Fill="White" Opacity="0.04"/>
+                  <Rectangle Width="50" Height="50" 
+                            Canvas.Right="140" Canvas.Top="50"
+                            Fill="White" Opacity="0.08"
+                            RadiusX="6" RadiusY="6">
                     <Rectangle.RenderTransform>
                       <RotateTransform Angle="15"/>
                     </Rectangle.RenderTransform>
                   </Rectangle>
-                  <Rectangle Width="30" Height="30" 
-                            Canvas.Left="80" Canvas.Bottom="80"
-                            Fill="White" Opacity="0.12"
-                            RadiusX="3" RadiusY="3">
+                  <Rectangle Width="35" Height="35" 
+                            Canvas.Left="100" Canvas.Bottom="60"
+                            Fill="White" Opacity="0.1"
+                            RadiusX="4" RadiusY="4">
                     <Rectangle.RenderTransform>
                       <RotateTransform Angle="-20"/>
                     </Rectangle.RenderTransform>
                   </Rectangle>
-                  <Rectangle Width="25" Height="25" 
-                            Canvas.Right="200" Canvas.Bottom="120"
-                            Fill="White" Opacity="0.1"
+                  <Rectangle Width="28" Height="28" 
+                            Canvas.Right="240" Canvas.Bottom="100"
+                            Fill="White" Opacity="0.07"
                             RadiusX="3" RadiusY="3">
                     <Rectangle.RenderTransform>
                       <RotateTransform Angle="45"/>
@@ -89,25 +91,26 @@
                     <ColumnDefinition Width="*"/>
                   </Grid.ColumnDefinitions>
                   
-                  <Image Grid.Column="0"
-                         Source="{Binding Source='avares://ObsMCLauncher.Desktop/Assets/logo.png', Converter={StaticResource BitmapConverter}}" 
-                         Width="60" Height="60"
-                         Margin="24,0,16,0"
-                         VerticalAlignment="Center"/>
+                  <Border Grid.Column="0" Width="72" Height="72" CornerRadius="16"
+                          Background="#20FFFFFF" Margin="28,0,20,0"
+                          VerticalAlignment="Center">
+                    <Image Source="{Binding Source='avares://ObsMCLauncher.Desktop/Assets/logo.png', Converter={StaticResource BitmapConverter}}" 
+                           Width="48" Height="48"
+                           VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                  </Border>
                   
-                  <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="8">
+                  <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="6">
                     <TextBlock Text="{Binding Title}" 
-                               FontSize="24" FontWeight="Bold"
+                               FontSize="26" FontWeight="Bold"
                                Foreground="White"/>
                     <TextBlock Text="{Binding Description}" 
-                               FontSize="14" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                               FontSize="14" Foreground="#CCFFFFFF"/>
                   </StackPanel>
                 </Grid>
               </Panel>
             </Border>
           </Panel>
 
-          <!-- 其他卡片 -->
           <ItemsControl Grid.Row="1" ItemsSource="{Binding OtherCards}">
             <ItemsControl.ItemsPanel>
               <ItemsPanelTemplate>
@@ -125,13 +128,13 @@
                         MinHeight="100"
                         BorderThickness="1"
                         BorderBrush="{DynamicResource BorderBrush}"
-                        BoxShadow="0 2 10 0 #1A000000"
+                        BoxShadow="0 2 8 0 #14000000"
                         Cursor="{Binding CommandId, Converter={x:Static converters:NullToCursorConverter.Instance}}"
                         PointerPressed="Card_PointerPressed"
                         IsVisible="{Binding IsEnabled}">
                   <StackPanel Spacing="8">
                     <TextBlock Text="{Binding Icon}" FontSize="24" Foreground="{DynamicResource TextBrush}"/>
-                    <TextBlock Text="{Binding Title}" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" Foreground="{DynamicResource TextBrush}"/>
+                    <TextBlock Text="{Binding Title}" FontSize="14" FontWeight="SemiBold" TextWrapping="Wrap" Foreground="{DynamicResource TextBrush}"/>
                     <TextBlock Text="{Binding Description}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" MaxLines="2"/>
                   </StackPanel>
                 </Border>
@@ -140,33 +143,30 @@
           </ItemsControl>
         </Grid>
 
-        <!-- 快速启动区域 -->
         <Border Grid.Row="1"
                 Background="{DynamicResource SurfaceBrush}"
-                CornerRadius="10"
-                Padding="20"
-                Margin="0,16,0,0">
+                CornerRadius="12"
+                Padding="24"
+                BorderThickness="1"
+                BorderBrush="{DynamicResource BorderBrush}">
           <Grid RowDefinitions="Auto,Auto">
             
-            <Grid Grid.Row="0" ColumnDefinitions="*,12,*,12,Auto">
-              <!-- 账号选择 - 有账号时显示 -->
+            <Grid Grid.Row="0" ColumnDefinitions="*,16,*,Auto">
               <ComboBox Grid.Column="0"
                         PlaceholderText="选择游戏账号"
                         HorizontalAlignment="Stretch"
-                        Height="40"
+                        Height="42"
                         ItemsSource="{Binding Accounts}"
                         SelectedItem="{Binding SelectedAccount}"
                         IsVisible="{Binding HasAccounts}">
                 <ComboBox.ItemTemplate>
                   <DataTemplate>
                     <Grid ColumnDefinitions="Auto,*,Auto" Height="32">
-                      <!-- 头像区域 - 有皮肤头像时显示 -->
                       <Border Grid.Column="0" Width="24" Height="24" CornerRadius="4" ClipToBounds="True" 
                               Background="{DynamicResource SurfaceBrush}" VerticalAlignment="Center"
                               IsVisible="{Binding Avatar, Converter={x:Static converters:NullToBoolConverter.Instance}}">
                         <Image Source="{Binding Avatar}" Stretch="Uniform" />
                       </Border>
-                      <!-- 默认图标区域 - 无皮肤头像时显示账号类型图标 (仅在下拉列表中显示) -->
                       <TextBlock Grid.Column="0" Width="24" Height="24"
                                  Text="{Binding Type, Converter={x:Static converters:EnumToChineseTextConverter.Instance}, ConverterParameter=Icon}"
                                  FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center"
@@ -174,12 +174,11 @@
                       <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="8,0,0,0">
                         <TextBlock Text="{Binding Username}" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
                         <TextBlock Text="{Binding Type, Converter={x:Static converters:EnumToChineseTextConverter.Instance}}" 
-                                   FontSize="10" Opacity="0.6" />
+                                   FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" />
                       </StackPanel>
                     </Grid>
                   </DataTemplate>
                 </ComboBox.ItemTemplate>
-                <!-- 修复：未选择账号时不显示头像图标 -->
                 <ComboBox.SelectionBoxItemTemplate>
                   <DataTemplate>
                     <Grid ColumnDefinitions="Auto,*" Height="32">
@@ -198,26 +197,24 @@
                 </ComboBox.SelectionBoxItemTemplate>
               </ComboBox>
 
-              <!-- 无账号时显示提示 -->
               <Border Grid.Column="0"
                       Background="{DynamicResource SurfaceElevatedBrush}"
                       CornerRadius="6"
-                      Height="40"
+                      Height="42"
                       HorizontalAlignment="Stretch"
                       IsVisible="{Binding !HasAccounts}">
-                <TextBlock Text="请添加账号"
-                           FontSize="14"
+                <TextBlock Text="请先添加账号"
+                           FontSize="13"
                            Foreground="{DynamicResource TextSecondaryBrush}"
                            VerticalAlignment="Center"
                            HorizontalAlignment="Center"/>
               </Border>
 
-              <!-- 版本选择 -->
               <Grid Grid.Column="2" ColumnDefinitions="*,Auto">
                 <ComboBox Grid.Column="0"
                           PlaceholderText="选择游戏版本"
                           HorizontalAlignment="Stretch"
-                          Height="40"
+                          Height="42"
                           ItemsSource="{Binding InstalledVersions}"
                           SelectedItem="{Binding SelectedInstalledVersion}">
                   <ComboBox.ItemTemplate>
@@ -229,7 +226,8 @@
                 
                 <Button Grid.Column="1"
                         Command="{Binding OpenVersionDetailCommand}"
-                        Width="40" Height="40" Margin="8,0,0,0"
+                        Width="42" Height="42" Margin="8,0,0,0"
+                        Classes="ghost"
                         ToolTip.Tip="管理当前版本">
                   <Path Data="M12 15.5A3.5 3.5 0 0 1 8.5 12A3.5 3.5 0 0 1 12 8.5A3.5 3.5 0 0 1 15.5 12A3.5 3.5 0 0 1 12 15.5M19.4 13C19.5 12.7 19.5 12.3 19.5 12C19.5 11.7 19.5 11.3 19.4 11L21.5 9.4C21.7 9.2 21.7 9 21.6 8.8L19.6 5.4C19.5 5.2 19.2 5.1 19 5.2L16.5 6.2C16 5.8 15.4 5.5 14.8 5.3L14.4 2.6C14.4 2.3 14.2 2.2 14 2.2H10C9.8 2.2 9.6 2.3 9.6 2.6L9.2 5.3C8.6 5.5 8 5.8 7.5 6.2L5 5.2C4.8 5.1 4.5 5.2 4.4 5.4L2.4 8.8C2.3 9 2.3 9.2 2.5 9.4L4.6 11C4.5 11.3 4.5 11.7 4.5 12C4.5 12.3 4.5 12.7 4.6 13L2.5 14.6C2.3 14.8 2.3 15 2.4 15.2L4.4 18.6C4.5 18.8 4.8 18.9 5 18.8L7.5 17.8C8 18.2 8.6 18.5 9.2 18.7L9.6 21.4C9.6 21.7 9.8 21.8 10 21.8H14C14.2 21.8 14.4 21.7 14.4 21.4L14.8 18.7C15.4 18.5 16 18.2 16.5 17.8L19 18.8C19.2 18.9 19.5 18.8 19.6 18.6L21.6 15.2C21.7 15 21.7 14.8 21.5 14.6L19.4 13Z"
                         Width="18" Height="18"
@@ -238,22 +236,25 @@
                 </Button>
               </Grid>
 
-              <!-- 启动按钮 -->
-              <Button Grid.Column="4"
-                      Content="启动游戏"
-                      Height="40" Width="130"
-                      FontSize="14"
+              <Button Grid.Column="3"
+                      Height="42" MinWidth="140"
+                      FontSize="15"
+                      FontWeight="Bold"
                       Classes="accent"
-                      Background="{DynamicResource PrimaryBrush}"
                       Command="{Binding LaunchCommand}">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <Path Data="M8 5V19L19 12L8 5Z" Width="14" Height="14"
+                        Stretch="Uniform" Fill="White"
+                        VerticalAlignment="Center"/>
+                  <TextBlock Text="启动游戏" VerticalAlignment="Center"/>
+                </StackPanel>
               </Button>
             </Grid>
             
-            <!-- 启动选项 -->
-            <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,8,0,0" HorizontalAlignment="Right">
+            <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,10,0,0" HorizontalAlignment="Right">
               <CheckBox Content="启动时显示游戏日志"
                         IsChecked="{Binding ShowGameLog}"
-                        FontSize="13"/>
+                        FontSize="12"/>
             </StackPanel>
           </Grid>
         </Border>
@@ -261,7 +262,6 @@
       </Grid>
     </ScrollViewer>
 
-    <!-- 实例管理覆盖层 -->
     <views:InstanceView DataContext="{Binding InstanceViewModel}"/>
   </Grid>
 </UserControl>

@@ -22,7 +22,7 @@
                    FontWeight="Bold"
                    Margin="0,0,0,8"/>
         <TextBlock Text="管理已安装的版本或下载新版本"
-                   FontSize="14"
+                   FontSize="13"
                    Foreground="{DynamicResource TextSecondaryBrush}"
                    Margin="0,0,0,16"/>
       </StackPanel>
@@ -32,14 +32,14 @@
 
         <!-- 已安装版本 Tab -->
         <TabItem Header="已安装版本">
-          <Grid Margin="0,20,0,0" RowDefinitions="Auto,*">
+          <Grid Margin="0,16,0,0" RowDefinitions="Auto,*">
 
             <!-- 工具栏 -->
             <Border Grid.Row="0"
                     Background="{DynamicResource SurfaceBrush}"
                     CornerRadius="8"
-                    Padding="15,10"
-                    Margin="0,0,0,15"
+                    Padding="14,10"
+                    Margin="0,0,0,12"
                     BorderThickness="1"
                     BorderBrush="{DynamicResource BorderBrush}">
               <Grid ColumnDefinitions="*,Auto">
@@ -55,11 +55,13 @@
 
                 <Button Grid.Column="1"
                         Command="{Binding RefreshInstalledCommand}"
+                        Classes="ghost"
                         Height="30"
                         FontSize="12"
-                        Padding="12,0">
-                  <StackPanel Orientation="Horizontal" Spacing="6">
-                    <TextBlock Text="↻" VerticalAlignment="Center"/>
+                        Padding="10,0">
+                  <StackPanel Orientation="Horizontal" Spacing="4">
+                    <Path Data="M17.65 6.35C16.2 4.9 14.21 4 12 4C7.58 4 4.01 7.58 4.01 12S7.58 20 12 20C15.73 20 18.84 17.45 19.73 14H17.65C16.83 16.33 14.61 18 12 18C8.69 18 6 15.31 6 12S8.69 6 12 6C13.66 6 15.14 6.69 16.22 7.78L13 11H20V4L17.65 6.35Z"
+                          Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource TextBrush}" VerticalAlignment="Center"/>
                     <TextBlock Text="刷新" VerticalAlignment="Center"/>
                   </StackPanel>
                 </Button>
@@ -70,61 +72,72 @@
             <!-- 已安装版本列表 -->
             <Border Grid.Row="1"
                     Background="{DynamicResource SurfaceBrush}"
-                    CornerRadius="10"
+                    CornerRadius="12"
                     BorderThickness="1"
                     BorderBrush="{DynamicResource BorderBrush}">
               <ScrollViewer VerticalScrollBarVisibility="Auto">
-                <ItemsControl ItemsSource="{Binding InstalledVersions}" Margin="10">
+                <ItemsControl ItemsSource="{Binding InstalledVersions}" Margin="8">
                   <ItemsControl.ItemTemplate>
                     <DataTemplate>
                       <Border Background="{DynamicResource SurfaceElevatedBrush}"
-                              CornerRadius="6"
-                              Padding="15,12"
-                              Margin="10,5">
+                              CornerRadius="8"
+                              Padding="14,10"
+                              Margin="8,4"
+                              BorderThickness="1"
+                              BorderBrush="{DynamicResource BorderBrush}">
                         <Grid ColumnDefinitions="Auto,*,Auto">
                           <Image Grid.Column="0" Width="28" Height="28" Margin="0,0,12,0"
                                  Source="{Binding LoaderIconPath, Converter={StaticResource BitmapConverter}}"/>
-                          
+
                           <StackPanel Grid.Column="1" VerticalAlignment="Center">
                             <StackPanel Orientation="Horizontal" Spacing="8">
-                              <TextBlock Text="{Binding Id}" FontSize="14" FontWeight="SemiBold"/>
+                              <TextBlock Text="{Binding Id}" FontSize="13" FontWeight="SemiBold"/>
                               <Border Background="{DynamicResource PrimaryBrush}"
-                                      CornerRadius="3"
-                                      Padding="6,1"
+                                      CornerRadius="4"
+                                      Padding="6,2"
                                       IsVisible="{Binding IsSelected}">
                                 <TextBlock Text="当前版本" FontSize="10" FontWeight="SemiBold" Foreground="White"/>
                               </Border>
                             </StackPanel>
-                            <TextBlock Text="{Binding DetailText}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,3,0,0"/>
+                            <TextBlock Text="{Binding DetailText}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,2,0,0"/>
                           </StackPanel>
 
-                          <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                          <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
                             <Button Content="选择"
+                                    Classes="ghost"
                                     Height="28"
                                     FontSize="12"
-                                    Padding="12,0"
+                                    Padding="10,0"
                                     Command="{Binding $parent[UserControl].((vm:VersionDownloadViewModel)DataContext).SelectInstalledCommand}"
                                     CommandParameter="{Binding}"
                                     IsVisible="{Binding !IsSelected}"/>
 
-                            <Button Content="▶"
-                                    Width="28" Height="28" Padding="0"
+                            <Button Width="28" Height="28" Padding="0"
+                                    Classes="ghost"
                                     ToolTip.Tip="快速启动"
                                     Command="{Binding $parent[UserControl].((vm:VersionDownloadViewModel)DataContext).QuickLaunchCommand}"
-                                    CommandParameter="{Binding}"/>
+                                    CommandParameter="{Binding}">
+                              <Path Data="M8 5V19L19 12L8 5Z"
+                                    Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource TextBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Button>
 
-                            <Button Content="⚙"
-                                    Width="28" Height="28" Padding="0"
+                            <Button Width="28" Height="28" Padding="0"
+                                    Classes="ghost"
                                     ToolTip.Tip="管理实例"
                                     Command="{Binding $parent[UserControl].((vm:VersionDownloadViewModel)DataContext).OpenInstanceCommand}"
-                                    CommandParameter="{Binding}"/>
+                                    CommandParameter="{Binding}">
+                              <Path Data="M19.14 12.94C19.18 12.64 19.2 12.33 19.2 12C19.2 11.68 19.18 11.36 19.13 11.06L21.16 9.48C21.34 9.34 21.39 9.07 21.28 8.87L19.36 5.55C19.24 5.33 18.99 5.26 18.77 5.33L16.38 6.29C15.88 5.91 15.35 5.59 14.76 5.35L14.4 2.81C14.36 2.57 14.16 2.4 13.92 2.4H10.08C9.84 2.4 9.65 2.57 9.61 2.81L9.25 5.35C8.66 5.59 8.12 5.92 7.63 6.29L5.24 5.33C5.02 5.25 4.77 5.33 4.65 5.55L2.74 8.87C2.62 9.08 2.66 9.34 2.86 9.48L4.89 11.06C4.84 11.36 4.8 11.69 4.8 12C4.8 12.31 4.82 12.64 4.87 12.94L2.85 14.52C2.67 14.66 2.62 14.93 2.73 15.13L4.65 18.45C4.77 18.67 5.02 18.74 5.24 18.67L7.63 17.71C8.13 18.09 8.66 18.41 9.25 18.65L9.61 21.19C9.65 21.43 9.84 21.6 10.08 21.6H13.92C14.16 21.6 14.36 21.43 14.4 21.19L14.76 18.65C15.35 18.41 15.89 18.09 16.38 17.71L18.77 18.67C18.99 18.74 19.24 18.67 19.36 18.45L21.28 15.13C21.39 14.91 21.34 14.66 21.16 14.52L19.14 12.94ZM12 15.6C10.02 15.6 8.4 13.98 8.4 12C8.4 10.02 10.02 8.4 12 8.4C13.98 8.4 15.6 10.02 15.6 12C15.6 13.98 13.98 15.6 12 15.6Z"
+                                    Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource TextBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Button>
 
-                            <Button Content="🗑"
-                                    Width="28" Height="28" Padding="0"
-                                    ToolTip.Tip="删除版本"
+                            <Button Width="28" Height="28" Padding="0"
                                     Classes="danger"
+                                    ToolTip.Tip="删除版本"
                                     Command="{Binding $parent[UserControl].((vm:VersionDownloadViewModel)DataContext).DeleteInstalledCommand}"
-                                    CommandParameter="{Binding}"/>
+                                    CommandParameter="{Binding}">
+                              <Path Data="M19 4H15.5L14.5 3H9.5L8.5 4H5V6H19M6 19C6 20.1 6.9 21 8 21H16C17.1 21 18 20.1 18 19V7H6V19Z"
+                                    Width="14" Height="14" Stretch="Uniform" Fill="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Button>
                           </StackPanel>
                         </Grid>
                       </Border>
@@ -139,14 +152,14 @@
 
         <!-- 下载新版本 Tab -->
         <TabItem Header="下载新版本">
-          <Grid Margin="0,20,0,0" RowDefinitions="Auto,*">
+          <Grid Margin="0,16,0,0" RowDefinitions="Auto,*">
 
             <!-- 筛选和搜索区域 -->
             <Border Grid.Row="0"
                     Background="{DynamicResource SurfaceBrush}"
                     CornerRadius="8"
-                    Padding="15,10"
-                    Margin="0,0,0,15"
+                    Padding="14,10"
+                    Margin="0,0,0,12"
                     BorderThickness="1"
                     BorderBrush="{DynamicResource BorderBrush}">
               <Grid ColumnDefinitions="*,Auto,Auto">
@@ -170,9 +183,11 @@
 
                 <Button Grid.Column="2"
                         Width="32" Height="32" Padding="0"
+                        Classes="ghost"
                         ToolTip.Tip="刷新版本列表"
                         Command="{Binding RefreshOnlineCommand}">
-                  <TextBlock Text="↻" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                  <Path Data="M17.65 6.35C16.2 4.9 14.21 4 12 4C7.58 4 4.01 7.58 4.01 12S7.58 20 12 20C15.73 20 18.84 17.45 19.73 14H17.65C16.83 16.33 14.61 18 12 18C8.69 18 6 15.31 6 12S8.69 6 12 6C13.66 6 15.14 6.69 16.22 7.78L13 11H20V4L17.65 6.35Z"
+                        Width="16" Height="16" Stretch="Uniform" Fill="{DynamicResource TextBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                 </Button>
 
               </Grid>
@@ -181,14 +196,14 @@
             <!-- 版本列表 / 骨架屏 -->
             <Border Grid.Row="1"
                     Background="{DynamicResource SurfaceBrush}"
-                    CornerRadius="10"
+                    CornerRadius="12"
                     BorderThickness="1"
                     BorderBrush="{DynamicResource BorderBrush}">
               <Grid>
 
                 <!-- 版本列表 -->
                 <ScrollViewer VerticalScrollBarVisibility="Auto" IsVisible="{Binding !IsLoading}">
-                  <ItemsControl ItemsSource="{Binding FilteredVersions}" Margin="0,10">
+                  <ItemsControl ItemsSource="{Binding FilteredVersions}" Margin="0,8">
                     <ItemsControl.ItemTemplate>
                       <DataTemplate x:DataType="mc:MinecraftVersion">
                         <Button Command="{Binding $parent[UserControl].((vm:VersionDownloadViewModel)DataContext).OpenDetailCommand}"
@@ -196,34 +211,38 @@
                                 HorizontalAlignment="Stretch"
                                 HorizontalContentAlignment="Stretch"
                                 Padding="0"
-                                Margin="20,0,20,12"
+                                Margin="16,0,16,8"
                                 Background="Transparent"
-                                BorderThickness="0">
+                                BorderThickness="0"
+                                Classes="ghost">
                           <Border Background="{DynamicResource SurfaceElevatedBrush}"
-                                  CornerRadius="6"
-                                  Padding="12,10">
+                                  CornerRadius="8"
+                                  Padding="12,10"
+                                  BorderThickness="1"
+                                  BorderBrush="{DynamicResource BorderBrush}">
                             <Grid ColumnDefinitions="Auto,*,Auto">
 
                               <Image Width="28" Height="28" Margin="0,0,12,0"
                                      Source="{Binding IconPath, Converter={StaticResource BitmapConverter}}"/>
 
                               <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                <TextBlock FontSize="15" FontWeight="SemiBold">
+                                <TextBlock FontSize="14" FontWeight="SemiBold">
                                   <Run Text="Minecraft "/>
                                   <Run Text="{Binding Id}"/>
-                                  <Run Text=" [" FontSize="11"/>
-                                  <Run Text="{Binding Type}" FontSize="11"/>
-                                  <Run Text="]" FontSize="11"/>
+                                  <Run Text=" [" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                  <Run Text="{Binding Type}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                  <Run Text="]" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
                                 </TextBlock>
                                 <TextBlock Text="{Binding ReleaseTime, StringFormat='发布时间: {0:yyyy-MM-dd HH:mm}'}"
                                            FontSize="11"
-                                           Margin="0,3,0,0"
-                                           Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                           Margin="0,2,0,0"
+                                           Foreground="{DynamicResource TextTertiaryBrush}"/>
                               </StackPanel>
 
-                              <TextBlock Grid.Column="2" Text="›" FontSize="20"
-                                         VerticalAlignment="Center"
-                                         Foreground="{DynamicResource TextSecondaryBrush}"/>
+                              <Path Grid.Column="2" Data="M10 6L8.59 7.41L13.17 12L8.59 16.59L10 18L16 12L10 6Z"
+                                    Width="16" Height="16" Stretch="Uniform"
+                                    VerticalAlignment="Center"
+                                    Fill="{DynamicResource TextTertiaryBrush}"/>
 
                             </Grid>
                           </Border>
@@ -234,22 +253,24 @@
                 </ScrollViewer>
 
                 <!-- 骨架屏加载效果 (1:1 对齐项布局) -->
-                <StackPanel IsVisible="{Binding IsLoading}" Margin="20,10">
-                  <Border Background="{DynamicResource SurfaceElevatedBrush}" CornerRadius="6" Padding="12,10" Margin="0,0,0,12" Opacity="0.6">
+                <StackPanel IsVisible="{Binding IsLoading}" Margin="16,8">
+                  <Border Background="{DynamicResource SurfaceElevatedBrush}" CornerRadius="8" Padding="12,10" Margin="0,0,0,8" Opacity="0.6"
+                          BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
                     <Grid ColumnDefinitions="Auto,*,Auto">
                       <Border Grid.Column="0" Width="28" Height="28" CornerRadius="14" Background="{DynamicResource SurfaceHoverBrush}" Margin="0,0,12,0"/>
                       <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="8">
-                        <Border Width="150" Height="14" HorizontalAlignment="Left" Background="{DynamicResource SurfaceHoverBrush}" CornerRadius="2"/>
-                        <Border Width="100" Height="10" HorizontalAlignment="Left" Background="{DynamicResource SurfaceHoverBrush}" CornerRadius="2"/>
+                        <Border Width="150" Height="14" HorizontalAlignment="Left" Background="{DynamicResource SurfaceHoverBrush}" CornerRadius="4"/>
+                        <Border Width="100" Height="10" HorizontalAlignment="Left" Background="{DynamicResource SurfaceHoverBrush}" CornerRadius="4"/>
                       </StackPanel>
                     </Grid>
                   </Border>
-                  <Border Background="{DynamicResource SurfaceElevatedBrush}" CornerRadius="6" Padding="12,10" Margin="0,0,0,12" Opacity="0.4">
+                  <Border Background="{DynamicResource SurfaceElevatedBrush}" CornerRadius="8" Padding="12,10" Margin="0,0,0,8" Opacity="0.4"
+                          BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
                     <Grid ColumnDefinitions="Auto,*,Auto">
                       <Border Grid.Column="0" Width="28" Height="28" CornerRadius="14" Background="{DynamicResource SurfaceHoverBrush}" Margin="0,0,12,0"/>
                       <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="8">
-                        <Border Width="150" Height="14" HorizontalAlignment="Left" Background="{DynamicResource SurfaceHoverBrush}" CornerRadius="2"/>
-                        <Border Width="100" Height="10" HorizontalAlignment="Left" Background="{DynamicResource SurfaceHoverBrush}" CornerRadius="2"/>
+                        <Border Width="150" Height="14" HorizontalAlignment="Left" Background="{DynamicResource SurfaceHoverBrush}" CornerRadius="4"/>
+                        <Border Width="100" Height="10" HorizontalAlignment="Left" Background="{DynamicResource SurfaceHoverBrush}" CornerRadius="4"/>
                       </StackPanel>
                     </Grid>
                   </Border>
