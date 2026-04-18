@@ -260,6 +260,9 @@ public partial class AboutViewModel : ViewModelBase
     [RelayCommand]
     private static void OpenAuthlibInjector() => OpenUrl("https://github.com/yushijinhun/authlib-injector");
 
+    [RelayCommand]
+    private static void OpenMCIM() => OpenUrl("https://www.mcimirror.top/");
+
     private static void OpenUrl(string url)
     {
         try

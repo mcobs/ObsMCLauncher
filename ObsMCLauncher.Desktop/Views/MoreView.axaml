@@ -138,12 +138,26 @@
                 <Button Command="{Binding OpenMciLmLinkCommand}"
                         Background="{DynamicResource SurfaceBrush}"
                         HorizontalContentAlignment="Left"
-                        Padding="12,10" CornerRadius="6" HorizontalAlignment="Stretch">
+                        Padding="12,10" Margin="0,0,0,8" CornerRadius="6" HorizontalAlignment="Stretch">
                   <StackPanel Orientation="Horizontal">
                     <TextBlock Text="🔗" FontSize="16" Margin="0,0,8,0"/>
                     <StackPanel>
                       <TextBlock Text="MciLm-link" FontWeight="SemiBold"/>
                       <TextBlock Text="link.mcilm.top"
+                                 FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" Margin="0,2,0,0"/>
+                    </StackPanel>
+                  </StackPanel>
+                </Button>
+
+                <Button Command="{Binding OpenMCIMCommand}"
+                        Background="{DynamicResource SurfaceBrush}"
+                        HorizontalContentAlignment="Left"
+                        Padding="12,10" CornerRadius="6" HorizontalAlignment="Stretch">
+                  <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="🌐" FontSize="16" Margin="0,0,8,0"/>
+                    <StackPanel>
+                      <TextBlock Text="MCIM" FontWeight="SemiBold"/>
+                      <TextBlock Text="www.mcimirror.top"
                                  FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" Margin="0,2,0,0"/>
                     </StackPanel>
                   </StackPanel>
@@ -194,13 +208,26 @@
                 </Border>
 
                 <Border Background="{DynamicResource SurfaceBrush}"
-                        CornerRadius="6" Padding="12">
+                        CornerRadius="6" Padding="12" Margin="0,0,0,8">
                   <StackPanel>
                     <StackPanel Orientation="Horizontal">
                       <TextBlock Text="🔐" FontSize="16" Margin="0,0,6,0"/>
                       <TextBlock Text="authlib-injector" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"/>
                     </StackPanel>
                     <TextBlock Text="Yggdrasil 外置登录支持"
+                               FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}"
+                               Margin="22,4,0,0" TextWrapping="Wrap"/>
+                  </StackPanel>
+                </Border>
+
+                <Border Background="{DynamicResource SurfaceBrush}"
+                        CornerRadius="6" Padding="12">
+                  <StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                      <TextBlock Text="🌐" FontSize="16" Margin="0,0,6,0"/>
+                      <TextBlock Text="MCIM" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <TextBlock Text="社区资源镜像源服务 (https://www.mcimirror.top/)"
                                FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}"
                                Margin="22,4,0,0" TextWrapping="Wrap"/>
                   </StackPanel>

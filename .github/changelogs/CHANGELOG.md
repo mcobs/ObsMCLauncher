@@ -27,6 +27,7 @@
 - 镜像源可用性自动检测，启动时和切换选项时执行检测
 - Modrinth/CurseForge API和CDN下载自动回退机制（镜像源失败时自动切换官方源）
 - 全局User-Agent统一为ObsMCLauncher/{version}格式
+- 关于页面添加MCIM (https://www.mcimirror.top/) 社区资源镜像源鸣谢
 
 ### 优化
 
