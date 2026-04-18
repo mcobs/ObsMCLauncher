@@ -12,205 +12,223 @@
     <converters:BitmapAssetValueConverter x:Key="BitmapConverter"/>
   </UserControl.Resources>
 
-  <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-    <StackPanel Margin="24" MaxWidth="700" HorizontalAlignment="Stretch">
+  <Grid>
+    <!-- 主内容层 -->
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+      <StackPanel Margin="24" MaxWidth="700" HorizontalAlignment="Stretch">
 
-      <!-- 返回按钮和标题 -->
-      <StackPanel Margin="0,0,0,12">
-        <Button Command="{Binding BackCommand}"
-                Classes="outline"
-                HorizontalAlignment="Left"
-                Padding="5"
-                Margin="-5,0,0,10">
-          <StackPanel Orientation="Horizontal" Spacing="8">
-            <TextBlock Text="←" FontSize="16" VerticalAlignment="Center"/>
-            <TextBlock Text="返回版本列表" VerticalAlignment="Center" FontSize="14"/>
+        <!-- 返回按钮和标题 -->
+        <StackPanel Margin="0,0,0,12">
+          <Button Command="{Binding BackCommand}"
+                  Classes="outline"
+                  HorizontalAlignment="Left"
+                  Padding="5"
+                  Margin="-5,0,0,10">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <TextBlock Text="←" FontSize="16" VerticalAlignment="Center"/>
+              <TextBlock Text="返回版本列表" VerticalAlignment="Center" FontSize="14"/>
+            </StackPanel>
+          </Button>
+
+          <Grid ColumnDefinitions="Auto,*">
+            <Image Grid.Column="0" Source="{Binding VersionInfo.IconPath, Converter={StaticResource BitmapConverter}}" Width="32" Height="32" Margin="0,0,12,0" VerticalAlignment="Center"/>
+            <TextBlock Grid.Column="1" Text="{Binding SelectedMcVersion, StringFormat='Minecraft {0}'}"
+                       FontSize="24"
+                       FontWeight="Bold"
+                       VerticalAlignment="Center"/>
+          </Grid>
+          <TextBlock Text="配置版本信息和加载器选项"
+                     FontSize="13"
+                     Foreground="{DynamicResource TextSecondaryBrush}"
+                     Margin="0,4,0,0"/>
+        </StackPanel>
+
+        <!-- 版本信息卡片 -->
+        <Border Background="{DynamicResource SurfaceBrush}"
+                CornerRadius="10"
+                Padding="16"
+                Margin="0,0,0,12">
+          <StackPanel Spacing="12">
+            <TextBlock Text="版本信息" FontSize="16" FontWeight="SemiBold"/>
+
+            <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto">
+              <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,8,10">
+                <TextBlock Text="版本号" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,6"/>
+                <TextBlock Text="{Binding SelectedMcVersion}" FontSize="15" FontWeight="SemiBold"/>
+              </StackPanel>
+
+              <StackPanel Grid.Row="0" Grid.Column="1" Margin="8,0,0,10">
+                <TextBlock Text="发布日期" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,6"/>
+                <TextBlock Text="{Binding ReleaseDate}" FontSize="15" FontWeight="SemiBold"/>
+              </StackPanel>
+
+              <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,8,10">
+                <TextBlock Text="版本类型" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,6"/>
+                <Border Background="{Binding VersionTypeColor}" CornerRadius="4" Padding="8,4" HorizontalAlignment="Left">
+                  <TextBlock Text="{Binding VersionTypeText}" FontSize="12" FontWeight="SemiBold" Foreground="White"/>
+                </Border>
+              </StackPanel>
+
+              <StackPanel Grid.Row="1" Grid.Column="1" Margin="8,0,0,10">
+                <TextBlock Text="下载大小" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,6"/>
+                <TextBlock Text="{Binding TotalDownloadSize}" FontSize="15" FontWeight="SemiBold"/>
+              </StackPanel>
+
+              <StackPanel Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,4,0,0">
+                <TextBlock Text="安装名称" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,6"/>
+                <TextBox Text="{Binding CustomVersionName}" Watermark="自定义版本名称" FontSize="14"/>
+                <TextBlock FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,6,0,0">
+                  <Run Text="提示：版本将安装到 "/>
+                  <Run Text=".minecraft/versions/" FontWeight="SemiBold"/>
+                  <Run Text="{Binding CustomVersionName}" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryBrush}"/>
+                </TextBlock>
+                <!-- 版本冲突提示 -->
+                <TextBlock Text="该版本名称已存在，请修改安装名称"
+                           FontSize="12"
+                           Foreground="#E74C3C"
+                           IsVisible="{Binding IsVersionNameConflict}"
+                           Margin="0,6,0,0"/>
+              </StackPanel>
+            </Grid>
           </StackPanel>
-        </Button>
+        </Border>
 
-        <Grid ColumnDefinitions="Auto,*">
-          <Image Grid.Column="0" Source="{Binding VersionInfo.IconPath, Converter={StaticResource BitmapConverter}}" Width="32" Height="32" Margin="0,0,12,0" VerticalAlignment="Center"/>
-          <TextBlock Grid.Column="1" Text="{Binding SelectedMcVersion, StringFormat='Minecraft {0}'}"
-                     FontSize="24"
-                     FontWeight="Bold"
-                     VerticalAlignment="Center"/>
-        </Grid>
-        <TextBlock Text="配置版本信息和加载器选项"
-                   FontSize="13"
-                   Foreground="{DynamicResource TextSecondaryBrush}"
-                   Margin="0,4,0,0"/>
-      </StackPanel>
+        <!-- 加载器选择 -->
+        <Border Background="{DynamicResource SurfaceBrush}" CornerRadius="10" Padding="16" Margin="0,0,0,12" BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
+          <StackPanel Spacing="12">
+            <TextBlock Text="加载器选择" FontSize="16" FontWeight="SemiBold"/>
+            <TextBlock Text="选择要安装的加载器（仅能选择一个，不选则安装原版）" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,6"/>
 
-      <!-- 版本信息卡片 -->
-      <Border Background="{DynamicResource SurfaceBrush}"
-              CornerRadius="10"
-              Padding="16"
-              Margin="0,0,0,12">
-        <StackPanel Spacing="12">
-          <TextBlock Text="版本信息" FontSize="16" FontWeight="SemiBold"/>
+            <StackPanel Spacing="10">
+              <!-- Vanilla -->
+              <RadioButton GroupName="LoaderGroup" IsChecked="{Binding IsVanillaSelected}">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <Image Source="avares://ObsMCLauncher.Desktop/Assets/LoaderIcons/vanilla.png" Width="20" Height="20"/>
+                  <TextBlock Text="原版 (Vanilla)" VerticalAlignment="Center"/>
+                </StackPanel>
+              </RadioButton>
 
-          <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto">
-            <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,8,10">
-              <TextBlock Text="版本号" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,6"/>
-              <TextBlock Text="{Binding SelectedMcVersion}" FontSize="15" FontWeight="SemiBold"/>
-            </StackPanel>
+              <!-- Forge -->
+              <Grid ColumnDefinitions="*,Auto">
+                <RadioButton GroupName="LoaderGroup" IsChecked="{Binding IsForgeSelected}" VerticalAlignment="Center">
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Image Source="avares://ObsMCLauncher.Desktop/Assets/LoaderIcons/forge.png" Width="20" Height="20"/>
+                    <TextBlock Text="Forge" VerticalAlignment="Center"/>
+                  </StackPanel>
+                </RadioButton>
+                <ComboBox Grid.Column="1" Width="160" IsEnabled="{Binding CanSelectForge}"
+                          ItemsSource="{Binding ForgeVersionOptions}"
+                          SelectedItem="{Binding ForgeVersion}"
+                          PlaceholderText="选择版本"/>
+              </Grid>
 
-            <StackPanel Grid.Row="0" Grid.Column="1" Margin="8,0,0,10">
-              <TextBlock Text="发布日期" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,6"/>
-              <TextBlock Text="{Binding ReleaseDate}" FontSize="15" FontWeight="SemiBold"/>
-            </StackPanel>
+              <!-- NeoForge -->
+              <Grid ColumnDefinitions="*,Auto">
+                <RadioButton GroupName="LoaderGroup" IsChecked="{Binding IsNeoForgeSelected}" VerticalAlignment="Center">
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Image Source="avares://ObsMCLauncher.Desktop/Assets/LoaderIcons/neoforged.png" Width="20" Height="20"/>
+                    <TextBlock Text="NeoForge" VerticalAlignment="Center"/>
+                  </StackPanel>
+                </RadioButton>
+                <ComboBox Grid.Column="1" Width="160" IsEnabled="{Binding CanSelectNeoForge}"
+                          ItemsSource="{Binding NeoForgeVersionOptions}"
+                          SelectedItem="{Binding NeoForgeVersion}"
+                          PlaceholderText="选择版本"/>
+              </Grid>
 
-            <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,8,10">
-              <TextBlock Text="版本类型" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,6"/>
-              <Border Background="{Binding VersionTypeColor}" CornerRadius="4" Padding="8,4" HorizontalAlignment="Left">
-                <TextBlock Text="{Binding VersionTypeText}" FontSize="12" FontWeight="SemiBold" Foreground="White"/>
+              <!-- Fabric -->
+              <Grid ColumnDefinitions="*,Auto">
+                <RadioButton GroupName="LoaderGroup" IsChecked="{Binding IsFabricSelected}" VerticalAlignment="Center">
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Image Source="avares://ObsMCLauncher.Desktop/Assets/LoaderIcons/fabric.png" Width="20" Height="20"/>
+                    <TextBlock Text="Fabric" VerticalAlignment="Center"/>
+                  </StackPanel>
+                </RadioButton>
+                <ComboBox Grid.Column="1" Width="160" IsEnabled="{Binding CanSelectFabric}"
+                          ItemsSource="{Binding FabricLoaderVersionOptions}"
+                          SelectedItem="{Binding FabricLoaderVersion}"
+                          PlaceholderText="选择版本"/>
+              </Grid>
+
+              <!-- Quilt -->
+              <Grid ColumnDefinitions="*,Auto">
+                <RadioButton GroupName="LoaderGroup" IsChecked="{Binding IsQuiltSelected}" VerticalAlignment="Center">
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Image Source="avares://ObsMCLauncher.Desktop/Assets/LoaderIcons/quilt.png" Width="20" Height="20"/>
+                    <TextBlock Text="Quilt" VerticalAlignment="Center"/>
+                  </StackPanel>
+                </RadioButton>
+                <ComboBox Grid.Column="1" Width="160" IsEnabled="{Binding CanSelectQuilt}"
+                          ItemsSource="{Binding QuiltLoaderVersionOptions}"
+                          SelectedItem="{Binding QuiltLoaderVersion}"
+                          PlaceholderText="选择版本"/>
+              </Grid>
+
+              <!-- OptiFine -->
+              <Separator Margin="0,6"/>
+              <Grid ColumnDefinitions="*,Auto">
+                <CheckBox IsChecked="{Binding IsOptiFineEnabled}" VerticalAlignment="Center">
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Image Source="avares://ObsMCLauncher.Desktop/Assets/LoaderIcons/optifine.png" Width="20" Height="20"/>
+                    <TextBlock Text="OptiFine" VerticalAlignment="Center"/>
+                  </StackPanel>
+                </CheckBox>
+                <ComboBox Grid.Column="1" Width="160" IsEnabled="{Binding CanSelectOptiFine}"
+                          ItemsSource="{Binding OptiFineVersionOptions}"
+                          SelectedItem="{Binding SelectedOptiFineVersion}"
+                          PlaceholderText="选择版本">
+                  <ComboBox.ItemTemplate>
+                    <DataTemplate>
+                      <TextBlock Text="{Binding FullVersion}"/>
+                    </DataTemplate>
+                  </ComboBox.ItemTemplate>
+                </ComboBox>
+              </Grid>
+
+              <!-- OptiFine 兼容性警告 -->
+              <Border IsVisible="{Binding ShowOptiFineWarning}"
+                      Background="#33F59E0B"
+                      BorderBrush="#F59E0B"
+                      BorderThickness="1"
+                      CornerRadius="6"
+                      Padding="10,6"
+                      Margin="0,4,0,0">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <TextBlock Text="!" FontSize="14" FontWeight="Bold" Foreground="#F59E0B" VerticalAlignment="Center"/>
+                  <TextBlock Text="{Binding OptiFineWarningMessage}" FontSize="12" VerticalAlignment="Center" TextWrapping="Wrap"/>
+                </StackPanel>
               </Border>
             </StackPanel>
-
-            <StackPanel Grid.Row="1" Grid.Column="1" Margin="8,0,0,10">
-              <TextBlock Text="下载大小" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,6"/>
-              <TextBlock Text="{Binding TotalDownloadSize}" FontSize="15" FontWeight="SemiBold"/>
-            </StackPanel>
-
-            <StackPanel Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,4,0,0">
-              <TextBlock Text="安装名称" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,6"/>
-              <TextBox Text="{Binding CustomVersionName}" Watermark="自定义版本名称" FontSize="14"/>
-              <TextBlock FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,6,0,0">
-                <Run Text="提示：版本将安装到 "/>
-                <Run Text=".minecraft/versions/" FontWeight="SemiBold"/>
-                <Run Text="{Binding CustomVersionName}" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryBrush}"/>
-              </TextBlock>
-            </StackPanel>
-          </Grid>
-        </StackPanel>
-      </Border>
-
-      <!-- 加载器选择 -->
-      <Border Background="{DynamicResource SurfaceBrush}" CornerRadius="10" Padding="16" Margin="0,0,0,12" BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
-        <StackPanel Spacing="12">
-          <TextBlock Text="加载器选择" FontSize="16" FontWeight="SemiBold"/>
-          <TextBlock Text="选择要安装的加载器（仅能选择一个，不选则安装原版）" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,6"/>
-
-          <StackPanel Spacing="10">
-            <!-- Vanilla -->
-            <RadioButton GroupName="LoaderGroup" IsChecked="{Binding IsVanillaSelected}">
-              <StackPanel Orientation="Horizontal" Spacing="8">
-                <Image Source="avares://ObsMCLauncher.Desktop/Assets/LoaderIcons/vanilla.png" Width="20" Height="20"/>
-                <TextBlock Text="原版 (Vanilla)" VerticalAlignment="Center"/>
-              </StackPanel>
-            </RadioButton>
-
-            <!-- Forge -->
-            <Grid ColumnDefinitions="*,Auto">
-              <RadioButton GroupName="LoaderGroup" IsChecked="{Binding IsForgeSelected}" VerticalAlignment="Center">
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                  <Image Source="avares://ObsMCLauncher.Desktop/Assets/LoaderIcons/forge.png" Width="20" Height="20"/>
-                  <TextBlock Text="Forge" VerticalAlignment="Center"/>
-                </StackPanel>
-              </RadioButton>
-              <ComboBox Grid.Column="1" Width="160" IsEnabled="{Binding CanSelectForge}"
-                        ItemsSource="{Binding ForgeVersionOptions}"
-                        SelectedItem="{Binding ForgeVersion}"
-                        PlaceholderText="选择版本"/>
-            </Grid>
-
-            <!-- NeoForge -->
-            <Grid ColumnDefinitions="*,Auto">
-              <RadioButton GroupName="LoaderGroup" IsChecked="{Binding IsNeoForgeSelected}" VerticalAlignment="Center">
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                  <Image Source="avares://ObsMCLauncher.Desktop/Assets/LoaderIcons/neoforged.png" Width="20" Height="20"/>
-                  <TextBlock Text="NeoForge" VerticalAlignment="Center"/>
-                </StackPanel>
-              </RadioButton>
-              <ComboBox Grid.Column="1" Width="160" IsEnabled="{Binding CanSelectNeoForge}"
-                        ItemsSource="{Binding NeoForgeVersionOptions}"
-                        SelectedItem="{Binding NeoForgeVersion}"
-                        PlaceholderText="选择版本"/>
-            </Grid>
-
-            <!-- Fabric -->
-            <Grid ColumnDefinitions="*,Auto">
-              <RadioButton GroupName="LoaderGroup" IsChecked="{Binding IsFabricSelected}" VerticalAlignment="Center">
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                  <Image Source="avares://ObsMCLauncher.Desktop/Assets/LoaderIcons/fabric.png" Width="20" Height="20"/>
-                  <TextBlock Text="Fabric" VerticalAlignment="Center"/>
-                </StackPanel>
-              </RadioButton>
-              <ComboBox Grid.Column="1" Width="160" IsEnabled="{Binding CanSelectFabric}"
-                        ItemsSource="{Binding FabricLoaderVersionOptions}"
-                        SelectedItem="{Binding FabricLoaderVersion}"
-                        PlaceholderText="选择版本"/>
-            </Grid>
-
-            <!-- Quilt -->
-            <Grid ColumnDefinitions="*,Auto">
-              <RadioButton GroupName="LoaderGroup" IsChecked="{Binding IsQuiltSelected}" VerticalAlignment="Center">
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                  <Image Source="avares://ObsMCLauncher.Desktop/Assets/LoaderIcons/quilt.png" Width="20" Height="20"/>
-                  <TextBlock Text="Quilt" VerticalAlignment="Center"/>
-                </StackPanel>
-              </RadioButton>
-              <ComboBox Grid.Column="1" Width="160" IsEnabled="{Binding CanSelectQuilt}"
-                        ItemsSource="{Binding QuiltLoaderVersionOptions}"
-                        SelectedItem="{Binding QuiltLoaderVersion}"
-                        PlaceholderText="选择版本"/>
-            </Grid>
-
-            <!-- OptiFine -->
-            <Separator Margin="0,6"/>
-            <Grid ColumnDefinitions="*,Auto">
-              <CheckBox IsChecked="{Binding IsOptiFineEnabled}" VerticalAlignment="Center">
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                  <Image Source="avares://ObsMCLauncher.Desktop/Assets/LoaderIcons/optifine.png" Width="20" Height="20"/>
-                  <TextBlock Text="OptiFine" VerticalAlignment="Center"/>
-                </StackPanel>
-              </CheckBox>
-              <ComboBox Grid.Column="1" Width="160" IsEnabled="{Binding CanSelectOptiFine}"
-                        ItemsSource="{Binding OptiFineVersionOptions}"
-                        SelectedItem="{Binding SelectedOptiFineVersion}"
-                        PlaceholderText="选择版本">
-                <ComboBox.ItemTemplate>
-                  <DataTemplate>
-                    <TextBlock Text="{Binding FullVersion}"/>
-                  </DataTemplate>
-                </ComboBox.ItemTemplate>
-              </ComboBox>
-            </Grid>
-
-            <!-- OptiFine 兼容性警告 -->
-            <Border IsVisible="{Binding ShowOptiFineWarning}"
-                    Background="#33F59E0B"
-                    BorderBrush="#F59E0B"
-                    BorderThickness="1"
-                    CornerRadius="6"
-                    Padding="10,6"
-                    Margin="0,4,0,0">
-              <StackPanel Orientation="Horizontal" Spacing="8">
-                <TextBlock Text="!" FontSize="14" FontWeight="Bold" Foreground="#F59E0B" VerticalAlignment="Center"/>
-                <TextBlock Text="{Binding OptiFineWarningMessage}" FontSize="12" VerticalAlignment="Center" TextWrapping="Wrap"/>
-              </StackPanel>
-            </Border>
           </StackPanel>
-        </StackPanel>
-      </Border>
+        </Border>
 
-      <!-- 底部操作按钮 -->
-      <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,16">
-        <StackPanel Grid.Column="0" VerticalAlignment="Center">
-          <TextBlock Text="准备安装版本" FontSize="14" FontWeight="SemiBold"/>
-          <TextBlock Text="点击「开始安装」将下载并安装该版本" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,6,0,0"/>
-        </StackPanel>
+        <!-- 底部操作按钮 -->
+        <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,16">
+          <StackPanel Grid.Column="0" VerticalAlignment="Center">
+            <TextBlock Text="准备安装版本" FontSize="14" FontWeight="SemiBold"/>
+            <TextBlock Text="点击「开始安装」将下载并安装该版本" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,6,0,0"/>
+          </StackPanel>
 
-        <Button Grid.Column="1" Content="开始安装" Height="46" Width="160" FontSize="15"
-                Classes="accent" Background="{DynamicResource PrimaryBrush}" Foreground="White"
-                Command="{Binding InstallCommand}" IsVisible="{Binding !IsBusy}"/>
-      </Grid>
+          <Button Grid.Column="1" Content="开始安装" Height="46" Width="160" FontSize="15"
+                  Classes="accent" Background="{DynamicResource PrimaryBrush}" Foreground="White"
+                  Command="{Binding InstallCommand}" IsVisible="{Binding !IsBusy}"/>
+        </Grid>
 
-      <!-- 下载进度面板 -->
+      </StackPanel>
+    </ScrollViewer>
+
+    <!-- 安装进度覆盖层 -->
+    <Border Background="#CC000000"
+            IsVisible="{Binding IsBusy}"
+            ZIndex="100">
       <Border Background="{DynamicResource SurfaceBrush}"
-              CornerRadius="10"
-              Padding="20"
-              IsVisible="{Binding IsBusy}">
+              CornerRadius="12"
+              Padding="24"
+              MaxWidth="480"
+              Width="480"
+              HorizontalAlignment="Center"
+              VerticalAlignment="Center"
+              BoxShadow="0 8 32 0 #66000000">
         <StackPanel Spacing="14">
           <!-- 标题 -->
           <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,4">
@@ -256,7 +274,6 @@
           <Button Content="取消安装" Command="{Binding CancelInstallCommand}" HorizontalAlignment="Center" Width="140" Classes="outline"/>
         </StackPanel>
       </Border>
-
-    </StackPanel>
-  </ScrollViewer>
+    </Border>
+  </Grid>
 </UserControl>

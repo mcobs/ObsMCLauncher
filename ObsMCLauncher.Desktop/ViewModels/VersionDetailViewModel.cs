@@ -172,9 +172,38 @@ public class VersionDetailViewModel : ViewModelBase
             {
                 _customVersionName = value;
                 OnPropertyChanged(new PropertyChangedEventArgs(nameof(CustomVersionName)));
+                CheckVersionNameConflict();
                 InstallCommand.NotifyCanExecuteChanged();
             }
         }
+    }
+
+    private bool _isVersionNameConflict;
+    public bool IsVersionNameConflict
+    {
+        get => _isVersionNameConflict;
+        private set
+        {
+            if (_isVersionNameConflict != value)
+            {
+                _isVersionNameConflict = value;
+                OnPropertyChanged(new PropertyChangedEventArgs(nameof(IsVersionNameConflict)));
+                InstallCommand.NotifyCanExecuteChanged();
+            }
+        }
+    }
+
+    private void CheckVersionNameConflict()
+    {
+        if (string.IsNullOrWhiteSpace(_customVersionName))
+        {
+            IsVersionNameConflict = false;
+            return;
+        }
+
+        var cfg = LauncherConfig.Load();
+        var versionDir = Path.Combine(cfg.GameDirectory, "versions", _customVersionName);
+        IsVersionNameConflict = Directory.Exists(versionDir);
     }
 
     private string _forgeVersion = "";
@@ -636,6 +665,7 @@ public class VersionDetailViewModel : ViewModelBase
         if (IsBusy) return false;
         if (string.IsNullOrWhiteSpace(SelectedMcVersion)) return false;
         if (string.IsNullOrWhiteSpace(CustomVersionName)) return false;
+        if (IsVersionNameConflict) return false;
 
         if (IsVanillaSelected) 
         {
@@ -914,8 +944,38 @@ public class VersionDetailViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            Status = $"安装失败: {ex.Message}";
-            _notificationService.Show("安装失败", ex.Message, NotificationType.Error);
+            if (token.IsCancellationRequested)
+            {
+                Status = "安装已取消";
+                Progress = 0;
+                CurrentFileProgress = 0;
+                CurrentFileName = "";
+                DownloadSpeed = "";
+                DownloadSizeStatus = "";
+                FileCountStatus = "";
+
+                var cfg = LauncherConfig.Load();
+                var tempDir = Path.Combine(cfg.GameDirectory, ".temp");
+                if (Directory.Exists(tempDir))
+                {
+                    try { Directory.Delete(tempDir, true); }
+                    catch { }
+                }
+
+                var tempDir2 = Path.Combine(cfg.GameDirectory, "temp");
+                if (Directory.Exists(tempDir2))
+                {
+                    try { Directory.Delete(tempDir2, true); }
+                    catch { }
+                }
+
+                _notificationService.Show("安装已取消", "版本安装已取消，临时文件已清理", NotificationType.Info);
+            }
+            else
+            {
+                Status = $"安装失败: {ex.Message}";
+                _notificationService.Show("安装失败", ex.Message, NotificationType.Error);
+            }
         }
         finally
         {
