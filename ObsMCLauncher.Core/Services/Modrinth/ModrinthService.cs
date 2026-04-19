@@ -35,7 +35,7 @@ public class ModrinthService
     }
 
     private static bool ShouldUseMirror =>
-        LauncherConfig.Load().MirrorSourceMode == MirrorSourceMode.PreferMirror && MirrorHealthChecker.IsMirrorAvailable;
+        LauncherConfig.Load().MirrorSourceMode == MirrorSourceMode.PreferMirror && MirrorHealthChecker.IsModrinthMirrorAvailable;
 
     public async Task<ModrinthSearchResponse?> SearchModsAsync(
         string searchQuery,
@@ -134,9 +134,19 @@ public class ModrinthService
 
         foreach (var id in idList)
         {
+            // 1. 检查内存缓存
             if (_projectCache.TryGetValue(id, out var cached) && cached.expiry > DateTime.Now)
             {
                 result[id] = cached.data;
+                continue;
+            }
+
+            // 2. 检查磁盘缓存
+            var diskCached = await ResourceCacheService.GetCachedDataAsync<ModrinthProject>(id, "modrinth");
+            if (diskCached != null)
+            {
+                result[id] = diskCached;
+                _projectCache[id] = (diskCached, DateTime.Now + _cacheDuration);
             }
             else
             {
@@ -161,6 +171,7 @@ public class ModrinthService
             {
                 result[p.Id] = p;
                 _projectCache[p.Id] = (p, DateTime.Now + _cacheDuration);
+                await ResourceCacheService.CacheDataAsync(p.Id, p, "modrinth");
             }
             return result;
         }
@@ -246,7 +257,7 @@ public class ModrinthService
     {
         if (ShouldUseMirror)
         {
-            await MirrorHealthChecker.EnsureCheckedAsync().ConfigureAwait(false);
+            await MirrorHealthChecker.EnsureModrinthCheckedAsync().ConfigureAwait(false);
         }
 
         if (ShouldUseMirror)
@@ -267,7 +278,7 @@ public class ModrinthService
                 DebugLogger.Warn("Modrinth", $"镜像源请求异常: {ex.Message}, 回退到官方源");
             }
 
-            MirrorHealthChecker.MarkUnavailable();
+            MirrorHealthChecker.MarkModrinthUnavailable();
         }
 
         try

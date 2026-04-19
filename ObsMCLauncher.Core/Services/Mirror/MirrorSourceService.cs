@@ -17,35 +17,38 @@ namespace ObsMCLauncher.Core.Services.Mirror
             var config = LauncherConfig.Load();
             if (config.MirrorSourceMode != MirrorSourceMode.PreferMirror) return originalUrl;
 
-            if (!MirrorHealthChecker.IsMirrorAvailable) return originalUrl;
-
             // Modrinth API
             if (originalUrl.StartsWith("https://api.modrinth.com", StringComparison.OrdinalIgnoreCase))
             {
+                if (!MirrorHealthChecker.IsModrinthMirrorAvailable) return originalUrl;
                 return $"{McimBase}/modrinth{originalUrl.Substring("https://api.modrinth.com".Length)}";
             }
 
             // Modrinth CDN
             if (originalUrl.StartsWith("https://cdn.modrinth.com", StringComparison.OrdinalIgnoreCase))
             {
+                if (!MirrorHealthChecker.IsModrinthMirrorAvailable) return originalUrl;
                 return $"{McimBase}{originalUrl.Substring("https://cdn.modrinth.com".Length)}";
             }
 
             // CurseForge API
             if (originalUrl.StartsWith("https://api.curseforge.com", StringComparison.OrdinalIgnoreCase))
             {
+                if (!MirrorHealthChecker.IsCurseForgeMirrorAvailable) return originalUrl;
                 return $"{McimBase}/curseforge{originalUrl.Substring("https://api.curseforge.com".Length)}";
             }
 
             // CurseForge CDN (edge.forgecdn.net)
             if (originalUrl.StartsWith("https://edge.forgecdn.net", StringComparison.OrdinalIgnoreCase))
             {
+                if (!MirrorHealthChecker.IsCurseForgeMirrorAvailable) return originalUrl;
                 return $"{McimBase}{originalUrl.Substring("https://edge.forgecdn.net".Length)}";
             }
 
             // CurseForge CDN (mediafilez.forgecdn.net)
             if (originalUrl.StartsWith("https://mediafilez.forgecdn.net", StringComparison.OrdinalIgnoreCase))
             {
+                if (!MirrorHealthChecker.IsCurseForgeMirrorAvailable) return originalUrl;
                 return $"{McimBase}{originalUrl.Substring("https://mediafilez.forgecdn.net".Length)}";
             }
 
@@ -92,8 +95,10 @@ namespace ObsMCLauncher.Core.Services.Mirror
     public static class MirrorHealthChecker
     {
         private static readonly HttpClient _httpClient;
-        private static bool _isAvailable = true;
-        private static DateTime _lastCheckTime = DateTime.MinValue;
+        private static bool _modrinthAvailable = true;
+        private static bool _curseForgeAvailable = true;
+        private static DateTime _modrinthLastCheck = DateTime.MinValue;
+        private static DateTime _curseForgeLastCheck = DateTime.MinValue;
         private static readonly TimeSpan _checkInterval = TimeSpan.FromMinutes(5);
         private static readonly object _lock = new();
 
@@ -101,7 +106,8 @@ namespace ObsMCLauncher.Core.Services.Mirror
         {
             var handler = new HttpClientHandler
             {
-                AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate
+                AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate,
+                ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
             };
             _httpClient = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(10) };
             _httpClient.DefaultRequestHeaders.Add("User-Agent", VersionInfo.UserAgent);
@@ -113,56 +119,147 @@ namespace ObsMCLauncher.Core.Services.Mirror
             {
                 lock (_lock)
                 {
-                    return _isAvailable;
+                    return _modrinthAvailable || _curseForgeAvailable;
+                }
+            }
+        }
+
+        public static bool IsModrinthMirrorAvailable
+        {
+            get
+            {
+                lock (_lock)
+                {
+                    return _modrinthAvailable;
+                }
+            }
+        }
+
+        public static bool IsCurseForgeMirrorAvailable
+        {
+            get
+            {
+                lock (_lock)
+                {
+                    return _curseForgeAvailable;
                 }
             }
         }
 
         public static async Task CheckAvailabilityAsync()
         {
-            try
-            {
-                var response = await _httpClient.GetAsync("https://mod.mcimirror.top/modrinth/v2/tag/category").ConfigureAwait(false);
-                lock (_lock)
-                {
-                    _isAvailable = response.IsSuccessStatusCode;
-                    _lastCheckTime = DateTime.UtcNow;
-                }
-
-                DebugLogger.Info("Mirror", $"MCIM镜像源可用性检测: {(_isAvailable ? "可用" : "不可用")}");
-            }
-            catch (Exception ex)
-            {
-                lock (_lock)
-                {
-                    _isAvailable = false;
-                    _lastCheckTime = DateTime.UtcNow;
-                }
-
-                DebugLogger.Warn("Mirror", $"MCIM镜像源不可用: {ex.Message}");
-            }
+            var modrinthTask = CheckModrinthAsync();
+            var curseForgeTask = CheckCurseForgeAsync();
+            await Task.WhenAll(modrinthTask, curseForgeTask);
         }
 
         public static async Task EnsureCheckedAsync()
         {
+            bool shouldCheckModrinth, shouldCheckCurseForge;
+            lock (_lock)
+            {
+                shouldCheckModrinth = DateTime.UtcNow - _modrinthLastCheck > _checkInterval;
+                shouldCheckCurseForge = DateTime.UtcNow - _curseForgeLastCheck > _checkInterval;
+            }
+
+            var tasks = new List<Task>();
+            if (shouldCheckModrinth) tasks.Add(CheckModrinthAsync());
+            if (shouldCheckCurseForge) tasks.Add(CheckCurseForgeAsync());
+            if (tasks.Count > 0) await Task.WhenAll(tasks);
+        }
+
+        public static async Task EnsureModrinthCheckedAsync()
+        {
             bool shouldCheck;
             lock (_lock)
             {
-                shouldCheck = DateTime.UtcNow - _lastCheckTime > _checkInterval;
+                shouldCheck = DateTime.UtcNow - _modrinthLastCheck > _checkInterval;
             }
+            if (shouldCheck) await CheckModrinthAsync();
+        }
 
-            if (shouldCheck)
+        public static async Task EnsureCurseForgeCheckedAsync()
+        {
+            bool shouldCheck;
+            lock (_lock)
             {
-                await CheckAvailabilityAsync().ConfigureAwait(false);
+                shouldCheck = DateTime.UtcNow - _curseForgeLastCheck > _checkInterval;
             }
+            if (shouldCheck) await CheckCurseForgeAsync();
         }
 
         public static void MarkUnavailable()
         {
             lock (_lock)
             {
-                _isAvailable = false;
-                _lastCheckTime = DateTime.UtcNow;
+                _modrinthAvailable = false;
+                _curseForgeAvailable = false;
+                _modrinthLastCheck = DateTime.UtcNow;
+                _curseForgeLastCheck = DateTime.UtcNow;
+            }
+        }
+
+        public static void MarkModrinthUnavailable()
+        {
+            lock (_lock)
+            {
+                _modrinthAvailable = false;
+                _modrinthLastCheck = DateTime.UtcNow;
+            }
+        }
+
+        public static void MarkCurseForgeUnavailable()
+        {
+            lock (_lock)
+            {
+                _curseForgeAvailable = false;
+                _curseForgeLastCheck = DateTime.UtcNow;
+            }
+        }
+
+        private static async Task CheckModrinthAsync()
+        {
+            try
+            {
+                var response = await _httpClient.GetAsync("https://mod.mcimirror.top/modrinth/v2/tag/category").ConfigureAwait(false);
+                lock (_lock)
+                {
+                    _modrinthAvailable = response.IsSuccessStatusCode;
+                    _modrinthLastCheck = DateTime.UtcNow;
+                }
+                DebugLogger.Info("Mirror", $"Modrinth镜像源可用性: {(_modrinthAvailable ? "可用" : "不可用")}");
+            }
+            catch (Exception ex)
+            {
+                lock (_lock)
+                {
+                    _modrinthAvailable = false;
+                    _modrinthLastCheck = DateTime.UtcNow;
+                }
+                DebugLogger.Warn("Mirror", $"Modrinth镜像源不可用: {ex.Message}");
+            }
+        }
+
+        private static async Task CheckCurseForgeAsync()
+        {
+            try
+            {
+                var response = await _httpClient.GetAsync("https://mod.mcimirror.top/curseforge/v1/games").ConfigureAwait(false);
+                lock (_lock)
+                {
+                    _curseForgeAvailable = response.IsSuccessStatusCode;
+                    _curseForgeLastCheck = DateTime.UtcNow;
+                }
+                DebugLogger.Info("Mirror", $"CurseForge镜像源可用性: {(_curseForgeAvailable ? "可用" : "不可用")}");
+            }
+            catch (Exception ex)
+            {
+                lock (_lock)
+                {
+                    _curseForgeAvailable = false;
+                    _curseForgeLastCheck = DateTime.UtcNow;
+                }
+                DebugLogger.Warn("Mirror", $"CurseForge镜像源不可用: {ex.Message}");
             }
         }
     }
@@ -180,10 +277,19 @@ namespace ObsMCLauncher.Core.Services.Mirror
 
             if (usedMirror)
             {
-                await MirrorHealthChecker.EnsureCheckedAsync();
+                if (mirrorUrl.Contains("/modrinth", StringComparison.OrdinalIgnoreCase))
+                    await MirrorHealthChecker.EnsureModrinthCheckedAsync();
+                else if (mirrorUrl.Contains("/curseforge", StringComparison.OrdinalIgnoreCase))
+                    await MirrorHealthChecker.EnsureCurseForgeCheckedAsync();
             }
 
-            if (usedMirror && MirrorHealthChecker.IsMirrorAvailable)
+            var mirrorAvailable = mirrorUrl.Contains("/modrinth", StringComparison.OrdinalIgnoreCase)
+                ? MirrorHealthChecker.IsModrinthMirrorAvailable
+                : mirrorUrl.Contains("/curseforge", StringComparison.OrdinalIgnoreCase)
+                    ? MirrorHealthChecker.IsCurseForgeMirrorAvailable
+                    : MirrorHealthChecker.IsMirrorAvailable;
+
+            if (usedMirror && mirrorAvailable)
             {
                 try
                 {
@@ -201,10 +307,14 @@ namespace ObsMCLauncher.Core.Services.Mirror
                 }
 
                 onMirrorFailed?.Invoke();
-                MirrorHealthChecker.MarkUnavailable();
+                if (mirrorUrl.Contains("/modrinth", StringComparison.OrdinalIgnoreCase))
+                    MirrorHealthChecker.MarkModrinthUnavailable();
+                else if (mirrorUrl.Contains("/curseforge", StringComparison.OrdinalIgnoreCase))
+                    MirrorHealthChecker.MarkCurseForgeUnavailable();
+                else
+                    MirrorHealthChecker.MarkUnavailable();
             }
 
-            // 回退到官方源
             try
             {
                 var response = await httpClient.GetAsync(url).ConfigureAwait(false);

@@ -45,7 +45,7 @@ public static class CurseForgeService
     }
 
     private static bool ShouldUseMirror =>
-        LauncherConfig.Load().MirrorSourceMode == MirrorSourceMode.PreferMirror && MirrorHealthChecker.IsMirrorAvailable;
+        LauncherConfig.Load().MirrorSourceMode == MirrorSourceMode.PreferMirror && MirrorHealthChecker.IsCurseForgeMirrorAvailable;
 
     private static string ApiBase => ShouldUseMirror ? MirrorApiBase : OfficialApiBase;
 
@@ -151,9 +151,19 @@ public static class CurseForgeService
 
         foreach (var id in idList)
         {
+            // 1. 检查内存缓存
             if (_modCache.TryGetValue(id, out var cached) && cached.expiry > DateTime.Now)
             {
                 result[id] = cached.data;
+                continue;
+            }
+
+            // 2. 检查磁盘缓存
+            var diskCached = await ResourceCacheService.GetCachedDataAsync<CurseForgeMod>(id.ToString(), "curseforge");
+            if (diskCached != null)
+            {
+                result[id] = diskCached;
+                _modCache[id] = (diskCached, DateTime.Now + _cacheDuration);
             }
             else
             {
@@ -175,6 +185,7 @@ public static class CurseForgeService
             {
                 result[mod.Id] = mod;
                 _modCache[mod.Id] = (mod, DateTime.Now + _cacheDuration);
+                await ResourceCacheService.CacheDataAsync(mod.Id.ToString(), mod, "curseforge");
             }
             return result;
         }
@@ -210,6 +221,20 @@ public static class CurseForgeService
         int pageIndex = 0,
         int pageSize = 50)
     {
+        var cacheKey = $"files_{modId}_v{gameVersion}_l{modLoaderType}_p{pageIndex}";
+
+        if (_filesCache.TryGetValue(cacheKey, out var cached) && cached.expiry > DateTime.Now)
+        {
+            return new CurseForgeResponse<List<CurseForgeFile>> { Data = cached.data };
+        }
+
+        var diskCached = await ResourceCacheService.GetCachedDataAsync<List<CurseForgeFile>>(cacheKey, "curseforge");
+        if (diskCached != null)
+        {
+            _filesCache[cacheKey] = (diskCached, DateTime.Now + _cacheDuration);
+            return new CurseForgeResponse<List<CurseForgeFile>> { Data = diskCached };
+        }
+
         var queryParams = new List<string>
         {
             $"index={pageIndex * pageSize}",
@@ -233,7 +258,13 @@ public static class CurseForgeService
         try
         {
             var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-            return JsonSerializer.Deserialize<CurseForgeResponse<List<CurseForgeFile>>>(json, options);
+            var result = JsonSerializer.Deserialize<CurseForgeResponse<List<CurseForgeFile>>>(json, options);
+            if (result?.Data != null)
+            {
+                _filesCache[cacheKey] = (result.Data, DateTime.Now + _cacheDuration);
+                await ResourceCacheService.CacheDataAsync(cacheKey, result.Data, "curseforge");
+            }
+            return result;
         }
         catch (Exception ex)
         {
@@ -353,7 +384,7 @@ public static class CurseForgeService
     {
         if (ShouldUseMirror)
         {
-            await MirrorHealthChecker.EnsureCheckedAsync().ConfigureAwait(false);
+            await MirrorHealthChecker.EnsureCurseForgeCheckedAsync().ConfigureAwait(false);
         }
 
         if (ShouldUseMirror)
@@ -374,7 +405,7 @@ public static class CurseForgeService
                 DebugLogger.Warn("CurseForge", $"镜像源请求异常: {ex.Message}, 回退到官方源");
             }
 
-            MirrorHealthChecker.MarkUnavailable();
+            MirrorHealthChecker.MarkCurseForgeUnavailable();
         }
 
         try
