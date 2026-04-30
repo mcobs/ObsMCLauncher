@@ -106,7 +106,7 @@
           </ItemsControl.ItemTemplate>
         </ItemsControl>
 
-        <ScrollViewer IsVisible="{Binding DetailViewModel, Converter={x:Static ObjectConverters.IsNull}}">
+        <ScrollViewer IsVisible="{Binding !IsLoading}">
           <ItemsControl ItemsSource="{Binding Results}" Margin="12">
             <ItemsControl.ItemTemplate>
               <DataTemplate>

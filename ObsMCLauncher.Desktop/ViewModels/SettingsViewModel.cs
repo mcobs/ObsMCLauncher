@@ -28,6 +28,7 @@ public class SettingsViewModel : ViewModelBase
 {
     private readonly NotificationService _notificationService;
     private bool _isInitializing;
+    private CancellationTokenSource? _saveNotifyCts;
 
     public void Save() => AutoSave();
 
@@ -517,11 +518,12 @@ public class SettingsViewModel : ViewModelBase
         try
         {
             _config.Save();
-            Status = "设置已自动保存";
-            
+
             if (!_isInitializing)
             {
-                _notificationService.ShowCountdown("设置已自动保存", "修改已生效，3秒后确认", 3);
+                _saveNotifyCts?.Cancel();
+                _saveNotifyCts = new CancellationTokenSource();
+                _ = DebouncedSaveNotificationAsync(_saveNotifyCts.Token);
             }
         }
         catch (Exception ex)
@@ -529,6 +531,24 @@ public class SettingsViewModel : ViewModelBase
             Status = $"自动保存失败: {ex.Message}";
             _notificationService.Show("保存失败", ex.Message, ViewModels.Notifications.NotificationType.Error);
         }
+    }
+
+    private async Task DebouncedSaveNotificationAsync(CancellationToken ct)
+    {
+        try
+        {
+            await Task.Delay(1000, ct).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            Status = "设置已自动保存";
+            _notificationService.ShowCountdown("设置已自动保存", "修改已生效，3秒后确认", 3);
+        });
     }
 
     private void UpdateGameDirectoryDisplayText()
@@ -869,6 +889,7 @@ public class SettingsViewModel : ViewModelBase
         resources["SurfaceBrush"] = new SolidColorBrush(Color.Parse("#FFFFFF"));
         resources["SurfaceElevatedBrush"] = new SolidColorBrush(Color.Parse("#FAFAFA"));
         resources["SurfaceHoverBrush"] = new SolidColorBrush(Color.Parse("#F0F0F0"));
+        resources["NavHoverBrush"] = new SolidColorBrush(Color.Parse("#E5E5E5"));
         resources["TextBrush"] = new SolidColorBrush(Color.Parse("#202020"));
         resources["TextSecondaryBrush"] = new SolidColorBrush(Color.Parse("#5A5A5A"));
         resources["TextTertiaryBrush"] = new SolidColorBrush(Color.Parse("#8A8A8A"));
@@ -892,6 +913,7 @@ public class SettingsViewModel : ViewModelBase
         resources["SurfaceBrush"] = new SolidColorBrush(Color.Parse("#2C2C2C"));
         resources["SurfaceElevatedBrush"] = new SolidColorBrush(Color.Parse("#333333"));
         resources["SurfaceHoverBrush"] = new SolidColorBrush(Color.Parse("#3A3A3A"));
+        resources["NavHoverBrush"] = new SolidColorBrush(Color.Parse("#3A3A3A"));
         resources["TextBrush"] = new SolidColorBrush(Color.Parse("#FFFFFF"));
         resources["TextSecondaryBrush"] = new SolidColorBrush(Color.Parse("#ADADAD"));
         resources["TextTertiaryBrush"] = new SolidColorBrush(Color.Parse("#8A8A8A"));

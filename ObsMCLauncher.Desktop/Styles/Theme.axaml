@@ -17,6 +17,7 @@
     <SolidColorBrush x:Key="SurfaceBrush" Color="#252525"/>
     <SolidColorBrush x:Key="SurfaceElevatedBrush" Color="#2D2D2D"/>
     <SolidColorBrush x:Key="SurfaceHoverBrush" Color="#383838"/>
+    <SolidColorBrush x:Key="NavHoverBrush" Color="#383838"/>
 
     <SolidColorBrush x:Key="TextBrush" Color="#F0F0F0"/>
     <SolidColorBrush x:Key="TextSecondaryBrush" Color="#A0A0A0"/>

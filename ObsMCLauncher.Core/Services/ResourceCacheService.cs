@@ -15,6 +15,7 @@ public class ResourceCacheService
     private static readonly string ModrinthCacheDir = Path.Combine(CacheBaseDir, "modrinth");
     private static readonly string CurseForgeCacheDir = Path.Combine(CacheBaseDir, "curseforge");
     private const long MaxCacheSizeBytes = 200 * 1024 * 1024;
+    private static readonly TimeSpan DefaultCacheExpiry = TimeSpan.FromMinutes(30);
 
     static ResourceCacheService()
     {
@@ -50,7 +51,8 @@ public class ResourceCacheService
 
             var cacheItem = new CacheItem<T>
             {
-                Data = data
+                Data = data,
+                CachedAt = DateTime.UtcNow
             };
 
             var json = JsonSerializer.Serialize(cacheItem, new JsonSerializerOptions
@@ -69,7 +71,7 @@ public class ResourceCacheService
         }
     }
 
-    public static async Task<T?> GetCachedDataAsync<T>(string key, string source)
+    public static async Task<T?> GetCachedDataAsync<T>(string key, string source, TimeSpan? maxAge = null)
     {
         try
         {
@@ -100,12 +102,72 @@ public class ResourceCacheService
                 return default;
             }
 
+            var effectiveMaxAge = maxAge ?? DefaultCacheExpiry;
+            if (cacheItem.CachedAt.HasValue && DateTime.UtcNow - cacheItem.CachedAt.Value > effectiveMaxAge)
+            {
+                try { File.Delete(cacheFile); }
+                catch { }
+                return default;
+            }
+
             return cacheItem.Data;
         }
         catch (Exception ex)
         {
             DebugLogger.Error("ResourceCache", $"读取缓存数据失败: {ex.Message}");
             return default;
+        }
+    }
+
+    public static long GetCacheSize(string? source = null)
+    {
+        try
+        {
+            long total = 0;
+            var dirs = source?.ToLower() switch
+            {
+                "modrinth" => new[] { ModrinthCacheDir },
+                "curseforge" => new[] { CurseForgeCacheDir },
+                _ => new[] { ModrinthCacheDir, CurseForgeCacheDir }
+            };
+
+            foreach (var dir in dirs)
+            {
+                if (!Directory.Exists(dir)) continue;
+                total += new DirectoryInfo(dir).GetFiles("*.json").Sum(f => f.Length);
+            }
+            return total;
+        }
+        catch
+        {
+            return 0;
+        }
+    }
+
+    public static void ClearCache(string? source = null)
+    {
+        try
+        {
+            var dirs = source?.ToLower() switch
+            {
+                "modrinth" => new[] { ModrinthCacheDir },
+                "curseforge" => new[] { CurseForgeCacheDir },
+                _ => new[] { ModrinthCacheDir, CurseForgeCacheDir }
+            };
+
+            foreach (var dir in dirs)
+            {
+                if (!Directory.Exists(dir)) continue;
+                foreach (var file in new DirectoryInfo(dir).GetFiles("*.json"))
+                {
+                    try { file.Delete(); }
+                    catch { }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Error("ResourceCache", $"清理缓存失败: {ex.Message}");
         }
     }
 
@@ -147,6 +209,7 @@ public class ResourceCacheService
 
     private class CacheItem<T>
     {
-        public T Data { get; set; }
+        public T Data { get; set; } = default!;
+        public DateTime? CachedAt { get; set; }
     }
 }

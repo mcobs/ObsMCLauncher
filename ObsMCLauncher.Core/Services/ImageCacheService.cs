@@ -14,6 +14,7 @@ public class ImageCacheService
 {
     private static readonly HttpClient _httpClient = new();
     private static readonly string CacheDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "OMCL", "cache", "icons");
+    private const long MaxCacheSizeBytes = 100 * 1024 * 1024;
 
     static ImageCacheService()
     {
@@ -43,6 +44,7 @@ public class ImageCacheService
 
             if (File.Exists(filePath))
             {
+                try { File.SetLastAccessTimeUtc(filePath, DateTime.UtcNow); } catch { }
                 return filePath;
             }
 
@@ -58,6 +60,7 @@ public class ImageCacheService
                 {
                     var bytes = await _httpClient.GetByteArrayAsync(mirrorUrl);
                     await File.WriteAllBytesAsync(filePath, bytes);
+                    EnforceCacheSizeLimit();
                     return filePath;
                 }
                 catch (Exception ex)
@@ -70,6 +73,7 @@ public class ImageCacheService
             {
                 var bytes = await _httpClient.GetByteArrayAsync(url);
                 await File.WriteAllBytesAsync(filePath, bytes);
+                EnforceCacheSizeLimit();
                 return filePath;
             }
             catch (Exception ex)
@@ -82,6 +86,62 @@ public class ImageCacheService
         {
             DebugLogger.Error("ImageCache", $"处理图片缓存失败: {url}, {ex.Message}");
             return null;
+        }
+    }
+
+    public static long GetCacheSize()
+    {
+        try
+        {
+            if (!Directory.Exists(CacheDir)) return 0;
+            return new DirectoryInfo(CacheDir).GetFiles().Sum(f => f.Length);
+        }
+        catch { return 0; }
+    }
+
+    public static void ClearCache()
+    {
+        try
+        {
+            if (!Directory.Exists(CacheDir)) return;
+            foreach (var file in new DirectoryInfo(CacheDir).GetFiles())
+            {
+                try { file.Delete(); }
+                catch { }
+            }
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Error("ImageCache", $"清理图标缓存失败: {ex.Message}");
+        }
+    }
+
+    private static void EnforceCacheSizeLimit()
+    {
+        try
+        {
+            if (!Directory.Exists(CacheDir)) return;
+
+            var dirInfo = new DirectoryInfo(CacheDir);
+            var totalSize = dirInfo.GetFiles().Sum(f => f.Length);
+
+            if (totalSize <= MaxCacheSizeBytes) return;
+
+            var files = dirInfo.GetFiles()
+                .OrderBy(f => f.LastAccessTimeUtc)
+                .ToList();
+
+            foreach (var file in files)
+            {
+                if (totalSize <= MaxCacheSizeBytes * 0.7) break;
+                totalSize -= file.Length;
+                try { file.Delete(); }
+                catch { }
+            }
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Error("ImageCache", $"图标缓存大小限制检查失败: {ex.Message}");
         }
     }
 

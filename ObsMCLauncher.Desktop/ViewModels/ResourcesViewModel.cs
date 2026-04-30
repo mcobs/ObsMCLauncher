@@ -92,7 +92,13 @@ public partial class ResourcesViewModel : ViewModelBase
         SortFieldIndex = 0;
 
         LoadInstalledVersions();
-        _ = SearchAsync();
+        _ = InitializeAsync();
+    }
+
+    private async Task InitializeAsync()
+    {
+        await SearchAsync();
+        IsViewReady = true;
     }
 
     partial void OnQueryChanged(string value)
@@ -229,20 +235,18 @@ public partial class ResourcesViewModel : ViewModelBase
         SaveCurrentState();
         CurrentResourceType = type;
 
+        _typeStates.Remove(type);
         LoadInstalledVersions();
 
-        if (_typeStates.TryGetValue(type, out var state))
-        {
-            Query = state.Query;
-            Results.Clear();
-            foreach (var item in state.CachedResults) Results.Add(item);
-        }
-        else
-        {
-            Query = "";
-            Results.Clear();
+        Query = "";
+        Results.Clear();
+        _ = SearchAsync();
+    }
+
+    partial void OnVersionFilterChanged(string value)
+    {
+        if (IsViewReady && !IsLoading)
             _ = SearchAsync();
-        }
     }
 
     private void SaveCurrentState()
