@@ -6,6 +6,8 @@
   <img src="https://img.shields.io/badge/License-GPL--3.0-blue?style=for-the-badge" alt="License"/>
   <br/>
   <img src="https://github.com/x1aoren/ObsMCLauncher/actions/workflows/build.yml/badge.svg" alt="Build Status"/>
+  <br/>
+  <a href="https://deepwiki.com/mcobs/ObsMCLauncher"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
 </div>
 
 <div align="center">
