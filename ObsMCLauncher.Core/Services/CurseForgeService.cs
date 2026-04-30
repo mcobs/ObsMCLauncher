@@ -412,6 +412,13 @@ public static class CurseForgeService
         {
             var officialUrl = OfficialApiBase + path;
             var response = await _httpClient.GetAsync(officialUrl).ConfigureAwait(false);
+
+            if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                DebugLogger.Warn("CurseForge", $"资源不存在: {path}");
+                return null;
+            }
+
             response.EnsureSuccessStatusCode();
             return await response.Content.ReadAsStringAsync().ConfigureAwait(false);
         }

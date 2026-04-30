@@ -272,7 +272,7 @@ namespace ObsMCLauncher.Core.Services.Mirror
         {
             try
             {
-                var response = await _httpClient.GetAsync("https://mod.mcimirror.top/curseforge/v1/games").ConfigureAwait(false);
+                var response = await _httpClient.GetAsync("https://mod.mcimirror.top/curseforge/v1/categories?gameId=432").ConfigureAwait(false);
                 lock (_lock)
                 {
                     _curseForgeAvailable = response.IsSuccessStatusCode;

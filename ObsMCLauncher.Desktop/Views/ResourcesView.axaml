@@ -106,7 +106,7 @@
           </ItemsControl.ItemTemplate>
         </ItemsControl>
 
-        <ScrollViewer IsVisible="{Binding !IsLoading}">
+        <ScrollViewer IsVisible="{Binding IsListVisible}">
           <ItemsControl ItemsSource="{Binding Results}" Margin="12">
             <ItemsControl.ItemTemplate>
               <DataTemplate>

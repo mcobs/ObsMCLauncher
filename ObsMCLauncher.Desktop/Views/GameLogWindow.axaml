@@ -12,35 +12,17 @@
         SystemDecorations="None"
         ExtendClientAreaToDecorationsHint="True"
         ExtendClientAreaChromeHints="PreferSystemChrome"
-        WindowStartupLocation="CenterScreen">
+        WindowStartupLocation="CenterScreen"
+        Closing="GameLogWindow_Closing">
 
   <Window.Styles>
-    <!-- 修复：TextBox 悬停/聚焦时背景和边框不要变化 -->
-    <Style Selector="TextBox">
+    <Style Selector="SelectableTextBlock">
       <Setter Property="Background" Value="Transparent"/>
-      <Setter Property="BorderBrush" Value="Transparent"/>
-      <Setter Property="BorderThickness" Value="0"/>
-    </Style>
-    <Style Selector="TextBox:pointerover">
-      <Setter Property="Background" Value="Transparent"/>
-      <Setter Property="BorderBrush" Value="Transparent"/>
-      <Setter Property="BorderThickness" Value="0"/>
-    </Style>
-    <Style Selector="TextBox:focus">
-      <Setter Property="Background" Value="Transparent"/>
-      <Setter Property="BorderBrush" Value="Transparent"/>
-      <Setter Property="BorderThickness" Value="0"/>
-    </Style>
-    <Style Selector="TextBox:focus-within">
-      <Setter Property="Background" Value="Transparent"/>
-      <Setter Property="BorderBrush" Value="Transparent"/>
-      <Setter Property="BorderThickness" Value="0"/>
     </Style>
   </Window.Styles>
 
   <Grid RowDefinitions="40,*,Auto">
 
-    <!-- 标题栏 -->
     <Border Grid.Row="0"
             Background="{DynamicResource SurfaceBrush}"
             BorderBrush="{DynamicResource BorderBrush}"
@@ -64,25 +46,19 @@
       </Grid>
     </Border>
 
-    <!-- 日志内容区域 -->
     <Border Grid.Row="1" Background="{DynamicResource BackgroundBrush}">
       <ScrollViewer x:Name="LogScrollViewer"
                     VerticalScrollBarVisibility="Auto"
                     HorizontalScrollBarVisibility="Auto">
-        <TextBox x:Name="LogTextBox"
-                 IsReadOnly="True"
-                 AcceptsReturn="True"
-                 TextWrapping="NoWrap"
-                 Background="Transparent"
-                 BorderThickness="0"
-                 Padding="15"
-                 FontFamily="Consolas"
-                 FontSize="12"
-                 Foreground="{DynamicResource TextBrush}" />
+        <SelectableTextBlock x:Name="LogTextBlock"
+                             TextWrapping="NoWrap"
+                             Margin="15"
+                             FontFamily="Consolas"
+                             FontSize="12"
+                             Foreground="{DynamicResource TextBrush}" />
       </ScrollViewer>
     </Border>
 
-    <!-- 底部工具栏 -->
     <Border Grid.Row="2"
             Background="{DynamicResource SurfaceBrush}"
             BorderBrush="{DynamicResource BorderBrush}"

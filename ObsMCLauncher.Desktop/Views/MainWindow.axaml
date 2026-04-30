@@ -266,19 +266,21 @@
                                     Height="40"
                                     Padding="8,0"
                                     ToolTip.Tip="{Binding Title}">
-                                <Grid>
-                                    <TextBlock Text="{Binding Icon}"
+                                <Grid ColumnDefinitions="24,*">
+                                    <TextBlock Grid.Column="0"
+                                               Text="{Binding Icon}"
                                                FontSize="18"
                                                Width="24"
                                                Height="24"
                                                VerticalAlignment="Center"
-                                               HorizontalAlignment="{Binding $parent[Window].DataContext.IsNavCollapsed, Converter={x:Static converters:NavIconAlignmentConverter.Instance}}"
+                                               HorizontalAlignment="Center"
                                                TextAlignment="Center"
                                                Foreground="{DynamicResource TextBrush}" />
 
-                                    <TextBlock Text="{Binding Title}"
+                                    <TextBlock Grid.Column="1"
+                                               Text="{Binding Title}"
                                                FontSize="13"
-                                               Margin="32,0,0,0"
+                                               Margin="8,0,0,0"
                                                VerticalAlignment="Center"
                                                HorizontalAlignment="Left"
                                                Foreground="{DynamicResource TextBrush}"
@@ -292,7 +294,7 @@
 
                 <ListBox x:Name="BottomNavListBox"
                          Grid.Row="2"
-                         Margin="6,8,6,0"
+                         Margin="6,0"
                          ItemsSource="{Binding BottomNavItems}"
                          SelectedItem="{Binding SelectedBottomNavItem}"
                          HorizontalAlignment="Stretch">
@@ -303,19 +305,21 @@
                                     Height="40"
                                     Padding="8,0"
                                     ToolTip.Tip="{Binding Title}">
-                                <Grid>
-                                    <TextBlock Text="{Binding Icon}"
+                                <Grid ColumnDefinitions="24,*">
+                                    <TextBlock Grid.Column="0"
+                                               Text="{Binding Icon}"
                                                FontSize="18"
                                                Width="24"
                                                Height="24"
                                                VerticalAlignment="Center"
-                                               HorizontalAlignment="{Binding $parent[Window].DataContext.IsNavCollapsed, Converter={x:Static converters:NavIconAlignmentConverter.Instance}}"
+                                               HorizontalAlignment="Center"
                                                TextAlignment="Center"
                                                Foreground="{DynamicResource TextBrush}" />
 
-                                    <TextBlock Text="{Binding Title}"
+                                    <TextBlock Grid.Column="1"
+                                               Text="{Binding Title}"
                                                FontSize="13"
-                                               Margin="32,0,0,0"
+                                               Margin="8,0,0,0"
                                                VerticalAlignment="Center"
                                                HorizontalAlignment="Left"
                                                Foreground="{DynamicResource TextBrush}"

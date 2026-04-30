@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
@@ -16,6 +17,13 @@ public class ResourceCacheService
     private static readonly string CurseForgeCacheDir = Path.Combine(CacheBaseDir, "curseforge");
     private const long MaxCacheSizeBytes = 200 * 1024 * 1024;
     private static readonly TimeSpan DefaultCacheExpiry = TimeSpan.FromMinutes(30);
+
+    private static readonly ConcurrentDictionary<string, SemaphoreSlim> _fileLocks = new();
+
+    private static SemaphoreSlim GetFileLock(string filePath)
+    {
+        return _fileLocks.GetOrAdd(filePath, _ => new SemaphoreSlim(1, 1));
+    }
 
     static ResourceCacheService()
     {
@@ -48,20 +56,29 @@ public class ResourceCacheService
             };
 
             var cacheFile = Path.Combine(cacheDir, $"{GetSafeFileName(key)}.json");
+            var fileLock = GetFileLock(cacheFile);
 
-            var cacheItem = new CacheItem<T>
+            await fileLock.WaitAsync();
+            try
             {
-                Data = data,
-                CachedAt = DateTime.UtcNow
-            };
+                var cacheItem = new CacheItem<T>
+                {
+                    Data = data,
+                    CachedAt = DateTime.UtcNow
+                };
 
-            var json = JsonSerializer.Serialize(cacheItem, new JsonSerializerOptions
+                var json = JsonSerializer.Serialize(cacheItem, new JsonSerializerOptions
+                {
+                    WriteIndented = false,
+                    PropertyNameCaseInsensitive = true
+                });
+
+                await File.WriteAllTextAsync(cacheFile, json);
+            }
+            finally
             {
-                WriteIndented = false,
-                PropertyNameCaseInsensitive = true
-            });
-
-            await File.WriteAllTextAsync(cacheFile, json);
+                fileLock.Release();
+            }
 
             EnforceCacheSizeLimit(cacheDir);
         }
@@ -89,28 +106,37 @@ public class ResourceCacheService
                 return default;
             }
 
-            var json = await File.ReadAllTextAsync(cacheFile);
-            var cacheItem = JsonSerializer.Deserialize<CacheItem<T>>(json, new JsonSerializerOptions
+            var fileLock = GetFileLock(cacheFile);
+            await fileLock.WaitAsync();
+            try
             {
-                PropertyNameCaseInsensitive = true
-            });
+                var json = await File.ReadAllTextAsync(cacheFile);
+                var cacheItem = JsonSerializer.Deserialize<CacheItem<T>>(json, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
 
-            if (cacheItem == null)
-            {
-                try { File.Delete(cacheFile); }
-                catch { }
-                return default;
+                if (cacheItem == null)
+                {
+                    try { File.Delete(cacheFile); }
+                    catch { }
+                    return default;
+                }
+
+                var effectiveMaxAge = maxAge ?? DefaultCacheExpiry;
+                if (cacheItem.CachedAt.HasValue && DateTime.UtcNow - cacheItem.CachedAt.Value > effectiveMaxAge)
+                {
+                    try { File.Delete(cacheFile); }
+                    catch { }
+                    return default;
+                }
+
+                return cacheItem.Data;
             }
-
-            var effectiveMaxAge = maxAge ?? DefaultCacheExpiry;
-            if (cacheItem.CachedAt.HasValue && DateTime.UtcNow - cacheItem.CachedAt.Value > effectiveMaxAge)
+            finally
             {
-                try { File.Delete(cacheFile); }
-                catch { }
-                return default;
+                fileLock.Release();
             }
-
-            return cacheItem.Data;
         }
         catch (Exception ex)
         {

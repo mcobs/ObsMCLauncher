@@ -7,8 +7,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ObsMCLauncher.Desktop", "Ob
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ObsMCLauncher.Core", "ObsMCLauncher.Core\ObsMCLauncher.Core.csproj", "{E73CBD6A-8A9A-4B34-AF1F-76E924E47AEC}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ObsMCLauncher.Tests", "ObsMCLauncher.Tests\ObsMCLauncher.Tests.csproj", "{BEF93CD2-E46C-4E09-AB9C-3B0C2DE2E9D0}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU

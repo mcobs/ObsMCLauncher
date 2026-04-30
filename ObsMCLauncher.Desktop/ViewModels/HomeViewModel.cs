@@ -4,8 +4,10 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Avalonia;
 using Avalonia.Platform;
 using Avalonia.Media.Imaging;
+using Avalonia.Controls.ApplicationLifetimes;
 using CommunityToolkit.Mvvm.Input;
 using ObsMCLauncher.Core.Models;
 using ObsMCLauncher.Core.Plugins;
@@ -720,7 +722,6 @@ public partial class HomeViewModel : ViewModelBase
 
             _notificationService.Update(notifId, "正在启动 Minecraft...");
 
-            // 3. 正式启动
             bool success = await ObsMCLauncher.Core.Services.GameLauncher.LaunchGameAsync(
                 versionId,
                 account,
@@ -743,6 +744,17 @@ public partial class HomeViewModel : ViewModelBase
             if (success)
             {
                 _notificationService.Show("启动成功", $"Minecraft {versionId} 已成功拉起", NotificationType.Success);
+
+                if (config.CloseAfterLaunch)
+                {
+                    await _dispatcher.InvokeAsync(() =>
+                    {
+                        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+                        {
+                            desktop.MainWindow?.Close();
+                        }
+                    });
+                }
             }
             else
             {
