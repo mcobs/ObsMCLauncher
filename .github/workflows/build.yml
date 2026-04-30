@@ -10,37 +10,59 @@ on:
 jobs:
   build:
     if: "!contains(github.event.head_commit.message, '[CI skip]') && !contains(github.event.head_commit.message, '[ci skip]')"
-    
+
     strategy:
       matrix:
-        configuration: [Release]
-        include:
-          - rid: win-x86
-            os: windows-latest
-          - rid: win-x64
-            os: windows-latest
-          - rid: win-arm64
-            os: windows-latest
-          - rid: linux-x64
-            os: ubuntu-latest
-          - rid: linux-arm64
-            os: ubuntu-latest
-          - rid: osx-x64
-            os: macos-latest
-          - rid: osx-arm64
-            os: macos-latest
-    
+        os: [windows-latest, ubuntu-latest, macos-latest]
+        rid:
+          - win-x86
+          - win-x64
+          - win-arm64
+          - linux-x64
+          - linux-arm64
+          - osx-x64
+          - osx-arm64
+        exclude:
+          - os: windows-latest
+            rid: linux-x64
+          - os: windows-latest
+            rid: linux-arm64
+          - os: windows-latest
+            rid: osx-x64
+          - os: windows-latest
+            rid: osx-arm64
+          - os: ubuntu-latest
+            rid: win-x86
+          - os: ubuntu-latest
+            rid: win-x64
+          - os: ubuntu-latest
+            rid: win-arm64
+          - os: ubuntu-latest
+            rid: osx-x64
+          - os: ubuntu-latest
+            rid: osx-arm64
+          - os: macos-latest
+            rid: win-x86
+          - os: macos-latest
+            rid: win-x64
+          - os: macos-latest
+            rid: win-arm64
+          - os: macos-latest
+            rid: linux-x64
+          - os: macos-latest
+            rid: linux-arm64
+
     runs-on: ${{ matrix.os }}
-    
+
     env:
       Project_Path: ObsMCLauncher.Desktop/ObsMCLauncher.Desktop.csproj
-      
+
     steps:
     - name: Checkout
       uses: actions/checkout@v4
       with:
         fetch-depth: 0
-    
+
     - name: Install .NET Core
       uses: actions/setup-dotnet@v4
       with:
@@ -48,44 +70,34 @@ jobs:
 
     - name: Restore dependencies
       run: dotnet restore ${{ env.Project_Path }}
-      
+
     - name: Build application
-      run: dotnet build ${{ env.Project_Path }} -c ${{ matrix.configuration }} --no-restore
+      run: dotnet build ${{ env.Project_Path }} -c Release --no-restore
 
     - name: Get version info
       id: version
-      shell: pwsh
       run: |
-        $date = Get-Date -Format "yyyyMMdd"
-        $shortSha = "${{ github.sha }}".Substring(0, 7)
-        $version = "v1.0.0-$date-$shortSha"
-        echo "version=$version" >> $env:GITHUB_OUTPUT
+        date=$(date +%Y%m%d)
+        short_sha="${GITHUB_SHA:0:7}"
+        version="v1.0.0-$date-$short_sha"
+        echo "version=$version" >> $GITHUB_OUTPUT
         echo "当前版本: $version"
 
     - name: Publish single-file executable
       run: |
-        dotnet publish ${{ env.Project_Path }} -c ${{ matrix.configuration }} -r ${{ matrix.rid }} --self-contained false -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=none -p:DebugSymbols=false -o ./publish/${{ matrix.rid }}
+        dotnet publish ${{ env.Project_Path }} -c Release -r ${{ matrix.rid }} --self-contained false -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=none -p:DebugSymbols=false -o ./publish/${{ matrix.rid }}
+
+    - name: Set executable permission (Linux/macOS)
+      if: runner.os != 'Windows'
+      run: |
+        if [ -f "./publish/${{ matrix.rid }}/ObsMCLauncher.Desktop" ]; then
+          chmod +x "./publish/${{ matrix.rid }}/ObsMCLauncher.Desktop"
+        fi
 
     - name: Verify output
-      shell: pwsh
       run: |
-        Write-Host "发布目录内容:"
-        Get-ChildItem ./publish/${{ matrix.rid }} | Format-Table Name, Length
-        
-        $outputDir = "./publish/${{ matrix.rid }}"
-        if ("${{ matrix.os }}" -like "win*") {
-          $exeFile = Get-Item $outputDir/*.exe -ErrorAction SilentlyContinue
-          if ($exeFile) {
-            $fileSizeMB = [Math]::Round($exeFile.Length / 1MB, 2)
-            Write-Host "可执行文件大小: $fileSizeMB MB"
-          }
-        } else {
-          $mainFile = Get-ChildItem $outputDir/ObsMCLauncher.Desktop -ErrorAction SilentlyContinue
-          if ($mainFile) {
-            $fileSizeMB = [Math]::Round($mainFile.Length / 1MB, 2)
-            Write-Host "可执行文件大小: $fileSizeMB MB"
-          }
-        }
+        echo "发布目录内容:"
+        ls -la "./publish/${{ matrix.rid }}/"
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4

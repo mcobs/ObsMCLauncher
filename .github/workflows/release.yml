@@ -18,33 +18,56 @@ jobs:
   build:
     strategy:
       matrix:
-        include:
-          - rid: win-x86
-            os: windows-latest
-          - rid: win-x64
-            os: windows-latest
-          - rid: win-arm64
-            os: windows-latest
-          - rid: linux-x64
-            os: ubuntu-latest
-          - rid: linux-arm64
-            os: ubuntu-latest
-          - rid: osx-x64
-            os: macos-latest
-          - rid: osx-arm64
-            os: macos-latest
-    
+        os: [windows-latest, ubuntu-latest, macos-latest]
+        rid:
+          - win-x86
+          - win-x64
+          - win-arm64
+          - linux-x64
+          - linux-arm64
+          - osx-x64
+          - osx-arm64
+        exclude:
+          - os: windows-latest
+            rid: linux-x64
+          - os: windows-latest
+            rid: linux-arm64
+          - os: windows-latest
+            rid: osx-x64
+          - os: windows-latest
+            rid: osx-arm64
+          - os: ubuntu-latest
+            rid: win-x86
+          - os: ubuntu-latest
+            rid: win-x64
+          - os: ubuntu-latest
+            rid: win-arm64
+          - os: ubuntu-latest
+            rid: osx-x64
+          - os: ubuntu-latest
+            rid: osx-arm64
+          - os: macos-latest
+            rid: win-x86
+          - os: macos-latest
+            rid: win-x64
+          - os: macos-latest
+            rid: win-arm64
+          - os: macos-latest
+            rid: linux-x64
+          - os: macos-latest
+            rid: linux-arm64
+
     runs-on: ${{ matrix.os }}
-    
+
     env:
       Project_Path: ObsMCLauncher.Desktop/ObsMCLauncher.Desktop.csproj
-      
+
     steps:
     - name: Checkout
       uses: actions/checkout@v4
       with:
         fetch-depth: 0
-    
+
     - name: Install .NET Core
       uses: actions/setup-dotnet@v4
       with:
@@ -52,26 +75,29 @@ jobs:
 
     - name: Restore dependencies
       run: dotnet restore ${{ env.Project_Path }}
-      
+
     - name: Build application
       run: dotnet build ${{ env.Project_Path }} -c Release --no-restore
 
     - name: Get version info
       id: version
-      shell: pwsh
       run: |
-        if ("${{ github.event_name }}" -eq "workflow_dispatch") {
-          $version = "${{ github.event.inputs.tag }}"
-        } else {
-          $version = "${{ github.ref_name }}"
-        }
-        $versionNumber = $version -replace '^v', ''
-        $isPrerelease = $version -match '-(alpha|beta|rc|pre|test|preview)'
-        echo "version=$version" >> $env:GITHUB_OUTPUT
-        echo "version_number=$versionNumber" >> $env:GITHUB_OUTPUT
-        echo "is_prerelease=$isPrerelease" >> $env:GITHUB_OUTPUT
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          version="${{ github.event.inputs.tag }}"
+        else
+          version="${GITHUB_REF#refs/tags/}"
+        fi
+        version_number=$(echo "$version" | sed 's/^v//')
+        if echo "$version" | grep -qE '-(alpha|beta|rc|pre|test|preview)'; then
+          is_prerelease="true"
+        else
+          is_prerelease="false"
+        fi
+        echo "version=$version" >> $GITHUB_OUTPUT
+        echo "version_number=$version_number" >> $GITHUB_OUTPUT
+        echo "is_prerelease=$is_prerelease" >> $GITHUB_OUTPUT
         echo "当前版本: $version"
-        echo "是否预发布: $isPrerelease"
+        echo "是否预发布: $is_prerelease"
 
     - name: Publish ${{ matrix.rid }}
       run: |
@@ -79,15 +105,18 @@ jobs:
 
     - name: Set executable permission (Linux/macOS)
       if: runner.os != 'Windows'
-      run: chmod +x ./publish/${{ matrix.rid }}/ObsMCLauncher.Desktop
+      run: |
+        if [ -f "./publish/${{ matrix.rid }}/ObsMCLauncher.Desktop" ]; then
+          chmod +x "./publish/${{ matrix.rid }}/ObsMCLauncher.Desktop"
+        fi
 
     - name: Create ZIP archive
-      shell: pwsh
       run: |
-        Compress-Archive -Path ./publish/${{ matrix.rid }}/* -DestinationPath ./ObsMCLauncher-${{ steps.version.outputs.version }}-${{ matrix.rid }}.zip
-        $zipFile = Get-Item ./ObsMCLauncher-${{ steps.version.outputs.version }}-${{ matrix.rid }}.zip
-        $fileSizeMB = [Math]::Round($zipFile.Length / 1MB, 2)
-        Write-Host "创建 ZIP 文件: $($zipFile.Name), 大小: $fileSizeMB MB"
+        if [ "${{ runner.os }}" = "Windows" ]; then
+          powershell -Command "Compress-Archive -Path './publish/${{ matrix.rid }}/*' -DestinationPath './ObsMCLauncher-${{ steps.version.outputs.version }}-${{ matrix.rid }}.zip'"
+        else
+          cd "./publish/${{ matrix.rid }}" && zip -r "../../ObsMCLauncher-${{ steps.version.outputs.version }}-${{ matrix.rid }}.zip" . && cd ../..
+        fi
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
@@ -101,7 +130,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    
+
     steps:
     - name: Checkout
       uses: actions/checkout@v4
@@ -110,14 +139,13 @@ jobs:
 
     - name: Get version info
       id: version
-      shell: bash
       run: |
         if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
           version="${{ github.event.inputs.tag }}"
         else
-          version="${{ github.ref_name }}"
+          version="${GITHUB_REF#refs/tags/}"
         fi
-        if [[ "$version" =~ -(alpha|beta|rc|pre|test|preview) ]]; then
+        if echo "$version" | grep -qE '-(alpha|beta|rc|pre|test|preview)'; then
           is_prerelease="true"
         else
           is_prerelease="false"
@@ -133,30 +161,26 @@ jobs:
         path: ./artifacts
 
     - name: List artifacts
-      shell: bash
       run: |
         echo "Artifacts 目录内容:"
         find ./artifacts -type f | head -50
 
     - name: Prepare release files
-      shell: bash
       run: |
         version="${{ steps.version.outputs.version }}"
         mkdir -p ./release
-        
+
         find ./artifacts -name "*.zip" -exec cp {} ./release/ \;
-        
+
         echo "Release 目录内容:"
         ls -la ./release/
 
     - name: Read CHANGELOG
       id: changelog
-      shell: bash
       run: |
         changelog_path="./.github/changelogs/CHANGELOG.md"
-        
+
         if [ -f "$changelog_path" ]; then
-          content=$(cat "$changelog_path" | sed 's/$/\\n/' | tr -d '\n' | sed 's/\\n$//')
           echo "changelog<<EOF" >> $GITHUB_OUTPUT
           cat "$changelog_path" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
@@ -167,63 +191,63 @@ jobs:
         fi
 
     - name: Create Release
-      uses: actions/github-script@v6
+      uses: actions/github-script@v7
       with:
         script: |
           const version = '${{ steps.version.outputs.version }}';
-          const isPrerelease = ${{ steps.version.outputs.is_prerelease == 'true' }};
+          const isPrerelease = '${{ steps.version.outputs.is_prerelease }}' === 'true';
           const changelog = `${{ steps.changelog.outputs.changelog }}`;
-          
-          let body = `## 下载\n\n`;
-          body += `| 平台 | 架构 | 文件 |\n`;
-          body += `|:----:|:----:|:----:|\n`;
-          body += `| Windows | x86 (32位) | [ObsMCLauncher-${version}-win-x86.zip](https://github.com/${{ github.repository }}/releases/download/${version}/ObsMCLauncher-${version}-win-x86.zip) |\n`;
-          body += `| Windows | x64 (64位) | [ObsMCLauncher-${version}-win-x64.zip](https://github.com/${{ github.repository }}/releases/download/${version}/ObsMCLauncher-${version}-win-x64.zip) |\n`;
-          body += `| Windows | ARM64 | [ObsMCLauncher-${version}-win-arm64.zip](https://github.com/${{ github.repository }}/releases/download/${version}/ObsMCLauncher-${version}-win-arm64.zip) |\n`;
-          body += `| Linux | x64 (64位) | [ObsMCLauncher-${version}-linux-x64.zip](https://github.com/${{ github.repository }}/releases/download/${version}/ObsMCLauncher-${version}-linux-x64.zip) |\n`;
-          body += `| Linux | ARM64 | [ObsMCLauncher-${version}-linux-arm64.zip](https://github.com/${{ github.repository }}/releases/download/${version}/ObsMCLauncher-${version}-linux-arm64.zip) |\n`;
-          body += `| macOS | x64 (Intel) | [ObsMCLauncher-${version}-osx-x64.zip](https://github.com/${{ github.repository }}/releases/download/${version}/ObsMCLauncher-${version}-osx-x64.zip) |\n`;
-          body += `| macOS | ARM64 (Apple Silicon) | [ObsMCLauncher-${version}-osx-arm64.zip](https://github.com/${{ github.repository }}/releases/download/${version}/ObsMCLauncher-${version}-osx-arm64.zip) |\n\n`;
-          
+
+          let body = '## 下载\n\n';
+          body += '| 平台 | 架构 | 文件 |\n';
+          body += '|:----:|:----:|:----:|\n';
+          body += '| Windows | x86 (32位) | [ObsMCLauncher-' + version + '-win-x86.zip](https://github.com/${{ github.repository }}/releases/download/' + version + '/ObsMCLauncher-' + version + '-win-x86.zip) |\n';
+          body += '| Windows | x64 (64位) | [ObsMCLauncher-' + version + '-win-x64.zip](https://github.com/${{ github.repository }}/releases/download/' + version + '/ObsMCLauncher-' + version + '-win-x64.zip) |\n';
+          body += '| Windows | ARM64 | [ObsMCLauncher-' + version + '-win-arm64.zip](https://github.com/${{ github.repository }}/releases/download/' + version + '/ObsMCLauncher-' + version + '-win-arm64.zip) |\n';
+          body += '| Linux | x64 (64位) | [ObsMCLauncher-' + version + '-linux-x64.zip](https://github.com/${{ github.repository }}/releases/download/' + version + '/ObsMCLauncher-' + version + '-linux-x64.zip) |\n';
+          body += '| Linux | ARM64 | [ObsMCLauncher-' + version + '-linux-arm64.zip](https://github.com/${{ github.repository }}/releases/download/' + version + '/ObsMCLauncher-' + version + '-linux-arm64.zip) |\n';
+          body += '| macOS | x64 (Intel) | [ObsMCLauncher-' + version + '-osx-x64.zip](https://github.com/${{ github.repository }}/releases/download/' + version + '/ObsMCLauncher-' + version + '-osx-x64.zip) |\n';
+          body += '| macOS | ARM64 (Apple Silicon) | [ObsMCLauncher-' + version + '-osx-arm64.zip](https://github.com/${{ github.repository }}/releases/download/' + version + '/ObsMCLauncher-' + version + '-osx-arm64.zip) |\n\n';
+
           if (isPrerelease) {
-            body += `---\n\n## 预发布版本警告\n\n`;
-            body += `**此版本为预发布版本，可能存在以下问题：**\n`;
-            body += `- 可能包含未发现的 Bug\n`;
-            body += `- 功能可能不稳定\n`;
-            body += `- 部分功能可能会在正式版中更改\n\n`;
-            body += `**不建议在生产环境或日常使用中使用此版本。**\n\n`;
-            body += `如果您发现问题，请在 [Issues](https://github.com/${{ github.repository }}/issues) 中反馈。\n`;
+            body += '---\n\n## 预发布版本警告\n\n';
+            body += '**此版本为预发布版本，可能存在以下问题：**\n';
+            body += '- 可能包含未发现的 Bug\n';
+            body += '- 功能可能不稳定\n';
+            body += '- 部分功能可能会在正式版中更改\n\n';
+            body += '**不建议在生产环境或日常使用中使用此版本。**\n\n';
+            body += '如果您发现问题，请在 [Issues](https://github.com/${{ github.repository }}/issues) 中反馈。\n';
           }
-          
+
           if (changelog && changelog.trim()) {
-            body += `\n---\n\n`;
+            body += '\n---\n\n';
             body += changelog;
-            body += `\n`;
+            body += '\n';
           } else {
-            body += `\n---\n\n## 更新内容\n\n暂无更新内容描述。\n`;
+            body += '\n---\n\n## 更新内容\n\n暂无更新内容描述。\n';
           }
-          
+
           const release = await github.rest.repos.createRelease({
             owner: context.repo.owner,
             repo: context.repo.repo,
             tag_name: version,
-            name: `ObsMCLauncher ${version}`,
+            name: 'ObsMCLauncher ' + version,
             body: body,
             draft: false,
             prerelease: isPrerelease
           });
-          
+
           console.log('创建发布成功:', release.data.html_url);
-          
+
           const fs = require('fs');
           const path = require('path');
           const releaseFiles = fs.readdirSync('./release');
-          
+
           for (const file of releaseFiles) {
             if (file.endsWith('.zip')) {
               const filePath = path.join('./release', file);
-              console.log(`上传文件: ${file}`);
-              
+              console.log('上传文件: ' + file);
+
               await github.rest.repos.uploadReleaseAsset({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
@@ -231,11 +255,11 @@ jobs:
                 name: file,
                 data: fs.readFileSync(filePath)
               });
-              
-              console.log(`文件 ${file} 上传成功`);
+
+              console.log('文件 ' + file + ' 上传成功');
             }
           }
-          
+
           console.log('所有文件上传完成');
       env:
         GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
