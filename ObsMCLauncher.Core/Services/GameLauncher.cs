@@ -1008,7 +1008,7 @@ public class GameLauncher
                         if (lib.Downloads.Classifiers.TryGetValue(nativesKey, out var nativeArtifact) &&
                             !string.IsNullOrEmpty(nativeArtifact.Path))
                         {
-                            var nativesPath = Path.Combine(librariesDir, nativeArtifact.Path.Replace("/", "\\"));
+                            var nativesPath = Path.Combine(librariesDir, nativeArtifact.Path.Replace('/', Path.DirectorySeparatorChar));
 
                             if (!File.Exists(nativesPath))
                             {
@@ -1033,7 +1033,7 @@ public class GameLauncher
             return Path.Combine(librariesDir, lib.Downloads.Artifact.Path.Replace('/', Path.DirectorySeparatorChar));
         }
 
-        if (lib.Natives != null && lib.Natives.TryGetValue("windows", out var nativeKey))
+        if (lib.Natives != null && lib.Natives.TryGetValue(GetOSName(), out var nativeKey))
         {
             if (lib.Downloads?.Classifiers != null && lib.Downloads.Classifiers.TryGetValue(nativeKey, out var classifierArtifact))
             {
@@ -1183,11 +1183,11 @@ public class GameLauncher
                         if (lib.Downloads.Classifiers.TryGetValue(nativesKey, out var nativeArtifact) &&
                             !string.IsNullOrEmpty(nativeArtifact.Path))
                         {
-                            nativesJarPath = Path.Combine(librariesDir, nativeArtifact.Path.Replace("/", "\\"));
+                            nativesJarPath = Path.Combine(librariesDir, nativeArtifact.Path.Replace('/', Path.DirectorySeparatorChar));
                         }
                     }
                 }
-                else if (lib.Name != null && lib.Name.Contains("natives-windows"))
+                else if (lib.Name != null && lib.Name.Contains($"natives-{GetOSName()}"))
                 {
                     var libPath = GetLibraryPath(librariesDir, lib);
                     if (!string.IsNullOrEmpty(libPath))
@@ -1403,6 +1403,7 @@ public class GameLauncher
     }
 
     [System.Runtime.InteropServices.DllImport("kernel32.dll", CharSet = System.Runtime.InteropServices.CharSet.Auto, SetLastError = true)]
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
     private static extern uint GetShortPathName(
         string lpszLongPath,
         StringBuilder lpszShortPath,

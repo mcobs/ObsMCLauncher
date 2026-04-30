@@ -479,7 +479,9 @@ public class SettingsViewModel : ViewModelBase
 
     public static string GetDirectoryLocationText(DirectoryLocation location) => location switch
     {
-        DirectoryLocation.AppData => "%APPDATA%\\.minecraft（默认）",
+        DirectoryLocation.AppData => OperatingSystem.IsWindows() ? "%APPDATA%\\.minecraft（默认）"
+            : OperatingSystem.IsMacOS() ? "~/Library/Application Support/minecraft（默认）"
+            : "~/.minecraft（默认）",
         DirectoryLocation.RunningDirectory => "运行目录\\.minecraft",
         DirectoryLocation.Custom => "自定义路径",
         _ => location.ToString()
@@ -624,29 +626,74 @@ public class SettingsViewModel : ViewModelBase
         {
             if (string.IsNullOrWhiteSpace(dir)) continue;
             var d = dir.Trim();
-            AddIfExists(Path.Combine(d, "javaw.exe"));
-            AddIfExists(Path.Combine(d, "java.exe"));
+            if (OperatingSystem.IsWindows())
+            {
+                AddIfExists(Path.Combine(d, "javaw.exe"));
+                AddIfExists(Path.Combine(d, "java.exe"));
+            }
+            else
+            {
+                AddIfExists(Path.Combine(d, "java"));
+            }
         }
 
         // 常见目录
-        var programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
-        var programFilesX86 = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
-
-        foreach (var root in new[] { programFiles, programFilesX86 })
+        if (OperatingSystem.IsWindows())
         {
-            if (string.IsNullOrWhiteSpace(root) || !Directory.Exists(root)) continue;
+            var programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
+            var programFilesX86 = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
 
-            foreach (var baseDir in new[] { "Java", "Eclipse Adoptium" })
+            foreach (var root in new[] { programFiles, programFilesX86 })
             {
-                var dir = Path.Combine(root, baseDir);
-                if (!Directory.Exists(dir)) continue;
+                if (string.IsNullOrWhiteSpace(root) || !Directory.Exists(root)) continue;
 
-                foreach (var sub in Directory.GetDirectories(dir))
+                foreach (var baseDir in new[] { "Java", "Eclipse Adoptium" })
                 {
-                    AddIfExists(Path.Combine(sub, "bin", "javaw.exe"));
-                    AddIfExists(Path.Combine(sub, "bin", "java.exe"));
+                    var dir = Path.Combine(root, baseDir);
+                    if (!Directory.Exists(dir)) continue;
+
+                    foreach (var sub in Directory.GetDirectories(dir))
+                    {
+                        AddIfExists(Path.Combine(sub, "bin", "javaw.exe"));
+                        AddIfExists(Path.Combine(sub, "bin", "java.exe"));
+                    }
                 }
             }
+        }
+        else if (OperatingSystem.IsMacOS())
+        {
+            var macDirs = new[]
+            {
+                "/Library/Java/JavaVirtualMachines",
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Library", "Java", "JavaVirtualMachines"),
+            };
+            foreach (var baseDir in macDirs)
+            {
+                if (!Directory.Exists(baseDir)) continue;
+                foreach (var sub in Directory.GetDirectories(baseDir))
+                {
+                    AddIfExists(Path.Combine(sub, "Contents", "Home", "bin", "java"));
+                }
+            }
+        }
+        else if (OperatingSystem.IsLinux())
+        {
+            var linuxDirs = new[] { "/usr/lib/jvm", "/usr/java", "/opt/jdk", "/opt/jre" };
+            var homeDir = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            var userDirs = new[]
+            {
+                Path.Combine(homeDir, ".sdkman", "candidates", "java"),
+                Path.Combine(homeDir, ".jdks"),
+            };
+            foreach (var baseDir in linuxDirs.Concat(userDirs))
+            {
+                if (!Directory.Exists(baseDir)) continue;
+                foreach (var sub in Directory.GetDirectories(baseDir))
+                {
+                    AddIfExists(Path.Combine(sub, "bin", "java"));
+                }
+            }
+            AddIfExists("/usr/bin/java");
         }
 
         var result = new List<JavaOption>();

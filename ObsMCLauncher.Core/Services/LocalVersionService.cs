@@ -168,7 +168,13 @@ public static class LocalVersionService
         {
             if (Directory.Exists(versionPath))
             {
-                System.Diagnostics.Process.Start("explorer.exe", versionPath);
+                var psi = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = OperatingSystem.IsWindows() ? "explorer.exe" : OperatingSystem.IsMacOS() ? "open" : "xdg-open",
+                    Arguments = versionPath,
+                    UseShellExecute = true
+                };
+                System.Diagnostics.Process.Start(psi);
             }
         }
         catch

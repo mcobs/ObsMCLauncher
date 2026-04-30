@@ -14,7 +14,9 @@ public class EnumToChineseTextConverter : IValueConverter
         {
             return dl switch
             {
-                DirectoryLocation.AppData => "%APPDATA%\\.minecraft（默认）",
+                DirectoryLocation.AppData => OperatingSystem.IsWindows() ? "%APPDATA%\\.minecraft（默认）"
+                    : OperatingSystem.IsMacOS() ? "~/Library/Application Support/minecraft（默认）"
+                    : "~/.minecraft（默认）",
                 DirectoryLocation.RunningDirectory => "运行目录\\.minecraft",
                 DirectoryLocation.Custom => "自定义路径",
                 _ => dl.ToString()

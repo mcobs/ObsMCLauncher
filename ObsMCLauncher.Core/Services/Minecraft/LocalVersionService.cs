@@ -285,9 +285,15 @@ namespace ObsMCLauncher.Core.Services.Minecraft
             try
             {
                 if (Directory.Exists(versionPath))
+            {
+                var psi = new System.Diagnostics.ProcessStartInfo
                 {
-                    System.Diagnostics.Process.Start("explorer.exe", versionPath);
-                }
+                    FileName = OperatingSystem.IsWindows() ? "explorer.exe" : OperatingSystem.IsMacOS() ? "open" : "xdg-open",
+                    Arguments = versionPath,
+                    UseShellExecute = true
+                };
+                System.Diagnostics.Process.Start(psi);
+            }
             }
             catch (Exception ex)
             {

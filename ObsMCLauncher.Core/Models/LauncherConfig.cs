@@ -24,10 +24,10 @@ public class LauncherConfig
                 }
 
                 var bestJava = JavaDetector.SelectBestJava();
-                return bestJava?.Path ?? "javaw.exe";
+                return bestJava?.Path ?? GetDefaultJavaPath();
 
             case 1:
-                return string.IsNullOrEmpty(JavaPath) ? "javaw.exe" : JavaPath;
+                return string.IsNullOrEmpty(JavaPath) ? GetDefaultJavaPath() : JavaPath;
 
             case 2:
                 return string.IsNullOrEmpty(CustomJavaPath) ? JavaPath : CustomJavaPath;
@@ -35,6 +35,12 @@ public class LauncherConfig
             default:
                 return JavaPath;
         }
+    }
+
+    private static string GetDefaultJavaPath()
+    {
+        if (OperatingSystem.IsWindows()) return "javaw.exe";
+        return "java";
     }
 
     public string GetRunDirectory(string versionName)
@@ -84,9 +90,7 @@ public class LauncherConfig
     public string GameDirectory
         => GameDirectoryLocation switch
         {
-            DirectoryLocation.AppData => Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                ".minecraft"),
+            DirectoryLocation.AppData => GetDefaultGameDirectory(),
             DirectoryLocation.RunningDirectory => Path.Combine(
                 AppDomain.CurrentDomain.BaseDirectory,
                 ".minecraft"),
@@ -96,9 +100,30 @@ public class LauncherConfig
             _ => Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ".minecraft")
         };
 
+    private static string GetDefaultGameDirectory()
+    {
+        if (OperatingSystem.IsMacOS())
+        {
+            return Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                "Library",
+                "Application Support",
+                "minecraft");
+        }
+        if (OperatingSystem.IsLinux())
+        {
+            return Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                ".minecraft");
+        }
+        return Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            ".minecraft");
+    }
+
     public int JavaSelectionMode { get; set; } = 0;
 
-    public string JavaPath { get; set; } = "javaw.exe";
+    public string JavaPath { get; set; } = OperatingSystem.IsWindows() ? "javaw.exe" : "java";
 
     public string CustomJavaPath { get; set; } = "";
 

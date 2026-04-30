@@ -16,11 +16,25 @@ permissions:
 
 jobs:
   build:
-    runs-on: windows-latest
-    
     strategy:
       matrix:
-        rid: [win-x86, win-x64, win-arm64]
+        include:
+          - rid: win-x86
+            os: windows-latest
+          - rid: win-x64
+            os: windows-latest
+          - rid: win-arm64
+            os: windows-latest
+          - rid: linux-x64
+            os: ubuntu-latest
+          - rid: linux-arm64
+            os: ubuntu-latest
+          - rid: osx-x64
+            os: macos-latest
+          - rid: osx-arm64
+            os: macos-latest
+    
+    runs-on: ${{ matrix.os }}
     
     env:
       Project_Path: ObsMCLauncher.Desktop/ObsMCLauncher.Desktop.csproj
@@ -37,10 +51,10 @@ jobs:
         dotnet-version: 8.0.x
 
     - name: Restore dependencies
-      run: dotnet restore $env:Project_Path
+      run: dotnet restore ${{ env.Project_Path }}
       
     - name: Build application
-      run: dotnet build $env:Project_Path -c Release --no-restore
+      run: dotnet build ${{ env.Project_Path }} -c Release --no-restore
 
     - name: Get version info
       id: version
@@ -61,13 +75,11 @@ jobs:
 
     - name: Publish ${{ matrix.rid }}
       run: |
-        dotnet publish $env:Project_Path -c Release -r ${{ matrix.rid }} --self-contained false `
-          -p:PublishSingleFile=true `
-          -p:IncludeNativeLibrariesForSelfExtract=true `
-          -p:DebugType=none `
-          -p:DebugSymbols=false `
-          -p:Version=${{ steps.version.outputs.version_number }} `
-          -o ./publish/${{ matrix.rid }}
+        dotnet publish ${{ env.Project_Path }} -c Release -r ${{ matrix.rid }} --self-contained false -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=none -p:DebugSymbols=false -p:Version=${{ steps.version.outputs.version_number }} -o ./publish/${{ matrix.rid }}
+
+    - name: Set executable permission (Linux/macOS)
+      if: runner.os != 'Windows'
+      run: chmod +x ./publish/${{ matrix.rid }}/ObsMCLauncher.Desktop
 
     - name: Create ZIP archive
       shell: pwsh
@@ -86,7 +98,7 @@ jobs:
 
   release:
     needs: build
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     permissions:
       contents: write
     
@@ -98,18 +110,22 @@ jobs:
 
     - name: Get version info
       id: version
-      shell: pwsh
+      shell: bash
       run: |
-        if ("${{ github.event_name }}" -eq "workflow_dispatch") {
-          $version = "${{ github.event.inputs.tag }}"
-        } else {
-          $version = "${{ github.ref_name }}"
-        }
-        $isPrerelease = $version -match '-(alpha|beta|rc|pre|test|preview)'
-        echo "version=$version" >> $env:GITHUB_OUTPUT
-        echo "is_prerelease=$isPrerelease" >> $env:GITHUB_OUTPUT
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          version="${{ github.event.inputs.tag }}"
+        else
+          version="${{ github.ref_name }}"
+        fi
+        if [[ "$version" =~ -(alpha|beta|rc|pre|test|preview) ]]; then
+          is_prerelease="true"
+        else
+          is_prerelease="false"
+        fi
+        echo "version=$version" >> $GITHUB_OUTPUT
+        echo "is_prerelease=$is_prerelease" >> $GITHUB_OUTPUT
         echo "当前版本: $version"
-        echo "是否预发布: $isPrerelease"
+        echo "是否预发布: $is_prerelease"
 
     - name: Download all artifacts
       uses: actions/download-artifact@v4
@@ -117,51 +133,38 @@ jobs:
         path: ./artifacts
 
     - name: List artifacts
-      shell: pwsh
+      shell: bash
       run: |
-        Write-Host "Artifacts 目录内容:"
-        Get-ChildItem ./artifacts -Recurse | Format-Table FullName, Length
+        echo "Artifacts 目录内容:"
+        find ./artifacts -type f | head -50
 
     - name: Prepare release files
-      shell: pwsh
+      shell: bash
       run: |
-        $version = "${{ steps.version.outputs.version }}"
-        New-Item -ItemType Directory -Force -Path ./release
+        version="${{ steps.version.outputs.version }}"
+        mkdir -p ./release
         
-        $zipFiles = Get-ChildItem ./artifacts -Recurse -Filter "*.zip"
-        Write-Host "找到 $($zipFiles.Count) 个 ZIP 文件"
+        find ./artifacts -name "*.zip" -exec cp {} ./release/ \;
         
-        if ($zipFiles.Count -eq 0) {
-          Write-Error "错误: 没有找到 ZIP 文件！"
-          exit 1
-        }
-        
-        $zipFiles | ForEach-Object {
-          Write-Host "复制文件: $($_.FullName) -> ./release/"
-          Copy-Item $_.FullName ./release/
-        }
-        
-        Write-Host "Release 目录内容:"
-        Get-ChildItem ./release | Format-Table Name, Length
+        echo "Release 目录内容:"
+        ls -la ./release/
 
     - name: Read CHANGELOG
       id: changelog
-      shell: pwsh
+      shell: bash
       run: |
-        $changelogPath = "./.github/changelogs/CHANGELOG.md"
+        changelog_path="./.github/changelogs/CHANGELOG.md"
         
-        if (Test-Path $changelogPath) {
-          $content = Get-Content $changelogPath -Raw
-          $changelogContent = $content.Trim()
-          
-          echo "changelog<<EOF" >> $env:GITHUB_OUTPUT
-          echo "$changelogContent" >> $env:GITHUB_OUTPUT
-          echo "EOF" >> $env:GITHUB_OUTPUT
-          Write-Host "读取到 CHANGELOG 内容"
-        } else {
-          Write-Host "CHANGELOG.md 文件不存在"
-          echo "changelog=" >> $env:GITHUB_OUTPUT
-        }
+        if [ -f "$changelog_path" ]; then
+          content=$(cat "$changelog_path" | sed 's/$/\\n/' | tr -d '\n' | sed 's/\\n$//')
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          cat "$changelog_path" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          echo "读取到 CHANGELOG 内容"
+        else
+          echo "CHANGELOG.md 文件不存在"
+          echo "changelog=" >> $GITHUB_OUTPUT
+        fi
 
     - name: Create Release
       uses: actions/github-script@v6
@@ -171,20 +174,23 @@ jobs:
           const isPrerelease = ${{ steps.version.outputs.is_prerelease == 'true' }};
           const changelog = `${{ steps.changelog.outputs.changelog }}`;
           
-          // 准备发布体
-          let body = `## 📥 下载\n\n`;
+          let body = `## 下载\n\n`;
           body += `| 平台 | 架构 | 文件 |\n`;
           body += `|:----:|:----:|:----:|\n`;
           body += `| Windows | x86 (32位) | [ObsMCLauncher-${version}-win-x86.zip](https://github.com/${{ github.repository }}/releases/download/${version}/ObsMCLauncher-${version}-win-x86.zip) |\n`;
           body += `| Windows | x64 (64位) | [ObsMCLauncher-${version}-win-x64.zip](https://github.com/${{ github.repository }}/releases/download/${version}/ObsMCLauncher-${version}-win-x64.zip) |\n`;
-          body += `| Windows | ARM64 | [ObsMCLauncher-${version}-win-arm64.zip](https://github.com/${{ github.repository }}/releases/download/${version}/ObsMCLauncher-${version}-win-arm64.zip) |\n\n`;
+          body += `| Windows | ARM64 | [ObsMCLauncher-${version}-win-arm64.zip](https://github.com/${{ github.repository }}/releases/download/${version}/ObsMCLauncher-${version}-win-arm64.zip) |\n`;
+          body += `| Linux | x64 (64位) | [ObsMCLauncher-${version}-linux-x64.zip](https://github.com/${{ github.repository }}/releases/download/${version}/ObsMCLauncher-${version}-linux-x64.zip) |\n`;
+          body += `| Linux | ARM64 | [ObsMCLauncher-${version}-linux-arm64.zip](https://github.com/${{ github.repository }}/releases/download/${version}/ObsMCLauncher-${version}-linux-arm64.zip) |\n`;
+          body += `| macOS | x64 (Intel) | [ObsMCLauncher-${version}-osx-x64.zip](https://github.com/${{ github.repository }}/releases/download/${version}/ObsMCLauncher-${version}-osx-x64.zip) |\n`;
+          body += `| macOS | ARM64 (Apple Silicon) | [ObsMCLauncher-${version}-osx-arm64.zip](https://github.com/${{ github.repository }}/releases/download/${version}/ObsMCLauncher-${version}-osx-arm64.zip) |\n\n`;
           
           if (isPrerelease) {
-            body += `---\n\n## ⚠️ 预发布版本警告\n\n`;
+            body += `---\n\n## 预发布版本警告\n\n`;
             body += `**此版本为预发布版本，可能存在以下问题：**\n`;
-            body += `- 🐛 可能包含未发现的 Bug\n`;
-            body += `- ⚡ 功能可能不稳定\n`;
-            body += `- 🔄 部分功能可能会在正式版中更改\n\n`;
+            body += `- 可能包含未发现的 Bug\n`;
+            body += `- 功能可能不稳定\n`;
+            body += `- 部分功能可能会在正式版中更改\n\n`;
             body += `**不建议在生产环境或日常使用中使用此版本。**\n\n`;
             body += `如果您发现问题，请在 [Issues](https://github.com/${{ github.repository }}/issues) 中反馈。\n`;
           }
@@ -194,10 +200,9 @@ jobs:
             body += changelog;
             body += `\n`;
           } else {
-            body += `\n---\n\n## 📋 更新内容\n\n暂无更新内容描述。\n`;
+            body += `\n---\n\n## 更新内容\n\n暂无更新内容描述。\n`;
           }
           
-          // 创建发布
           const release = await github.rest.repos.createRelease({
             owner: context.repo.owner,
             repo: context.repo.repo,
@@ -210,7 +215,6 @@ jobs:
           
           console.log('创建发布成功:', release.data.html_url);
           
-          // 上传文件
           const fs = require('fs');
           const path = require('path');
           const releaseFiles = fs.readdirSync('./release');

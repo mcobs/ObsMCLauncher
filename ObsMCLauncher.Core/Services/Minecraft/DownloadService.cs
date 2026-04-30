@@ -397,21 +397,31 @@ namespace ObsMCLauncher.Core.Services.Minecraft
             if (library.Rules == null || library.Rules.Count == 0)
                 return true;
 
+            var currentOs = GetCurrentOsName();
+
             foreach (var rule in library.Rules)
             {
                 if (rule.Action == "allow")
                 {
-                    if (rule.Os?.Name == "windows" || rule.Os == null)
+                    if (rule.Os?.Name == currentOs || rule.Os == null)
                         return true;
                 }
                 else if (rule.Action == "disallow")
                 {
-                    if (rule.Os?.Name == "windows")
+                    if (rule.Os?.Name == currentOs)
                         return false;
                 }
             }
 
             return true;
+        }
+
+        private static string GetCurrentOsName()
+        {
+            if (OperatingSystem.IsWindows()) return "windows";
+            if (OperatingSystem.IsLinux()) return "linux";
+            if (OperatingSystem.IsMacOS()) return "osx";
+            return "unknown";
         }
 
         private static async Task DownloadFileWithProgressAsync(

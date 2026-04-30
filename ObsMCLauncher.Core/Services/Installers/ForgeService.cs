@@ -864,7 +864,7 @@ namespace ObsMCLauncher.Core.Services.Installers
                             downloadUrl = !string.IsNullOrWhiteSpace(artifact.Url)
                                 ? artifact.Url
                                 : downloadService.GetLibraryUrl(artifact.Path);
-                            savePath = Path.Combine(librariesDir, artifact.Path.Replace("/", "\\"));
+                            savePath = Path.Combine(librariesDir, artifact.Path.Replace('/', Path.DirectorySeparatorChar));
                         }
                     }
 
@@ -876,7 +876,7 @@ namespace ObsMCLauncher.Core.Services.Installers
                             downloadUrl = !string.IsNullOrWhiteSpace(lib.Url)
                                 ? $"{lib.Url}{mavenPath}"
                                 : downloadService.GetLibraryUrl(mavenPath);
-                            savePath = Path.Combine(librariesDir, mavenPath.Replace("/", "\\"));
+                            savePath = Path.Combine(librariesDir, mavenPath.Replace('/', Path.DirectorySeparatorChar));
                         }
                     }
 

@@ -50,7 +50,18 @@ public static class MinecraftDownloadService
 
     public static string GetDefaultGameDirectory()
     {
-        // 与 LauncherConfig.GameDirectory 的默认逻辑保持一致（简化版）
+        if (OperatingSystem.IsMacOS())
+        {
+            return Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                "Library", "Application Support", "minecraft");
+        }
+        if (OperatingSystem.IsLinux())
+        {
+            return Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                ".minecraft");
+        }
         return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), ".minecraft");
     }
 }

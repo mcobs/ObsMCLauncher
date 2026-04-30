@@ -4,7 +4,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.Versioning;
-using Microsoft.Win32;
 
 namespace ObsMCLauncher.Core.Services;
 
@@ -24,6 +23,10 @@ public static class JavaDetector
     private static DateTime _cachedAt;
     private static readonly TimeSpan CacheTtl = TimeSpan.FromMinutes(5);
 
+    private static bool IsWindows => OperatingSystem.IsWindows();
+    private static bool IsMacOS => OperatingSystem.IsMacOS();
+    private static bool IsLinux => OperatingSystem.IsLinux();
+
     public static List<JavaInfo> DetectAllJava()
     {
         lock (_cacheLock)
@@ -40,9 +43,11 @@ public static class JavaDetector
         DetectFromPath(javaList, foundPaths);
         DetectFromJavaHome(javaList, foundPaths);
 
-        if (OperatingSystem.IsWindows())
+        if (IsWindows)
         {
+#pragma warning disable CA1416
             DetectFromRegistry(javaList, foundPaths);
+#pragma warning restore CA1416
         }
 
         DetectFromCommonLocations(javaList, foundPaths);
@@ -118,11 +123,18 @@ public static class JavaDetector
 
         foreach (var dir in pathEnv.Split(Path.PathSeparator))
         {
-            var javawPath = Path.Combine(dir.Trim(), "javaw.exe");
-            var javaPath = Path.Combine(dir.Trim(), "java.exe");
-
-            if (File.Exists(javawPath)) AddJavaIfValid(javaList, foundPaths, javawPath, "PATH");
-            else if (File.Exists(javaPath)) AddJavaIfValid(javaList, foundPaths, javaPath, "PATH");
+            if (IsWindows)
+            {
+                var javawPath = Path.Combine(dir.Trim(), "javaw.exe");
+                var javaPath = Path.Combine(dir.Trim(), "java.exe");
+                if (File.Exists(javawPath)) AddJavaIfValid(javaList, foundPaths, javawPath, "PATH");
+                else if (File.Exists(javaPath)) AddJavaIfValid(javaList, foundPaths, javaPath, "PATH");
+            }
+            else
+            {
+                var javaPath = Path.Combine(dir.Trim(), "java");
+                if (File.Exists(javaPath)) AddJavaIfValid(javaList, foundPaths, javaPath, "PATH");
+            }
         }
     }
 
@@ -131,11 +143,18 @@ public static class JavaDetector
         var javaHome = Environment.GetEnvironmentVariable("JAVA_HOME");
         if (string.IsNullOrEmpty(javaHome)) return;
 
-        var javawPath = Path.Combine(javaHome, "bin", "javaw.exe");
-        var javaPath = Path.Combine(javaHome, "bin", "java.exe");
-
-        if (File.Exists(javawPath)) AddJavaIfValid(javaList, foundPaths, javawPath, "JAVA_HOME");
-        else if (File.Exists(javaPath)) AddJavaIfValid(javaList, foundPaths, javaPath, "JAVA_HOME");
+        if (IsWindows)
+        {
+            var javawPath = Path.Combine(javaHome, "bin", "javaw.exe");
+            var javaPath = Path.Combine(javaHome, "bin", "java.exe");
+            if (File.Exists(javawPath)) AddJavaIfValid(javaList, foundPaths, javawPath, "JAVA_HOME");
+            else if (File.Exists(javaPath)) AddJavaIfValid(javaList, foundPaths, javaPath, "JAVA_HOME");
+        }
+        else
+        {
+            var javaPath = Path.Combine(javaHome, "bin", "java");
+            if (File.Exists(javaPath)) AddJavaIfValid(javaList, foundPaths, javaPath, "JAVA_HOME");
+        }
     }
 
     [SupportedOSPlatform("windows")]
@@ -153,7 +172,7 @@ public static class JavaDetector
 
         foreach (var regPath in registryPaths)
         {
-            using var key = Registry.LocalMachine.OpenSubKey(regPath);
+            using var key = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(regPath);
             if (key == null) continue;
 
             foreach (var versionKey in key.GetSubKeyNames())
@@ -171,6 +190,22 @@ public static class JavaDetector
     }
 
     private static void DetectFromCommonLocations(List<JavaInfo> javaList, HashSet<string> foundPaths)
+    {
+        if (IsWindows)
+        {
+            DetectFromWindowsLocations(javaList, foundPaths);
+        }
+        else if (IsMacOS)
+        {
+            DetectFromMacOSLocations(javaList, foundPaths);
+        }
+        else if (IsLinux)
+        {
+            DetectFromLinuxLocations(javaList, foundPaths);
+        }
+    }
+
+    private static void DetectFromWindowsLocations(List<JavaInfo> javaList, HashSet<string> foundPaths)
     {
         var commonLocations = new List<string>();
         var programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
@@ -192,6 +227,104 @@ public static class JavaDetector
                 var javawPath = Path.Combine(javaDir, "bin", "javaw.exe");
                 if (File.Exists(javawPath)) AddJavaIfValid(javaList, foundPaths, javawPath, "Common Location");
             }
+        }
+    }
+
+    private static void DetectFromMacOSLocations(List<JavaInfo> javaList, HashSet<string> foundPaths)
+    {
+        var macLocations = new[]
+        {
+            "/Library/Java/JavaVirtualMachines",
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Library", "Java", "JavaVirtualMachines"),
+            "/usr/local/opt",
+        };
+
+        foreach (var location in macLocations)
+        {
+            if (!Directory.Exists(location)) continue;
+            foreach (var dir in Directory.GetDirectories(location))
+            {
+                var javaPath = Path.Combine(dir, "Contents", "Home", "bin", "java");
+                if (File.Exists(javaPath))
+                {
+                    AddJavaIfValid(javaList, foundPaths, javaPath, "Common Location");
+                    continue;
+                }
+
+                javaPath = Path.Combine(dir, "bin", "java");
+                if (File.Exists(javaPath))
+                {
+                    AddJavaIfValid(javaList, foundPaths, javaPath, "Common Location");
+                }
+            }
+        }
+
+        var javaHome = "/usr/libexec/java_home";
+        try
+        {
+            using var process = new Process
+            {
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = javaHome,
+                    Arguments = "-v",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    CreateNoWindow = true
+                }
+            };
+            process.Start();
+            var output = process.StandardOutput.ReadToEnd();
+            process.WaitForExit(3000);
+            if (!string.IsNullOrWhiteSpace(output))
+            {
+                foreach (var line in output.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+                {
+                    var path = Path.Combine(line.Trim(), "bin", "java");
+                    if (File.Exists(path)) AddJavaIfValid(javaList, foundPaths, path, "java_home");
+                }
+            }
+        }
+        catch { }
+    }
+
+    private static void DetectFromLinuxLocations(List<JavaInfo> javaList, HashSet<string> foundPaths)
+    {
+        var linuxLocations = new[]
+        {
+            "/usr/lib/jvm",
+            "/usr/java",
+            "/usr/local/java",
+            "/opt/java",
+            "/opt/jdk",
+            "/opt/jre",
+            "/usr/local/opt",
+        };
+
+        var homeDir = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        var userLocations = new[]
+        {
+            Path.Combine(homeDir, ".sdkman", "candidates", "java"),
+            Path.Combine(homeDir, ".jdks"),
+        };
+
+        foreach (var location in linuxLocations.Concat(userLocations))
+        {
+            if (!Directory.Exists(location)) continue;
+            foreach (var dir in Directory.GetDirectories(location))
+            {
+                var javaPath = Path.Combine(dir, "bin", "java");
+                if (File.Exists(javaPath))
+                {
+                    AddJavaIfValid(javaList, foundPaths, javaPath, "Common Location");
+                }
+            }
+        }
+
+        var directPaths = new[] { "/usr/bin/java", "/usr/local/bin/java" };
+        foreach (var p in directPaths)
+        {
+            if (File.Exists(p)) AddJavaIfValid(javaList, foundPaths, p, "Common Location");
         }
     }
 

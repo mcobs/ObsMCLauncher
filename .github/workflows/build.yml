@@ -14,9 +14,23 @@ jobs:
     strategy:
       matrix:
         configuration: [Release]
-        rid: [win-x86, win-x64, win-arm64]
+        include:
+          - rid: win-x86
+            os: windows-latest
+          - rid: win-x64
+            os: windows-latest
+          - rid: win-arm64
+            os: windows-latest
+          - rid: linux-x64
+            os: ubuntu-latest
+          - rid: linux-arm64
+            os: ubuntu-latest
+          - rid: osx-x64
+            os: macos-latest
+          - rid: osx-arm64
+            os: macos-latest
     
-    runs-on: windows-latest
+    runs-on: ${{ matrix.os }}
     
     env:
       Project_Path: ObsMCLauncher.Desktop/ObsMCLauncher.Desktop.csproj
@@ -33,10 +47,10 @@ jobs:
         dotnet-version: 8.0.x
 
     - name: Restore dependencies
-      run: dotnet restore $env:Project_Path
+      run: dotnet restore ${{ env.Project_Path }}
       
     - name: Build application
-      run: dotnet build $env:Project_Path -c ${{ matrix.configuration }} --no-restore
+      run: dotnet build ${{ env.Project_Path }} -c ${{ matrix.configuration }} --no-restore
 
     - name: Get version info
       id: version
@@ -50,7 +64,7 @@ jobs:
 
     - name: Publish single-file executable
       run: |
-        dotnet publish $env:Project_Path -c ${{ matrix.configuration }} -r ${{ matrix.rid }} --self-contained false -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=none -p:DebugSymbols=false -o ./publish/${{ matrix.rid }}
+        dotnet publish ${{ env.Project_Path }} -c ${{ matrix.configuration }} -r ${{ matrix.rid }} --self-contained false -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=none -p:DebugSymbols=false -o ./publish/${{ matrix.rid }}
 
     - name: Verify output
       shell: pwsh
@@ -58,9 +72,20 @@ jobs:
         Write-Host "发布目录内容:"
         Get-ChildItem ./publish/${{ matrix.rid }} | Format-Table Name, Length
         
-        $exeFile = Get-Item ./publish/${{ matrix.rid }}/*.exe
-        $fileSizeMB = [Math]::Round($exeFile.Length / 1MB, 2)
-        Write-Host "可执行文件大小: $fileSizeMB MB"
+        $outputDir = "./publish/${{ matrix.rid }}"
+        if ("${{ matrix.os }}" -like "win*") {
+          $exeFile = Get-Item $outputDir/*.exe -ErrorAction SilentlyContinue
+          if ($exeFile) {
+            $fileSizeMB = [Math]::Round($exeFile.Length / 1MB, 2)
+            Write-Host "可执行文件大小: $fileSizeMB MB"
+          }
+        } else {
+          $mainFile = Get-ChildItem $outputDir/ObsMCLauncher.Desktop -ErrorAction SilentlyContinue
+          if ($mainFile) {
+            $fileSizeMB = [Math]::Round($mainFile.Length / 1MB, 2)
+            Write-Host "可执行文件大小: $fileSizeMB MB"
+          }
+        }
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
