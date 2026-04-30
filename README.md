@@ -27,24 +27,24 @@
 | 平台 | 状态 | 架构 |
 |:----:|:----:|:----:|
 | Windows | ✅ 支持 | x86, x64, ARM64 |
-| Linux | 🚧 计划中 | x64, ARM64 |
-| macOS | 🚧 计划中 | x64, ARM64 |
+| Linux | ✅ 支持 | x64, ARM64 |
+| macOS | ✅ 支持 | x64, ARM64 |
 
 ---
 
 ## 运行要求
 
-- Windows 10/11 (x64)
+- Windows 10/11、Linux、macOS
 - [.NET 8.0 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/8.0)
   - 如果运行时提示缺少 .NET，请下载并安装上述 Runtime
-  
+
 ---
 
 ## 🔧 快速开始
 
 ### 前置要求
 
-- Windows 10/11 (x64)
+- Windows 10/11、Linux 或 macOS
 - .NET 8.0 SDK
 
 ### 构建运行
@@ -67,7 +67,14 @@ dotnet run --project ObsMCLauncher.Desktop
 ### 发布为可执行文件
 
 ```bash
+# Windows
 dotnet publish ObsMCLauncher.Desktop -c Release -r win-x64 -p:PublishSingleFile=true
+
+# Linux
+dotnet publish ObsMCLauncher.Desktop -c Release -r linux-x64 -p:PublishSingleFile=true
+
+# macOS
+dotnet publish ObsMCLauncher.Desktop -c Release -r osx-x64 -p:PublishSingleFile=true
 ```
 
 ---
@@ -119,7 +126,7 @@ ObsMCLauncher/
 │   │   └── ...
 │   └── Utils/                           # 工具类
 │       ├── VersionInfo.cs               # 版本信息
-│       ├── GameVersionNumber.cs         # 游戏版本号解析
+│       ├── GameVersionNumber.cs          # 游戏版本号解析
 │       └── ...
 │
 ├── ObsMCLauncher.Desktop/               # Avalonia 桌面应用
@@ -136,18 +143,18 @@ ObsMCLauncher/
 │   │   ├── Controls.axaml               # 控件样式
 │   │   └── Theme.axaml                  # 主题配置
 │   ├── ViewModels/                      # MVVM 视图模型
-│   │   ├── MainWindowViewModel.cs       # 主窗口 ViewModel
+│   │   ├── MainWindowViewModel.cs        # 主窗口 ViewModel
 │   │   ├── HomeViewModel.cs             # 主页 ViewModel
 │   │   ├── SettingsViewModel.cs         # 设置 ViewModel
 │   │   ├── PluginsViewModel.cs          # 插件 ViewModel
-│   │   ├── Dialogs/                     # 对话框服务
-│   │   ├── Notifications/               # 通知服务
+│   │   ├── Dialogs/                    # 对话框服务
+│   │   ├── Notifications/              # 通知服务
 │   │   └── ...
 │   ├── Views/                           # 视图（AXAML）
 │   │   ├── MainWindow.axaml             # 主窗口
-│   │   ├── HomeView.axaml               # 主页
-│   │   ├── SettingsView.axaml           # 设置页面
-│   │   ├── MoreView.axaml               # 更多功能页面
+│   │   ├── HomeView.axaml              # 主页
+│   │   ├── SettingsView.axaml          # 设置页面
+│   │   ├── MoreView.axaml              # 更多功能页面
 │   │   └── ...
 │   ├── Windows/                         # 独立窗口
 │   │   ├── CrashWindow.axaml            # 崩溃报告窗口
