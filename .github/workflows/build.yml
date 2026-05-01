@@ -76,11 +76,12 @@ jobs:
 
     - name: Get version info
       id: version
+      shell: bash
       run: |
-        $date = Get-Date -Format "yyyyMMdd"
-        $shortSha = "$env:GITHUB_SHA".Substring(0, 7)
-        $version = "v1.0.0-$date-$shortSha"
-        echo "version=$version" >> $env:GITHUB_OUTPUT
+        date=$(date +%Y%m%d)
+        short_sha="${GITHUB_SHA:0:7}"
+        version="v1.0.0-$date-$short_sha"
+        echo "version=$version" >> $GITHUB_OUTPUT
         echo "当前版本: $version"
 
     - name: Publish single-file executable
