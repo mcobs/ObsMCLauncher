@@ -112,6 +112,7 @@ jobs:
         fi
 
     - name: Create ZIP archive
+      shell: bash
       run: |
         if [ "${{ runner.os }}" = "Windows" ]; then
           powershell -Command "Compress-Archive -Path './publish/${{ matrix.rid }}/*' -DestinationPath './ObsMCLauncher-${{ steps.version.outputs.version }}-${{ matrix.rid }}.zip'"

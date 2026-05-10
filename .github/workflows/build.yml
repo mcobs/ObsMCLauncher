@@ -96,6 +96,7 @@ jobs:
         fi
 
     - name: Verify output
+      shell: bash
       run: |
         echo "发布目录内容:"
         ls -la "./publish/${{ matrix.rid }}/"
