@@ -29,7 +29,10 @@ public static class CurseForgeService
 
     private static readonly ConcurrentDictionary<int, (CurseForgeMod data, DateTime expiry)> _modCache = new();
     private static readonly ConcurrentDictionary<string, (List<CurseForgeFile> data, DateTime expiry)> _filesCache = new();
+    private static readonly ConcurrentDictionary<string, (CurseForgeResponse<List<CurseForgeMod>> data, DateTime expiry)> _searchCache = new();
+    private static readonly ConcurrentDictionary<string, (List<CurseForgeCategory> data, DateTime expiry)> _categoryCache = new();
     private static readonly TimeSpan _cacheDuration = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan _categoryCacheDuration = TimeSpan.FromHours(1);
 
     static CurseForgeService()
     {
@@ -59,6 +62,20 @@ public static class CurseForgeService
         string sortOrder = "desc",
         int? classId = null)
     {
+        var cacheKey = $"search_{searchFilter}_v{gameVersion}_c{categoryId}_p{pageIndex}_s{pageSize}_sf{sortField}_{sortOrder}_cl{classId}";
+
+        if (_searchCache.TryGetValue(cacheKey, out var cachedSearch) && cachedSearch.expiry > DateTime.Now)
+        {
+            return cachedSearch.data;
+        }
+
+        var diskCached = await ResourceCacheService.GetCachedDataAsync<CurseForgeResponse<List<CurseForgeMod>>>(cacheKey, "curseforge");
+        if (diskCached != null)
+        {
+            _searchCache[cacheKey] = (diskCached, DateTime.Now + _cacheDuration);
+            return diskCached;
+        }
+
         var queryParams = new List<string>
         {
             $"gameId={MINECRAFT_GAME_ID}",
@@ -91,7 +108,13 @@ public static class CurseForgeService
         try
         {
             var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-            return JsonSerializer.Deserialize<CurseForgeResponse<List<CurseForgeMod>>>(json, options);
+            var result = JsonSerializer.Deserialize<CurseForgeResponse<List<CurseForgeMod>>>(json, options);
+            if (result != null)
+            {
+                _searchCache[cacheKey] = (result, DateTime.Now + _cacheDuration);
+                await ResourceCacheService.CacheDataAsync(cacheKey, result, "curseforge");
+            }
+            return result;
         }
         catch (Exception ex)
         {
@@ -198,6 +221,14 @@ public static class CurseForgeService
 
     public static async Task<CurseForgeFile?> GetModFileInfoAsync(int projectId, int fileId)
     {
+        var cacheKey = $"fileinfo_{projectId}_{fileId}";
+
+        var diskCached = await ResourceCacheService.GetCachedDataAsync<CurseForgeFile>(cacheKey, "curseforge");
+        if (diskCached != null)
+        {
+            return diskCached;
+        }
+
         var json = await RequestWithFallbackAsync($"/v1/mods/{projectId}/files/{fileId}").ConfigureAwait(false);
         if (json == null) return null;
 
@@ -205,6 +236,10 @@ public static class CurseForgeService
         {
             var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
             var result = JsonSerializer.Deserialize<CurseForgeResponse<CurseForgeFile>>(json, options);
+            if (result?.Data != null)
+            {
+                await ResourceCacheService.CacheDataAsync(cacheKey, result.Data, "curseforge");
+            }
             return result?.Data;
         }
         catch (Exception ex)
@@ -275,6 +310,20 @@ public static class CurseForgeService
 
     public static async Task<CurseForgeResponse<List<CurseForgeCategory>>?> GetCategoriesAsync(int? classId = null)
     {
+        var cacheKey = $"categories_cl{classId}";
+
+        if (_categoryCache.TryGetValue(cacheKey, out var cached) && cached.expiry > DateTime.Now)
+        {
+            return new CurseForgeResponse<List<CurseForgeCategory>> { Data = cached.data };
+        }
+
+        var diskCached = await ResourceCacheService.GetCachedDataAsync<List<CurseForgeCategory>>(cacheKey, "curseforge", _categoryCacheDuration);
+        if (diskCached != null)
+        {
+            _categoryCache[cacheKey] = (diskCached, DateTime.Now + _categoryCacheDuration);
+            return new CurseForgeResponse<List<CurseForgeCategory>> { Data = diskCached };
+        }
+
         var queryParams = new List<string> { $"gameId={MINECRAFT_GAME_ID}" };
         if (classId.HasValue)
         {
@@ -288,7 +337,13 @@ public static class CurseForgeService
         try
         {
             var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-            return JsonSerializer.Deserialize<CurseForgeResponse<List<CurseForgeCategory>>>(json, options);
+            var result = JsonSerializer.Deserialize<CurseForgeResponse<List<CurseForgeCategory>>>(json, options);
+            if (result?.Data != null)
+            {
+                _categoryCache[cacheKey] = (result.Data, DateTime.Now + _categoryCacheDuration);
+                await ResourceCacheService.CacheDataAsync(cacheKey, result.Data, "curseforge");
+            }
+            return result;
         }
         catch (Exception ex)
         {

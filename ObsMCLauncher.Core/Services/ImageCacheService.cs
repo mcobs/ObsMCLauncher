@@ -29,6 +29,7 @@ public class ImageCacheService
         {
             Directory.CreateDirectory(CacheDir);
         }
+        DebugLogger.Info("ImageCache", $"图标缓存目录已初始化: {CacheDir}");
     }
 
     public static async Task<string?> GetImagePathAsync(string? url)

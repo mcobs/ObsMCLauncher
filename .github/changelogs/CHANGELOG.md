@@ -15,3 +15,4 @@
 ### 修复
 - Windows 版本运行时不再出现控制台窗口（OutputType 条件设为 WinExe）
 - CI 构建添加 NuGet 包缓存，加速重复构建
+- CurseForge 搜索接口接入双层缓存，减少重复 API 请求

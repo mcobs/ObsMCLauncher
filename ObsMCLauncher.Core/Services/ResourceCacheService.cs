@@ -37,6 +37,7 @@ public class ResourceCacheService
             {
                 Directory.CreateDirectory(CurseForgeCacheDir);
             }
+            DebugLogger.Info("ResourceCache", $"缓存目录已初始化: {CacheBaseDir}");
         }
         catch (Exception ex)
         {
@@ -126,11 +127,13 @@ public class ResourceCacheService
                 var effectiveMaxAge = maxAge ?? DefaultCacheExpiry;
                 if (cacheItem.CachedAt.HasValue && DateTime.UtcNow - cacheItem.CachedAt.Value > effectiveMaxAge)
                 {
+                    DebugLogger.Info("ResourceCache", $"磁盘缓存已过期: key={GetSafeFileName(key)}, source={source}");
                     try { File.Delete(cacheFile); }
                     catch { }
                     return default;
                 }
 
+                DebugLogger.Info("ResourceCache", $"磁盘缓存命中: key={GetSafeFileName(key)}, source={source}");
                 return cacheItem.Data;
             }
             finally
