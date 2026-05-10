@@ -16,6 +16,10 @@
 - Natives库提取和规则判断适配当前操作系统
 - 路径分隔符使用Path.DirectorySeparatorChar替代硬编码反斜杠
 
+### 修复
+- Windows 版本运行时不再出现控制台窗口（OutputType 条件设为 WinExe）
+- CI 构建添加 NuGet 包缓存，加速重复构建
+
 
 ## [v1.0.0-rc.3] - 2026-04-30
 
