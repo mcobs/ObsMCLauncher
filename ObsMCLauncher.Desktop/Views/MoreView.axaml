@@ -530,22 +530,36 @@
             </Grid.RowDefinitions>
 
         <Border Grid.Row="0" Background="{DynamicResource SurfaceBrush}"
-                CornerRadius="12" Padding="16" Margin="24,24,24,12"
+                CornerRadius="12" Padding="20" Margin="24,24,24,16"
                 BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
-          <Grid ColumnDefinitions="*,Auto,Auto,Auto">
-            <TextBox Grid.Column="0" Text="{Binding SearchText}"
-                     Watermark="搜索服务器..." Margin="0,0,12,0"/>
-            <ComboBox Grid.Column="1" ItemsSource="{Binding Groups}"
-                      SelectedItem="{Binding SelectedGroup}"
-                      Width="150" Margin="0,0,12,0"/>
-            <Button Grid.Column="2" Content="刷新状态" Classes="ghost"
-                    Command="{Binding RefreshStatusCommand}" Margin="0,0,12,0"/>
-            <Button Grid.Column="3" Content="添加服务器" Classes="accent"
-                    Command="{Binding AddServerCommand}"/>
-          </Grid>
+          <StackPanel Spacing="12">
+            <TextBox Text="{Binding SearchText}"
+                     Watermark="搜索服务器（名称、地址、MOTD、版本）..."
+                     FontSize="14" Padding="12,10"/>
+            <Grid ColumnDefinitions="Auto,*,Auto">
+              <Button Grid.Column="0" Content="刷新状态" Classes="ghost"
+                      Command="{Binding RefreshStatusCommand}"
+                      IsEnabled="{Binding !IsRefreshing}"
+                      Padding="16,8" FontSize="13"/>
+              <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10">
+                <Button Content="导入" Classes="ghost"
+                        Command="{Binding ImportServersCommand}"
+                        Padding="16,8" FontSize="13"
+                        ToolTip.Tip="从JSON文件导入服务器列表"/>
+                <Button Content="导出" Classes="ghost"
+                        Command="{Binding ExportServersCommand}"
+                        Padding="16,8" FontSize="13"
+                        ToolTip.Tip="导出服务器列表到JSON文件"/>
+                <Button Content="添加服务器" Classes="accent"
+                        Command="{Binding AddServerCommand}"
+                        Padding="20,8" FontSize="14"/>
+              </StackPanel>
+            </Grid>
+          </StackPanel>
         </Border>
 
-        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="24,0,24,24">
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="24,0,24,0">
+          <StackPanel>
           <ItemsControl ItemsSource="{Binding Servers}">
             <ItemsControl.ItemsPanel>
               <ItemsPanelTemplate>
@@ -555,41 +569,88 @@
             <ItemsControl.ItemTemplate>
               <DataTemplate>
                 <Border Background="{DynamicResource SurfaceBrush}"
-                        CornerRadius="12" Padding="20" Margin="0,0,14,14" Width="320" MinHeight="180"
+                        CornerRadius="14" Padding="22" Margin="0,0,16,16"
+                        Width="340" MinHeight="230"
                         BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
-                  <Grid RowDefinitions="Auto,Auto,*,Auto">
-                    <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,12">
-                      <TextBlock Grid.Column="0" Text="{Binding Name}" FontSize="16"
-                                 FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
-                      <Ellipse Grid.Column="1" Width="12" Height="12" Margin="8,0,0,0"
-                               VerticalAlignment="Center">
-                        <Ellipse.Fill>
-                          <SolidColorBrush Color="{Binding IsOnline, Converter={x:Static converters:BoolToColorConverter.Instance}}"/>
-                        </Ellipse.Fill>
-                      </Ellipse>
+                  <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto">
+                    <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,10">
+                      <Border Grid.Column="0" Width="40" Height="40" CornerRadius="6"
+                              ClipToBounds="True" Margin="0,0,10,0"
+                              Background="{DynamicResource BorderBrush}">
+                        <Image Source="{Binding IconPath, Converter={x:Static converters:FilePathToBitmapConverter.Instance}}"
+                               Stretch="UniformToFill"/>
+                      </Border>
+                      <TextBlock Grid.Column="1" Text="{Binding Name}"
+                                 FontSize="17" FontWeight="SemiBold"
+                                 TextTrimming="CharacterEllipsis"
+                                 VerticalAlignment="Center"/>
+                      <Border Grid.Column="2" CornerRadius="10" Padding="8,3"
+                              VerticalAlignment="Center" Opacity="1">
+                        <Border.Background>
+                          <SolidColorBrush Color="{Binding IsOnline, Converter={x:Static converters:BoolToColorConverter.Instance}}"
+                                           Opacity="0.15"/>
+                        </Border.Background>
+                        <TextBlock Text="{Binding StatusText}" FontSize="12" FontWeight="Medium">
+                          <TextBlock.Foreground>
+                            <SolidColorBrush Color="{Binding IsOnline, Converter={x:Static converters:BoolToColorConverter.Instance}}"/>
+                          </TextBlock.Foreground>
+                        </TextBlock>
+                      </Border>
                     </Grid>
                     <TextBlock Grid.Row="1" Text="{Binding FullAddress}" FontSize="13"
                                Foreground="{DynamicResource TextSecondaryBrush}"
-                               TextTrimming="CharacterEllipsis" Margin="0,0,0,12"/>
-                    <StackPanel Grid.Row="2" Margin="0,0,0,12">
-                      <TextBlock FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4"
-                                 IsVisible="{Binding IsOnline}">
-                        <Run Text="延迟: "/><Run Text="{Binding FormattedPing}"/>
-                      </TextBlock>
-                      <TextBlock FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}"
-                                 IsVisible="{Binding IsOnline}">
-                        <Run Text="玩家: "/><Run Text="{Binding FormattedPlayers}"/>
-                      </TextBlock>
+                               TextTrimming="CharacterEllipsis" Margin="0,0,0,6"/>
+                    <TextBlock Grid.Row="2" Text="{Binding FormattedVersion, StringFormat='版本: {0}'}"
+                                FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}"
+                                Margin="0,0,0,8"
+                                TextTrimming="CharacterEllipsis"/>
+                    <StackPanel Grid.Row="3" Margin="0,0,0,12" Spacing="3">
+                      <Grid ColumnDefinitions="Auto,*">
+                        <TextBlock Grid.Column="0" Text="延迟" FontSize="12"
+                                   Foreground="{DynamicResource TextTertiaryBrush}"
+                                   Width="36"/>
+                        <ProgressBar Grid.Column="1" IsIndeterminate="True" Height="2" Width="64"
+                                     VerticalAlignment="Center" Margin="4,0,0,0"
+                                     IsVisible="{Binding $parent[ItemsControl].((vm:ServersViewModel)DataContext).IsRefreshing}"/>
+                        <StackPanel Grid.Column="1" Margin="4,0,0,0"
+                                    IsVisible="{Binding $parent[ItemsControl].((vm:ServersViewModel)DataContext).IsRefreshing, Converter={x:Static converters:NotConverter.Instance}}">
+                          <TextBlock FontSize="12" FontWeight="Medium" IsVisible="{Binding IsOnline}">
+                            <TextBlock.Foreground>
+                              <SolidColorBrush Color="{Binding PingLevel, Converter={x:Static converters:PingLevelToColorConverter.Instance}}"/>
+                            </TextBlock.Foreground>
+                            <Run Text="{Binding FormattedPing}"/>
+                          </TextBlock>
+                          <TextBlock Text="--" FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}"
+                                     IsVisible="{Binding IsOnline, Converter={x:Static converters:NotConverter.Instance}}"/>
+                        </StackPanel>
+                      </Grid>
+                      <Grid ColumnDefinitions="Auto,*">
+                        <TextBlock Grid.Column="0" Text="玩家" FontSize="12"
+                                   Foreground="{DynamicResource TextTertiaryBrush}"
+                                   Width="36"/>
+                        <TextBlock Grid.Column="1" FontSize="12" FontWeight="Medium"
+                                   Margin="4,0,0,0"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"
+                                   Text="{Binding FormattedPlayers}"/>
+                      </Grid>
+                      <TextBlock FontSize="12"
+                                 Foreground="{DynamicResource TextTertiaryBrush}"
+                                 Text="{Binding Motd}"
+                                 TextTrimming="CharacterEllipsis"
+                                 MaxLines="2" TextWrapping="Wrap"/>
                     </StackPanel>
-                    <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right">
+                    <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
                       <Button Content="连接" Classes="accent"
-                              Padding="12,6" Margin="0,0,8,0"
+                              Padding="16,7" FontSize="13"
                               Command="{Binding $parent[ItemsControl].((vm:ServersViewModel)DataContext).ConnectServerCommand}"
-                              CommandParameter="{Binding}"/>
-                      <Button Content="编辑" Classes="ghost" Padding="12,6" Margin="0,0,8,0"
+                              CommandParameter="{Binding}"
+                              IsEnabled="{Binding $parent[ItemsControl].((vm:ServersViewModel)DataContext).IsConnecting, Converter={x:Static converters:NotConverter.Instance}}"/>
+                      <Button Content="编辑" Classes="ghost"
+                              Padding="14,7" FontSize="13"
                               Command="{Binding $parent[ItemsControl].((vm:ServersViewModel)DataContext).EditServerCommand}"
                               CommandParameter="{Binding}"/>
-                      <Button Content="删除" Classes="danger" Padding="12,6"
+                      <Button Content="删除" Classes="danger"
+                              Padding="14,7" FontSize="13"
                               Command="{Binding $parent[ItemsControl].((vm:ServersViewModel)DataContext).DeleteServerCommand}"
                               CommandParameter="{Binding}"/>
                     </StackPanel>
@@ -598,15 +659,42 @@
               </DataTemplate>
             </ItemsControl.ItemTemplate>
           </ItemsControl>
+
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="12"
+                      Margin="0,12,0,28">
+            <Button Content="上一页" Classes="ghost" Padding="16,8" FontSize="13"
+                    Command="{Binding PreviousPageCommand}"
+                    IsEnabled="{Binding !IsLoading}"/>
+            <Border Background="{DynamicResource SurfaceBrush}"
+                     CornerRadius="8" Padding="16,6"
+                     BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
+               <TextBlock VerticalAlignment="Center" FontSize="14" FontWeight="Medium"
+                          Foreground="{DynamicResource TextSecondaryBrush}"
+                          Text="{Binding CurrentPage}"/>
+             </Border>
+             <TextBlock VerticalAlignment="Center" FontSize="14" FontWeight="Medium"
+                         Foreground="{DynamicResource TextTertiaryBrush}">
+                <Run Text="/ "/>
+                <Run Text="{Binding TotalPages}"/>
+                <Run Text=" 页"/>
+              </TextBlock>
+            <Button Content="下一页" Classes="ghost" Padding="16,8" FontSize="13"
+                    Command="{Binding NextPageCommand}"
+                    IsEnabled="{Binding !IsLoading}"/>
+          </StackPanel>
+          </StackPanel>
         </ScrollViewer>
 
         <StackPanel Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center"
                     IsVisible="{Binding IsEmpty}">
-          <Path Data="M4 1C2.89 1 2 1.89 2 3V7C2 8.11 2.89 9 4 9H1V11H13V9H10C11.11 9 12 8.11 12 7V3C12 1.89 11.11 1 10 1H4M4 3H10V7H4V3M14 13C12.89 13 12 13.89 12 15V19C12 20.11 12.89 21 14 21H10V23H22V21H18C19.11 21 20 20.11 20 19V15C20 13.89 19.11 13 18 13H14M14 15H18V19H14V15Z" Width="64" Height="64" Stretch="Uniform" Fill="{DynamicResource TextTertiaryBrush}" HorizontalAlignment="Center" Margin="0,0,0,16"/>
-          <TextBlock Text="暂无服务器" FontSize="18" FontWeight="SemiBold"
-                     HorizontalAlignment="Center" Margin="0,0,0,8"
+          <Path Data="M4 1C2.89 1 2 1.89 2 3V7C2 8.11 2.89 9 4 9H1V11H13V9H10C11.11 9 12 8.11 12 7V3C12 1.89 11.11 1 10 1H4M4 3H10V7H4V3M14 13C12.89 13 12 13.89 12 15V19C12 20.11 12.89 21 14 21H10V23H22V21H18C19.11 21 20 20.11 20 19V15C20 13.89 19.11 13 18 13H14M14 15H18V19H14V15Z"
+                Width="72" Height="72" Stretch="Uniform"
+                Fill="{DynamicResource TextTertiaryBrush}"
+                HorizontalAlignment="Center" Margin="0,0,0,20" Opacity="0.6"/>
+          <TextBlock Text="暂无服务器" FontSize="20" FontWeight="SemiBold"
+                     HorizontalAlignment="Center" Margin="0,0,0,10"
                      Foreground="{DynamicResource TextSecondaryBrush}"/>
-          <TextBlock Text="点击「添加服务器」按钮添加您喜欢的服务器" FontSize="13"
+          <TextBlock Text="点击「添加服务器」按钮添加您喜欢的服务器" FontSize="14"
                      HorizontalAlignment="Center"
                      Foreground="{DynamicResource TextTertiaryBrush}"/>
         </StackPanel>
@@ -617,39 +705,43 @@
                 HorizontalAlignment="Stretch"
                 VerticalAlignment="Stretch">
           <Border Background="{DynamicResource SurfaceElevatedBrush}"
-                  CornerRadius="12" Padding="24"
-                  Width="400" HorizontalAlignment="Center" VerticalAlignment="Center"
+                  CornerRadius="14" Padding="28"
+                  Width="480" HorizontalAlignment="Center" VerticalAlignment="Center"
                   BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
-            <StackPanel Spacing="16">
-              <TextBlock Text="添加服务器" FontSize="18" FontWeight="Bold"/>
+            <StackPanel Spacing="20">
+              <TextBlock Text="添加服务器" FontSize="20" FontWeight="Bold"/>
               
-              <StackPanel Spacing="12">
-                <StackPanel Spacing="4">
+              <StackPanel Spacing="14">
+                <StackPanel Spacing="6">
                   <TextBlock Text="服务器名称" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}"/>
-                  <TextBox Text="{Binding AddServerDialog.Name}" Watermark="输入服务器名称"/>
+                  <TextBox Text="{Binding AddServerDialog.Name}" Watermark="输入服务器名称"
+                           FontSize="14" Padding="12,8"/>
                 </StackPanel>
                 
-                <StackPanel Spacing="4">
+                <StackPanel Spacing="6">
                   <TextBlock Text="服务器地址" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}"/>
-                  <TextBox Text="{Binding AddServerDialog.Address}" Watermark="例如: mc.example.com"/>
+                  <TextBox Text="{Binding AddServerDialog.Address}" Watermark="例如: mc.example.com"
+                           FontSize="14" Padding="12,8"/>
                 </StackPanel>
                 
-                <Grid ColumnDefinitions="*,12,*">
-                  <StackPanel Grid.Column="0" Spacing="4">
+                <Grid ColumnDefinitions="*,16,*">
+                  <StackPanel Grid.Column="0" Spacing="6">
                     <TextBlock Text="端口" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}"/>
                     <NumericUpDown Value="{Binding AddServerDialog.Port}" Minimum="1" Maximum="65535"/>
                   </StackPanel>
-                  
-                  <StackPanel Grid.Column="2" Spacing="4">
-                    <TextBlock Text="分组（可选）" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}"/>
-                    <TextBox Text="{Binding AddServerDialog.Group}" Watermark="输入分组名"/>
+                  <StackPanel Grid.Column="2" Spacing="6">
+                    <TextBlock Text="备注" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                    <TextBox Text="{Binding AddServerDialog.Notes}" Watermark="可选"
+                             FontSize="14" Padding="12,8"/>
                   </StackPanel>
                 </Grid>
               </StackPanel>
               
               <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="12">
-                <Button Content="取消" Command="{Binding CancelAddServerCommand}"/>
-                <Button Content="确定" Classes="accent" Command="{Binding ConfirmAddServerCommand}"/>
+                <Button Content="取消" Command="{Binding CancelAddServerCommand}"
+                        Padding="20,8" FontSize="14"/>
+                <Button Content="确定" Classes="accent" Command="{Binding ConfirmAddServerCommand}"
+                        Padding="20,8" FontSize="14"/>
               </StackPanel>
             </StackPanel>
           </Border>
@@ -661,39 +753,43 @@
                 HorizontalAlignment="Stretch"
                 VerticalAlignment="Stretch">
           <Border Background="{DynamicResource SurfaceElevatedBrush}"
-                  CornerRadius="12" Padding="24"
-                  Width="400" HorizontalAlignment="Center" VerticalAlignment="Center"
+                  CornerRadius="14" Padding="28"
+                  Width="480" HorizontalAlignment="Center" VerticalAlignment="Center"
                   BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
-            <StackPanel Spacing="16">
-              <TextBlock Text="编辑服务器" FontSize="18" FontWeight="Bold"/>
+            <StackPanel Spacing="20">
+              <TextBlock Text="编辑服务器" FontSize="20" FontWeight="Bold"/>
               
-              <StackPanel Spacing="12">
-                <StackPanel Spacing="4">
+              <StackPanel Spacing="14">
+                <StackPanel Spacing="6">
                   <TextBlock Text="服务器名称" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}"/>
-                  <TextBox Text="{Binding EditServerDialog.Name}"/>
+                  <TextBox Text="{Binding EditServerDialog.Name}"
+                           FontSize="14" Padding="12,8"/>
                 </StackPanel>
                 
-                <StackPanel Spacing="4">
+                <StackPanel Spacing="6">
                   <TextBlock Text="服务器地址" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}"/>
-                  <TextBox Text="{Binding EditServerDialog.Address}"/>
+                  <TextBox Text="{Binding EditServerDialog.Address}"
+                           FontSize="14" Padding="12,8"/>
                 </StackPanel>
                 
-                <Grid ColumnDefinitions="*,12,*">
-                  <StackPanel Grid.Column="0" Spacing="4">
+                <Grid ColumnDefinitions="*,16,*">
+                  <StackPanel Grid.Column="0" Spacing="6">
                     <TextBlock Text="端口" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}"/>
                     <NumericUpDown Value="{Binding EditServerDialog.Port}" Minimum="1" Maximum="65535"/>
                   </StackPanel>
-                  
-                  <StackPanel Grid.Column="2" Spacing="4">
-                    <TextBlock Text="分组（可选）" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}"/>
-                    <TextBox Text="{Binding EditServerDialog.Group}"/>
+                  <StackPanel Grid.Column="2" Spacing="6">
+                    <TextBlock Text="备注" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                    <TextBox Text="{Binding EditServerDialog.Notes}" Watermark="可选"
+                             FontSize="14" Padding="12,8"/>
                   </StackPanel>
                 </Grid>
               </StackPanel>
               
               <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="12">
-                <Button Content="取消" Command="{Binding CancelEditServerCommand}"/>
-                <Button Content="保存" Classes="accent" Command="{Binding ConfirmEditServerCommand}"/>
+                <Button Content="取消" Command="{Binding CancelEditServerCommand}"
+                        Padding="20,8" FontSize="14"/>
+                <Button Content="保存" Classes="accent" Command="{Binding ConfirmEditServerCommand}"
+                        Padding="20,8" FontSize="14"/>
               </StackPanel>
             </StackPanel>
           </Border>

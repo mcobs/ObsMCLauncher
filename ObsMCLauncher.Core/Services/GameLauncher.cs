@@ -126,6 +126,34 @@ public class GameLauncher
         Action<int>? onGameExit = null,
         CancellationToken cancellationToken = default)
     {
+        return await LaunchGameInternalAsync(versionId, account, config, null, 0, onProgressUpdate, onGameOutput, onGameExit, cancellationToken);
+    }
+
+    public static async Task<bool> LaunchAndConnectServerAsync(
+        string versionId,
+        GameAccount account,
+        LauncherConfig config,
+        string serverAddress,
+        int serverPort = 25565,
+        Action<string>? onProgressUpdate = null,
+        Action<string>? onGameOutput = null,
+        Action<int>? onGameExit = null,
+        CancellationToken cancellationToken = default)
+    {
+        return await LaunchGameInternalAsync(versionId, account, config, serverAddress, serverPort, onProgressUpdate, onGameOutput, onGameExit, cancellationToken);
+    }
+
+    private static async Task<bool> LaunchGameInternalAsync(
+        string versionId,
+        GameAccount account,
+        LauncherConfig config,
+        string? serverAddress,
+        int serverPort,
+        Action<string>? onProgressUpdate,
+        Action<string>? onGameOutput,
+        Action<int>? onGameExit,
+        CancellationToken cancellationToken)
+    {
         LastError = string.Empty;
 
         try
@@ -283,7 +311,7 @@ public class GameLauncher
             onProgressUpdate?.Invoke("正在准备启动参数...");
             cancellationToken.ThrowIfCancellationRequested();
 
-            var arguments = BuildLaunchArguments(versionId, account, config, versionInfo);
+            var arguments = BuildLaunchArguments(versionId, account, config, versionInfo, serverAddress, serverPort);
 
             onProgressUpdate?.Invoke("正在启动游戏进程...");
             cancellationToken.ThrowIfCancellationRequested();
@@ -365,7 +393,7 @@ public class GameLauncher
         }
     }
 
-    private static string BuildLaunchArguments(string versionId, GameAccount account, LauncherConfig config, VersionInfo versionInfo)
+    private static string BuildLaunchArguments(string versionId, GameAccount account, LauncherConfig config, VersionInfo versionInfo, string? serverAddress = null, int serverPort = 25565)
     {
         var args = new StringBuilder();
 
@@ -676,6 +704,15 @@ public class GameLauncher
         else
         {
             args.Append($"{mainClass} ");
+        }
+
+        if (!string.IsNullOrEmpty(serverAddress))
+        {
+            args.Append($"--server {serverAddress} ");
+            if (serverPort != 25565)
+            {
+                args.Append($"--port {serverPort} ");
+            }
         }
 
         var gameArgs = BuildGameArguments(versionId, account, config, versionInfo, gameDir, assetsDir);

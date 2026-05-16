@@ -17,6 +17,7 @@ public partial class MoreViewModel : ViewModelBase
 {
     private readonly NotificationService _notificationService;
     private readonly PluginLoader _pluginLoader;
+    private ViewModelBase? _previousTabContent;
 
     [ObservableProperty]
     private int _selectedTabIndex;
@@ -125,6 +126,11 @@ public partial class MoreViewModel : ViewModelBase
     {
         if (value < 0 || value >= Tabs.Count) return;
 
+        if (_previousTabContent is ServersViewModel prevServers)
+        {
+            prevServers.StopAutoRefresh();
+        }
+
         var selectedTab = Tabs[value];
 
         if (selectedTab.Content is PluginsViewModel)
@@ -137,20 +143,23 @@ public partial class MoreViewModel : ViewModelBase
         }
         else if (selectedTab.Content is ServersViewModel)
         {
-            _ = Servers.LoadAsync();
+            Servers.Load();
+            _ = Servers.ActivateAsync();
         }
         else if (selectedTab.Content is PluginTabViewModel pluginTab)
         {
             pluginTab.Initialize();
             DebugLogger.Info("MoreViewModel", $"激活插件标签页: {pluginTab.Title}");
         }
+
+        _previousTabContent = selectedTab.Content;
     }
 
     public async Task InitializeAsync()
     {
         await Plugins.InitializeAsync();
         await Screenshots.LoadAsync();
-        await Servers.LoadAsync();
+        Servers.Load();
     }
 
     private void OpenDebugConsole()

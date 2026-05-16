@@ -2,7 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Globalization;
+using System.IO;
 using Avalonia.Data.Converters;
+using Avalonia.Media;
+using Avalonia.Media.Imaging;
 using ObsMCLauncher.Desktop.ViewModels;
 
 namespace ObsMCLauncher.Desktop.Converters;
@@ -73,9 +76,57 @@ public class BoolToColorConverter : IValueConverter
     {
         if (value is bool isOnline)
         {
-            return isOnline ? "#10B981" : "#DC3545";
+            return isOnline ? Color.Parse("#10B981") : Color.Parse("#DC3545");
         }
-        return "#8A8A8A";
+        return Color.Parse("#8A8A8A");
+    }
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+}
+
+public class FilePathToBitmapConverter : IValueConverter
+{
+    public static readonly FilePathToBitmapConverter Instance = new();
+
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (value is string path && !string.IsNullOrEmpty(path) && File.Exists(path))
+        {
+            try
+            {
+                return new Bitmap(path);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+}
+
+public class PingLevelToColorConverter : IValueConverter
+{
+    public static readonly PingLevelToColorConverter Instance = new();
+
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        return value switch
+        {
+            "优秀" => Color.Parse("#10B981"),
+            "良好" => Color.Parse("#22C55E"),
+            "一般" => Color.Parse("#F59E0B"),
+            "较差" => Color.Parse("#EF4444"),
+            _ => Color.Parse("#8A8A8A")
+        };
     }
 
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)

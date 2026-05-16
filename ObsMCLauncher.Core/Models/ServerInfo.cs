@@ -5,6 +5,8 @@ namespace ObsMCLauncher.Core.Models;
 
 public class ServerInfo
 {
+    public string Id { get; set; } = Guid.NewGuid().ToString("N")[..8];
+
     public string Name { get; set; } = "";
 
     public string Address { get; set; } = "";
@@ -15,7 +17,7 @@ public class ServerInfo
 
     public string? Description { get; set; }
 
-    public string? Group { get; set; }
+    public string? Notes { get; set; }
 
     [JsonIgnore]
     public bool IsOnline { get; set; }
@@ -34,6 +36,28 @@ public class ServerInfo
 
     [JsonIgnore]
     public DateTime? LastPingTime { get; set; }
+
+    [JsonIgnore]
+    public string? Motd { get; set; }
+
+    [JsonIgnore]
+    public string FormattedVersion => string.IsNullOrEmpty(Version) ? "未知" : Version;
+
+    [JsonIgnore]
+    public string StatusText => IsOnline ? "在线" : "离线";
+
+    [JsonIgnore]
+    public string PingLevel
+    {
+        get
+        {
+            if (Ping <= 0) return "未知";
+            if (Ping < 50) return "优秀";
+            if (Ping < 100) return "良好";
+            if (Ping < 200) return "一般";
+            return "较差";
+        }
+    }
 
     [JsonIgnore]
     public string FormattedPing

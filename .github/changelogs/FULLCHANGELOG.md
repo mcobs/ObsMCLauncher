@@ -24,6 +24,32 @@
 - 启动时预创建缓存目录（OMCL/cache），避免惰性初始化失败静默丢失
 - 缓存服务添加 Info 级别日志，便于排查缓存运行状态
 
+### 服务器管理
+- Ping 检测升级为真实 Minecraft 协议（VarInt 编解码 + Handshake/Status 响应），返回真实延迟和 MOTD 数据
+- 新增一键连接功能，自动启动游戏并加入选中服务器，支持连接进度反馈和错误处理
+- 服务器列表支持分页加载、MOTD/版本搜索筛选
+- 新增服务器导入/导出功能（JSON 格式），含重复检测
+- 服务器编辑添加 IP 地址/端口号格式验证
+- 删除服务器添加确认对话框，防止误删除
+- 连接按钮在连接中自动禁用，刷新状态按钮防重复点击
+- 所有关键操作添加 DebugLogger 日志记录
+- UI 全面优化：增大按钮尺寸（16px/20px 内边距）、调整字号体系（名称 17px/标签 13px/内容 12px）、状态改用胶囊标签+延迟颜色编码、工具栏双行布局、对话框加宽至 480px、卡片圆角 14px、空状态图标调整
+- 移除游戏类型和分组功能，精简服务器编辑对话框（端口+备注双列布局），移除工具栏分组筛选下拉框
+- 切换到服务器收藏页时自动触发 RefreshStatusAsync，离开时停止后台 60 秒轮询（StopAutoRefresh）
+- 刷新期间延迟位显示 ProgressBar 加载动画（IsIndeterminate），离线服务器显示 "--" 占位
+- 延迟、在线人数（FormattedPlayers 离线显示"离线"）、MOTD 信息始终可见，移除 IsVisible="{Binding IsOnline}" 条件
+
+### 修复
+- 修复 Ping 超时时 Task.WhenAny 导致未观察异常引发崩溃（改用 CancellationTokenSource 超时连接）
+- 修复 LoadAsync 未初始化 _allFilteredServers 导致首次加载时分页不生效
+- 修复 Ping 握手包 BuildHandshakePacket 中协议版本字段被错误填入地址长度值，改为标准 VarInt(-1)，并正确添加地址字符串 VarInt 长度前缀，解决服务器无法解析握手包导致连接失败的问题
+- 修复 BoolToColorConverter 和 PingLevelToColorConverter 返回 string 而非 Avalonia.Media.Color（导致 XAML 中 SolidColorBrush.Color 绑定全部失败，卡片数据无法渲染）
+- 修复 PingLevelToColorConverter 中 "较差" 对应色值为非法 8 位 hex "#ef4444ff"，改为正确的 "#EF4444"
+- 修复 ParseMotd 在 description.text 字段存在但为空时直接返回空字符串，不再继续检查 extra 数组（复合 MOTD 格式），导致 Velocity 代理类服务器 MOTD 显示为空
+- 新增服务器图标显示：QueryServerInfoAsync 从协议获取 base64 图标数据，解码后保存为 PNG 文件到 OMCL/cache/server_icons/{serverId}.png，卡片左上角显示 40x40 圆角图标
+- 修复 ServerInfo.FormattedVersion 属性：Version 为空时返回"未知"而非显示"版本: "
+- 卡片头部布局改为三列（图标 + 名称 + 状态标签），名称垂直居中
+
 
 ## [v1.0.0-rc.3] - 2026-04-30
 
