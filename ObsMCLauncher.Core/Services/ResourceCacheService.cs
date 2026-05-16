@@ -16,7 +16,7 @@ public class ResourceCacheService
     private static readonly string ModrinthCacheDir = Path.Combine(CacheBaseDir, "modrinth");
     private static readonly string CurseForgeCacheDir = Path.Combine(CacheBaseDir, "curseforge");
     private const long MaxCacheSizeBytes = 200 * 1024 * 1024;
-    private static readonly TimeSpan DefaultCacheExpiry = TimeSpan.FromMinutes(30);
+    private static readonly TimeSpan DefaultCacheExpiry = TimeSpan.FromDays(30);
 
     private static readonly ConcurrentDictionary<string, SemaphoreSlim> _fileLocks = new();
 

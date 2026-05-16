@@ -6,6 +6,7 @@
 - 更新系统支持多平台资产匹配
 
 ### 优化
+- 磁盘缓存过期时间由30分钟调整为1个月
 - Java检测适配Linux/macOS，支持各平台常见Java安装路径
 - 游戏目录默认路径适配各平台（Windows: %APPDATA%, macOS: ~/Library/Application Support, Linux: ~/.minecraft）
 - 打开文件夹功能跨平台适配（Windows: explorer, macOS: open, Linux: xdg-open）
