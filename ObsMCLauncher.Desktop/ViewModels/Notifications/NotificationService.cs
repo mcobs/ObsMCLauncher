@@ -7,6 +7,7 @@ using System.Threading;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using ObsMCLauncher.Core.Models;
 using ObsMCLauncher.Core.Utils;
 
 namespace ObsMCLauncher.Desktop.ViewModels.Notifications;
@@ -14,16 +15,47 @@ namespace ObsMCLauncher.Desktop.ViewModels.Notifications;
 public partial class NotificationService : ObservableObject, IDisposable
 {
     private const int MaxNotifications = 3;
-    private const int DefaultDurationSeconds = 3;
+    private const int DefaultCenterDurationSeconds = 3;
+    private const int DefaultBottomRightDurationSeconds = 5;
+    private const int MinAutoCloseSeconds = 3;
+    private const int MaxAutoCloseSeconds = 30;
     private readonly ConcurrentDictionary<string, Timer> _countdownTimers = new();
     private bool _disposed;
 
+    private NotificationPosition _notificationPosition = NotificationPosition.Center;
+    public NotificationPosition NotificationPosition
+    {
+        get => _notificationPosition;
+        set => SetProperty(ref _notificationPosition, value);
+    }
+
+    private int _autoCloseSeconds = 5;
+    public int AutoCloseSeconds
+    {
+        get => _autoCloseSeconds;
+        set
+        {
+            var clamped = Math.Clamp(value, MinAutoCloseSeconds, MaxAutoCloseSeconds);
+            SetProperty(ref _autoCloseSeconds, clamped);
+        }
+    }
+
     public ObservableCollection<NotificationItemViewModel> Items { get; } = new();
+
+    private int GetDefaultDuration(NotificationType type)
+    {
+        if (type == NotificationType.Progress || type == NotificationType.Countdown)
+            return 0;
+
+        return NotificationPosition == NotificationPosition.BottomRight
+            ? AutoCloseSeconds
+            : DefaultCenterDurationSeconds;
+    }
 
     public string Show(string title, string message, NotificationType type = NotificationType.Info, int? durationSeconds = null, CancellationTokenSource? cts = null)
     {
         if (!durationSeconds.HasValue && type != NotificationType.Progress && type != NotificationType.Countdown)
-            durationSeconds = DefaultDurationSeconds;
+            durationSeconds = GetDefaultDuration(type);
 
         var same = Items.Where(x => x.Title == title && x.Message == message && x.Type == type).ToList();
         if (same.Count >= MaxNotifications)
@@ -36,10 +68,9 @@ public partial class NotificationService : ObservableObject, IDisposable
             Title = title,
             Message = message,
             Type = type,
-            CanClose = true,
-            Cts = cts
+            Cts = cts,
+            Position = NotificationPosition
         };
-
         item.CloseRequested += (id) => Remove(id);
 
         Items.Insert(0, item);
@@ -73,13 +104,12 @@ public partial class NotificationService : ObservableObject, IDisposable
             Title = title,
             Message = message,
             Type = NotificationType.Countdown,
-            CanClose = true,
             CountdownSeconds = countdownSeconds,
             CountdownRemaining = countdownSeconds,
             CountdownProgress = 100.0,
-            OnCountdownComplete = onComplete
+            OnCountdownComplete = onComplete,
+            Position = NotificationPosition
         };
-
         item.CloseRequested += (id) => Remove(id);
 
         Items.Insert(0, item);

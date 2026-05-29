@@ -7,6 +7,12 @@ using ObsMCLauncher.Core.Services;
 
 namespace ObsMCLauncher.Core.Models;
 
+public enum NotificationPosition
+{
+    Center,
+    BottomRight
+}
+
 public class LauncherConfig
 {
     public string GetActualJavaPath(string? minecraftVersion = null)
@@ -149,6 +155,11 @@ public class LauncherConfig
     public string? SelectedAccountId { get; set; }
 
     public bool IsNavCollapsed { get; set; } = false;
+
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public NotificationPosition NotificationPosition { get; set; } = NotificationPosition.Center;
+
+    public int NotificationAutoCloseSeconds { get; set; } = 5;
 
     public List<ServerInfo> Servers { get; set; } = [];
 

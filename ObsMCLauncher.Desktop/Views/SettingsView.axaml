@@ -128,6 +128,82 @@
               <ToggleSwitch Grid.Column="1" IsChecked="{Binding CloseAfterLaunch}"/>
             </Grid>
 
+            <Separator/>
+
+            <StackPanel Spacing="12">
+              <TextBlock Text="通知样式" FontSize="13" FontWeight="SemiBold"/>
+              <TextBlock Text="选择通知消息的显示位置和样式" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,-6,0,0"/>
+
+              <Grid ColumnDefinitions="*,*" Margin="0,4,0,0">
+                <Border Grid.Column="0" 
+                        CornerRadius="8" Padding="0" Margin="0,0,8,0"
+                        BorderThickness="2" 
+                        BorderBrush="{Binding NotificationPosition, Converter={x:Static converters:NotificationPositionToBorderConverter.Instance}, ConverterParameter=Center}">
+                  <Button Classes="ghost" Padding="0"
+                          Command="{Binding SelectCenterNotificationCommand}">
+                    <StackPanel>
+                      <Border Height="120" Background="{DynamicResource SurfaceElevatedBrush}" CornerRadius="8,8,0,0" Padding="8">
+                        <Border Background="{DynamicResource SurfaceBrush}" CornerRadius="6" Padding="10,8"
+                                HorizontalAlignment="Center" VerticalAlignment="Top"
+                                BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}"
+                                Width="200">
+                          <StackPanel>
+                            <TextBlock Text="通知消息" FontSize="11" FontWeight="SemiBold"/>
+                            <TextBlock Text="这是一条示例通知" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,2,0,0" TextTrimming="CharacterEllipsis"/>
+                          </StackPanel>
+                        </Border>
+                      </Border>
+                      <Border Padding="10,8" Background="{DynamicResource SurfaceBrush}" CornerRadius="0,0,8,8">
+                        <StackPanel HorizontalAlignment="Center">
+                          <TextBlock Text="居中显示" FontSize="12" FontWeight="SemiBold"/>
+                          <TextBlock Text="通知显示在窗口顶部居中" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                        </StackPanel>
+                      </Border>
+                    </StackPanel>
+                  </Button>
+                </Border>
+
+                <Border Grid.Column="1" 
+                        CornerRadius="8" Padding="0"
+                        BorderThickness="2" 
+                        BorderBrush="{Binding NotificationPosition, Converter={x:Static converters:NotificationPositionToBorderConverter.Instance}, ConverterParameter=BottomRight}">
+                  <Button Classes="ghost" Padding="0"
+                          Command="{Binding SelectBottomRightNotificationCommand}">
+                    <StackPanel>
+                      <Border Height="120" Background="{DynamicResource SurfaceElevatedBrush}" CornerRadius="8,8,0,0" Padding="8">
+                        <Border Background="{DynamicResource SurfaceBrush}" CornerRadius="6" Padding="10,8"
+                                HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}"
+                                Width="200">
+                          <StackPanel>
+                            <TextBlock Text="通知消息" FontSize="11" FontWeight="SemiBold"/>
+                            <TextBlock Text="这是一条示例通知" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,2,0,0" TextTrimming="CharacterEllipsis"/>
+                          </StackPanel>
+                        </Border>
+                      </Border>
+                      <Border Padding="10,8" Background="{DynamicResource SurfaceBrush}" CornerRadius="0,0,8,8">
+                        <StackPanel HorizontalAlignment="Center">
+                          <TextBlock Text="右下角显示" FontSize="12" FontWeight="SemiBold"/>
+                          <TextBlock Text="通知显示在窗口右下角" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                        </StackPanel>
+                      </Border>
+                    </StackPanel>
+                  </Button>
+                </Border>
+              </Grid>
+
+              <Grid ColumnDefinitions="*,100" IsVisible="{Binding NotificationPosition, Converter={x:Static converters:NotificationPositionToVisibilityConverter.Instance}}">
+                <StackPanel>
+                  <TextBlock Text="自动关闭时间" FontSize="13" FontWeight="SemiBold"/>
+                  <TextBlock Text="右下角通知的自动关闭时间（3-30秒）" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                  <TextBox Text="{Binding NotificationAutoCloseSeconds}" Width="60" HorizontalContentAlignment="Right"/>
+                  <TextBlock Text="秒" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+                </StackPanel>
+              </Grid>
+            </StackPanel>
+
           </StackPanel>
         </Border>
 

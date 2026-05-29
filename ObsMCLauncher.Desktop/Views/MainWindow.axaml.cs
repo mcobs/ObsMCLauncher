@@ -5,6 +5,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
+using ObsMCLauncher.Core.Models;
 using ObsMCLauncher.Desktop.ViewModels;
 
 namespace ObsMCLauncher.Desktop.Views;
@@ -37,6 +38,7 @@ public partial class MainWindow : Window
 
         UpdateNavWidth();
         UpdateNavLayout();
+        UpdateNotificationPosition();
     }
 
     private void VmOnPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -48,6 +50,30 @@ public partial class MainWindow : Window
                 UpdateNavWidth();
                 UpdateNavLayout();
             });
+        }
+        else if (e.PropertyName == nameof(MainWindowViewModel.NotificationPosition))
+        {
+            Dispatcher.UIThread.Post(UpdateNotificationPosition);
+        }
+    }
+
+    private void UpdateNotificationPosition()
+    {
+        if (_vm == null) return;
+
+        if (NotificationItemsControl == null) return;
+
+        if (_vm.NotificationPosition == NotificationPosition.BottomRight)
+        {
+            NotificationItemsControl.HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right;
+            NotificationItemsControl.VerticalAlignment = Avalonia.Layout.VerticalAlignment.Bottom;
+            NotificationItemsControl.Margin = new Thickness(0, 0, 16, 16);
+        }
+        else
+        {
+            NotificationItemsControl.HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center;
+            NotificationItemsControl.VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top;
+            NotificationItemsControl.Margin = new Thickness(0, 12, 0, 0);
         }
     }
 

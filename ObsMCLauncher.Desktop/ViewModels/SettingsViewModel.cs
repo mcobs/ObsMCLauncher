@@ -58,6 +58,8 @@ public class SettingsViewModel : ViewModelBase
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(IsCustomJava)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(JvmArguments)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(IsNavCollapsed)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(NotificationPosition)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(NotificationAutoCloseSeconds)));
 
         UpdateGameDirectoryDisplayText();
         _ = ReloadJavaOptionsAsync();
@@ -102,6 +104,8 @@ public class SettingsViewModel : ViewModelBase
         ResetDefaultsCommand = new RelayCommand(ResetDefaults);
         MoveCardUpCommand = new RelayCommand<HomeCardInfo>(MoveCardUp);
         MoveCardDownCommand = new RelayCommand<HomeCardInfo>(MoveCardDown);
+        SelectCenterNotificationCommand = new RelayCommand(() => NotificationPosition = NotificationPosition.Center);
+        SelectBottomRightNotificationCommand = new RelayCommand(() => NotificationPosition = NotificationPosition.BottomRight);
 
         TestDialogCommand = new AsyncRelayCommand(async () =>
         {
@@ -143,6 +147,8 @@ public class SettingsViewModel : ViewModelBase
     public IRelayCommand ResetDefaultsCommand { get; }
     public IRelayCommand<HomeCardInfo> MoveCardUpCommand { get; }
     public IRelayCommand<HomeCardInfo> MoveCardDownCommand { get; }
+    public IRelayCommand SelectCenterNotificationCommand { get; }
+    public IRelayCommand SelectBottomRightNotificationCommand { get; }
 
     public ObservableCollection<DownloadSource> DownloadSourceOptions { get; }
 
@@ -472,6 +478,47 @@ public class SettingsViewModel : ViewModelBase
             {
                 _config.IsNavCollapsed = value;
                 OnPropertyChanged(new PropertyChangedEventArgs(nameof(IsNavCollapsed)));
+                AutoSave();
+            }
+        }
+    }
+
+    public NotificationPosition NotificationPosition
+    {
+        get => _config.NotificationPosition;
+        set
+        {
+            if (_config.NotificationPosition != value)
+            {
+                _config.NotificationPosition = value;
+                OnPropertyChanged(new PropertyChangedEventArgs(nameof(NotificationPosition)));
+
+                if (NavigationStore.MainWindow != null)
+                {
+                    NavigationStore.MainWindow.NotificationPosition = value;
+                }
+
+                AutoSave();
+            }
+        }
+    }
+
+    public int NotificationAutoCloseSeconds
+    {
+        get => _config.NotificationAutoCloseSeconds;
+        set
+        {
+            if (_config.NotificationAutoCloseSeconds != value)
+            {
+                var clamped = Math.Clamp(value, 3, 30);
+                _config.NotificationAutoCloseSeconds = clamped;
+                OnPropertyChanged(new PropertyChangedEventArgs(nameof(NotificationAutoCloseSeconds)));
+
+                if (NavigationStore.MainWindow != null)
+                {
+                    NavigationStore.MainWindow.Notifications.AutoCloseSeconds = clamped;
+                }
+
                 AutoSave();
             }
         }
@@ -873,9 +920,17 @@ public class SettingsViewModel : ViewModelBase
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(IsCustomJava)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(JvmArguments)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(IsNavCollapsed)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(NotificationPosition)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(NotificationAutoCloseSeconds)));
 
         UpdateGameDirectoryDisplayText();
         _ = ReloadJavaOptionsAsync();
+
+        if (NavigationStore.MainWindow != null)
+        {
+            NavigationStore.MainWindow.NotificationPosition = NotificationPosition.Center;
+            NavigationStore.MainWindow.Notifications.AutoCloseSeconds = 5;
+        }
 
         AutoSave();
     }

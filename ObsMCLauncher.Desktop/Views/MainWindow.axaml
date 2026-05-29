@@ -79,9 +79,7 @@
             <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
             <Setter Property="Background" Value="{DynamicResource SurfaceElevatedBrush}" />
             <Setter Property="Padding" Value="16,12" />
-            <Setter Property="Width" Value="340" />
             <Setter Property="BoxShadow" Value="0 8 24 0 #40000000" />
-            <Setter Property="Margin" Value="0,0,16,12" />
         </Style>
 
         <Style Selector="Border.dialog-card">
@@ -727,13 +725,14 @@
             <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="notif:NotificationItemViewModel">
                     <Border Classes="notification-card" 
+                            Width="{Binding CardWidth}"
                             IsHitTestVisible="True"
                             Opacity="{Binding AnimationOpacity}"
                             RenderTransformOrigin="0.5,0">
                         <Border.RenderTransform>
                             <TransformGroup>
                                 <ScaleTransform ScaleX="{Binding AnimationScale}" ScaleY="{Binding AnimationScale}" />
-                                <TranslateTransform Y="{Binding AnimationOffsetY}" />
+                                <TranslateTransform X="{Binding AnimationOffsetX}" Y="{Binding AnimationOffsetY}" />
                             </TransformGroup>
                         </Border.RenderTransform>
                         <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto">

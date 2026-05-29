@@ -5,6 +5,7 @@ using System.Linq;
 using Avalonia.Controls;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using ObsMCLauncher.Core.Models;
 using ObsMCLauncher.Core.Plugins;
 using ObsMCLauncher.Desktop.ViewModels.Dialogs;
 using ObsMCLauncher.Desktop.ViewModels.Notifications;
@@ -121,6 +122,14 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     public string NavCopyrightText => ObsMCLauncher.Core.Utils.VersionInfo.Copyright;
 
+    [ObservableProperty]
+    private NotificationPosition _notificationPosition;
+
+    partial void OnNotificationPositionChanged(NotificationPosition value)
+    {
+        Notifications.NotificationPosition = value;
+    }
+
     private readonly PluginLoader _pluginLoader;
     private HomeViewModel? _homeViewModel;
     private MoreViewModel? _moreViewModel;
@@ -150,6 +159,12 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
         // 启动时加载所有插件（必须在初始化回调之后）
         LoadPluginsOnStartup();
+
+        // 从配置加载通知设置
+        var config = LauncherConfig.Load();
+        _notificationPosition = config.NotificationPosition;
+        Notifications.NotificationPosition = config.NotificationPosition;
+        Notifications.AutoCloseSeconds = config.NotificationAutoCloseSeconds;
 
         NavItems.Add(new NavItemViewModel("主页", _homeViewModel, "🏠"));
         NavItems.Add(new NavItemViewModel("多人联机", new MultiplayerViewModel(Notifications, Dialogs), "🌐"));
