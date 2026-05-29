@@ -1,14 +1,6 @@
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
 using System.IO.Compression;
-using System.Linq;
-using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using System.Threading;
-using System.Threading.Tasks;
 using ObsMCLauncher.Core.Models;
 using ObsMCLauncher.Core.Services.Download;
 using ObsMCLauncher.Core.Services.Installers;
@@ -21,6 +13,8 @@ namespace ObsMCLauncher.Core.Services.Minecraft;
 /// </summary>
 public class ModpackInstallService
 {
+    private static readonly JsonSerializerOptions CachedJsonOptions = new() { PropertyNameCaseInsensitive = true };
+
     public static async Task<bool> InstallModpackAsync(
         string zipFilePath,
         string versionName,
@@ -68,7 +62,7 @@ public class ModpackInstallService
                         await InstallModrinthModpackAsync(archive, versionName, tempVersionDir, gameDirectory, progressCallback);
                         break;
                     case ModpackType.Manual:
-                        await InstallManualModpackAsync(archive, versionName, tempVersionDir, progressCallback);
+                        await InstallManualModpackAsync(archive, tempVersionDir, progressCallback);
                         break;
                     default:
                         throw new Exception("不支持的整合包格式");
@@ -76,7 +70,7 @@ public class ModpackInstallService
             }
 
             progressCallback?.Invoke("正在写入版本元数据...", 96);
-            await EnsureVersionJsonAndJarAsync(versionName, gameDirectory, tempVersionDir);
+            await EnsureVersionJsonAndJarAsync(versionName, tempVersionDir);
 
             progressCallback?.Invoke("正在完成安装（迁移目录）...", 98);
             Directory.CreateDirectory(finalVersionsDir);
@@ -107,9 +101,9 @@ public class ModpackInstallService
                 _ = Task.Run(async () =>
                 {
                     var cts = new CancellationTokenSource();
-                    var task = Core.Services.Download.DownloadTaskManager.Instance.AddTask(
+                    var task = DownloadTaskManager.Instance.AddTask(
                         $"补全资源: {versionName}",
-                        Core.Services.Download.DownloadTaskType.Resource,
+                        DownloadTaskType.Resource,
                         cts);
 
                     try
@@ -119,15 +113,15 @@ public class ModpackInstallService
                             versionName,
                             (p, total, msg, speed) =>
                             {
-                                Core.Services.Download.DownloadTaskManager.Instance.UpdateTaskProgress(task.Id, p, msg);
+                                DownloadTaskManager.Instance.UpdateTaskProgress(task.Id, p, msg);
                             },
                             cts.Token);
 
-                        Core.Services.Download.DownloadTaskManager.Instance.CompleteTask(task.Id);
+                        DownloadTaskManager.Instance.CompleteTask(task.Id);
                     }
                     catch (Exception ex)
                     {
-                        Core.Services.Download.DownloadTaskManager.Instance.FailTask(task.Id, ex.Message);
+                        DownloadTaskManager.Instance.FailTask(task.Id, ex.Message);
                     }
                 });
             }
@@ -214,8 +208,8 @@ public class ModpackInstallService
 
         var manifestEntry = archive.GetEntry("manifest.json") ?? throw new Exception("找不到 manifest.json");
         using var manifestStream = manifestEntry.Open();
-        var manifest = await JsonSerializer.DeserializeAsync<CurseForgeManifest>(manifestStream, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-        if (manifest == null) throw new Exception("无法解析 manifest.json");
+        var manifest = await JsonSerializer.DeserializeAsync<CurseForgeManifest>(manifestStream, CachedJsonOptions);
+        if (manifest is null) throw new Exception("无法解析 manifest.json");
 
         var minecraftVersion = string.IsNullOrWhiteSpace(manifest.Minecraft?.Version) ? "1.20.1" : manifest.Minecraft.Version;
 
@@ -248,7 +242,7 @@ public class ModpackInstallService
         await InstallCurseForgeModLoaderAsync(manifest, gameDirectory, versionName, progressCallback);
 
         // 3) 下载资源（mods/resourcepacks/...）到 temp runDir（版本隔离下等同 tempVersionDir）
-        await DownloadCurseForgeModsAsync(manifest.Files, gameDirectory, versionName, tempVersionDir, progressCallback);
+        await DownloadCurseForgeModsAsync(manifest.Files, tempVersionDir, progressCallback);
 
         // 4) 解压 overrides 到 temp runDir
         progressCallback?.Invoke("正在解压整合包文件...", 70);
@@ -298,8 +292,6 @@ public class ModpackInstallService
 
     private static async Task DownloadCurseForgeModsAsync(
         List<CurseForgeManifestFile> files,
-        string gameDir,
-        string versionName,
         string tempRunDir,
         Action<string, double>? progress)
     {
@@ -331,9 +323,10 @@ public class ModpackInstallService
 
                 // 简化：jar->mods，其它->resourcepacks
                 var nameLower = (fileInfo.FileName ?? "").ToLowerInvariant();
+                var fileName = fileInfo.FileName ?? "unknown";
                 var destPath = nameLower.EndsWith(".jar")
-                    ? Path.Combine(modsDir, fileInfo.FileName)
-                    : Path.Combine(resourcepacksDir, fileInfo.FileName);
+                    ? Path.Combine(modsDir, fileName)
+                    : Path.Combine(resourcepacksDir, fileName);
 
                 Directory.CreateDirectory(Path.GetDirectoryName(destPath)!);
                 await CurseForgeService.DownloadModFileAsync(fileInfo, destPath);
@@ -369,8 +362,8 @@ public class ModpackInstallService
 
         var indexEntry = archive.GetEntry("modrinth.index.json") ?? throw new Exception("找不到 modrinth.index.json");
         using var indexStream = indexEntry.Open();
-        var index = await JsonSerializer.DeserializeAsync<ModrinthIndex>(indexStream, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-        if (index == null) throw new Exception("无法解析 modrinth.index.json");
+        var index = await JsonSerializer.DeserializeAsync<ModrinthIndex>(indexStream, CachedJsonOptions);
+        if (index is null) throw new Exception("无法解析 modrinth.index.json");
 
         var minecraftVersion = index.Dependencies?.Minecraft ?? "1.20.1";
 
@@ -495,7 +488,7 @@ public class ModpackInstallService
         foreach (var entry in entries)
         {
             if (string.IsNullOrEmpty(entry.Name)) continue;
-            var destPath = Path.Combine(versionDir, entry.FullName.Substring(prefix.Length + 1));
+            var destPath = Path.Combine(versionDir, entry.FullName[(prefix.Length + 1)..]);
             Directory.CreateDirectory(Path.GetDirectoryName(destPath)!);
             entry.ExtractToFile(destPath, true);
             count++;
@@ -503,7 +496,7 @@ public class ModpackInstallService
         }
     }
 
-    private static async Task InstallManualModpackAsync(ZipArchive archive, string versionName, string versionDir, Action<string, double>? progress)
+    private static async Task InstallManualModpackAsync(ZipArchive archive, string versionDir, Action<string, double>? progress)
     {
         int count = 0;
         foreach (var entry in archive.Entries)
@@ -518,7 +511,7 @@ public class ModpackInstallService
         await Task.CompletedTask;
     }
 
-    private static Task EnsureVersionJsonAndJarAsync(string versionName, string gameDirectory, string tempVersionDir)
+    private static Task EnsureVersionJsonAndJarAsync(string versionName, string tempVersionDir)
     {
         return Task.Run(() =>
         {
@@ -642,14 +635,14 @@ public class ModpackInstallService
     private class CurseForgeManifest
     {
         [JsonPropertyName("minecraft")] public CurseForgeMinecraft Minecraft { get; set; } = new();
-        [JsonPropertyName("files")] public List<CurseForgeManifestFile> Files { get; set; } = new();
+        [JsonPropertyName("files")] public List<CurseForgeManifestFile> Files { get; set; } = [];
         [JsonPropertyName("overrides")] public string Overrides { get; set; } = "overrides";
     }
 
     private class CurseForgeMinecraft
     {
         [JsonPropertyName("version")] public string Version { get; set; } = "";
-        [JsonPropertyName("modLoaders")] public List<CurseForgeModLoader> ModLoaders { get; set; } = new();
+        [JsonPropertyName("modLoaders")] public List<CurseForgeModLoader> ModLoaders { get; set; } = [];
     }
 
     private class CurseForgeModLoader
@@ -683,6 +676,6 @@ public class ModpackInstallService
     private class ModrinthIndexFile
     {
         [JsonPropertyName("path")] public string Path { get; set; } = "";
-        [JsonPropertyName("downloads")] public List<string> Downloads { get; set; } = new();
+        [JsonPropertyName("downloads")] public List<string> Downloads { get; set; } = [];
     }
 }

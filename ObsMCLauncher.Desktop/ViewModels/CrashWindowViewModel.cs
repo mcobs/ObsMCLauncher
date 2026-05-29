@@ -27,7 +27,7 @@ public partial class CrashWindowViewModel : ObservableObject
     public string CrashReport
     {
         get => CrashReportText;
-        set => SetProperty(ref _crashReportText, value);
+        set => CrashReportText = value;
     }
 
     public CrashWindowViewModel(string summary, string crashReport, Window window)

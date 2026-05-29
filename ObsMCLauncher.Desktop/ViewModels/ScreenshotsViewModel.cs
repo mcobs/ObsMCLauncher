@@ -171,12 +171,12 @@ public partial class ScreenshotsViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private async Task LoadMoreAsync()
+    private Task LoadMoreAsync()
     {
-        if (_allFilteredScreenshots == null || IsLoadingMore) return;
+        if (_allFilteredScreenshots == null || IsLoadingMore) return Task.CompletedTask;
 
         var totalLoaded = Screenshots.Count;
-        if (totalLoaded >= _allFilteredScreenshots!.Count) return;
+        if (totalLoaded >= _allFilteredScreenshots!.Count) return Task.CompletedTask;
 
         try
         {
@@ -194,6 +194,8 @@ public partial class ScreenshotsViewModel : ViewModelBase
         {
             IsLoadingMore = false;
         }
+
+        return Task.CompletedTask;
     }
 
     [RelayCommand]
@@ -223,17 +225,18 @@ public partial class ScreenshotsViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private async Task ExportScreenshotAsync(ScreenshotInfo? screenshot)
+    private Task ExportScreenshotAsync(ScreenshotInfo? screenshot)
     {
-        if (screenshot == null) return;
+        if (screenshot == null) return Task.CompletedTask;
 
         _notificationService.Show("提示", "导出功能需要选择目录，暂未实现文件对话框", NotificationType.Info);
+        return Task.CompletedTask;
     }
 
     [RelayCommand]
-    private async Task DeleteScreenshotAsync(ScreenshotInfo? screenshot)
+    private Task DeleteScreenshotAsync(ScreenshotInfo? screenshot)
     {
-        if (screenshot == null) return;
+        if (screenshot == null) return Task.CompletedTask;
 
         try
         {
@@ -241,7 +244,6 @@ public partial class ScreenshotsViewModel : ViewModelBase
             {
                 _notificationService.Show("成功", "截图已删除", NotificationType.Success);
                 
-                // 从列表中移除
                 Screenshots.Remove(screenshot);
                 IsEmpty = Screenshots.Count == 0;
             }
@@ -254,5 +256,7 @@ public partial class ScreenshotsViewModel : ViewModelBase
         {
             _notificationService.Show("错误", $"删除截图失败: {ex.Message}", NotificationType.Error);
         }
+
+        return Task.CompletedTask;
     }
 }

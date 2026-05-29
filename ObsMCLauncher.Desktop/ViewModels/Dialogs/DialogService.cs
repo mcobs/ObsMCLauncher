@@ -3,7 +3,6 @@ using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
-using Avalonia.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using ObsMCLauncher.Desktop.Services;
@@ -188,7 +187,7 @@ public partial class DialogService : ObservableObject
     }
 
     [RelayCommand]
-    private async void Choose(DialogResult result)
+    private async Task ChooseAsync(DialogResult result)
     {
         if (Current == null)
             return;
@@ -204,9 +203,9 @@ public partial class DialogService : ObservableObject
     }
 
     [RelayCommand]
-    private void Close()
+    private async Task CloseAsync()
     {
-        Choose(DialogResult.Cancel);
+        await ChooseAsync(DialogResult.Cancel);
     }
 
     [RelayCommand]
@@ -243,7 +242,7 @@ public partial class DialogService : ObservableObject
     }
 
     [RelayCommand]
-    private async void CloseUpdateDialog(bool confirmed)
+    private async Task CloseUpdateDialogAsync(bool confirmed)
     {
         if (UpdateDialogCurrent == null)
             return;

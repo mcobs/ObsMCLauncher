@@ -5,8 +5,6 @@ using Avalonia.Animation;
 using Avalonia.Animation.Easings;
 using Avalonia.Controls;
 using Avalonia.Media;
-using Avalonia.Media.Imaging;
-using Avalonia.Media.Transformation;
 using Avalonia.Styling;
 
 namespace ObsMCLauncher.Desktop.Services;
@@ -38,11 +36,7 @@ public class FluentAnimationService
         element.Opacity = 0;
         element.RenderTransform = new TransformGroup
         {
-            Children = new Transforms
-            {
-                new ScaleTransform { ScaleX = 0.9, ScaleY = 0.9 },
-                new TranslateTransform { Y = 20 }
-            }
+            Children = [new ScaleTransform { ScaleX = 0.9, ScaleY = 0.9 }, new TranslateTransform { Y = 20 }]
         };
         element.RenderTransformOrigin = new RelativePoint(0.5, 0.5, RelativeUnit.Absolute);
 
@@ -147,9 +141,9 @@ public class FluentAnimationService
             }
         };
 
-        var transformGroup = (TransformGroup)element.RenderTransform;
-        var scaleTransform = (ScaleTransform)transformGroup.Children[0];
-        var translateTransform = (TranslateTransform)transformGroup.Children[1];
+        var transformGroup = (TransformGroup)element.RenderTransform!;
+        var scaleTransform = (ScaleTransform)transformGroup.Children[0]!;
+        var translateTransform = (TranslateTransform)transformGroup.Children[1]!;
 
         await Task.WhenAll(
             opacityAnimation.RunAsync(element),
@@ -264,9 +258,9 @@ public class FluentAnimationService
             }
         };
 
-        var transformGroup = (TransformGroup)element.RenderTransform;
-        var scaleTransform = (ScaleTransform)transformGroup.Children[0];
-        var translateTransform = (TranslateTransform)transformGroup.Children[1];
+        var transformGroup = (TransformGroup)element.RenderTransform!;
+        var scaleTransform = (ScaleTransform)transformGroup.Children[0]!;
+        var translateTransform = (TranslateTransform)transformGroup.Children[1]!;
 
         await Task.WhenAll(
             opacityAnimation.RunAsync(element),

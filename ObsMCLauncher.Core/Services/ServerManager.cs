@@ -1,13 +1,7 @@
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
-using System.Linq;
 using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
-using System.Threading;
-using System.Threading.Tasks;
 using ObsMCLauncher.Core.Models;
 using ObsMCLauncher.Core.Utils;
 
@@ -23,7 +17,7 @@ public class ServerManager
 
     private ServerManager() { }
 
-    public async Task<int> PingServerAsync(string address, int port = 25565)
+    public static async Task<int> PingServerAsync(string address, int port = 25565)
     {
         var sw = Stopwatch.StartNew();
         try
@@ -41,13 +35,13 @@ public class ServerManager
             stream.ReadTimeout = PingTimeoutMs;
 
             var handshake = BuildHandshakePacket(address, (ushort)port);
-            await stream.WriteAsync(handshake, 0, handshake.Length);
-            await stream.WriteAsync(new byte[] { 0x01, 0x00 });
+            await stream.WriteAsync(handshake.AsMemory());
+            await stream.WriteAsync(new byte[] { 0x01, 0x00 }.AsMemory());
             await stream.FlushAsync();
             DebugLogger.Info("ServerManager", $"已发送握手包和状态请求包，包长度: {handshake.Length + 2}");
 
             var buf = new byte[4096];
-            var read = await stream.ReadAsync(buf, 0, buf.Length);
+            var read = await stream.ReadAsync(buf.AsMemory());
             DebugLogger.Info("ServerManager", $"收到响应数据: {read} 字节");
 
             tcpClient.Close();
@@ -76,7 +70,7 @@ public class ServerManager
         }
     }
 
-    public async Task<(int Ping, string? Version, int OnlinePlayers, int MaxPlayers, string? Motd, string? Icon)> QueryServerInfoAsync(string address, int port = 25565)
+    public static async Task<(int Ping, string? Version, int OnlinePlayers, int MaxPlayers, string? Motd, string? Icon)> QueryServerInfoAsync(string address, int port = 25565)
     {
         var sw = Stopwatch.StartNew();
         DebugLogger.Info("ServerManager", $"开始查询服务器信息: {address}:{port}");
@@ -98,8 +92,8 @@ public class ServerManager
                 stream.ReadTimeout = PingTimeoutMs;
 
                 var handshake = BuildHandshakePacket(address, (ushort)port);
-                await stream.WriteAsync(handshake, 0, handshake.Length);
-                await stream.WriteAsync(new byte[] { 0x01, 0x00 });
+                await stream.WriteAsync(handshake.AsMemory());
+                await stream.WriteAsync(new byte[] { 0x01, 0x00 }.AsMemory());
                 await stream.FlushAsync();
                 DebugLogger.Info("ServerManager", $"已发送握手包({handshake.Length}字节)和状态请求包(2字节)");
 
@@ -131,7 +125,7 @@ public class ServerManager
                 var totalRead = 0;
                 while (totalRead < jsonLength)
                 {
-                    var r = await stream.ReadAsync(jsonBytes, totalRead, jsonLength - totalRead);
+                    var r = await stream.ReadAsync(jsonBytes.AsMemory(totalRead, jsonLength - totalRead));
                     if (r == 0) 
                     {
                         DebugLogger.Warn("ServerManager", $"读取JSON数据时连接中断，已读取 {totalRead}/{jsonLength}");
@@ -145,7 +139,7 @@ public class ServerManager
                 sw.Stop();
 
                 var json = Encoding.UTF8.GetString(jsonBytes, 0, totalRead);
-                DebugLogger.Info("ServerManager", $"收到服务器响应 JSON: {json.Substring(0, Math.Min(200, json.Length))}{(json.Length > 200 ? "..." : "")}");
+                DebugLogger.Info("ServerManager", $"收到服务器响应 JSON: {json[..Math.Min(200, json.Length)]}{(json.Length > 200 ? "..." : "")}");
                 
                 var result = ParseServerJson(json, (int)sw.ElapsedMilliseconds);
                 DebugLogger.Info("ServerManager", $"查询完成: {address}:{port} - 延迟:{result.Ping}ms, 版本:{result.Version ?? "未知"}, 玩家:{result.OnlinePlayers}/{result.MaxPlayers}, MOTD:{(result.Motd?.Length ?? 0)}字符");
@@ -320,10 +314,10 @@ public class ServerManager
     {
         var tasks = servers.Select(s => QueryServerInfoAsync(s));
         var results = await Task.WhenAll(tasks);
-        return results.Where(s => s != null).Select(s => s!).ToList();
+        return results.OfType<ServerInfo>().ToList();
     }
 
-    public bool ValidateAddress(string address, out string error)
+    public static bool ValidateAddress(string address, out string error)
     {
         error = string.Empty;
         if (string.IsNullOrWhiteSpace(address))
@@ -339,7 +333,7 @@ public class ServerManager
         return true;
     }
 
-    public bool ValidatePort(int port, out string error)
+    public static bool ValidatePort(int port, out string error)
     {
         error = string.Empty;
         if (port < 1 || port > 65535)

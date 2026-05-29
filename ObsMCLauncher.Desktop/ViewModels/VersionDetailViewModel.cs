@@ -12,7 +12,6 @@ using ObsMCLauncher.Core.Models;
 using ObsMCLauncher.Core.Services;
 using ObsMCLauncher.Core.Services.Installers;
 using ObsMCLauncher.Core.Services.Minecraft;
-using ObsMCLauncher.Core.Services.Ui;
 using ObsMCLauncher.Core.Utils;
 using ObsMCLauncher.Desktop.ViewModels.Notifications;
 using ObsMCLauncher.Desktop.ViewModels.Dialogs;
@@ -629,11 +628,11 @@ public class VersionDetailViewModel : ViewModelBase
         }
     }
 
-    public ObservableCollection<string> ForgeVersionOptions { get; } = new();
-    public ObservableCollection<string> NeoForgeVersionOptions { get; } = new();
-    public ObservableCollection<string> FabricLoaderVersionOptions { get; } = new();
-    public ObservableCollection<string> QuiltLoaderVersionOptions { get; } = new();
-    public ObservableCollection<OptifineVersionModel> OptiFineVersionOptions { get; } = new();
+    public ObservableCollection<string> ForgeVersionOptions { get; } = [];
+    public ObservableCollection<string> NeoForgeVersionOptions { get; } = [];
+    public ObservableCollection<string> FabricLoaderVersionOptions { get; } = [];
+    public ObservableCollection<string> QuiltLoaderVersionOptions { get; } = [];
+    public ObservableCollection<OptifineVersionModel> OptiFineVersionOptions { get; } = [];
 
     public IRelayCommand BackCommand { get; }
     public IAsyncRelayCommand InstallCommand { get; }
@@ -844,7 +843,7 @@ public class VersionDetailViewModel : ViewModelBase
             // === 阶段2: OptiFine安装 ===
             if (hasOptiFine)
             {
-                if (IsForgeSelected && !string.IsNullOrEmpty(SelectedOptiFineVersion.Forge))
+                if (IsForgeSelected && SelectedOptiFineVersion != null && !string.IsNullOrEmpty(SelectedOptiFineVersion.Forge))
                 {
                     if (!SelectedOptiFineVersion.Forge.Contains(ForgeVersion))
                     {
@@ -855,15 +854,15 @@ public class VersionDetailViewModel : ViewModelBase
                 Status = "正在下载OptiFine安装器...";
                 var tempDir = Path.Combine(gameDir, "temp");
                 if (!Directory.Exists(tempDir)) Directory.CreateDirectory(tempDir);
-                var optiPath = Path.Combine(tempDir, SelectedOptiFineVersion.Filename);
+                var optiPath = Path.Combine(tempDir, SelectedOptiFineVersion?.Filename ?? "optifine.jar");
 
                 var optiFineStart = loaderEnd;
                 var optiFineDownloadEnd = optiFineStart + (optiFineEnd - optiFineStart) * 0.5;
 
-                await _optiFineService.DownloadOptifineInstallerAsync(SelectedOptiFineVersion, optiPath, (msg, p, tp, b, tb) =>
+                await _optiFineService.DownloadOptifineInstallerAsync(SelectedOptiFineVersion!, optiPath, (msg, p, tp, b, tb) =>
                 {
                     Status = "正在下载OptiFine安装器...";
-                    CurrentFileName = SelectedOptiFineVersion.Filename;
+                    CurrentFileName = SelectedOptiFineVersion!.Filename;
                     CurrentFileProgress = p;
                     DownloadSizeStatus = $"{FormatFileSize(b)} / {FormatFileSize(tb)}";
                     Progress = optiFineStart + (p / 100.0) * (optiFineDownloadEnd - optiFineStart);
@@ -873,10 +872,10 @@ public class VersionDetailViewModel : ViewModelBase
                 {
                     Status = "正在将OptiFine安装为Mod...";
                     var modsDir = cfg.GetModsDirectory(CustomVersionName);
-                    await _optiFineService.DownloadOptiFineAsModAsync(SelectedOptiFineVersion, modsDir, (msg, p, tp, b, tb) =>
+                    await _optiFineService.DownloadOptiFineAsModAsync(SelectedOptiFineVersion!, modsDir, (msg, p, tp, b, tb) =>
                     {
                         Status = "正在将OptiFine安装为Mod...";
-                        CurrentFileName = SelectedOptiFineVersion.Filename;
+                        CurrentFileName = SelectedOptiFineVersion!.Filename;
                         CurrentFileProgress = p;
                         Progress = optiFineDownloadEnd + (p / 100.0) * (optiFineEnd - optiFineDownloadEnd);
                     }, token);
@@ -885,7 +884,7 @@ public class VersionDetailViewModel : ViewModelBase
                 {
                     Status = "正在安装OptiFine...";
                     var javaPath = cfg.GetActualJavaPath(SelectedMcVersion);
-                    await _optiFineService.InstallOptifineAsync(SelectedOptiFineVersion, optiPath, gameDir, SelectedMcVersion, javaPath, CustomVersionName, null, (msg, p, tp, b, tb) =>
+                    await _optiFineService.InstallOptifineAsync(SelectedOptiFineVersion!, optiPath, gameDir, SelectedMcVersion, javaPath, CustomVersionName, null, (msg, p, tp, b, tb) =>
                     {
                         Status = msg;
                         CurrentFileProgress = p;
@@ -1005,14 +1004,14 @@ public class VersionDetailViewModel : ViewModelBase
         }
     }
 
-    private string FormatSpeed(double bytesPerSecond)
+    private static string FormatSpeed(double bytesPerSecond)
     {
         if (bytesPerSecond < 1024) return $"{bytesPerSecond:F1} B/s";
         if (bytesPerSecond < 1024 * 1024) return $"{bytesPerSecond / 1024:F1} KB/s";
         return $"{bytesPerSecond / (1024 * 1024):F1} MB/s";
     }
 
-    private string FormatFileSize(long bytes)
+    private static string FormatFileSize(long bytes)
     {
         if (bytes < 1024) return $"{bytes} B";
         if (bytes < 1024 * 1024) return $"{bytes / 1024.0:F1} KB";

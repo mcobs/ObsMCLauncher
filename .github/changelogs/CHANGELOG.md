@@ -6,6 +6,13 @@
 - 更新系统支持多平台资产匹配
 
 ### 优化
+- 修复多个空引用警告和async/await问题
+- 清理未使用的using指令、字段和成员
+- GameLauncher代码优化：缓存JsonSerializerOptions、移除未使用参数、string.Contains改用char重载、HashSet.Add替代Contains+Add
+- FluentAnimationService集合初始化简化为集合表达式
+- CurseForgeService代码优化：缓存JsonSerializerOptions、简化new表达式和集合初始化、移除冗余using
+- ModpackInstallService代码优化：移除冗余using、缓存JsonSerializerOptions、移除未使用参数、简化类型名称和集合初始化
+- GameLogWindow/ServerManager/VersionDetailViewModel代码优化：使用GeneratedRegex、范围运算符、集合表达式、static方法、Memory重载等
 - 磁盘缓存过期时间由30分钟调整为1个月
 - Java检测适配Linux/macOS，支持各平台常见Java安装路径
 - 游戏目录默认路径适配各平台（Windows: %APPDATA%, macOS: ~/Library/Application Support, Linux: ~/.minecraft）

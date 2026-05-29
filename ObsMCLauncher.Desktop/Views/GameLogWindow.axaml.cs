@@ -26,15 +26,17 @@ public partial class GameLogWindow : Window
     }
 
     private int _lineCount = 0;
-    private readonly List<string> _logMessages = new();
-    private bool _isGameRunning = true;
+    private readonly List<string> _logMessages = [];
 
     private const int MaxLines = 5000;
     private const int TrimTo = 3500;
 
-    private static readonly Regex AnsiEscapeRegex = new(@"\x1b\[(\d+(?:;\d+)*)m", RegexOptions.Compiled);
-    private static readonly Regex LogLevelRegex = new(@"\/(INFO|WARN|WARNING|ERROR|SEVERE|FATAL|DEBUG|TRACE)\]?:", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-    private static readonly Regex SectionSignRegex = new(@"\u00a7([0-9a-fA-FrR])", RegexOptions.Compiled);
+    [GeneratedRegex(@"\x1b\[(\d+(?:;\d+)*)m")]
+    private static partial Regex AnsiEscapeRegex();
+    [GeneratedRegex(@"\/(INFO|WARN|WARNING|ERROR|SEVERE|FATAL|DEBUG|TRACE)\]?:", RegexOptions.IgnoreCase)]
+    private static partial Regex LogLevelRegex();
+    [GeneratedRegex(@"\u00a7([0-9a-fA-FrR])")]
+    private static partial Regex SectionSignRegex();
 
     private static readonly Dictionary<char, string> SectionCodeToAnsi = new()
     {
@@ -97,7 +99,7 @@ public partial class GameLogWindow : Window
         [97] = "#333333",
     };
 
-    private bool IsLightTheme => Application.Current?.ActualThemeVariant == ThemeVariant.Light;
+    private static bool IsLightTheme => Application.Current?.ActualThemeVariant == ThemeVariant.Light;
     private Dictionary<int, string> CurrentAnsiColors => IsLightTheme ? LightThemeAnsiColors : DarkThemeAnsiColors;
 
     public GameLogWindow()
@@ -185,7 +187,7 @@ public partial class GameLogWindow : Window
     private void AddAnsiColoredLine(string line)
     {
         var colors = CurrentAnsiColors;
-        var matches = AnsiEscapeRegex.Matches(line);
+        var matches = AnsiEscapeRegex().Matches(line);
         var lastIndex = 0;
         var currentColor = -1;
         var isBold = false;
@@ -194,7 +196,7 @@ public partial class GameLogWindow : Window
         {
             if (match.Index > lastIndex)
             {
-                var text = line.Substring(lastIndex, match.Index - lastIndex);
+                var text = line[lastIndex..match.Index];
                 if (!string.IsNullOrEmpty(text))
                 {
                     var run = new Run(text);
@@ -202,7 +204,7 @@ public partial class GameLogWindow : Window
                     {
                         run.Foreground = new SolidColorBrush(Color.Parse(colorHex));
                     }
-                    LogTextBlock.Inlines.Add(run);
+                    LogTextBlock.Inlines!.Add(run);
                 }
             }
 
@@ -241,7 +243,7 @@ public partial class GameLogWindow : Window
 
         if (lastIndex < line.Length)
         {
-            var text = line.Substring(lastIndex);
+            var text = line[lastIndex..];
             if (!string.IsNullOrEmpty(text))
             {
                 var run = new Run(text);
@@ -249,30 +251,30 @@ public partial class GameLogWindow : Window
                 {
                     run.Foreground = new SolidColorBrush(Color.Parse(colorHex));
                 }
-                LogTextBlock.Inlines.Add(run);
+                LogTextBlock.Inlines!.Add(run);
             }
         }
     }
 
     private void AddLogLevelColoredLine(string line)
     {
-        var logLevelMatch = LogLevelRegex.Match(line);
+        var logLevelMatch = LogLevelRegex().Match(line);
         if (!logLevelMatch.Success)
         {
-            LogTextBlock.Inlines.Add(new Run(line));
+            LogTextBlock.Inlines!.Add(new Run(line));
             return;
         }
 
         var level = logLevelMatch.Groups[1].Value.ToUpperInvariant();
         var colorHex = GetLogLevelColor(level);
 
-        var beforeText = line.Substring(0, logLevelMatch.Index);
+        var beforeText = line[..logLevelMatch.Index];
         var levelText = logLevelMatch.Value;
-        var afterText = line.Substring(logLevelMatch.Index + logLevelMatch.Length);
+        var afterText = line[(logLevelMatch.Index + logLevelMatch.Length)..];
 
         if (!string.IsNullOrEmpty(beforeText))
         {
-            LogTextBlock.Inlines.Add(new Run(beforeText));
+            LogTextBlock.Inlines!.Add(new Run(beforeText));
         }
 
         var levelRun = new Run(levelText);
@@ -280,11 +282,11 @@ public partial class GameLogWindow : Window
         {
             levelRun.Foreground = new SolidColorBrush(Color.Parse(colorHex));
         }
-        LogTextBlock.Inlines.Add(levelRun);
+        LogTextBlock.Inlines!.Add(levelRun);
 
         if (!string.IsNullOrEmpty(afterText))
         {
-            LogTextBlock.Inlines.Add(new Run(afterText));
+            LogTextBlock.Inlines!.Add(new Run(afterText));
         }
     }
 
@@ -333,7 +335,7 @@ public partial class GameLogWindow : Window
     {
         if (!text.Contains('\u00a7')) return text;
 
-        return SectionSignRegex.Replace(text, match =>
+        return SectionSignRegex().Replace(text, match =>
         {
             var code = char.ToLowerInvariant(match.Groups[1].Value[0]);
             return SectionCodeToAnsi.TryGetValue(code, out var ansi) ? ansi : "";
@@ -348,7 +350,6 @@ public partial class GameLogWindow : Window
             return;
         }
 
-        _isGameRunning = false;
         StatusDot.Background = Brushes.Gray;
         StatusText.Text = $"游戏已退出 (代码: {exitCode})";
 
@@ -366,7 +367,6 @@ public partial class GameLogWindow : Window
             Application.Current.ActualThemeVariantChanged -= OnThemeChanged;
         }
 
-        _isGameRunning = false;
         if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             if (desktop.MainWindow == null || !desktop.MainWindow.IsVisible)
@@ -378,7 +378,7 @@ public partial class GameLogWindow : Window
 
     private void ClearButton_Click(object? sender, RoutedEventArgs e)
     {
-        if (LogTextBlock.Inlines != null)
+        if (LogTextBlock.Inlines is not null)
         {
             LogTextBlock.Inlines.Clear();
         }
@@ -400,7 +400,7 @@ public partial class GameLogWindow : Window
             DefaultExtension = "txt",
             FileTypeChoices = new[]
             {
-                new FilePickerFileType("文本文件") { Patterns = new[] { "*.txt", "*.log" } }
+                new FilePickerFileType("文本文件") { Patterns = ["*.txt", "*.log"] }
             }
         };
 
@@ -427,7 +427,7 @@ public partial class GameLogWindow : Window
 
     private static string StripAnsiCodes(string text)
     {
-        return AnsiEscapeRegex.Replace(text, "");
+        return AnsiEscapeRegex().Replace(text, "");
     }
 
     private void MinimizeButton_Click(object? sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;

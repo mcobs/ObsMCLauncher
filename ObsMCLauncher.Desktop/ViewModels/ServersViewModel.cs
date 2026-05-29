@@ -148,9 +148,10 @@ public partial class ServersViewModel : ViewModelBase, IDisposable
     }
 
     [RelayCommand]
-    private async Task RefreshAsync()
+    private Task RefreshAsync()
     {
         Load();
+        return Task.CompletedTask;
     }
 
     [RelayCommand]
@@ -311,9 +312,9 @@ public partial class ServersViewModel : ViewModelBase, IDisposable
     }
 
     [RelayCommand]
-    private async Task ConfirmAddServerAsync()
+    private Task ConfirmAddServerAsync()
     {
-        if (!ValidateServerInput(AddServerDialog)) return;
+        if (!ValidateServerInput(AddServerDialog)) return Task.CompletedTask;
 
         try
         {
@@ -323,7 +324,7 @@ public partial class ServersViewModel : ViewModelBase, IDisposable
             if (servers.Any(s => s.Name == AddServerDialog.Name.Trim() && s.Address == AddServerDialog.Address.Trim()))
             {
                 _notificationService.Show("错误", "已存在相同名称和地址的服务器", NotificationType.Error);
-                return;
+                return Task.CompletedTask;
             }
 
             var newServer = new ServerInfo
@@ -347,6 +348,8 @@ public partial class ServersViewModel : ViewModelBase, IDisposable
         {
             _notificationService.Show("错误", $"添加服务器失败: {ex.Message}", NotificationType.Error);
         }
+
+        return Task.CompletedTask;
     }
 
     [RelayCommand]
@@ -372,10 +375,10 @@ public partial class ServersViewModel : ViewModelBase, IDisposable
     }
 
     [RelayCommand]
-    private async Task ConfirmEditServerAsync()
+    private Task ConfirmEditServerAsync()
     {
-        if (!ValidateServerInput(EditServerDialog)) return;
-        if (SelectedServer == null) return;
+        if (!ValidateServerInput(EditServerDialog)) return Task.CompletedTask;
+        if (SelectedServer == null) return Task.CompletedTask;
 
         try
         {
@@ -404,6 +407,8 @@ public partial class ServersViewModel : ViewModelBase, IDisposable
         {
             _notificationService.Show("错误", $"更新服务器失败: {ex.Message}", NotificationType.Error);
         }
+
+        return Task.CompletedTask;
     }
 
     [RelayCommand]
@@ -658,7 +663,7 @@ public partial class ServersViewModel : ViewModelBase, IDisposable
 
         try
         {
-            var (ping, _, _, _, _, _) = await ServerManager.Instance.QueryServerInfoAsync(server.Address, server.Port);
+            var (ping, _, _, _, _, _) = await ServerManager.QueryServerInfoAsync(server.Address, server.Port);
 
             server.Ping = ping;
             server.IsOnline = ping > 0;

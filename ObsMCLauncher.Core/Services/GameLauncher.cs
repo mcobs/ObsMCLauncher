@@ -1,12 +1,7 @@
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
 using System.IO.Compression;
-using System.Linq;
 using System.Text;
 using System.Text.Json;
-using System.Threading;
 using System.Threading.Tasks;
 using ObsMCLauncher.Core.Models;
 using ObsMCLauncher.Core.Services.Accounts;
@@ -15,11 +10,13 @@ namespace ObsMCLauncher.Core.Services;
 
 public class GameLauncher
 {
+    private static readonly JsonSerializerOptions CachedJsonOptions = new() { PropertyNameCaseInsensitive = true };
+
     public static string LastError { get; private set; } = string.Empty;
 
-    public static List<string> MissingLibraries { get; private set; } = new();
+    public static List<string> MissingLibraries { get; private set; } = [];
 
-    public static List<string> MissingOptionalLibraries { get; private set; } = new();
+    public static List<string> MissingOptionalLibraries { get; private set; } = [];
 
     public static async Task<bool> CheckGameIntegrityAsync(
         string versionId,
@@ -44,10 +41,7 @@ public class GameLauncher
             }
 
             var versionJson = await File.ReadAllTextAsync(versionJsonPath, cancellationToken).ConfigureAwait(false);
-            var versionInfo = JsonSerializer.Deserialize<VersionInfo>(versionJson, new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            });
+            var versionInfo = JsonSerializer.Deserialize<VersionInfo>(versionJson, CachedJsonOptions);
 
             if (versionInfo == null)
             {
@@ -89,7 +83,7 @@ public class GameLauncher
             onProgressUpdate?.Invoke("正在检查游戏依赖库...");
             cancellationToken.ThrowIfCancellationRequested();
 
-            var (missingRequired, missingOptional) = GetMissingLibraries(config.GameDirectory, versionId, versionInfo);
+            var (missingRequired, missingOptional) = GetMissingLibraries(config.GameDirectory, versionInfo);
             MissingLibraries = missingRequired;
             MissingOptionalLibraries = missingOptional;
 
@@ -209,10 +203,7 @@ public class GameLauncher
             }
 
             var versionJson = File.ReadAllText(versionJsonPath);
-            var versionInfo = JsonSerializer.Deserialize<VersionInfo>(versionJson, new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            });
+            var versionInfo = JsonSerializer.Deserialize<VersionInfo>(versionJson, CachedJsonOptions);
 
             if (versionInfo == null)
             {
@@ -253,7 +244,7 @@ public class GameLauncher
 
             onProgressUpdate?.Invoke("正在解压本地库文件...");
             cancellationToken.ThrowIfCancellationRequested();
-            ExtractNatives(config.GameDirectory, versionId, versionInfo, nativesDir);
+            ExtractNatives(config.GameDirectory, versionInfo, nativesDir);
 
             onProgressUpdate?.Invoke("正在验证游戏客户端文件...");
             cancellationToken.ThrowIfCancellationRequested();
@@ -268,7 +259,7 @@ public class GameLauncher
             onProgressUpdate?.Invoke("正在检查游戏依赖库...");
             cancellationToken.ThrowIfCancellationRequested();
 
-            var (missingRequired, missingOptional) = GetMissingLibraries(config.GameDirectory, versionId, versionInfo);
+            var (missingRequired, missingOptional) = GetMissingLibraries(config.GameDirectory, versionInfo);
             MissingLibraries = missingRequired;
             MissingOptionalLibraries = missingOptional;
 
@@ -514,7 +505,7 @@ public class GameLauncher
 
                             var modulePathList = new List<string>();
 
-                            var moduleJars = replacedModulePath.Split(new[] { Path.PathSeparator }, StringSplitOptions.RemoveEmptyEntries);
+                            var moduleJars = replacedModulePath.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries);
                             foreach (var jar in moduleJars)
                             {
                                 var jarPath = jar.Trim().Trim('"');
@@ -530,9 +521,8 @@ public class GameLauncher
 
                                     var normalizedPath = Path.GetFullPath(jarPath);
 
-                                    if (!modulePathJars.Contains(normalizedPath))
+                                    if (modulePathJars.Add(normalizedPath))
                                     {
-                                        modulePathJars.Add(normalizedPath);
                                         modulePathList.Add(normalizedPath);
                                     }
                                 }
@@ -697,7 +687,7 @@ public class GameLauncher
         args.Append($"\"{classpathString}\" ");
 
         var mainClass = versionInfo.MainClass ?? "";
-        if (mainClass.Contains(" "))
+        if (mainClass.Contains(' '))
         {
             args.Append($"\"{mainClass}\" ");
         }
@@ -715,13 +705,13 @@ public class GameLauncher
             }
         }
 
-        var gameArgs = BuildGameArguments(versionId, account, config, versionInfo, gameDir, assetsDir);
+        var gameArgs = BuildGameArguments(versionId, account, versionInfo, gameDir, assetsDir);
         args.Append(gameArgs);
 
         return args.ToString().Trim();
     }
 
-    private static string BuildGameArguments(string versionId, GameAccount account, LauncherConfig config, VersionInfo versionInfo, string gameDir, string assetsDir)
+    private static string BuildGameArguments(string versionId, GameAccount account, VersionInfo versionInfo, string gameDir, string assetsDir)
     {
         var args = new StringBuilder();
 
@@ -902,7 +892,7 @@ public class GameLauncher
         if (string.IsNullOrEmpty(arg))
             return arg;
 
-        if ((arg.StartsWith("--add-opens") || arg.StartsWith("--add-exports")) && arg.Contains("="))
+        if ((arg.StartsWith("--add-opens") || arg.StartsWith("--add-exports")) && arg.Contains('='))
         {
             var parts = arg.Split('=');
             if (parts.Length == 2)
@@ -920,10 +910,10 @@ public class GameLauncher
             }
         }
 
-        if (arg.Contains("=") && arg.Contains("/"))
+        if (arg.Contains('=') && arg.Contains('/'))
         {
             var parts = arg.Split('=');
-            if (parts.Length == 2 && parts[0].Contains("/"))
+            if (parts.Length == 2 && parts[0].Contains('/'))
             {
                 var targetModule = parts[1];
                 if (!targetModule.Equals("ALL-UNNAMED", StringComparison.OrdinalIgnoreCase) &&
@@ -987,7 +977,7 @@ public class GameLauncher
         return allowed;
     }
 
-    private static (List<string> missingRequired, List<string> missingOptional) GetMissingLibraries(string gameDir, string versionId, VersionInfo versionInfo)
+    private static (List<string> missingRequired, List<string> missingOptional) GetMissingLibraries(string gameDir, VersionInfo versionInfo)
     {
         var missingRequired = new List<string>();
         var missingOptional = new List<string>();
@@ -1120,19 +1110,6 @@ public class GameLauncher
         return "unknown";
     }
 
-    private static string FormatSpeed(double bytesPerSecond)
-    {
-        if (bytesPerSecond <= 0) return "0 B/s";
-        string[] units = { "B/s", "KB/s", "MB/s", "GB/s" };
-        int unitIndex = 0;
-        while (bytesPerSecond >= 1024 && unitIndex < units.Length - 1)
-        {
-            bytesPerSecond /= 1024;
-            unitIndex++;
-        }
-        return $"{bytesPerSecond:F2} {units[unitIndex]}";
-    }
-
     private class VersionInfo
     {
         public string? MainClass { get; set; }
@@ -1188,7 +1165,7 @@ public class GameLauncher
         public string? Name { get; set; }
     }
 
-    private static void ExtractNatives(string gameDir, string versionId, VersionInfo versionInfo, string nativesDir)
+    private static void ExtractNatives(string gameDir, VersionInfo versionInfo, string nativesDir)
     {
         try
         {
@@ -1243,7 +1220,7 @@ public class GameLauncher
 
                 try
                 {
-                    using var archive = System.IO.Compression.ZipFile.OpenRead(nativesJarPath);
+                    using var archive = ZipFile.OpenRead(nativesJarPath);
 
                     foreach (var entry in archive.Entries)
                     {
@@ -1311,10 +1288,7 @@ public class GameLauncher
             }
 
             var parentJson = File.ReadAllText(parentJsonPath);
-            var parentVersion = JsonSerializer.Deserialize<VersionInfo>(parentJson, new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            });
+            var parentVersion = JsonSerializer.Deserialize<VersionInfo>(parentJson, CachedJsonOptions);
 
             if (parentVersion == null)
             {
@@ -1389,12 +1363,12 @@ public class GameLauncher
 
             if (!File.Exists(icon16Path))
             {
-                CreateMinimalTransparentPng(icon16Path, 16, 16);
+                CreateMinimalTransparentPng(icon16Path);
             }
 
             if (!File.Exists(icon32Path))
             {
-                CreateMinimalTransparentPng(icon32Path, 32, 32);
+                CreateMinimalTransparentPng(icon32Path);
             }
         }
         catch
@@ -1403,7 +1377,7 @@ public class GameLauncher
     }
 
     // D2: 写最小 PNG 字节（透明）
-    private static void CreateMinimalTransparentPng(string filePath, int width, int height)
+    private static void CreateMinimalTransparentPng(string filePath)
     {
         // 1x1 透明 PNG
         // iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+X7iQAAAAASUVORK5CYII=
@@ -1439,7 +1413,7 @@ public class GameLauncher
         }
     }
 
-    [System.Runtime.InteropServices.DllImport("kernel32.dll", CharSet = System.Runtime.InteropServices.CharSet.Auto, SetLastError = true)]
+    [System.Runtime.InteropServices.DllImport("kernel32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode, SetLastError = true)]
     [System.Runtime.Versioning.SupportedOSPlatform("windows")]
     private static extern uint GetShortPathName(
         string lpszLongPath,

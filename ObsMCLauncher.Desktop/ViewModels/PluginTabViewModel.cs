@@ -1,4 +1,3 @@
-using System;
 using CommunityToolkit.Mvvm.ComponentModel;
 using ObsMCLauncher.Core.Utils;
 
@@ -36,6 +35,6 @@ public partial class PluginTabViewModel : ViewModelBase
 
     public void Initialize()
     {
-        DebugLogger.Info("PluginTabViewModel", $"初始化插件标签页: {_title} (插件: {PluginId}, tabId: {TabId})");
+        DebugLogger.Info("PluginTabViewModel", $"初始化插件标签页: {Title} (插件: {PluginId}, tabId: {TabId})");
     }
 }

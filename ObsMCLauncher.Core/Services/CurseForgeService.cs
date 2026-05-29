@@ -1,12 +1,5 @@
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Net.Http;
 using System.Text.Json;
-using System.Threading;
-using System.Threading.Tasks;
 using ObsMCLauncher.Core.Models;
 using ObsMCLauncher.Core.Services.Mirror;
 using ObsMCLauncher.Core.Utils;
@@ -15,7 +8,8 @@ namespace ObsMCLauncher.Core.Services;
 
 public static class CurseForgeService
 {
-    private static readonly HttpClient _httpClient = new HttpClient();
+    private static readonly HttpClient _httpClient = new();
+    private static readonly JsonSerializerOptions CachedJsonOptions = new() { PropertyNameCaseInsensitive = true };
     private const string OfficialApiBase = "https://api.curseforge.com";
     private const string MirrorApiBase = "https://mod.mcimirror.top/curseforge";
     private const string API_KEY = "$2a$10$74bDUfowjVtBbxnOLhRJG.06YALKhqHDmALto8HCJGPQGgZkBpGZS";
@@ -49,8 +43,6 @@ public static class CurseForgeService
 
     private static bool ShouldUseMirror =>
         LauncherConfig.Load().MirrorSourceMode == MirrorSourceMode.PreferMirror && MirrorHealthChecker.IsCurseForgeMirrorAvailable;
-
-    private static string ApiBase => ShouldUseMirror ? MirrorApiBase : OfficialApiBase;
 
     public static async Task<CurseForgeResponse<List<CurseForgeMod>>?> SearchModsAsync(
         string searchFilter = "",
@@ -107,8 +99,7 @@ public static class CurseForgeService
 
         try
         {
-            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-            var result = JsonSerializer.Deserialize<CurseForgeResponse<List<CurseForgeMod>>>(json, options);
+            var result = JsonSerializer.Deserialize<CurseForgeResponse<List<CurseForgeMod>>>(json, CachedJsonOptions);
             if (result != null)
             {
                 _searchCache[cacheKey] = (result, DateTime.Now + _cacheDuration);
@@ -146,8 +137,7 @@ public static class CurseForgeService
 
         try
         {
-            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-            var result = JsonSerializer.Deserialize<CurseForgeResponse<CurseForgeMod>>(json, options);
+            var result = JsonSerializer.Deserialize<CurseForgeResponse<CurseForgeMod>>(json, CachedJsonOptions);
             if (result?.Data != null)
             {
                 // 更新内存缓存
@@ -167,7 +157,7 @@ public static class CurseForgeService
     public static async Task<Dictionary<int, CurseForgeMod>?> GetModsAsync(IEnumerable<int> modIds)
     {
         var idList = modIds.Distinct().ToList();
-        if (idList.Count == 0) return new Dictionary<int, CurseForgeMod>();
+        if (idList.Count == 0) return [];
 
         var result = new Dictionary<int, CurseForgeMod>();
         var uncachedIds = new List<int>();
@@ -201,8 +191,7 @@ public static class CurseForgeService
 
         try
         {
-            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-            var response = JsonSerializer.Deserialize<CurseForgeResponse<List<CurseForgeMod>>>(json, options);
+            var response = JsonSerializer.Deserialize<CurseForgeResponse<List<CurseForgeMod>>>(json, CachedJsonOptions);
             if (response?.Data == null) return result.Count > 0 ? result : null;
             foreach (var mod in response.Data)
             {
@@ -234,8 +223,7 @@ public static class CurseForgeService
 
         try
         {
-            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-            var result = JsonSerializer.Deserialize<CurseForgeResponse<CurseForgeFile>>(json, options);
+            var result = JsonSerializer.Deserialize<CurseForgeResponse<CurseForgeFile>>(json, CachedJsonOptions);
             if (result?.Data != null)
             {
                 await ResourceCacheService.CacheDataAsync(cacheKey, result.Data, "curseforge");
@@ -292,8 +280,7 @@ public static class CurseForgeService
 
         try
         {
-            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-            var result = JsonSerializer.Deserialize<CurseForgeResponse<List<CurseForgeFile>>>(json, options);
+            var result = JsonSerializer.Deserialize<CurseForgeResponse<List<CurseForgeFile>>>(json, CachedJsonOptions);
             if (result?.Data != null)
             {
                 _filesCache[cacheKey] = (result.Data, DateTime.Now + _cacheDuration);
@@ -336,8 +323,7 @@ public static class CurseForgeService
 
         try
         {
-            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-            var result = JsonSerializer.Deserialize<CurseForgeResponse<List<CurseForgeCategory>>>(json, options);
+            var result = JsonSerializer.Deserialize<CurseForgeResponse<List<CurseForgeCategory>>>(json, CachedJsonOptions);
             if (result?.Data != null)
             {
                 _categoryCache[cacheKey] = (result.Data, DateTime.Now + _categoryCacheDuration);
