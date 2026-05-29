@@ -90,17 +90,17 @@ public class LauncherConfig
     public string GameDirectory
         => GameDirectoryLocation switch
         {
-            DirectoryLocation.AppData => GetDefaultGameDirectory(),
+            DirectoryLocation.AppData => GetDefaultAppdataGameDirectory(),
             DirectoryLocation.RunningDirectory => Path.Combine(
                 AppDomain.CurrentDomain.BaseDirectory,
                 ".minecraft"),
             DirectoryLocation.Custom => string.IsNullOrEmpty(CustomGameDirectory)
-                ? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ".minecraft")
+                ? GetDefaultAppdataGameDirectory()
                 : CustomGameDirectory,
-            _ => Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ".minecraft")
+            _ => GetDefaultAppdataGameDirectory()
         };
 
-    private static string GetDefaultGameDirectory()
+    public static string GetDefaultAppdataGameDirectory()
     {
         if (OperatingSystem.IsMacOS())
         {
@@ -155,6 +155,8 @@ public class LauncherConfig
     public List<HomeCardConfig> HomeCards { get; set; } = [];
 
     public List<VersionIsolationSetting> VersionIsolationSettings { get; set; } = [];
+
+    public List<string> CustomGameDirectories { get; set; } = [];
 
     public static string GetConfigFilePath()
     {

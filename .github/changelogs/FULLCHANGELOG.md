@@ -5,11 +5,18 @@
 ## [v1.0.0] - 2026-05-xx
 
 ### 新增
+- 版本管理页新增侧边栏式游戏目录管理，支持多目录切换、添加、删除
+- 目录删除支持确认对话框（含不可逆警告），永久删除文件夹并自动切换到下一个可用目录
+- 游戏目录切换后自动同步更新设置配置，并刷新已安装版本列表
+- 下载路径与选中游戏目录动态关联，新下载版本自动存放到当前目录
+- 目录切换支持加载状态提示和权限不足等异常处理
 - 适配Linux和macOS平台，支持多平台构建和运行
 - GitHub CI构建支持Linux和macOS，Release自动发布多平台版本
 - 更新系统支持多平台资产匹配
 
 ### 优化
+- 游戏目录选择重构为左侧滑出式边栏面板，减少界面空间占用
+- 将游戏目录设置从设置页迁移至版本管理模块，优化用户操作流程
 - 修复多个空引用警告和async/await问题
 - 清理未使用的using指令、字段和成员
 - GameLauncher代码优化：缓存JsonSerializerOptions、移除未使用参数、string.Contains改用char重载、HashSet.Add替代Contains+Add
@@ -25,6 +32,10 @@
 - 路径分隔符使用Path.DirectorySeparatorChar替代硬编码反斜杠
 
 ### 修复
+- 修复侧边栏目录项删除按钮不可点击的问题（移除!IsDefault绑定限制）
+- 修复侧边栏目录项文件夹图标不显示的问题（Path元素缺少Fill属性）
+- 修复默认游戏目录在Custom模式空路径时错误回退到运行目录的问题
+- 统一默认游戏目录路径计算逻辑至 LauncherConfig.GetDefaultAppdataGameDirectory()
 - Windows 版本运行时不再出现控制台窗口（OutputType 条件设为 WinExe）
 - CI 构建添加 NuGet 包缓存，加速重复构建
 - CurseForge 搜索接口接入双层缓存，减少重复 API 请求

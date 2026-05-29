@@ -19,7 +19,7 @@
           <StackPanel Spacing="20">
             <TextBlock Text="游戏设置" FontSize="16" FontWeight="SemiBold"/>
 
-            <StackPanel Spacing="8">
+            <StackPanel Spacing="8" IsVisible="False">
               <TextBlock Text="游戏目录" FontSize="13" FontWeight="SemiBold"/>
               <ComboBox ItemsSource="{Binding GameDirectoryLocationOptions}" SelectedItem="{Binding GameDirectoryLocation}" HorizontalAlignment="Stretch">
                 <ComboBox.ItemTemplate>

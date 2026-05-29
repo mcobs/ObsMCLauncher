@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using ObsMCLauncher.Core.Models;
 
 namespace ObsMCLauncher.Core.Services.Download;
 
@@ -50,18 +51,6 @@ public static class MinecraftDownloadService
 
     public static string GetDefaultGameDirectory()
     {
-        if (OperatingSystem.IsMacOS())
-        {
-            return Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-                "Library", "Application Support", "minecraft");
-        }
-        if (OperatingSystem.IsLinux())
-        {
-            return Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-                ".minecraft");
-        }
-        return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), ".minecraft");
+        return LauncherConfig.GetDefaultAppdataGameDirectory();
     }
 }
