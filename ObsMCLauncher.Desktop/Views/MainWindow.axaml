@@ -735,9 +735,27 @@
                                 <TranslateTransform X="{Binding AnimationOffsetX}" Y="{Binding AnimationOffsetY}" />
                             </TransformGroup>
                         </Border.RenderTransform>
-                        <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto">
-                            <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding Title}" FontWeight="SemiBold" FontSize="13"/>
-                            <Button Grid.Row="0" Grid.Column="1"
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <Border Grid.Row="0" Grid.Column="0"
+                                    Width="4" Height="16"
+                                    CornerRadius="2"
+                                    VerticalAlignment="Center"
+                                    Margin="0,0,10,0"
+                                    Background="{Binding TypeAccentColor}" />
+
+                            <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Title}" FontWeight="SemiBold" FontSize="13"/>
+                            <Button Grid.Row="0" Grid.Column="2"
                                     Width="24" Height="24"
                                     Classes="ghost" Padding="0"
                                     IsVisible="{Binding CanClose}"
@@ -748,20 +766,20 @@
                                       Stroke="{DynamicResource TextSecondaryBrush}" StrokeThickness="2"/>
                             </Button>
 
-                            <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding Message}" Opacity="0.8" TextWrapping="Wrap" FontSize="12" Margin="0,4,0,0"/>
+                            <TextBlock Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding Message}" Opacity="0.8" TextWrapping="Wrap" FontSize="12" Margin="0,4,0,0"/>
 
-                            <ProgressBar Grid.Row="2" Grid.ColumnSpan="2"
+                            <ProgressBar Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2"
                                          Height="3"
                                          Minimum="0" Maximum="100"
-                                         Value="{Binding Progress}"
+                                         Value="{Binding DisplayProgress}"
                                          IsIndeterminate="False"
                                          IsVisible="{Binding IsProgress}"
                                          Margin="0,8,0,0" />
 
-                            <ProgressBar Grid.Row="2" Grid.ColumnSpan="2"
+                            <ProgressBar Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2"
                                          Height="3"
                                          Minimum="0" Maximum="100"
-                                         Value="{Binding CountdownProgress}"
+                                         Value="{Binding DisplayCountdownProgress}"
                                          IsIndeterminate="False"
                                          IsVisible="{Binding IsCountdown}"
                                          Margin="0,8,0,0" />

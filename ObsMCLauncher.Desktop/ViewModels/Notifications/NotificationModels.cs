@@ -1,5 +1,6 @@
 using System;
 using System.Threading;
+using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using ObsMCLauncher.Core.Models;
@@ -40,6 +41,17 @@ public partial class NotificationItemViewModel : ObservableObject
 
     public double CardWidth => Position == NotificationPosition.BottomRight ? 300 : 340;
 
+    public IBrush TypeAccentColor => Type switch
+    {
+        NotificationType.Error => new SolidColorBrush(Color.Parse("#c58787")),
+        NotificationType.Success => new SolidColorBrush(Color.Parse("#87c5a8")),
+        NotificationType.Warning => new SolidColorBrush(Color.Parse("#c5a487")),
+        NotificationType.Info => new SolidColorBrush(Color.Parse("#87a7c5")),
+        NotificationType.Progress => new SolidColorBrush(Color.Parse("#87a7c5")),
+        NotificationType.Countdown => new SolidColorBrush(Color.Parse("#87a7c5")),
+        _ => new SolidColorBrush(Color.Parse("#87a7c5"))
+    };
+
     public bool IsProgress => Type == NotificationType.Progress;
 
     public bool IsCountdown => Type == NotificationType.Countdown;
@@ -55,6 +67,67 @@ public partial class NotificationItemViewModel : ObservableObject
 
     [ObservableProperty]
     private double _countdownProgress;
+
+    [ObservableProperty]
+    private double _displayProgress;
+
+    [ObservableProperty]
+    private double _displayCountdownProgress;
+
+    private double _targetProgress;
+    private double _targetCountdownProgress;
+    private Timer? _progressAnimTimer;
+    private bool _progressAnimRunning;
+
+    partial void OnProgressChanged(double value)
+    {
+        _targetProgress = value;
+        StartProgressAnimation();
+    }
+
+    partial void OnCountdownProgressChanged(double value)
+    {
+        _targetCountdownProgress = value;
+        StartProgressAnimation();
+    }
+
+    private void StartProgressAnimation()
+    {
+        if (_progressAnimRunning) return;
+        _progressAnimRunning = true;
+        _progressAnimTimer?.Dispose();
+        _progressAnimTimer = new Timer(LerpProgress, null, 0, 16);
+    }
+
+    private void StopProgressAnimation()
+    {
+        _progressAnimRunning = false;
+        _progressAnimTimer?.Dispose();
+    }
+
+    private void LerpProgress(object? state)
+    {
+        var diff = _targetProgress - DisplayProgress;
+        var countdownDiff = _targetCountdownProgress - DisplayCountdownProgress;
+        var maxDiff = Math.Max(Math.Abs(diff), Math.Abs(countdownDiff));
+
+        if (maxDiff < 0.3)
+        {
+            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            {
+                DisplayProgress = _targetProgress;
+                DisplayCountdownProgress = _targetCountdownProgress;
+            });
+            StopProgressAnimation();
+            return;
+        }
+
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            DisplayProgress += diff * 0.18;
+            DisplayCountdownProgress += countdownDiff * 0.18;
+        });
+    }
 
     private bool _canClose = true;
     public bool CanClose
