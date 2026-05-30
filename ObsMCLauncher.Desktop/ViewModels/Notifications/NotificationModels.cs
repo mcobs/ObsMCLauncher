@@ -161,6 +161,12 @@ public partial class NotificationItemViewModel : ObservableObject
 
     private Timer? _animationTimer;
     private int _animationStep = 0;
+    private double _exitStartOffsetX;
+    private double _exitStartOpacity;
+    private int _exitStep;
+    private const int ExitStepCount = 5;
+    private const int ExitStepMs = 50;
+    private const double SwipeCloseThreshold = 60;
 
     // Center mode: bounce-in from top
     private static readonly double[] CenterScaleSteps = { 0.3, 1.12, 0.96, 1.03, 1.0 };
@@ -245,13 +251,14 @@ public partial class NotificationItemViewModel : ObservableObject
     public void StartExitAnimation()
     {
         _animationTimer?.Dispose();
+        StopProgressAnimation();
 
         if (Position == NotificationPosition.BottomRight)
         {
-            AnimationOpacity = 0;
-            AnimationScale = 1.0;
-            AnimationOffsetY = 0;
-            AnimationOffsetX = 50;
+            _exitStep = 0;
+            _exitStartOffsetX = AnimationOffsetX;
+            _exitStartOpacity = AnimationOpacity;
+            _animationTimer = new Timer(AnimateExitBottomRight, null, 0, ExitStepMs);
         }
         else
         {
@@ -260,6 +267,80 @@ public partial class NotificationItemViewModel : ObservableObject
             AnimationOffsetY = -30;
             AnimationOffsetX = 0;
         }
+    }
+
+    private void AnimateExitBottomRight(object? state)
+    {
+        if (_exitStep >= ExitStepCount)
+        {
+            AnimationOpacity = 0;
+            AnimationOffsetX = 80;
+            _animationTimer?.Dispose();
+            return;
+        }
+
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            if (_exitStep < ExitStepCount)
+            {
+                var t = (double)_exitStep / (ExitStepCount - 1);
+                t = 1.0 - Math.Pow(1.0 - t, 2);
+                AnimationOpacity = _exitStartOpacity * (1.0 - t);
+                AnimationOffsetX = _exitStartOffsetX + (80 - _exitStartOffsetX) * t;
+                AnimationScale = 1.0;
+                AnimationOffsetY = 0;
+                _exitStep++;
+            }
+        });
+    }
+
+    public void UpdateSwipeDrag(double deltaX)
+    {
+        _animationTimer?.Dispose();
+        AnimationOffsetX = Math.Max(0, deltaX);
+        AnimationOpacity = 1.0;
+        AnimationScale = 1.0;
+        AnimationOffsetY = 0;
+    }
+
+    public bool EndSwipeDrag(double totalDeltaX)
+    {
+        if (totalDeltaX >= SwipeCloseThreshold)
+        {
+            CloseRequested?.Invoke(Id);
+            return true;
+        }
+
+        _exitStep = 0;
+        _exitStartOffsetX = AnimationOffsetX;
+        _exitStartOpacity = AnimationOpacity;
+        _animationTimer = new Timer(AnimateSwipeBack, null, 0, ExitStepMs);
+        return false;
+    }
+
+    private void AnimateSwipeBack(object? state)
+    {
+        if (_exitStep >= ExitStepCount)
+        {
+            AnimationOffsetX = 0;
+            AnimationOpacity = 1;
+            _animationTimer?.Dispose();
+            return;
+        }
+
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            if (_exitStep < ExitStepCount)
+            {
+                var t = (double)_exitStep / (ExitStepCount - 1);
+                t = 1.0 - Math.Pow(1.0 - t, 2);
+                AnimationOffsetX = _exitStartOffsetX * (1.0 - t);
+                AnimationOpacity = 1.0 - 0.3 * t;
+                AnimationScale = 1.0;
+                AnimationOffsetY = 0;
+                _exitStep++;
+            }
+        });
     }
 
     public event Action<string>? CloseRequested;

@@ -728,7 +728,11 @@
                             Width="{Binding CardWidth}"
                             IsHitTestVisible="True"
                             Opacity="{Binding AnimationOpacity}"
-                            RenderTransformOrigin="0.5,0">
+                            RenderTransformOrigin="0.5,0"
+                            Tapped="OnNotificationTapped"
+                            PointerPressed="OnNotificationPointerPressed"
+                            PointerMoved="OnNotificationPointerMoved"
+                            PointerReleased="OnNotificationPointerReleased">
                         <Border.RenderTransform>
                             <TransformGroup>
                                 <ScaleTransform ScaleX="{Binding AnimationScale}" ScaleY="{Binding AnimationScale}" />
