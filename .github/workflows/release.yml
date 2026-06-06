@@ -220,13 +220,14 @@ jobs:
           body += '| macOS | ARM64 (Apple Silicon) | [ObsMCLauncher-' + version + '-osx-arm64.zip](https://github.com/${{ github.repository }}/releases/download/' + version + '/ObsMCLauncher-' + version + '-osx-arm64.zip) |\n\n';
 
           if (isPrerelease) {
-            body += '---\n\n## 预发布版本警告\n\n';
-            body += '**此版本为预发布版本，可能存在以下问题：**\n';
-            body += '- 可能包含未发现的 Bug\n';
-            body += '- 功能可能不稳定\n';
-            body += '- 部分功能可能会在正式版中更改\n\n';
-            body += '**不建议在生产环境或日常使用中使用此版本。**\n\n';
-            body += '如果您发现问题，请在 [Issues](https://github.com/${{ github.repository }}/issues) 中反馈。\n';
+            body += '---\n\n';
+            body += '> [!WARNING]\n';
+            body += '> **此版本为预发布版本**\n';
+            body += '> - 可能包含未发现的 Bug\n';
+            body += '> - 功能可能不稳定\n';
+            body += '> - 部分功能可能会在正式版中更改\n';
+            body += '> \n';
+            body += '> 不建议在生产环境或日常使用中使用此版本。如发现问题请在 [Issues](https://github.com/${{ github.repository }}/issues) 反馈。\n\n';
           }
 
           if (changelog && changelog.trim()) {
