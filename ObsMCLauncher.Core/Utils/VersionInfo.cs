@@ -11,7 +11,7 @@ public enum VersionStatus
 
 public static class VersionInfo
 {
-    public static readonly string Version = "1.0.0";
+    public static readonly string Version = "1.0.0-rc.4";
 
     public static readonly string CodeName = "GrassBlock";
 
