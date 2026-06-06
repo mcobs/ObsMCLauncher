@@ -16,6 +16,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Media;
 using Avalonia.Styling;
 using Avalonia.Threading;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using ObsMCLauncher.Core.Models;
 using ObsMCLauncher.Core.Services.Mirror;
@@ -24,11 +25,27 @@ using ObsMCLauncher.Desktop.ViewModels.Notifications;
 
 namespace ObsMCLauncher.Desktop.ViewModels;
 
-public class SettingsViewModel : ViewModelBase
+public partial class SettingsViewModel : ViewModelBase
 {
     private readonly NotificationService _notificationService;
     private bool _isInitializing;
     private CancellationTokenSource? _saveNotifyCts;
+
+    [ObservableProperty]
+    private int _selectedSettingsTab;
+
+    partial void OnSelectedSettingsTabChanged(int value)
+    {
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(IsGameTab)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(IsLauncherTab)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(IsDownloadTab)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(IsHomeTab)));
+    }
+
+    public bool IsGameTab => SelectedSettingsTab == 0;
+    public bool IsLauncherTab => SelectedSettingsTab == 1;
+    public bool IsDownloadTab => SelectedSettingsTab == 2;
+    public bool IsHomeTab => SelectedSettingsTab == 3;
 
     public void Save() => AutoSave();
 
@@ -106,6 +123,11 @@ public class SettingsViewModel : ViewModelBase
         MoveCardDownCommand = new RelayCommand<HomeCardInfo>(MoveCardDown);
         SelectCenterNotificationCommand = new RelayCommand(() => NotificationPosition = NotificationPosition.Center);
         SelectBottomRightNotificationCommand = new RelayCommand(() => NotificationPosition = NotificationPosition.BottomRight);
+        SelectTabCommand = new RelayCommand<string>(tab =>
+        {
+            if (int.TryParse(tab, out var index))
+                SelectedSettingsTab = index;
+        });
 
         TestDialogCommand = new AsyncRelayCommand(async () =>
         {
@@ -149,6 +171,7 @@ public class SettingsViewModel : ViewModelBase
     public IRelayCommand<HomeCardInfo> MoveCardDownCommand { get; }
     public IRelayCommand SelectCenterNotificationCommand { get; }
     public IRelayCommand SelectBottomRightNotificationCommand { get; }
+    public IRelayCommand<string> SelectTabCommand { get; }
 
     public ObservableCollection<DownloadSource> DownloadSourceOptions { get; }
 
