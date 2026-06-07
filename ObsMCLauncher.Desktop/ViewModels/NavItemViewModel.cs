@@ -12,4 +12,5 @@ public class NavItemViewModel
     public string Title { get; }
     public ViewModelBase Page { get; }
     public string Icon { get; }
+    public string? IconPath { get; init; }
 }

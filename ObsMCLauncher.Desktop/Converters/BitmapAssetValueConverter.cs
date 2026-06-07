@@ -1,9 +1,13 @@
 using System;
 using System.Globalization;
+using System.IO;
+using System.Text;
 using Avalonia;
 using Avalonia.Data.Converters;
+using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
+using Avalonia.Svg.Skia;
 using ObsMCLauncher.Core.Utils;
 
 namespace ObsMCLauncher.Desktop.Converters;
@@ -30,6 +34,29 @@ public class BitmapAssetValueConverter : IValueConverter
                 }
 
                 var asset = AssetLoader.Open(uri);
+
+                if (rawUri.EndsWith(".svg", StringComparison.OrdinalIgnoreCase))
+                {
+                    // 替换 SVG 中的 currentColor 为当前主题前景色
+                    using var reader = new StreamReader(asset);
+                    var svgContent = reader.ReadToEnd();
+
+                    var themeColor = Colors.White;
+                    if (Application.Current is { } app &&
+                        app.TryGetResource("TextBrush", app.ActualThemeVariant, out var brush) &&
+                        brush is ISolidColorBrush textBrush)
+                    {
+                        themeColor = textBrush.Color;
+                    }
+                    svgContent = svgContent.Replace(
+                        "currentColor",
+                        $"#{themeColor.R:X2}{themeColor.G:X2}{themeColor.B:X2}");
+
+                    using var memStream = new MemoryStream(Encoding.UTF8.GetBytes(svgContent));
+                    var svgSource = SvgSource.LoadFromStream(memStream);
+                    return new SvgImage { Source = svgSource };
+                }
+
                 return new Bitmap(asset);
             }
             catch (Exception ex)

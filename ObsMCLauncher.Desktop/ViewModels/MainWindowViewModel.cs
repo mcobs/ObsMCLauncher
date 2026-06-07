@@ -134,13 +134,14 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         Notifications.NotificationPosition = config.NotificationPosition;
         Notifications.AutoCloseSeconds = config.NotificationAutoCloseSeconds;
 
-        NavItems.Add(new NavItemViewModel("主页", _homeViewModel, "🏠"));
-        NavItems.Add(new NavItemViewModel("多人联机", new MultiplayerViewModel(Notifications, Dialogs), "🌐"));
-        NavItems.Add(new NavItemViewModel("账号管理", new AccountManagementViewModel(), "👤"));
-        NavItems.Add(new NavItemViewModel("版本管理", new VersionDownloadViewModel(dispatcher, Notifications), "📥"));
-        NavItems.Add(new NavItemViewModel("资源下载", new ResourcesViewModel(), "📦"));
+        const string iconBase = "avares://ObsMCLauncher.Desktop/Assets/SidebarIcons/";
+        NavItems.Add(new NavItemViewModel("主页", _homeViewModel, "🏠") { IconPath = iconBase + "dashboard.svg" });
+        NavItems.Add(new NavItemViewModel("多人联机", new MultiplayerViewModel(Notifications, Dialogs), "🌐") { IconPath = iconBase + "multiplayer.svg" });
+        NavItems.Add(new NavItemViewModel("账号管理", new AccountManagementViewModel(), "👤") { IconPath = iconBase + "accounts.svg" });
+        NavItems.Add(new NavItemViewModel("版本管理", new VersionDownloadViewModel(dispatcher, Notifications), "📥") { IconPath = iconBase + "versions.svg" });
+        NavItems.Add(new NavItemViewModel("资源下载", new ResourcesViewModel(), "📦") { IconPath = iconBase + "resources.svg" });
 
-        BottomNavItems.Add(new NavItemViewModel("设置", new SettingsViewModel(Notifications, _homeViewModel), "⚙️"));
+        BottomNavItems.Add(new NavItemViewModel("设置", new SettingsViewModel(Notifications, _homeViewModel), "⚙️") { IconPath = iconBase + "settings.svg" });
         BottomNavItems.Add(new NavItemViewModel("更多", _moreViewModel, "⋯"));
 
         SelectedNavItem = NavItems[0];
