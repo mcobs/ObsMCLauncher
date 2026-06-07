@@ -69,7 +69,48 @@
                         </Grid>
                       </Expander.Header>
 
-                      <ItemsControl ItemsSource="{Binding Files}">
+                      <StackPanel>
+                        <!-- 公共前置资源区域 -->
+                        <Border IsVisible="{Binding HasCommonDependencies}"
+                                CornerRadius="6" Padding="10,8" Margin="0,4,0,6"
+                                Background="{DynamicResource SurfaceElevatedBrush}"
+                                BorderThickness="1"
+                                BorderBrush="{DynamicResource PrimaryBrush}"
+                                Opacity="0.9">
+                          <StackPanel Spacing="3">
+                            <TextBlock Text="{Binding CommonDependenciesDisplay}" FontSize="12" FontWeight="SemiBold" Opacity="0.9"/>
+                            <ItemsControl ItemsSource="{Binding CommonDependencies}">
+                              <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                  <StackPanel Orientation="Horizontal" Spacing="3" Margin="0,1,0,0">
+                                    <Border Background="{Binding TypeTagColor}" CornerRadius="2" Padding="3,0" VerticalAlignment="Center">
+                                      <TextBlock Text="{Binding TypeTag}" FontSize="9" Foreground="White" FontWeight="SemiBold"/>
+                                    </Border>
+                                    <Button Content="{Binding Name}" FontSize="11"
+                                            Padding="1,0"
+                                            Foreground="{DynamicResource AccentBrush}"
+                                            Command="{Binding #Root.DataContext.NavigateToDependencyCommand}"
+                                            CommandParameter="{Binding}"
+                                            Cursor="Hand">
+                                      <Button.Template>
+                                        <ControlTemplate TargetType="Button">
+                                          <TextBlock Text="{TemplateBinding Content}"
+                                                     Foreground="{TemplateBinding Foreground}"
+                                                     FontSize="{TemplateBinding FontSize}"
+                                                     TextDecorations="Underline"
+                                                     Cursor="Hand"/>
+                                        </ControlTemplate>
+                                      </Button.Template>
+                                    </Button>
+                                  </StackPanel>
+                                </DataTemplate>
+                              </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                          </StackPanel>
+                        </Border>
+
+                        <!-- 版本文件列表 -->
+                        <ItemsControl ItemsSource="{Binding Files}">
                         <ItemsControl.ItemTemplate>
                           <DataTemplate>
                             <Border CornerRadius="4" Padding="8,6" Margin="0,0,0,3"
@@ -127,6 +168,7 @@
                           </DataTemplate>
                         </ItemsControl.ItemTemplate>
                       </ItemsControl>
+                      </StackPanel>
                     </Expander>
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>

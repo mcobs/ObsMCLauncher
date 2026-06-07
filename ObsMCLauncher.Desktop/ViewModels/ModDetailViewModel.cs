@@ -371,6 +371,76 @@ public partial class ModDetailViewModel : ViewModelBase
                 }
             }
         }
+
+        // 计算每个版本组的公共前置资源
+        foreach (var group in VersionGroups)
+        {
+            if (group.Files.Count == 0) continue;
+
+            var filesWithDeps = group.Files.Where(f => f.HasDependencies).ToList();
+            if (filesWithDeps.Count == 0) continue;
+
+            // 取所有有依赖的条目的依赖交集
+            var intersection = new HashSet<string>(
+                filesWithDeps[0].Dependencies.Select(d => d.UniqueKey));
+
+            for (int i = 1; i < filesWithDeps.Count; i++)
+            {
+                var currentKeys = new HashSet<string>(
+                    filesWithDeps[i].Dependencies.Select(d => d.UniqueKey));
+                intersection.IntersectWith(currentKeys);
+            }
+
+            if (intersection.Count == 0) continue;
+
+            // 从第一个条目中提取公共依赖（保留名称和类型信息）
+            var seenKeys = new HashSet<string>();
+            foreach (var entry in filesWithDeps)
+            {
+                foreach (var dep in entry.Dependencies)
+                {
+                    if (intersection.Contains(dep.UniqueKey) && seenKeys.Add(dep.UniqueKey))
+                    {
+                        group.CommonDependencies.Add(new DependencyItemViewModel
+                        {
+                            BackendType = dep.BackendType,
+                            Name = dep.Name,
+                            DependencyType = dep.DependencyType,
+                            IsRequired = dep.IsRequired,
+                            CurseForgeModId = dep.CurseForgeModId,
+                            ProjectId = dep.ProjectId
+                        });
+                    }
+                }
+            }
+
+            // 从各条目中移除已提升为公共前置的依赖，避免重复显示
+            foreach (var entry in group.Files)
+            {
+                var toRemove = entry.Dependencies
+                    .Where(d => intersection.Contains(d.UniqueKey))
+                    .ToList();
+                foreach (var d in toRemove)
+                    entry.Dependencies.Remove(d);
+
+                if (entry.Dependencies.Count == 0)
+                {
+                    entry.HasDependencies = false;
+                    entry.DependenciesDisplay = "";
+                }
+                else
+                {
+                    var requiredCount = entry.Dependencies.Count(d => d.IsRequired);
+                    var optionalCount = entry.Dependencies.Count(d => !d.IsRequired);
+                    var parts = new List<string>();
+                    if (requiredCount > 0) parts.Add($"{requiredCount} 个必需");
+                    if (optionalCount > 0) parts.Add($"{optionalCount} 个可选");
+                    entry.DependenciesDisplay = $"前置: {string.Join(", ", parts)}";
+                }
+            }
+
+            group.NotifyCommonDependenciesChanged();
+        }
     }
 
     private async Task LoadCurseForgeVersionsAsync(CurseForgeMod mod, CancellationToken cancellationToken)
@@ -922,6 +992,30 @@ public partial class VersionGroupViewModel : ObservableObject
     public ObservableCollection<VersionEntryViewModel> Files { get; } = new();
 
     public string FileCountDisplay => $"{Files.Count} 个文件";
+
+    public ObservableCollection<DependencyItemViewModel> CommonDependencies { get; } = new();
+
+    public bool HasCommonDependencies => CommonDependencies.Count > 0;
+
+    public string CommonDependenciesDisplay
+    {
+        get
+        {
+            if (CommonDependencies.Count == 0) return "";
+            var required = CommonDependencies.Count(d => d.IsRequired);
+            var optional = CommonDependencies.Count(d => !d.IsRequired);
+            var parts = new List<string>();
+            if (required > 0) parts.Add($"{required} 个必需");
+            if (optional > 0) parts.Add($"{optional} 个可选");
+            return $"公共前置: {string.Join(", ", parts)}";
+        }
+    }
+
+    public void NotifyCommonDependenciesChanged()
+    {
+        OnPropertyChanged(nameof(HasCommonDependencies));
+        OnPropertyChanged(nameof(CommonDependenciesDisplay));
+    }
 }
 
 public partial class VersionEntryViewModel : ObservableObject
@@ -953,4 +1047,9 @@ public partial class DependencyItemViewModel : ObservableObject
 
     public string TypeTag => IsRequired ? "必需" : "可选";
     public string TypeTagColor => IsRequired ? "#E74C3C" : "#95A5A6";
+
+    // 用于去重比较：同一后端 + 同一 ID 视为同一依赖
+    public string UniqueKey => BackendType == VersionBackendType.CurseForge
+        ? $"cf_{CurseForgeModId}"
+        : $"mr_{ProjectId}";
 }
