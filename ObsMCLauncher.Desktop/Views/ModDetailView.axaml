@@ -1,9 +1,14 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:ObsMCLauncher.Desktop.ViewModels"
+             xmlns:conv="using:ObsMCLauncher.Desktop.Converters"
              x:Class="ObsMCLauncher.Desktop.Views.ModDetailView"
              x:DataType="vm:ModDetailViewModel"
              x:Name="Root">
+
+  <UserControl.Resources>
+    <conv:BitmapAssetValueConverter x:Key="BitmapConverter"/>
+  </UserControl.Resources>
 
   <Grid RowDefinitions="Auto,*" Margin="16">
     <!-- 顶部：返回 + 基本信息 -->
@@ -40,13 +45,39 @@
 
     <!-- 下半部分：版本分组列表 -->
     <Border Grid.Row="1" CornerRadius="10" Background="{DynamicResource SurfaceBrush}" Padding="12" Margin="0,16,0,0">
-      <Grid RowDefinitions="Auto,*">
+      <Grid RowDefinitions="Auto,Auto,*">
         <TextBlock Grid.Row="0" Text="可用版本" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,8"/>
 
-        <Grid Grid.Row="1">
+        <!-- 加载器筛选栏 -->
+        <ListBox Grid.Row="1" ItemsSource="{Binding AvailableLoaders}"
+                 SelectedItem="{Binding SelectedLoaderFilter}"
+                 Margin="0,0,0,8"
+                 SelectionMode="Single"
+                 Background="Transparent"
+                 BorderThickness="0"
+                 Padding="0">
+          <ListBox.ItemsPanel>
+            <ItemsPanelTemplate>
+              <WrapPanel Orientation="Horizontal"/>
+            </ItemsPanelTemplate>
+          </ListBox.ItemsPanel>
+          <ListBox.ItemTemplate>
+            <DataTemplate>
+              <StackPanel Orientation="Horizontal" Spacing="4" Margin="4,2">
+                <Image Source="{Binding IconUri, Converter={StaticResource BitmapConverter}}"
+                       Width="16" Height="16" VerticalAlignment="Center"
+                       IsVisible="{Binding IconUri, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                <TextBlock Text="{Binding LoaderName}" FontSize="12" VerticalAlignment="Center"/>
+                <TextBlock Text="{Binding Count, StringFormat='({0})'}" FontSize="10" Opacity="0.6" VerticalAlignment="Center"/>
+              </StackPanel>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+
+        <Grid Grid.Row="2">
           <ScrollViewer IsVisible="{Binding IsVersionsVisible}">
             <StackPanel>
-              <ItemsControl ItemsSource="{Binding VersionGroups}">
+              <ItemsControl ItemsSource="{Binding FilteredVersionGroups}">
                 <ItemsControl.ItemTemplate>
                   <DataTemplate>
                     <Expander IsExpanded="{Binding IsLatest}"
@@ -70,63 +101,33 @@
                       </Expander.Header>
 
                       <StackPanel>
-                        <!-- 公共前置资源区域 -->
-                        <Border IsVisible="{Binding HasCommonDependencies}"
-                                CornerRadius="6" Padding="10,8" Margin="0,4,0,6"
-                                Background="{DynamicResource SurfaceElevatedBrush}"
-                                BorderThickness="1"
-                                BorderBrush="{DynamicResource PrimaryBrush}"
-                                Opacity="0.9">
-                          <StackPanel Spacing="3">
-                            <TextBlock Text="{Binding CommonDependenciesDisplay}" FontSize="12" FontWeight="SemiBold" Opacity="0.9"/>
-                            <ItemsControl ItemsSource="{Binding CommonDependencies}">
-                              <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                  <StackPanel Orientation="Horizontal" Spacing="3" Margin="0,1,0,0">
-                                    <Border Background="{Binding TypeTagColor}" CornerRadius="2" Padding="3,0" VerticalAlignment="Center">
-                                      <TextBlock Text="{Binding TypeTag}" FontSize="9" Foreground="White" FontWeight="SemiBold"/>
-                                    </Border>
-                                    <Button Content="{Binding Name}" FontSize="11"
-                                            Padding="1,0"
-                                            Foreground="{DynamicResource AccentBrush}"
-                                            Command="{Binding #Root.DataContext.NavigateToDependencyCommand}"
-                                            CommandParameter="{Binding}"
-                                            Cursor="Hand">
-                                      <Button.Template>
-                                        <ControlTemplate TargetType="Button">
-                                          <TextBlock Text="{TemplateBinding Content}"
-                                                     Foreground="{TemplateBinding Foreground}"
-                                                     FontSize="{TemplateBinding FontSize}"
-                                                     TextDecorations="Underline"
-                                                     Cursor="Hand"/>
-                                        </ControlTemplate>
-                                      </Button.Template>
-                                    </Button>
+                        <!-- 加载器子组列表 -->
+                        <ItemsControl ItemsSource="{Binding LoaderGroups}">
+                          <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                              <StackPanel Margin="0,0,0,8">
+                                <!-- 加载器标题（多加载器时显示） -->
+                                <Border IsVisible="{Binding $parent[Expander].DataContext.HasLoaderGroups}"
+                                        CornerRadius="4" Padding="8,4" Margin="0,0,0,4"
+                                        Background="{DynamicResource SurfaceElevatedBrush}"
+                                        HorizontalAlignment="Left">
+                                                                  <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <Image Source="{Binding LoaderIcon, Converter={StaticResource BitmapConverter}}"
+                                           Width="20" Height="20" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding LoaderName}" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                   </StackPanel>
-                                </DataTemplate>
-                              </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                          </StackPanel>
-                        </Border>
+                                </Border>
 
-                        <!-- 版本文件列表 -->
-                        <ItemsControl ItemsSource="{Binding Files}">
-                        <ItemsControl.ItemTemplate>
-                          <DataTemplate>
-                            <Border CornerRadius="4" Padding="8,6" Margin="0,0,0,3"
-                                    Background="{DynamicResource SurfaceElevatedBrush}">
-                              <Grid ColumnDefinitions="*,Auto">
-                                <StackPanel>
-                                  <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
-                                  <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,2,0,0">
-                                    <TextBlock Text="{Binding DateDisplay}" FontSize="12" Opacity="0.7"/>
-                                    <TextBlock Text="{Binding McVersionsDisplay}" FontSize="12" Opacity="0.7"/>
-                                    <TextBlock Text="{Binding SizeDisplay}" FontSize="12" Opacity="0.7"/>
-                                  </StackPanel>
-
-                                  <StackPanel IsVisible="{Binding HasDependencies}" Margin="0,4,0,0" Spacing="3">
-                                    <TextBlock Text="{Binding DependenciesDisplay}" FontSize="11" Opacity="0.8"/>
-                                    <ItemsControl ItemsSource="{Binding Dependencies}">
+                                <!-- 加载器子组的公共前置 -->
+                                <Border IsVisible="{Binding HasCommonDependencies}"
+                                        CornerRadius="6" Padding="10,8" Margin="0,4,0,6"
+                                        Background="{DynamicResource SurfaceElevatedBrush}"
+                                        BorderThickness="1"
+                                        BorderBrush="{DynamicResource PrimaryBrush}"
+                                        Opacity="0.9">
+                                  <StackPanel Spacing="3">
+                                    <TextBlock Text="{Binding CommonDependenciesDisplay}" FontSize="12" FontWeight="SemiBold" Opacity="0.9"/>
+                                    <ItemsControl ItemsSource="{Binding CommonDependencies}">
                                       <ItemsControl.ItemTemplate>
                                         <DataTemplate>
                                           <StackPanel Orientation="Horizontal" Spacing="3" Margin="0,1,0,0">
@@ -154,20 +155,71 @@
                                       </ItemsControl.ItemTemplate>
                                     </ItemsControl>
                                   </StackPanel>
-                                </StackPanel>
+                                </Border>
 
-                                <Button Grid.Column="1"
-                                        Content="下载"
-                                        FontSize="12"
-                                        Padding="8,4"
-                                        Command="{Binding #Root.DataContext.DownloadVersionCommand}"
-                                        CommandParameter="{Binding}"
-                                        VerticalAlignment="Center" Margin="8,0,0,0"/>
-                              </Grid>
-                            </Border>
-                          </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                      </ItemsControl>
+                                <!-- 版本文件列表 -->
+                                <ItemsControl ItemsSource="{Binding Files}">
+                                  <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                      <Border CornerRadius="4" Padding="8,6" Margin="0,0,0,3"
+                                              Background="{DynamicResource SurfaceElevatedBrush}">
+                                        <Grid ColumnDefinitions="*,Auto">
+                                          <StackPanel>
+                                            <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                                            <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,2,0,0">
+                                              <TextBlock Text="{Binding DateDisplay}" FontSize="12" Opacity="0.7"/>
+                                              <TextBlock Text="{Binding McVersionsDisplay}" FontSize="12" Opacity="0.7"/>
+                                              <TextBlock Text="{Binding SizeDisplay}" FontSize="12" Opacity="0.7"/>
+                                            </StackPanel>
+
+                                            <StackPanel IsVisible="{Binding HasDependencies}" Margin="0,4,0,0" Spacing="3">
+                                              <TextBlock Text="{Binding DependenciesDisplay}" FontSize="11" Opacity="0.8"/>
+                                              <ItemsControl ItemsSource="{Binding Dependencies}">
+                                                <ItemsControl.ItemTemplate>
+                                                  <DataTemplate>
+                                                    <StackPanel Orientation="Horizontal" Spacing="3" Margin="0,1,0,0">
+                                                      <Border Background="{Binding TypeTagColor}" CornerRadius="2" Padding="3,0" VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding TypeTag}" FontSize="9" Foreground="White" FontWeight="SemiBold"/>
+                                                      </Border>
+                                                      <Button Content="{Binding Name}" FontSize="11"
+                                                              Padding="1,0"
+                                                              Foreground="{DynamicResource AccentBrush}"
+                                                              Command="{Binding #Root.DataContext.NavigateToDependencyCommand}"
+                                                              CommandParameter="{Binding}"
+                                                              Cursor="Hand">
+                                                        <Button.Template>
+                                                          <ControlTemplate TargetType="Button">
+                                                            <TextBlock Text="{TemplateBinding Content}"
+                                                                       Foreground="{TemplateBinding Foreground}"
+                                                                       FontSize="{TemplateBinding FontSize}"
+                                                                       TextDecorations="Underline"
+                                                                       Cursor="Hand"/>
+                                                          </ControlTemplate>
+                                                        </Button.Template>
+                                                      </Button>
+                                                    </StackPanel>
+                                                  </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                              </ItemsControl>
+                                            </StackPanel>
+                                          </StackPanel>
+
+                                          <Button Grid.Column="1"
+                                                  Content="下载"
+                                                  FontSize="12"
+                                                  Padding="8,4"
+                                                  Command="{Binding #Root.DataContext.DownloadVersionCommand}"
+                                                  CommandParameter="{Binding}"
+                                                  VerticalAlignment="Center" Margin="8,0,0,0"/>
+                                        </Grid>
+                                      </Border>
+                                    </DataTemplate>
+                                  </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                              </StackPanel>
+                            </DataTemplate>
+                          </ItemsControl.ItemTemplate>
+                        </ItemsControl>
                       </StackPanel>
                     </Expander>
                   </DataTemplate>

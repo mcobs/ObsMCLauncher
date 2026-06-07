@@ -50,6 +50,36 @@ public partial class ModDetailViewModel : ViewModelBase
     public ObservableCollection<VersionGroupViewModel> VersionGroups { get; } = new();
     public bool HasAnyGroup => VersionGroups.Count > 0;
 
+    public ObservableCollection<LoaderFilterItem> AvailableLoaders { get; } = new();
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(FilteredVersionGroups))]
+    private LoaderFilterItem? _selectedLoaderFilter;
+
+    public IEnumerable<VersionGroupViewModel> FilteredVersionGroups
+    {
+        get
+        {
+            if (SelectedLoaderFilter == null || SelectedLoaderFilter.LoaderName == "全部")
+                return VersionGroups;
+
+            return VersionGroups.Select(g =>
+            {
+                var filteredGroup = new VersionGroupViewModel
+                {
+                    McVersion = g.McVersion,
+                    IsLatest = g.IsLatest
+                };
+                foreach (var lg in g.LoaderGroups)
+                {
+                    if (lg.LoaderName == SelectedLoaderFilter.LoaderName)
+                        filteredGroup.LoaderGroups.Add(lg);
+                }
+                return filteredGroup;
+            }).Where(g => g.LoaderGroups.Count > 0);
+        }
+    }
+
     public IRelayCommand BackCommand { get; }
     public IRelayCommand OpenWebsiteCommand { get; }
     public IAsyncRelayCommand<VersionEntryViewModel> DownloadVersionCommand { get; }
@@ -292,6 +322,36 @@ public partial class ModDetailViewModel : ViewModelBase
             {
                 try { cfMods = await CurseForgeService.GetModsAsync(cfDepModIds).ConfigureAwait(false); }
                 catch { }
+
+                // 批量获取失败的 mod，逐个回退获取
+                if (cfMods != null)
+                {
+                    var missingIds = cfDepModIds.Where(id => !cfMods.ContainsKey(id)).ToList();
+                    foreach (var id in missingIds)
+                    {
+                        try
+                        {
+                            var resp = await CurseForgeService.GetModAsync(id).ConfigureAwait(false);
+                            if (resp?.Data != null)
+                                cfMods[id] = resp.Data;
+                        }
+                        catch { }
+                    }
+                }
+                else
+                {
+                    cfMods = new Dictionary<int, CurseForgeMod>();
+                    foreach (var id in cfDepModIds)
+                    {
+                        try
+                        {
+                            var resp = await CurseForgeService.GetModAsync(id).ConfigureAwait(false);
+                            if (resp?.Data != null)
+                                cfMods[id] = resp.Data;
+                        }
+                        catch { }
+                    }
+                }
             }));
         }
         if (modrinthDepProjectIds.Count > 0)
@@ -300,6 +360,36 @@ public partial class ModDetailViewModel : ViewModelBase
             {
                 try { modrinthProjects = await _modrinth.GetProjectsAsync(modrinthDepProjectIds, _cts.Token).ConfigureAwait(false); }
                 catch { }
+
+                // 批量获取失败的 project，逐个回退获取
+                if (modrinthProjects != null)
+                {
+                    var missingIds = modrinthDepProjectIds.Where(id => !modrinthProjects.ContainsKey(id)).ToList();
+                    foreach (var id in missingIds)
+                    {
+                        try
+                        {
+                            var proj = await _modrinth.GetProjectAsync(id, _cts.Token).ConfigureAwait(false);
+                            if (proj != null)
+                                modrinthProjects[id] = proj;
+                        }
+                        catch { }
+                    }
+                }
+                else
+                {
+                    modrinthProjects = new Dictionary<string, ModrinthProject>();
+                    foreach (var id in modrinthDepProjectIds)
+                    {
+                        try
+                        {
+                            var proj = await _modrinth.GetProjectAsync(id, _cts.Token).ConfigureAwait(false);
+                            if (proj != null)
+                                modrinthProjects[id] = proj;
+                        }
+                        catch { }
+                    }
+                }
             }));
         }
         if (tasks.Count > 0)
@@ -441,6 +531,138 @@ public partial class ModDetailViewModel : ViewModelBase
 
             group.NotifyCommonDependenciesChanged();
         }
+
+        // 按加载器分子组
+        foreach (var group in VersionGroups)
+        {
+            var loaderGroups = group.Files
+                .GroupBy(f => f.Loader)
+                .OrderByDescending(g => g.Key, new LoaderComparer())
+                .ToList();
+
+            if (loaderGroups.Count <= 1)
+            {
+                // 只有一种加载器，不需要分子组
+                var singleGroup = new LoaderSubGroupViewModel
+                {
+                    LoaderName = loaderGroups.Count == 1 ? loaderGroups[0].Key : "通用",
+                    LoaderIcon = GetLoaderIcon(loaderGroups.Count == 1 ? loaderGroups[0].Key : "通用")
+                };
+                foreach (var f in loaderGroups.FirstOrDefault() ?? Enumerable.Empty<VersionEntryViewModel>())
+                    singleGroup.Files.Add(f);
+
+                // 将版本组的公共前置移到唯一的加载器子组
+                foreach (var dep in group.CommonDependencies)
+                    singleGroup.CommonDependencies.Add(new DependencyItemViewModel
+                    {
+                        BackendType = dep.BackendType,
+                        Name = dep.Name,
+                        DependencyType = dep.DependencyType,
+                        IsRequired = dep.IsRequired,
+                        CurseForgeModId = dep.CurseForgeModId,
+                        ProjectId = dep.ProjectId
+                    });
+                singleGroup.NotifyCommonDependenciesChanged();
+
+                group.CommonDependencies.Clear();
+                group.NotifyCommonDependenciesChanged();
+
+                group.LoaderGroups.Add(singleGroup);
+            }
+            else
+            {
+                // 多种加载器，分别建子组并计算各子组的公共前置
+                foreach (var lg in loaderGroups)
+                {
+                    var subGroup = new LoaderSubGroupViewModel
+                    {
+                        LoaderName = lg.Key,
+                        LoaderIcon = GetLoaderIcon(lg.Key)
+                    };
+                    foreach (var f in lg)
+                        subGroup.Files.Add(f);
+
+                    group.LoaderGroups.Add(subGroup);
+                }
+
+                // 重新分配公共前置到各加载器子组
+                if (group.CommonDependencies.Count > 0)
+                {
+                    var commonKeys = group.CommonDependencies.Select(d => d.UniqueKey).ToHashSet();
+
+                    foreach (var subGroup in group.LoaderGroups)
+                    {
+                        // 检查该子组中哪些条目有依赖
+                        var filesWithDeps = subGroup.Files.Where(f => f.Dependencies.Count > 0 || f.HasDependencies).ToList();
+
+                        // 计算该子组内的依赖交集
+                        var subGroupDepKeys = new HashSet<string>();
+                        if (filesWithDeps.Count > 0)
+                        {
+                            subGroupDepKeys = filesWithDeps[0].Dependencies.Select(d => d.UniqueKey).ToHashSet();
+                            for (int i = 1; i < filesWithDeps.Count; i++)
+                            {
+                                var currentKeys = filesWithDeps[i].Dependencies.Select(d => d.UniqueKey).ToHashSet();
+                                subGroupDepKeys.IntersectWith(currentKeys);
+                            }
+                        }
+
+                        // 将属于该子组的公共前置添加进去
+                        foreach (var dep in group.CommonDependencies)
+                        {
+                            if (commonKeys.Contains(dep.UniqueKey))
+                            {
+                                // 检查该子组是否有条目依赖此项
+                                bool anyEntryDependsOnThis = subGroup.Files.Any(f =>
+                                    f.Dependencies.Any(d => d.UniqueKey == dep.UniqueKey) ||
+                                    (f.HasDependencies == false && commonKeys.Contains(dep.UniqueKey)));
+
+                                // 如果该子组所有有依赖的条目都依赖此项，或者该子组只有一个条目
+                                if (filesWithDeps.Count == 0 || subGroupDepKeys.Contains(dep.UniqueKey) || anyEntryDependsOnThis)
+                                {
+                                    subGroup.CommonDependencies.Add(new DependencyItemViewModel
+                                    {
+                                        BackendType = dep.BackendType,
+                                        Name = dep.Name,
+                                        DependencyType = dep.DependencyType,
+                                        IsRequired = dep.IsRequired,
+                                        CurseForgeModId = dep.CurseForgeModId,
+                                        ProjectId = dep.ProjectId
+                                    });
+                                }
+                            }
+                        }
+
+                        subGroup.NotifyCommonDependenciesChanged();
+                    }
+
+                    group.CommonDependencies.Clear();
+                    group.NotifyCommonDependenciesChanged();
+                }
+            }
+
+            group.NotifyHasLoaderGroupsChanged();
+        }
+
+        // 构建加载器筛选列表
+        var allLoaders = VersionGroups
+            .SelectMany(g => g.LoaderGroups)
+            .GroupBy(lg => lg.LoaderName)
+            .Select(g => new LoaderFilterItem
+            {
+                LoaderName = g.Key,
+                IconUri = GetLoaderIcon(g.Key),
+                Count = g.Sum(lg => lg.Files.Count)
+            })
+            .OrderBy(l => l.LoaderName, new LoaderComparer())
+            .ToList();
+
+        AvailableLoaders.Clear();
+        AvailableLoaders.Add(new LoaderFilterItem { LoaderName = "全部", IconUri = "", Count = allLoaders.Sum(l => l.Count) });
+        foreach (var loader in allLoaders)
+            AvailableLoaders.Add(loader);
+
+        SelectedLoaderFilter = AvailableLoaders.FirstOrDefault();
     }
 
     private async Task LoadCurseForgeVersionsAsync(CurseForgeMod mod, CancellationToken cancellationToken)
@@ -537,7 +759,8 @@ public partial class ModDetailViewModel : ViewModelBase
                     Name = f.DisplayName,
                     DateDisplay = f.FileDate.ToString("yyyy-MM-dd HH:mm"),
                     McVersionsDisplay = string.IsNullOrEmpty(mcDisplay) ? string.Empty : $"适用: {mcDisplay}",
-                    SizeDisplay = FormatFileSize(f.FileLength)
+                    SizeDisplay = FormatFileSize(f.FileLength),
+                    Loader = ExtractLoaderName(f, null)
                 });
             }
 
@@ -611,7 +834,8 @@ public partial class ModDetailViewModel : ViewModelBase
                     Name = v.Name,
                     DateDisplay = string.Empty,
                     McVersionsDisplay = string.IsNullOrEmpty(mcDisplay) ? string.Empty : $"适用: {mcDisplay}",
-                    SizeDisplay = FormatFileSize(file.Size)
+                    SizeDisplay = FormatFileSize(file.Size),
+                    Loader = ExtractLoaderName(null, v)
                 });
             }
 
@@ -630,6 +854,78 @@ public partial class ModDetailViewModel : ViewModelBase
             len /= 1024;
         }
         return $"{len:0.##} {sizes[order]}";
+    }
+
+    private static string ExtractLoaderName(CurseForgeFile? cfFile, ModrinthVersion? mrVersion)
+    {
+        // Modrinth：直接使用 loaders 字段
+        if (mrVersion?.Loaders != null && mrVersion.Loaders.Count > 0)
+        {
+            var loader = mrVersion.Loaders.FirstOrDefault(l =>
+                !string.IsNullOrEmpty(l) && !l.Equals("minecraft", StringComparison.OrdinalIgnoreCase));
+            if (!string.IsNullOrEmpty(loader))
+            {
+                return NormalizeLoaderName(loader);
+            }
+        }
+
+        // CurseForge：从 gameVersions 中提取加载器标识
+        if (cfFile?.GameVersions != null)
+        {
+            foreach (var gv in cfFile.GameVersions)
+            {
+                var lower = gv.ToLowerInvariant();
+                if (lower.Contains("neoforge")) return "NeoForge";
+                if (lower.Contains("forge")) return "Forge";
+                if (lower.Contains("fabric")) return "Fabric";
+                if (lower.Contains("quilt")) return "Quilt";
+            }
+        }
+
+        return "通用";
+    }
+
+    private static string NormalizeLoaderName(string loader)
+    {
+        var lower = loader.ToLowerInvariant();
+        if (lower.Contains("neoforge")) return "NeoForge";
+        if (lower.Contains("forge")) return "Forge";
+        if (lower.Contains("fabric")) return "Fabric";
+        if (lower.Contains("quilt")) return "Quilt";
+        if (lower.Contains("bukkit") || lower.Contains("spigot") || lower.Contains("paper")) return "Bukkit";
+        if (lower.Contains("rift")) return "Rift";
+        // 首字母大写
+        return char.ToUpper(loader[0]) + loader[1..].ToLowerInvariant();
+    }
+
+    private static readonly Dictionary<string, string> LoaderIconMap = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["Forge"] = "avares://ObsMCLauncher.Desktop/Assets/LoaderIcons/forge.png",
+        ["NeoForge"] = "avares://ObsMCLauncher.Desktop/Assets/LoaderIcons/neoforged.png",
+        ["Fabric"] = "avares://ObsMCLauncher.Desktop/Assets/LoaderIcons/fabric.png",
+        ["Quilt"] = "avares://ObsMCLauncher.Desktop/Assets/LoaderIcons/quilt.png",
+        ["通用"] = "avares://ObsMCLauncher.Desktop/Assets/LoaderIcons/vanilla.png",
+        ["Bukkit"] = "avares://ObsMCLauncher.Desktop/Assets/LoaderIcons/vanilla.png",
+        ["Rift"] = "avares://ObsMCLauncher.Desktop/Assets/LoaderIcons/vanilla.png"
+    };
+
+    private static string GetLoaderIcon(string loaderName)
+    {
+        return LoaderIconMap.TryGetValue(loaderName, out var icon) ? icon : "avares://ObsMCLauncher.Desktop/Assets/LoaderIcons/vanilla.png";
+    }
+
+    private class LoaderComparer : IComparer<string>
+    {
+        private static readonly string[] Order = ["Forge", "NeoForge", "Fabric", "Quilt", "通用", "Bukkit", "Rift"];
+
+        public int Compare(string? x, string? y)
+        {
+            var xi = Array.IndexOf(Order, x ?? "通用");
+            var yi = Array.IndexOf(Order, y ?? "通用");
+            if (xi < 0) xi = Order.Length;
+            if (yi < 0) yi = Order.Length;
+            return xi.CompareTo(yi);
+        }
     }
 
     private async Task DownloadVersionAsync(VersionEntryViewModel? entry)
@@ -1016,6 +1312,47 @@ public partial class VersionGroupViewModel : ObservableObject
         OnPropertyChanged(nameof(HasCommonDependencies));
         OnPropertyChanged(nameof(CommonDependenciesDisplay));
     }
+
+    public ObservableCollection<LoaderSubGroupViewModel> LoaderGroups { get; } = new();
+
+    public bool HasLoaderGroups => LoaderGroups.Count > 1;
+
+    public void NotifyHasLoaderGroupsChanged()
+    {
+        OnPropertyChanged(nameof(HasLoaderGroups));
+    }
+}
+
+public partial class LoaderSubGroupViewModel : ObservableObject
+{
+    [ObservableProperty] private string _loaderName = string.Empty;
+    [ObservableProperty] private string _loaderIcon = string.Empty;
+
+    public ObservableCollection<VersionEntryViewModel> Files { get; } = new();
+
+    public ObservableCollection<DependencyItemViewModel> CommonDependencies { get; } = new();
+
+    public bool HasCommonDependencies => CommonDependencies.Count > 0;
+
+    public string CommonDependenciesDisplay
+    {
+        get
+        {
+            if (CommonDependencies.Count == 0) return "";
+            var required = CommonDependencies.Count(d => d.IsRequired);
+            var optional = CommonDependencies.Count(d => !d.IsRequired);
+            var parts = new List<string>();
+            if (required > 0) parts.Add($"{required} 个必需");
+            if (optional > 0) parts.Add($"{optional} 个可选");
+            return $"前置: {string.Join(", ", parts)}";
+        }
+    }
+
+    public void NotifyCommonDependenciesChanged()
+    {
+        OnPropertyChanged(nameof(HasCommonDependencies));
+        OnPropertyChanged(nameof(CommonDependenciesDisplay));
+    }
 }
 
 public partial class VersionEntryViewModel : ObservableObject
@@ -1031,6 +1368,7 @@ public partial class VersionEntryViewModel : ObservableObject
     [ObservableProperty] private string _sizeDisplay = string.Empty;
     [ObservableProperty] private bool _hasDependencies;
     [ObservableProperty] private string _dependenciesDisplay = string.Empty;
+    [ObservableProperty] private string _loader = string.Empty;
 
     public ObservableCollection<DependencyItemViewModel> Dependencies { get; } = new();
 }
@@ -1052,4 +1390,11 @@ public partial class DependencyItemViewModel : ObservableObject
     public string UniqueKey => BackendType == VersionBackendType.CurseForge
         ? $"cf_{CurseForgeModId}"
         : $"mr_{ProjectId}";
+}
+
+public class LoaderFilterItem
+{
+    public string LoaderName { get; init; } = "";
+    public string IconUri { get; init; } = "";
+    public int Count { get; init; }
 }
