@@ -11,3 +11,5 @@
 - 侧边栏导航图标改用 SVG 矢量图标替代 Emoji，提升跨平台渲染一致性；导航图标文件统一管理在 Assets/SidebarIcons 目录，文件名为 dashboard/multiplayer/accounts/versions/resources/settings
 - 修复 SVG 图标颜色跟随主题色问题，BitmapAssetValueConverter 新增 SVG 支持并载入时自动替换 currentColor 为当前 TextBrush 颜色
 - 修复导航项 SVG 图标与 Emoji 回退同时显示的重叠问题（NotConverter → NullToBoolConverter Invert）
+- 修复 LocalVersionService 中 vanilla 拼写错误（vanilia → vanilla_snapshot.png）
+- 修复 PluginIconConverter 引用 default_plugin.png 但实际文件为 default_plugin.svg 的问题，新增 SVG 加载及主题色支持

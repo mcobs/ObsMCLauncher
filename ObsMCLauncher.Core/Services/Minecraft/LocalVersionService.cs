@@ -111,7 +111,7 @@ namespace ObsMCLauncher.Core.Services.Minecraft
                     "neoforge" => "neoforged.png",
                     "quilt" => "quilt.png",
                     "optifine" => "optifine.png",
-                    _ => Type == "snapshot" ? "vanilia_snapshot.png" : 
+                    _ => Type == "snapshot" ? "vanilla_snapshot.png" : 
                          (IsVersionLessThanOrEqual(ActualVersionId, "1.12.2") ? "vanilla_old.png" : "vanilla.png")
                 };
                 return $"avares://ObsMCLauncher.Desktop/Assets/LoaderIcons/{iconName}";

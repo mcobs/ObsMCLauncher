@@ -3,8 +3,12 @@ using System.Globalization;
 using System.IO;
 using System.Net.Http;
 using System.Threading.Tasks;
+using Avalonia;
 using Avalonia.Data.Converters;
+using Avalonia.Media;
 using Avalonia.Media.Imaging;
+using Avalonia.Platform;
+using Avalonia.Svg.Skia;
 using Avalonia.Threading;
 using ObsMCLauncher.Core.Utils;
 
@@ -14,7 +18,7 @@ public class PluginIconConverter : IValueConverter
 {
     public static readonly PluginIconConverter Instance = new();
     private static readonly HttpClient _httpClient = new();
-    private static readonly string _defaultIcon = "avares://ObsMCLauncher.Desktop/Assets/default_plugin.png";
+    private static readonly string _defaultIcon = "avares://ObsMCLauncher.Desktop/Assets/default_plugin.svg";
 
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
@@ -33,6 +37,15 @@ public class PluginIconConverter : IValueConverter
             else if (File.Exists(iconPath))
             {
                 using var stream = File.OpenRead(iconPath);
+
+                if (iconPath.EndsWith(".svg", StringComparison.OrdinalIgnoreCase))
+                {
+                    var svgSource = SvgSource.LoadFromStream(stream);
+                    if (svgSource != null)
+                        svgSource = ApplyThemeColor(svgSource);
+                    return svgSource != null ? new SvgImage { Source = svgSource } : null;
+                }
+
                 return new Bitmap(stream);
             }
         }
@@ -44,17 +57,38 @@ public class PluginIconConverter : IValueConverter
         return LoadDefaultIcon();
     }
 
-    private static Bitmap? LoadDefaultIcon()
+    private static IImage? LoadDefaultIcon()
     {
         try
         {
-            var asset = Avalonia.Platform.AssetLoader.Open(new Uri(_defaultIcon));
-            return new Bitmap(asset);
+            var asset = AssetLoader.Open(new Uri(_defaultIcon));
+            var svgSource = SvgSource.LoadFromStream(asset);
+            if (svgSource != null)
+                svgSource = ApplyThemeColor(svgSource);
+            return svgSource != null ? new SvgImage { Source = svgSource } : null;
         }
         catch
         {
             return null;
         }
+    }
+
+    private static SvgSource ApplyThemeColor(SvgSource source)
+    {
+        var svgContent = source.ToString();
+        if (string.IsNullOrEmpty(svgContent))
+            return source;
+
+        if (Application.Current is { } app &&
+            app.TryGetResource("TextBrush", app.ActualThemeVariant, out var brush) &&
+            brush is ISolidColorBrush textBrush)
+        {
+            var hexColor = $"#{textBrush.Color.R:X2}{textBrush.Color.G:X2}{textBrush.Color.B:X2}";
+            svgContent = svgContent.Replace("currentColor", hexColor);
+            using var memStream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(svgContent));
+            return SvgSource.LoadFromStream(memStream) ?? source;
+        }
+        return source;
     }
 
     private static async Task LoadRemoteIconAsync(string url)
