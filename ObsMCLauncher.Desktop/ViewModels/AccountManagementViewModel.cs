@@ -80,6 +80,21 @@ public partial class AccountManagementViewModel : ViewModelBase
         }
     }
 
+    private bool _isYggdrasilLoginRunning;
+    public bool IsYggdrasilLoginRunning
+    {
+        get => _isYggdrasilLoginRunning;
+        set
+        {
+            if (_isYggdrasilLoginRunning != value)
+            {
+                _isYggdrasilLoginRunning = value;
+                OnPropertyChanged(new PropertyChangedEventArgs(nameof(IsYggdrasilLoginRunning)));
+                AddYggdrasilAccountCommand.NotifyCanExecuteChanged();
+            }
+        }
+    }
+
     private bool _isAddOfflinePanelVisible;
     public bool IsAddOfflinePanelVisible
     {
@@ -233,7 +248,7 @@ public partial class AccountManagementViewModel : ViewModelBase
 
         RefreshAccountCommand = new AsyncRelayCommand<GameAccount>(RefreshAccountAsync);
         StartMicrosoftLoginCommand = new AsyncRelayCommand(StartMicrosoftLoginAsync, () => !IsMicrosoftLoginRunning);
-        AddYggdrasilAccountCommand = new AsyncRelayCommand(AddYggdrasilAccountAsync);
+        AddYggdrasilAccountCommand = new AsyncRelayCommand(AddYggdrasilAccountAsync, () => !IsYggdrasilLoginRunning);
 
         Load();
     }
@@ -283,6 +298,9 @@ public partial class AccountManagementViewModel : ViewModelBase
 
     private async Task AddYggdrasilAccountAsync()
     {
+        if (IsYggdrasilLoginRunning) return;
+        IsYggdrasilLoginRunning = true;
+
         var main = NavigationStore.MainWindow;
         if (main == null) return;
 
@@ -367,6 +385,10 @@ public partial class AccountManagementViewModel : ViewModelBase
         catch (Exception ex)
         {
             await main.Dialogs.ShowError("错误", ex.Message);
+        }
+        finally
+        {
+            IsYggdrasilLoginRunning = false;
         }
     }
 

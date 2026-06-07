@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:ObsMCLauncher.Desktop.ViewModels"
              xmlns:converters="using:ObsMCLauncher.Desktop.Converters"
+             xmlns:models="using:ObsMCLauncher.Core.Models"
              x:Class="ObsMCLauncher.Desktop.Views.AccountManagementView"
              x:DataType="vm:AccountManagementViewModel"
              x:Name="AccountPage">
@@ -24,21 +25,42 @@
 
           <Button Grid.Column="1" Classes="accent" Margin="0,0,12,0" Padding="16,12" MinWidth="120" Height="44" Command="{Binding StartMicrosoftLoginCommand}" IsEnabled="{Binding !IsMicrosoftLoginRunning}">
             <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-              <Path Data="M17.5 12C17.5 12.9 17.3 13.7 17 14.4L19.2 16.6C20 15.2 20.5 13.6 20.5 12C20.5 10.4 20 8.8 19.2 7.4L17 9.6C17.3 10.3 17.5 11.1 17.5 12M12 6.5C12.9 6.5 13.7 6.7 14.4 7L16.6 4.8C15.2 4 13.6 3.5 12 3.5C10.4 3.5 8.8 4 7.4 4.8L9.6 7C10.3 6.7 11.1 6.5 12 6.5M6.5 12C6.5 11.1 6.7 10.3 7 9.6L4.8 7.4C4 8.8 3.5 10.4 3.5 12C3.5 13.6 4 15.2 4.8 16.6L7 14.4C6.7 13.7 6.5 12.9 6.5 12M12 21C6.5 21 2 16.5 2 11S6.5 1 12 1S22 5.5 22 11S17.5 21 12 21M12 17.5C13.6 17.5 15.2 17 16.6 16.2L14.4 14C13.7 14.3 12.9 14.5 12 14.5C11.1 14.5 10.3 14.3 9.6 14L7.4 16.2C8.8 17 10.4 17.5 12 17.5Z" Width="16" Height="16" Stretch="Uniform" Fill="White" VerticalAlignment="Center"/>
+              <Image Width="16" Height="16" Stretch="Uniform" VerticalAlignment="Center">
+                <Image.Source>
+                  <MultiBinding Converter="{x:Static converters:EnumToChineseTextConverter.Instance}" ConverterParameter="IconPath">
+                    <Binding Source="{x:Static models:AccountType.Microsoft}" />
+                    <Binding Path="ActualThemeVariant" RelativeSource="{RelativeSource AncestorType=Window}" />
+                  </MultiBinding>
+                </Image.Source>
+              </Image>
               <TextBlock Text="微软账户" FontSize="13" VerticalAlignment="Center" />
             </StackPanel>
           </Button>
 
-          <Button Grid.Column="2" Margin="0,0,12,0" Padding="16,12" MinWidth="120" Height="44" Command="{Binding AddYggdrasilAccountCommand}">
+          <Button Grid.Column="2" Margin="0,0,12,0" Padding="16,12" MinWidth="120" Height="44" Command="{Binding AddYggdrasilAccountCommand}" IsEnabled="{Binding !IsYggdrasilLoginRunning}">
             <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-              <Path Data="M12 1L3 5V11C3 16.5 6.8 21.7 12 23C17.2 21.7 21 16.5 21 11V5L12 1M12 11H19C18.5 15.5 15.7 19.6 12 20.9V11H5V6.3L12 3.2V11Z" Width="16" Height="16" Stretch="Uniform" Fill="{DynamicResource TextBrush}" VerticalAlignment="Center"/>
+              <Image Width="16" Height="16" Stretch="Uniform" VerticalAlignment="Center">
+                <Image.Source>
+                  <MultiBinding Converter="{x:Static converters:EnumToChineseTextConverter.Instance}" ConverterParameter="IconPath">
+                    <Binding Source="{x:Static models:AccountType.Yggdrasil}" />
+                    <Binding Path="ActualThemeVariant" RelativeSource="{RelativeSource AncestorType=Window}" />
+                  </MultiBinding>
+                </Image.Source>
+              </Image>
               <TextBlock Text="外置登录" FontSize="13" VerticalAlignment="Center" />
             </StackPanel>
           </Button>
 
-          <Button Grid.Column="3" Padding="16,12" MinWidth="120" Height="44" Command="{Binding ShowAddOfflinePanelCommand}">
+          <Button Grid.Column="3" Padding="16,12" MinWidth="120" Height="44" Command="{Binding ShowAddOfflinePanelCommand}" IsEnabled="{Binding !IsAddOfflinePanelVisible}">
             <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-              <Path Data="M12 4A4 4 0 0 0 8 8A4 4 0 0 0 12 12A4 4 0 0 0 16 8A4 4 0 0 0 12 4M12 14C8.42 14 2 15.8 2 19.2V22H22V19.2C22 15.8 15.58 14 12 14Z" Width="16" Height="16" Stretch="Uniform" Fill="{DynamicResource TextBrush}" VerticalAlignment="Center"/>
+              <Image Width="16" Height="16" Stretch="Uniform" VerticalAlignment="Center">
+                <Image.Source>
+                  <MultiBinding Converter="{x:Static converters:EnumToChineseTextConverter.Instance}" ConverterParameter="IconPath">
+                    <Binding Source="{x:Static models:AccountType.Offline}" />
+                    <Binding Path="ActualThemeVariant" RelativeSource="{RelativeSource AncestorType=Window}" />
+                  </MultiBinding>
+                </Image.Source>
+              </Image>
               <TextBlock Text="离线账户" FontSize="13" VerticalAlignment="Center" />
             </StackPanel>
           </Button>
@@ -76,10 +98,15 @@
                             HorizontalAlignment="Right" 
                             VerticalAlignment="Bottom"
                             Margin="0,0,-4,-4">
-                      <TextBlock Text="{Binding Type, Converter={x:Static converters:EnumToChineseTextConverter.Instance}, ConverterParameter='Icon'}" 
-                                 FontSize="11" 
-                                 HorizontalAlignment="Center" 
-                                 VerticalAlignment="Center" />
+                      <Image Width="14" Height="14" Stretch="Uniform"
+                                 HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Image.Source>
+                          <MultiBinding Converter="{x:Static converters:EnumToChineseTextConverter.Instance}" ConverterParameter="IconPath">
+                            <Binding Path="Type" />
+                            <Binding Path="ActualThemeVariant" RelativeSource="{RelativeSource AncestorType=Window}" />
+                          </MultiBinding>
+                        </Image.Source>
+                      </Image>
                     </Border>
                   </Panel>
 

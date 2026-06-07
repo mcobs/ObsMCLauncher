@@ -271,13 +271,19 @@
                                             ToolTip.Tip="{Binding Title}">
                                         <Grid ColumnDefinitions="24,*">
                                             <Image Grid.Column="0"
-                                                     Source="{Binding IconPath, Converter={x:Static converters:BitmapAssetValueConverter.Instance}}"
                                                      Width="20"
                                                      Height="20"
                                                      VerticalAlignment="Center"
                                                      HorizontalAlignment="Center"
                                                      Stretch="Uniform"
-                                                     IsVisible="{Binding IconPath, Converter={x:Static converters:NotNullConverter.Instance}}" />
+                                                     IsVisible="{Binding IconPath, Converter={x:Static converters:NotNullConverter.Instance}}">
+                                              <Image.Source>
+                                                <MultiBinding Converter="{x:Static converters:BitmapAssetValueConverter.Instance}">
+                                                  <Binding Path="IconPath" />
+                                                  <Binding Path="ActualThemeVariant" RelativeSource="{RelativeSource AncestorType=Window}" />
+                                                </MultiBinding>
+                                              </Image.Source>
+                                            </Image>
 
                                             <TextBlock Grid.Column="0"
                                                        Text="{Binding Icon}"
@@ -319,13 +325,19 @@
                                             ToolTip.Tip="{Binding Title}">
                                         <Grid ColumnDefinitions="24,*">
                                             <Image Grid.Column="0"
-                                                     Source="{Binding IconPath, Converter={x:Static converters:BitmapAssetValueConverter.Instance}}"
                                                      Width="20"
                                                      Height="20"
                                                      VerticalAlignment="Center"
                                                      HorizontalAlignment="Center"
                                                      Stretch="Uniform"
-                                                     IsVisible="{Binding IconPath, Converter={x:Static converters:NotNullConverter.Instance}}" />
+                                                     IsVisible="{Binding IconPath, Converter={x:Static converters:NotNullConverter.Instance}}">
+                                              <Image.Source>
+                                                <MultiBinding Converter="{x:Static converters:BitmapAssetValueConverter.Instance}">
+                                                  <Binding Path="IconPath" />
+                                                  <Binding Path="ActualThemeVariant" RelativeSource="{RelativeSource AncestorType=Window}" />
+                                                </MultiBinding>
+                                              </Image.Source>
+                                            </Image>
 
                                             <TextBlock Grid.Column="0"
                                                        Text="{Binding Icon}"

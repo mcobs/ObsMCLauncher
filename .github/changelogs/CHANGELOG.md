@@ -13,3 +13,10 @@
 - 修复导航项 SVG 图标与 Emoji 回退同时显示的重叠问题（NotConverter → NullToBoolConverter Invert）
 - 修复 LocalVersionService 中 vanilla 拼写错误（vanilia → vanilla_snapshot.png）
 - 修复 PluginIconConverter 引用 default_plugin.png 但实际文件为 default_plugin.svg 的问题，新增 SVG 加载及主题色支持
+- 账户类型图标标准化：创建 Assets/AccountIcons 目录，将中文名 SVG 统一重命名为 microsoft/yggdrasil/offline，EnumToChineseTextConverter 新增 IconPath 参数返回 SVG Image，微软图标保留彩色、其余跟随主题色
+- 修复 yggdrasil.svg / default_plugin.svg / logo.svg XML 声明导致 MSG_ELEMENT_NOT_DECLARED 报错的问题，移除 <?xml?> 和 <!DOCTYPE> 声明
+- 修复账号管理添加账号按钮状态无变化问题：新增 IsYggdrasilLoginRunning 登录状态属性，外置登录按钮操作期间自动禁用；离线添加按钮在面板打开时自动禁用，防止重复点击
+- 修复浅色主题下 SVG 图标颜色适配问题，EnumToChineseTextConverter / BitmapAssetValueConverter / PluginIconConverter 统一在加载时替换 currentColor 为主题 TextBrush 颜色
+- 修复主题切换时 SVG 图标颜色不更新的问题：Converter 新增 IMultiValueConverter 实现，XAML 改用 MultiBinding 绑定 ActualThemeVariant
+- 修复 SVG 图标颜色：深色主题用 #FFFFFF，浅色主题用 #000000，直接检查 ActualThemeVariant 而非依赖 TextBrush 资源
+- 账号管理添加账号按钮改用 SVG 图标（microsoft.svg / yggdrasil.svg / offline.svg），替换硬编码 Path 元素

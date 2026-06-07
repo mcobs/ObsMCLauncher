@@ -167,10 +167,16 @@
                               IsVisible="{Binding Avatar, Converter={x:Static converters:NullToBoolConverter.Instance}}">
                         <Image Source="{Binding Avatar}" Stretch="Uniform" />
                       </Border>
-                      <TextBlock Grid.Column="0" Width="24" Height="24"
-                                 Text="{Binding Type, Converter={x:Static converters:EnumToChineseTextConverter.Instance}, ConverterParameter=Icon}"
-                                 FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center"
-                                 IsVisible="{Binding Avatar, Converter={x:Static converters:NullToBoolConverter.Instance}, ConverterParameter=Invert}"/>
+                      <Image Grid.Column="0" Width="24" Height="24"
+                                 Stretch="Uniform"
+                                 IsVisible="{Binding Avatar, Converter={x:Static converters:NullToBoolConverter.Instance}, ConverterParameter=Invert}">
+                        <Image.Source>
+                          <MultiBinding Converter="{x:Static converters:EnumToChineseTextConverter.Instance}" ConverterParameter="IconPath">
+                            <Binding Path="Type" />
+                            <Binding Path="ActualThemeVariant" RelativeSource="{RelativeSource AncestorType=Window}" />
+                          </MultiBinding>
+                        </Image.Source>
+                      </Image>
                       <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="8,0,0,0">
                         <TextBlock Text="{Binding Username}" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
                         <TextBlock Text="{Binding Type, Converter={x:Static converters:EnumToChineseTextConverter.Instance}}" 
@@ -187,10 +193,16 @@
                               IsVisible="{Binding Avatar, Converter={x:Static converters:NullToBoolConverter.Instance}}">
                         <Image Source="{Binding Avatar}" Stretch="Uniform" />
                       </Border>
-                      <TextBlock Grid.Column="0" Width="24" Height="24"
-                                 Text="{Binding Type, Converter={x:Static converters:EnumToChineseTextConverter.Instance}, ConverterParameter=Icon}"
-                                 FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center"
-                                 IsVisible="{Binding Avatar, Converter={x:Static converters:NullToBoolConverter.Instance}, ConverterParameter=Invert}"/>
+                      <Image Grid.Column="0" Width="24" Height="24"
+                                 Stretch="Uniform"
+                                 IsVisible="{Binding Avatar, Converter={x:Static converters:NullToBoolConverter.Instance}, ConverterParameter=Invert}">
+                        <Image.Source>
+                          <MultiBinding Converter="{x:Static converters:EnumToChineseTextConverter.Instance}" ConverterParameter="IconPath">
+                            <Binding Path="Type" />
+                            <Binding Path="ActualThemeVariant" RelativeSource="{RelativeSource AncestorType=Window}" />
+                          </MultiBinding>
+                        </Image.Source>
+                      </Image>
                       <TextBlock Grid.Column="1" Text="{Binding Username}" VerticalAlignment="Center" Margin="8,0,0,0" FontSize="13" FontWeight="SemiBold"/>
                     </Grid>
                   </DataTemplate>

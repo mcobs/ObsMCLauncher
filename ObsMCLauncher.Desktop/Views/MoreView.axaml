@@ -348,8 +348,14 @@
                             <Border Grid.Column="0" Width="32" Height="32" CornerRadius="6" Margin="0,0,10,0"
                                     Background="{DynamicResource SurfaceBrush}"
                                     IsVisible="{Binding IconUrl, Converter={x:Static converters:PluginIconVisibleConverter.Instance}}">
-                              <Image Source="{Binding IconUrl, Converter={x:Static converters:PluginIconConverter.Instance}}"
-                                     Stretch="UniformToFill"/>
+                              <Image Stretch="UniformToFill">
+                                <Image.Source>
+                                  <MultiBinding Converter="{x:Static converters:PluginIconConverter.Instance}">
+                                    <Binding Path="IconUrl" />
+                                    <Binding Path="ActualThemeVariant" RelativeSource="{RelativeSource AncestorType=Window}" />
+                                  </MultiBinding>
+                                </Image.Source>
+                              </Image>
                             </Border>
                             <StackPanel Grid.Column="1">
                               <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold"/>

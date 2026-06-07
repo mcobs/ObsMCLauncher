@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Net.Http;
@@ -14,7 +15,7 @@ using ObsMCLauncher.Core.Utils;
 
 namespace ObsMCLauncher.Desktop.Converters;
 
-public class PluginIconConverter : IValueConverter
+public class PluginIconConverter : IValueConverter, IMultiValueConverter
 {
     public static readonly PluginIconConverter Instance = new();
     private static readonly HttpClient _httpClient = new();
@@ -27,6 +28,21 @@ public class PluginIconConverter : IValueConverter
             return LoadDefaultIcon();
         }
 
+        return LoadIcon(iconPath);
+    }
+
+    public object? Convert(IList<object?> values, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (values.Count > 0 && values[0] is string iconPath && !string.IsNullOrWhiteSpace(iconPath))
+        {
+            return LoadIcon(iconPath);
+        }
+
+        return LoadDefaultIcon();
+    }
+
+    private static object? LoadIcon(string iconPath)
+    {
         try
         {
             if (iconPath.StartsWith("http://") || iconPath.StartsWith("https://"))
@@ -36,16 +52,16 @@ public class PluginIconConverter : IValueConverter
             }
             else if (File.Exists(iconPath))
             {
-                using var stream = File.OpenRead(iconPath);
-
                 if (iconPath.EndsWith(".svg", StringComparison.OrdinalIgnoreCase))
                 {
-                    var svgSource = SvgSource.LoadFromStream(stream);
-                    if (svgSource != null)
-                        svgSource = ApplyThemeColor(svgSource);
+                    var svgContent = File.ReadAllText(iconPath);
+                    svgContent = SvgThemeHelper.ReplaceCurrentColor(svgContent);
+                    using var ms = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(svgContent));
+                    var svgSource = SvgSource.LoadFromStream(ms);
                     return svgSource != null ? new SvgImage { Source = svgSource } : null;
                 }
 
+                using var stream = File.OpenRead(iconPath);
                 return new Bitmap(stream);
             }
         }
@@ -61,34 +77,18 @@ public class PluginIconConverter : IValueConverter
     {
         try
         {
-            var asset = AssetLoader.Open(new Uri(_defaultIcon));
-            var svgSource = SvgSource.LoadFromStream(asset);
-            if (svgSource != null)
-                svgSource = ApplyThemeColor(svgSource);
+            using var asset = AssetLoader.Open(new Uri(_defaultIcon));
+            using var reader = new StreamReader(asset);
+            var svgContent = reader.ReadToEnd();
+            svgContent = SvgThemeHelper.ReplaceCurrentColor(svgContent);
+            using var ms = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(svgContent));
+            var svgSource = SvgSource.LoadFromStream(ms);
             return svgSource != null ? new SvgImage { Source = svgSource } : null;
         }
         catch
         {
             return null;
         }
-    }
-
-    private static SvgSource ApplyThemeColor(SvgSource source)
-    {
-        var svgContent = source.ToString();
-        if (string.IsNullOrEmpty(svgContent))
-            return source;
-
-        if (Application.Current is { } app &&
-            app.TryGetResource("TextBrush", app.ActualThemeVariant, out var brush) &&
-            brush is ISolidColorBrush textBrush)
-        {
-            var hexColor = $"#{textBrush.Color.R:X2}{textBrush.Color.G:X2}{textBrush.Color.B:X2}";
-            svgContent = svgContent.Replace("currentColor", hexColor);
-            using var memStream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(svgContent));
-            return SvgSource.LoadFromStream(memStream) ?? source;
-        }
-        return source;
     }
 
     private static async Task LoadRemoteIconAsync(string url)
