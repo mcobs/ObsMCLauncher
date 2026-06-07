@@ -336,22 +336,84 @@ public partial class VersionDownloadViewModel : ViewModelBase
                 }
             }
         }
-        catch (UnauthorizedAccessException)
+        catch (UnauthorizedAccessException ex)
         {
-            _notificationService.Show("权限不足", "无法删除该目录，请检查文件夹权限或以管理员身份运行", NotificationType.Error);
+            Core.Utils.DebugLogger.Error("Directory", $"删除目录权限不足: {item.Path} - {ex.Message}");
+            var removeOnly = await _dialogService.ShowQuestion(
+                "删除失败",
+                $"无法删除该目录，权限不足。\n\n{item.Path}\n\n是否仅从目录列表中移除？（不会删除实际文件夹）");
+            if (removeOnly == DialogResult.Yes)
+            {
+                RemoveDirectoryFromList(item, isCurrent);
+            }
         }
         catch (IOException ex)
         {
-            _notificationService.Show("删除失败", $"文件被占用或无法访问: {ex.Message}", NotificationType.Error);
+            Core.Utils.DebugLogger.Error("Directory", $"删除目录IO异常: {item.Path} - {ex.Message}");
+            var removeOnly = await _dialogService.ShowQuestion(
+                "删除失败",
+                $"文件被占用或无法访问，无法删除该目录。\n\n{item.Path}\n\n是否仅从目录列表中移除？（不会删除实际文件夹）");
+            if (removeOnly == DialogResult.Yes)
+            {
+                RemoveDirectoryFromList(item, isCurrent);
+            }
         }
         catch (Exception ex)
         {
-            _notificationService.Show("删除失败", ex.Message, NotificationType.Error);
+            Core.Utils.DebugLogger.Error("Directory", $"删除目录失败: {item.Path} - {ex.Message}");
+            var removeOnly = await _dialogService.ShowQuestion(
+                "删除失败",
+                $"删除目录时出错: {ex.Message}\n\n是否仅从目录列表中移除？（不会删除实际文件夹）");
+            if (removeOnly == DialogResult.Yes)
+            {
+                RemoveDirectoryFromList(item, isCurrent);
+            }
         }
         finally
         {
             IsRefreshingVersions = false;
         }
+    }
+
+    /// <summary>
+    /// 仅从目录列表中移除，不删除实际文件夹
+    /// </summary>
+    private void RemoveDirectoryFromList(GameDirectoryItem item, bool isCurrent)
+    {
+        _config = LauncherConfig.Load();
+        _config.CustomGameDirectories.RemoveAll(d => string.Equals(d, item.Path, StringComparison.OrdinalIgnoreCase));
+
+        if (isCurrent)
+        {
+            var nextDir = FindNextAvailableDirectory(item.Path);
+            if (!string.IsNullOrEmpty(nextDir))
+            {
+                _config.GameDirectoryLocation = DirectoryLocation.Custom;
+                _config.CustomGameDirectory = nextDir;
+            }
+            else
+            {
+                _config.GameDirectoryLocation = DirectoryLocation.AppData;
+                _config.CustomGameDirectory = "";
+            }
+        }
+
+        _config.Save();
+        LoadGameDirectories();
+        RefreshCurrentDirectoryDisplay();
+
+        if (isCurrent)
+        {
+            RefreshInstalled();
+            var homeVm = NavigationStore.MainWindow?.NavItems
+                .FirstOrDefault(x => x.Title == "主页")?.Page as HomeViewModel;
+            if (homeVm != null)
+            {
+                _ = homeVm.LoadLocalAsync();
+            }
+        }
+
+        _notificationService.Show("已移除", "目录已从列表中移除（实际文件夹未删除）", NotificationType.Success);
     }
 
     private string? FindNextAvailableDirectory(string excludingPath)
