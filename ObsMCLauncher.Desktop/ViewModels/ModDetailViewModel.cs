@@ -56,27 +56,25 @@ public partial class ModDetailViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(FilteredVersionGroups))]
     private LoaderFilterItem? _selectedLoaderFilter;
 
+    /// <summary>
+    /// 当前筛选的加载器名称，供 VersionGroupViewModel 内部判断
+    /// </summary>
+    public string CurrentLoaderFilter =>
+        SelectedLoaderFilter?.LoaderName == "全部" ? "" : (SelectedLoaderFilter?.LoaderName ?? "");
+
     public IEnumerable<VersionGroupViewModel> FilteredVersionGroups
     {
         get
         {
-            if (SelectedLoaderFilter == null || SelectedLoaderFilter.LoaderName == "全部")
+            // 同步筛选条件到各版本组
+            VersionGroupViewModel.SharedLoaderFilter = CurrentLoaderFilter;
+            foreach (var g in VersionGroups)
+                g.NotifyLoaderFilterChanged();
+
+            if (string.IsNullOrEmpty(CurrentLoaderFilter))
                 return VersionGroups;
 
-            return VersionGroups.Select(g =>
-            {
-                var filteredGroup = new VersionGroupViewModel
-                {
-                    McVersion = g.McVersion,
-                    IsLatest = g.IsLatest
-                };
-                foreach (var lg in g.LoaderGroups)
-                {
-                    if (lg.LoaderName == SelectedLoaderFilter.LoaderName)
-                        filteredGroup.LoaderGroups.Add(lg);
-                }
-                return filteredGroup;
-            }).Where(g => g.LoaderGroups.Count > 0);
+            return VersionGroups.Where(g => g.LoaderGroups.Any(lg => lg.LoaderName == CurrentLoaderFilter));
         }
     }
 
@@ -869,7 +867,23 @@ public partial class ModDetailViewModel : ViewModelBase
             }
         }
 
-        // CurseForge：从 gameVersions 中提取加载器标识
+        // CurseForge：优先从 SortableGameVersions 的 GameVersionTypeId 判断
+        if (cfFile?.SortableGameVersions != null)
+        {
+            foreach (var sgv in cfFile.SortableGameVersions)
+            {
+                // CurseForge GameVersionTypeId: 1=MC版本, 2=Forge, 3=Fabric, 4=Quilt, 5=NeoForge
+                switch (sgv.GameVersionTypeId)
+                {
+                    case 5: return "NeoForge";
+                    case 2: return "Forge";
+                    case 3: return "Fabric";
+                    case 4: return "Quilt";
+                }
+            }
+        }
+
+        // 回退：从 GameVersions 字符串中提取
         if (cfFile?.GameVersions != null)
         {
             foreach (var gv in cfFile.GameVersions)
@@ -882,7 +896,17 @@ public partial class ModDetailViewModel : ViewModelBase
             }
         }
 
-        return "通用";
+        // 最后回退：从文件名推断
+        if (cfFile?.FileName != null)
+        {
+            var lower = cfFile.FileName.ToLowerInvariant();
+            if (lower.Contains("neoforge")) return "NeoForge";
+            if (lower.Contains("forge")) return "Forge";
+            if (lower.Contains("fabric")) return "Fabric";
+            if (lower.Contains("quilt")) return "Quilt";
+        }
+
+        return "其他";
     }
 
     private static string NormalizeLoaderName(string loader)
@@ -904,7 +928,7 @@ public partial class ModDetailViewModel : ViewModelBase
         ["NeoForge"] = "avares://ObsMCLauncher.Desktop/Assets/LoaderIcons/neoforged.png",
         ["Fabric"] = "avares://ObsMCLauncher.Desktop/Assets/LoaderIcons/fabric.png",
         ["Quilt"] = "avares://ObsMCLauncher.Desktop/Assets/LoaderIcons/quilt.png",
-        ["通用"] = "avares://ObsMCLauncher.Desktop/Assets/LoaderIcons/vanilla.png",
+        ["其他"] = "avares://ObsMCLauncher.Desktop/Assets/LoaderIcons/vanilla.png",
         ["Bukkit"] = "avares://ObsMCLauncher.Desktop/Assets/LoaderIcons/vanilla.png",
         ["Rift"] = "avares://ObsMCLauncher.Desktop/Assets/LoaderIcons/vanilla.png"
     };
@@ -916,12 +940,12 @@ public partial class ModDetailViewModel : ViewModelBase
 
     private class LoaderComparer : IComparer<string>
     {
-        private static readonly string[] Order = ["Forge", "NeoForge", "Fabric", "Quilt", "通用", "Bukkit", "Rift"];
+        private static readonly string[] Order = ["Forge", "NeoForge", "Fabric", "Quilt", "其他", "Bukkit", "Rift"];
 
         public int Compare(string? x, string? y)
         {
-            var xi = Array.IndexOf(Order, x ?? "通用");
-            var yi = Array.IndexOf(Order, y ?? "通用");
+            var xi = Array.IndexOf(Order, x ?? "其他");
+            var yi = Array.IndexOf(Order, y ?? "其他");
             if (xi < 0) xi = Order.Length;
             if (yi < 0) yi = Order.Length;
             return xi.CompareTo(yi);
@@ -1287,7 +1311,15 @@ public partial class VersionGroupViewModel : ObservableObject
 
     public ObservableCollection<VersionEntryViewModel> Files { get; } = new();
 
-    public string FileCountDisplay => $"{Files.Count} 个文件";
+    public string FileCountDisplay
+    {
+        get
+        {
+            int count = FilteredLoaderGroups.Sum(lg => lg.Files.Count);
+            if (count == 0) count = Files.Count;
+            return $"{count} 个文件";
+        }
+    }
 
     public ObservableCollection<DependencyItemViewModel> CommonDependencies { get; } = new();
 
@@ -1316,6 +1348,25 @@ public partial class VersionGroupViewModel : ObservableObject
     public ObservableCollection<LoaderSubGroupViewModel> LoaderGroups { get; } = new();
 
     public bool HasLoaderGroups => LoaderGroups.Count > 1;
+
+    /// <summary>
+    /// 当前筛选的加载器名称（空字符串表示不筛选），各版本组共享此值
+    /// </summary>
+    public static string SharedLoaderFilter { get; set; } = "";
+
+    /// <summary>
+    /// 根据当前筛选条件返回可见的加载器子组
+    /// </summary>
+    public IEnumerable<LoaderSubGroupViewModel> FilteredLoaderGroups =>
+        string.IsNullOrEmpty(SharedLoaderFilter)
+            ? LoaderGroups
+            : LoaderGroups.Where(lg => lg.LoaderName == SharedLoaderFilter);
+
+    public void NotifyLoaderFilterChanged()
+    {
+        OnPropertyChanged(nameof(FilteredLoaderGroups));
+        OnPropertyChanged(nameof(FileCountDisplay));
+    }
 
     public void NotifyHasLoaderGroupsChanged()
     {
