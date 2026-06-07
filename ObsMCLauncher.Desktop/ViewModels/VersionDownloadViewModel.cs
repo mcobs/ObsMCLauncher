@@ -137,9 +137,15 @@ public partial class VersionDownloadViewModel : ViewModelBase
             DirectoryLocation.AppData => OperatingSystem.IsWindows() ? "%APPDATA%\\.minecraft"
                 : OperatingSystem.IsMacOS() ? "~/Library/Application Support/minecraft"
                 : "~/.minecraft",
-            DirectoryLocation.RunningDirectory => "运行目录\\.minecraft",
+            DirectoryLocation.RunningDirectory => "启动器目录\\.minecraft",
             _ => _config.CustomGameDirectory
         };
+
+        if (!Directory.Exists(_config.GameDirectory))
+        {
+            Directory.CreateDirectory(_config.GameDirectory);
+        }
+
         IsCurrentDirectoryValid = Directory.Exists(_config.GameDirectory);
         UpdateDirectoryItemsSelection();
     }
@@ -179,15 +185,13 @@ public partial class VersionDownloadViewModel : ViewModelBase
                     return;
                 }
 
-                string defaultDir = _config.GameDirectoryLocation switch
-                {
-                    DirectoryLocation.AppData => LauncherConfig.GetDefaultAppdataGameDirectory(),
-                    _ => _config.CustomGameDirectory
-                };
+                string officialDir = LauncherConfig.GetDefaultAppdataGameDirectory();
+                string runningDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ".minecraft");
 
-                if (string.Equals(path, defaultDir, StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(path, officialDir, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(path, runningDir, StringComparison.OrdinalIgnoreCase))
                 {
-                    _notificationService.Show("无需添加", "该目录已是默认游戏目录", NotificationType.Info);
+                    _notificationService.Show("无需添加", "该目录已是默认游戏目录，可以直接在列表中切换使用", NotificationType.Info);
                     return;
                 }
 
@@ -208,6 +212,12 @@ public partial class VersionDownloadViewModel : ViewModelBase
     private async Task RemoveDirectoryAsync(GameDirectoryItem? item)
     {
         if (item == null) return;
+
+        if (!item.IsDeletable)
+        {
+            _notificationService.Show("无法删除", "默认目录不可删除。如需使用其他目录，请添加自定义目录后切换。", NotificationType.Warning);
+            return;
+        }
 
         _config = LauncherConfig.Load();
 
@@ -356,9 +366,7 @@ public partial class VersionDownloadViewModel : ViewModelBase
         {
             if (!Directory.Exists(item.Path))
             {
-                _notificationService.Show("目录无效", $"目录不存在: {item.Path}", NotificationType.Warning);
-                item.IsValid = false;
-                return;
+                Directory.CreateDirectory(item.Path);
             }
 
             IsRefreshingVersions = true;
@@ -366,7 +374,16 @@ public partial class VersionDownloadViewModel : ViewModelBase
             _config = LauncherConfig.Load();
             if (item.IsDefault)
             {
-                _config.GameDirectoryLocation = DirectoryLocation.AppData;
+                string officialDir = LauncherConfig.GetDefaultAppdataGameDirectory();
+
+                if (string.Equals(item.Path, officialDir, StringComparison.OrdinalIgnoreCase))
+                {
+                    _config.GameDirectoryLocation = DirectoryLocation.AppData;
+                }
+                else
+                {
+                    _config.GameDirectoryLocation = DirectoryLocation.RunningDirectory;
+                }
                 _config.CustomGameDirectory = "";
             }
             else
@@ -621,35 +638,63 @@ public partial class VersionDownloadViewModel : ViewModelBase
         _config = LauncherConfig.Load();
         var items = new ObservableCollection<GameDirectoryItem>();
 
-        string defaultPath = _config.GameDirectoryLocation switch
-        {
-            DirectoryLocation.AppData => LauncherConfig.GetDefaultAppdataGameDirectory(),
-            _ => _config.CustomGameDirectory
-        };
+        string officialDir = LauncherConfig.GetDefaultAppdataGameDirectory();
+        string runningDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ".minecraft");
 
-        bool isUsingDefault = _config.GameDirectoryLocation == DirectoryLocation.AppData
-            || _config.GameDirectoryLocation == DirectoryLocation.RunningDirectory;
+        // 默认目录一：官方目录（平台自适应）
+        string officialDisplay;
+        if (OperatingSystem.IsWindows())
+            officialDisplay = ".minecraft（官方目录）";
+        else if (OperatingSystem.IsMacOS())
+            officialDisplay = "minecraft（官方目录）";
+        else
+            officialDisplay = ".minecraft（官方目录）";
+
+        if (!Directory.Exists(officialDir))
+        {
+            Directory.CreateDirectory(officialDir);
+        }
 
         items.Add(new GameDirectoryItem
         {
-            Path = defaultPath,
-            DisplayName = isUsingDefault ? $".minecraft（默认）" : $".minecraft",
+            Path = officialDir,
+            DisplayName = officialDisplay,
             IsDefault = true,
+            IsDeletable = false,
             IsCurrent = _config.GameDirectoryLocation == DirectoryLocation.AppData
-                || _config.GameDirectoryLocation == DirectoryLocation.RunningDirectory
-                || string.Equals(defaultPath, _config.CustomGameDirectory, StringComparison.OrdinalIgnoreCase),
-            IsValid = Directory.Exists(defaultPath)
+                || string.Equals(officialDir, _config.GameDirectory, StringComparison.OrdinalIgnoreCase),
+            IsValid = Directory.Exists(officialDir)
         });
 
+        // 默认目录二：启动器根目录下的 .minecraft
+        if (!Directory.Exists(runningDir))
+        {
+            Directory.CreateDirectory(runningDir);
+        }
+
+        items.Add(new GameDirectoryItem
+        {
+            Path = runningDir,
+            DisplayName = ".minecraft（启动器目录）",
+            IsDefault = true,
+            IsDeletable = false,
+            IsCurrent = _config.GameDirectoryLocation == DirectoryLocation.RunningDirectory
+                || string.Equals(runningDir, _config.GameDirectory, StringComparison.OrdinalIgnoreCase),
+            IsValid = Directory.Exists(runningDir)
+        });
+
+        // 用户自定义目录
         foreach (var dir in _config.CustomGameDirectories)
         {
-            if (string.Equals(dir, defaultPath, StringComparison.OrdinalIgnoreCase)) continue;
+            if (string.Equals(dir, officialDir, StringComparison.OrdinalIgnoreCase)) continue;
+            if (string.Equals(dir, runningDir, StringComparison.OrdinalIgnoreCase)) continue;
 
             items.Add(new GameDirectoryItem
             {
                 Path = dir,
                 DisplayName = Path.GetFileName(dir.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)),
                 IsDefault = false,
+                IsDeletable = true,
                 IsCurrent = string.Equals(dir, _config.GameDirectory, StringComparison.OrdinalIgnoreCase),
                 IsValid = Directory.Exists(dir)
             });
@@ -685,4 +730,7 @@ public partial class GameDirectoryItem : ObservableObject
 
     [ObservableProperty]
     private bool _isValid = true;
+
+    [ObservableProperty]
+    private bool _isDeletable = true;
 }

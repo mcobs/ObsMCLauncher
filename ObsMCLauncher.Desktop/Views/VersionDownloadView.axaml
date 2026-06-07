@@ -445,6 +445,15 @@
                         </Border>
 
                         <Border CornerRadius="3" Padding="4,1"
+                                Background="{DynamicResource PrimaryBrush}"
+                                Opacity="0.6"
+                                IsVisible="{Binding IsDefault}">
+                          <TextBlock Text="默认"
+                                     FontSize="9"
+                                     Foreground="White"/>
+                        </Border>
+
+                        <Border CornerRadius="3" Padding="4,1"
                                 Background="#20E81123"
                                 IsVisible="{Binding !IsValid}">
                           <TextBlock Text="无效"
@@ -459,6 +468,7 @@
                               Margin="0,0,8,0"
                               Classes="ghost"
                               ToolTip.Tip="删除目录（不可恢复）"
+                              IsVisible="{Binding IsDeletable}"
                               Command="{Binding $parent[UserControl].((vm:VersionDownloadViewModel)DataContext).RemoveDirectoryCommand}"
                               CommandParameter="{Binding}">
                         <Path Data="M19 4H15.5L14.5 3H9.5L8.5 4H5V6H19M6 19C6 20.1 6.9 21 8 21H16C17.1 21 18 20.1 18 19V7H6V19Z"
