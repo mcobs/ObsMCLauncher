@@ -438,6 +438,11 @@ public partial class HomeViewModel : ViewModelBase
             }
             catch { }
         }
+        else if (card.CommandId.StartsWith("command:"))
+        {
+            var commandId = card.CommandId.Substring(8);
+            PluginContext.ExecuteCommand(commandId, card.Payload);
+        }
     }
 
     private void LoadAccounts()

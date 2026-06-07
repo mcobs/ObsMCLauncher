@@ -196,11 +196,11 @@ namespace ObsMCLauncher.Core.Plugins
     {
         string LauncherVersion { get; }
         string PluginDataDirectory { get; }
-        
+
         void RegisterTab(string title, string tabId, string? icon = null, object? payload = null);
         void SubscribeEvent(string eventName, Action<object?> handler);
         void PublishEvent(string eventName, object? eventData);
-        
+
         void RegisterHomeCard(
             string cardId,
             string title,
@@ -208,8 +208,29 @@ namespace ObsMCLauncher.Core.Plugins
             string? icon = null,
             string? commandId = null,
             object? payload = null);
-        
+
         void UnregisterHomeCard(string cardId);
+
+        void ShowNotification(string title, string message, string type = "info", int? durationSeconds = null);
+        void UpdateNotification(string notificationId, string message, double? progress = null);
+        void CloseNotification(string notificationId);
+
+        void RegisterCommand(string commandId, Action<object?> handler);
+        void UnregisterCommand(string commandId);
+
+        /// <summary>
+        /// 全局事件名称常量
+        /// </summary>
+        public static class EventNames
+        {
+            public const string GameLaunched = "GameLaunched";
+            public const string GameClosed = "GameClosed";
+            public const string VersionDownloaded = "VersionDownloaded";
+            public const string VersionInstalling = "VersionInstalling";
+            public const string VersionInstalled = "VersionInstalled";
+            public const string AccountChanged = "AccountChanged";
+            public const string DownloadProgress = "DownloadProgress";
+        }
     }
 }
 ```
@@ -356,6 +377,7 @@ public void OnUnload()
 **命令ID支持的格式**：
 - `url:https://example.com` - 打开外部网页链接
 - `navigate:multiplayer` - 跳转到启动器内部页面（支持的页面：`multiplayer`、`resources`、`accounts`、`versions`、`settings`、`more`）
+- `command:{pluginId}.{commandId}` - 执行插件注册的自定义命令
 - 留空或null - 卡片不可点击（仅展示信息）
 
 **示例**：
@@ -377,6 +399,23 @@ context.RegisterHomeCard(
     "📦",
     "navigate:resources"
 );
+
+// 执行自定义命令
+context.RegisterCommand("open-backup", OnOpenBackup);
+context.RegisterHomeCard(
+    "backup-card",
+    "备份数据",
+    "一键备份游戏存档",
+    "💾",
+    "command:backup-plugin.open-backup"
+);
+
+private void OnOpenBackup(object? payload)
+{
+    // 执行备份逻辑
+    string dataDir = _context.PluginDataDirectory;
+    // ...
+}
 ```
 
 ### 4. 插件数据目录
@@ -443,6 +482,51 @@ public void OnLoad(IPluginContext context)
 - 不传或传 `null`：默认3秒自动关闭
 - 传具体秒数：指定秒数后关闭
 - 传 `0` 或负数：无限持续时间，需手动关闭
+
+### 7. 自定义命令
+
+插件可以注册自定义命令，供主页卡片或其他交互触发：
+
+```csharp
+public void OnLoad(IPluginContext context)
+{
+    // 注册命令
+    context.RegisterCommand("open-backup", OnOpenBackup);
+    context.RegisterCommand("check-update", OnCheckUpdate);
+
+    // 在卡片中使用 command:{pluginId}.{commandId} 格式引用
+    context.RegisterHomeCard(
+        "backup-card",
+        "备份数据",
+        "一键备份游戏存档",
+        "💾",
+        "command:backup-plugin.open-backup"
+    );
+}
+
+private void OnOpenBackup(object? payload)
+{
+    // payload 为卡片注册时的 Payload 参数
+    _context?.ShowNotification("备份", "正在备份存档...", "info", 0);
+}
+
+private void OnCheckUpdate(object? payload)
+{
+    // 检查更新逻辑
+}
+
+public void OnUnload()
+{
+    // 命令会在插件卸载时自动清理，无需手动注销
+    _context?.UnregisterHomeCard("backup-card");
+}
+```
+
+**说明**：
+- 命令ID在插件内唯一，系统会自动拼接为 `{pluginId}.{commandId}`
+- 插件卸载/禁用时，所有命令自动清理
+- 卡片使用 `command:{pluginId}.{commandId}` 格式引用命令
+- `payload` 参数来自卡片的 `Payload` 属性
 
 ---
 

@@ -119,4 +119,17 @@ public interface IPluginContext
     /// </summary>
     /// <param name="notificationId">通知ID</param>
     void CloseNotification(string notificationId);
+
+    /// <summary>
+    /// 注册自定义命令，主页卡片点击 command:{commandId} 时执行
+    /// </summary>
+    /// <param name="commandId">命令ID（在插件内唯一）</param>
+    /// <param name="handler">命令执行回调</param>
+    void RegisterCommand(string commandId, Action<object?> handler);
+
+    /// <summary>
+    /// 注销自定义命令
+    /// </summary>
+    /// <param name="commandId">命令ID</param>
+    void UnregisterCommand(string commandId);
 }

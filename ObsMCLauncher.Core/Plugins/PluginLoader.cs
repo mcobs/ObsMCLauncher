@@ -329,6 +329,8 @@ public class PluginLoader
             plugin.IsLoaded = false;
             plugin.ErrorMessage = "插件已被禁用";
 
+            PluginContext.RemovePluginCommands(pluginId);
+
             OnPluginDisabled?.Invoke(pluginId);
 
             DebugLogger.Info("PluginLoader", $"已热禁用插件: {plugin.Name}");
@@ -472,6 +474,8 @@ public class PluginLoader
                 plugin.Instance = null;
                 plugin.IsLoaded = false;
             }
+
+            PluginContext.RemovePluginCommands(pluginId);
 
             System.Threading.Thread.Sleep(100);
 

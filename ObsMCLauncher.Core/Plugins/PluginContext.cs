@@ -12,6 +12,8 @@ public class PluginContext : IPluginContext
 
     private static readonly Dictionary<string, List<Action<object?>>> _eventHandlers = new();
 
+    private static readonly Dictionary<string, Action<object?>> _pluginCommands = new();
+
     public static Action<string, string, string, string?, object?>? OnTabRegistered { get; set; }
 
     public static Action<string, string>? OnTabUnregistered { get; set; }
@@ -111,6 +113,60 @@ public class PluginContext : IPluginContext
     public void CloseNotification(string notificationId)
     {
         OnCloseNotification?.Invoke(notificationId);
+    }
+
+    public void RegisterCommand(string commandId, Action<object?> handler)
+    {
+        var fullCommandId = $"{_pluginId}.{commandId}";
+        _pluginCommands[fullCommandId] = handler;
+    }
+
+    public void UnregisterCommand(string commandId)
+    {
+        var fullCommandId = $"{_pluginId}.{commandId}";
+        _pluginCommands.Remove(fullCommandId);
+    }
+
+    /// <summary>
+    /// 执行插件注册的自定义命令
+    /// </summary>
+    /// <param name="fullCommandId">完整命令ID（pluginId.commandId）</param>
+    /// <param name="payload">附加数据</param>
+    /// <returns>是否找到并执行了命令</returns>
+    public static bool ExecuteCommand(string fullCommandId, object? payload)
+    {
+        if (_pluginCommands.TryGetValue(fullCommandId, out var handler))
+        {
+            try
+            {
+                handler(payload);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                DebugLogger.Error("PluginContext", $"命令执行异常 [{fullCommandId}]: {ex.Message}");
+            }
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// 移除指定插件的所有命令（插件卸载时调用）
+    /// </summary>
+    /// <param name="pluginId">插件ID</param>
+    public static void RemovePluginCommands(string pluginId)
+    {
+        var prefix = $"{pluginId}.";
+        var keysToRemove = new List<string>();
+        foreach (var key in _pluginCommands.Keys)
+        {
+            if (key.StartsWith(prefix))
+                keysToRemove.Add(key);
+        }
+        foreach (var key in keysToRemove)
+        {
+            _pluginCommands.Remove(key);
+        }
     }
 
     public static void TriggerGlobalEvent(string eventName, object? eventData)

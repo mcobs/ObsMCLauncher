@@ -10,6 +10,7 @@
 - 修复资源详情页筛选切换时版本组重复渲染及交互失效的问题
 - 设置界面通知样式预览改为绘制完整启动器窗口缩略图，直观区分居中和右下角两种模式
 - 插件系统新增全局事件：VersionInstalling（版本安装开始）、VersionInstalled（版本安装完成/失败，含版本目录信息）、AccountChanged（账户变更，含变更类型）、DownloadProgress（下载进度实时更新）
+- 插件系统新增自定义命令API：RegisterCommand/UnregisterCommand，主页卡片支持 command: 前缀执行插件自定义逻辑
 - 资源详情页加载器图标改用内置 PNG 图标，新增加载器快速筛选栏
 - 侧边栏导航图标改用 SVG 矢量图标替代 Emoji，提升跨平台渲染一致性；导航图标文件统一管理在 Assets/SidebarIcons 目录，文件名为 dashboard/multiplayer/accounts/versions/resources/settings
 - 修复 SVG 图标颜色跟随主题色问题，BitmapAssetValueConverter 新增 SVG 支持并载入时自动替换 currentColor 为当前 TextBrush 颜色
