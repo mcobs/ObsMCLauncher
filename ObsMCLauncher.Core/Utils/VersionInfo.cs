@@ -11,7 +11,7 @@ public enum VersionStatus
 
 public static class VersionInfo
 {
-    public static readonly string Version = "1.0.0-rc.4";
+    public static readonly string Version = "1.0.0-rc.5";
 
     public static readonly string CodeName = "GrassBlock";
 
@@ -21,7 +21,7 @@ public static class VersionInfo
 
     public static readonly string FullProductName = "黑曜石MC启动器";
 
-    public static readonly DateTime ReleaseDate = new DateTime(2026, 06, 06);
+    public static readonly DateTime ReleaseDate = new DateTime(2026, 06, 07);
 
     public static string ShortVersion => Version;
 
