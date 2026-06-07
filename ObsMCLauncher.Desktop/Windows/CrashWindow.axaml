@@ -46,7 +46,7 @@
       <Grid ColumnDefinitions="*,Auto">
         <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="15,0" VerticalAlignment="Center">
           <TextBlock Text="⚠" FontSize="18" Foreground="#DC3545" VerticalAlignment="Center"/>
-          <TextBlock Text="程序发生严重错误" FontSize="13" FontWeight="SemiBold" Margin="10,0,0,0" VerticalAlignment="Center"/>
+          <TextBlock Text="程序发生严重错误" FontSize="13" FontWeight="Medium" Margin="10,0,0,0" VerticalAlignment="Center"/>
         </StackPanel>
 
         <Button Grid.Column="1" Command="{Binding CloseCommand}"
@@ -81,7 +81,7 @@
               Margin="0,14,0,0">
         <StackPanel Spacing="6">
           <TextBlock Text="错误摘要" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
-          <TextBlock Text="{Binding Summary}" FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap"/>
+          <TextBlock Text="{Binding Summary}" FontSize="13" FontWeight="Medium" TextWrapping="Wrap"/>
         </StackPanel>
       </Border>
 

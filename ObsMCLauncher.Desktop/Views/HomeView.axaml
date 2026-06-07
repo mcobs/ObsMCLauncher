@@ -101,7 +101,7 @@
                   
                   <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="6">
                     <TextBlock Text="{Binding Title}" 
-                               FontSize="26" FontWeight="Bold"
+                               FontSize="26" FontWeight="SemiBold"
                                Foreground="White"/>
                     <TextBlock Text="{Binding Description}" 
                                FontSize="14" Foreground="#CCFFFFFF"/>
@@ -134,7 +134,7 @@
                         IsVisible="{Binding IsEnabled}">
                   <StackPanel Spacing="8">
                     <TextBlock Text="{Binding Icon}" FontSize="24" Foreground="{DynamicResource TextBrush}"/>
-                    <TextBlock Text="{Binding Title}" FontSize="14" FontWeight="SemiBold" TextWrapping="Wrap" Foreground="{DynamicResource TextBrush}"/>
+                    <TextBlock Text="{Binding Title}" FontSize="14" FontWeight="Medium" TextWrapping="Wrap" Foreground="{DynamicResource TextBrush}"/>
                     <TextBlock Text="{Binding Description}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" MaxLines="2"/>
                   </StackPanel>
                 </Border>
@@ -178,7 +178,7 @@
                         </Image.Source>
                       </Image>
                       <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="8,0,0,0">
-                        <TextBlock Text="{Binding Username}" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Text="{Binding Username}" FontSize="13" FontWeight="Medium" TextTrimming="CharacterEllipsis"/>
                         <TextBlock Text="{Binding Type, Converter={x:Static converters:EnumToChineseTextConverter.Instance}}" 
                                    FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" />
                       </StackPanel>
@@ -251,7 +251,7 @@
               <Button Grid.Column="3"
                       Height="42" MinWidth="140"
                       FontSize="15"
-                      FontWeight="Bold"
+                      FontWeight="SemiBold"
                       Classes="accent"
                       Command="{Binding LaunchCommand}">
                 <StackPanel Orientation="Horizontal" Spacing="8">

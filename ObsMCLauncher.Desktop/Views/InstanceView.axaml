@@ -27,7 +27,7 @@
           <TextBlock Grid.Column="1"
                      Text="{Binding VersionId}"
                      FontSize="16"
-                     FontWeight="SemiBold"
+                     FontWeight="Medium"
                      HorizontalAlignment="Center"
                      VerticalAlignment="Center"/>
         </Grid>
@@ -43,7 +43,7 @@
             <Grid ColumnDefinitions="*,*,*">
               <StackPanel>
                 <TextBlock Text="实际版本" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}" Margin="0,0,0,3"/>
-                <TextBlock Text="{Binding ActualVersion}" FontSize="13" FontWeight="SemiBold"/>
+                <TextBlock Text="{Binding ActualVersion}" FontSize="13" FontWeight="Medium"/>
               </StackPanel>
 
               <StackPanel Grid.Column="1" HorizontalAlignment="Center">
@@ -64,7 +64,7 @@
                   BorderThickness="1"
                   BorderBrush="{DynamicResource BorderBrush}">
             <StackPanel Spacing="12">
-              <TextBlock Text="版本设置" FontSize="14" FontWeight="SemiBold"/>
+              <TextBlock Text="版本设置" FontSize="14" FontWeight="Medium"/>
 
               <Grid ColumnDefinitions="*,Auto">
                 <StackPanel>
@@ -81,7 +81,7 @@
               <Separator/>
 
               <StackPanel Spacing="4">
-                <TextBlock Text="存储路径" FontSize="12" FontWeight="SemiBold"/>
+                <TextBlock Text="存储路径" FontSize="12" FontWeight="Medium"/>
                 <Border Background="{DynamicResource SurfaceElevatedBrush}" CornerRadius="6" Padding="10,8"
                         BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
                   <Grid ColumnDefinitions="*,Auto">
@@ -105,7 +105,7 @@
                   BorderThickness="1"
                   BorderBrush="{DynamicResource BorderBrush}">
             <StackPanel Spacing="12">
-              <TextBlock Text="存档管理" FontSize="14" FontWeight="SemiBold"/>
+              <TextBlock Text="存档管理" FontSize="14" FontWeight="Medium"/>
 
               <ItemsControl ItemsSource="{Binding Worlds}">
                 <ItemsControl.ItemTemplate>
@@ -119,7 +119,7 @@
                       <Grid ColumnDefinitions="Auto,*,Auto">
                         <Path Data="M12 2C6.48 2 2 6.48 2 12S6.48 22 12 22 22 17.52 22 12 17.52 2 12 2M12 20C7.59 20 4 16.41 4 12S7.59 4 12 4 20 7.59 20 12 16.41 20 12 20M11 7H13V13H11V7M11 15H13V17H11V15Z" Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource PrimaryBrush}" VerticalAlignment="Center" Margin="0,0,8,0"/>
                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                          <TextBlock Text="{Binding Name}" FontSize="12" FontWeight="SemiBold"/>
+                          <TextBlock Text="{Binding Name}" FontSize="12" FontWeight="Medium"/>
                           <TextBlock Text="{Binding Path}" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis"/>
                         </StackPanel>
                         <Button Grid.Column="2" Classes="ghost" FontSize="11" Padding="4,2"
@@ -150,7 +150,7 @@
                   BorderBrush="{DynamicResource BorderBrush}">
             <StackPanel Spacing="12">
               <Grid ColumnDefinitions="*,Auto">
-                <TextBlock Text="Mod 管理" FontSize="14" FontWeight="SemiBold"/>
+                <TextBlock Text="Mod 管理" FontSize="14" FontWeight="Medium"/>
                 <Button Grid.Column="1" Classes="ghost" FontSize="11" Padding="4,2"
                         Command="{Binding OpenModsFolderCommand}">
                   <StackPanel Orientation="Horizontal" Spacing="3">
@@ -177,7 +177,7 @@
                         </Border>
 
                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                          <TextBlock Text="{Binding FileName}" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                          <TextBlock Text="{Binding FileName}" FontSize="12" FontWeight="Medium" TextTrimming="CharacterEllipsis"/>
                         </StackPanel>
 
                         <ToggleSwitch Grid.Column="2"

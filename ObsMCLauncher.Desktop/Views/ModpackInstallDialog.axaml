@@ -10,7 +10,7 @@
 
   <Grid RowDefinitions="Auto,Auto,Auto" Margin="16" RowSpacing="12">
 
-    <TextBlock Grid.Row="0" Text="{Binding Prompt}" FontSize="16" FontWeight="SemiBold" />
+    <TextBlock Grid.Row="0" Text="{Binding Prompt}" FontSize="16" FontWeight="Medium" />
 
     <TextBox Grid.Row="1" Text="{Binding VersionName}" />
 

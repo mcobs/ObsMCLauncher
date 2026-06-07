@@ -9,7 +9,7 @@
 
     <Border Grid.Row="0" Background="{DynamicResource SurfaceBrush}" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource BorderBrush}" Padding="24,16,24,0">
       <StackPanel Spacing="8">
-        <TextBlock Text="设置" FontSize="20" FontWeight="Bold"/>
+        <TextBlock Text="设置" FontSize="20" FontWeight="SemiBold"/>
         <StackPanel Orientation="Horizontal" Spacing="4">
           <Button Classes="ghost" Padding="14,8" CornerRadius="8"
                   Command="{Binding SelectTabCommand}" CommandParameter="0">
@@ -59,7 +59,7 @@
 
         <!-- 游戏设置 -->
         <StackPanel IsVisible="{Binding IsGameTab}" Spacing="16">
-          <TextBlock Text="游戏设置" FontSize="18" FontWeight="SemiBold"/>
+          <TextBlock Text="游戏设置" FontSize="18" FontWeight="Medium"/>
 
           <!-- 运行环境 -->
           <StackPanel Spacing="4">
@@ -68,7 +68,7 @@
               <StackPanel Spacing="14">
                 <!-- Java 路径 -->
                 <StackPanel Spacing="8">
-                  <TextBlock Text="Java 路径" FontSize="13" FontWeight="SemiBold"/>
+                  <TextBlock Text="Java 路径" FontSize="13" FontWeight="Medium"/>
                   <ComboBox ItemsSource="{Binding JavaOptions}" SelectedItem="{Binding SelectedJavaOption}" HorizontalAlignment="Stretch"/>
                   <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding IsCustomJava}">
                     <TextBox Grid.Column="0" Text="{Binding CustomJavaPath}" Watermark="自定义Java路径" Margin="0,0,8,0"/>
@@ -82,7 +82,7 @@
                 <StackPanel Spacing="8">
                   <Grid ColumnDefinitions="*,Auto">
                     <StackPanel>
-                      <TextBlock Text="最大内存分配" FontSize="13" FontWeight="SemiBold"/>
+                      <TextBlock Text="最大内存分配" FontSize="13" FontWeight="Medium"/>
                       <TextBlock Text="最小内存固定为512MB" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
                     </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
@@ -100,7 +100,7 @@
 
                 <!-- 版本隔离 -->
                 <StackPanel Spacing="8">
-                  <TextBlock Text="版本隔离" FontSize="13" FontWeight="SemiBold"/>
+                  <TextBlock Text="版本隔离" FontSize="13" FontWeight="Medium"/>
                   <ComboBox ItemsSource="{Binding GameDirectoryTypeOptions}" SelectedItem="{Binding GameDirectoryType}" HorizontalAlignment="Stretch">
                     <ComboBox.ItemTemplate>
                       <DataTemplate>
@@ -122,7 +122,7 @@
                 <!-- 游戏启动后关闭启动器 -->
                 <Grid ColumnDefinitions="*,Auto">
                   <StackPanel>
-                    <TextBlock Text="游戏启动后关闭启动器" FontSize="13" FontWeight="SemiBold"/>
+                    <TextBlock Text="游戏启动后关闭启动器" FontSize="13" FontWeight="Medium"/>
                     <TextBlock Text="减少内存占用" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
                   </StackPanel>
                   <ToggleSwitch Grid.Column="1" IsChecked="{Binding CloseAfterLaunch}"/>
@@ -133,7 +133,7 @@
                 <!-- 高级设置 -->
                 <Expander Header="高级设置" Padding="0">
                   <StackPanel Spacing="8" Margin="0,8,0,0">
-                    <TextBlock Text="JVM 参数" FontSize="13" FontWeight="SemiBold"/>
+                    <TextBlock Text="JVM 参数" FontSize="13" FontWeight="Medium"/>
                     <TextBox Text="{Binding JvmArguments}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="60"/>
                   </StackPanel>
                 </Expander>
@@ -144,7 +144,7 @@
 
         <!-- 外观设置 -->
         <StackPanel IsVisible="{Binding IsAppearanceTab}" Spacing="16">
-          <TextBlock Text="外观设置" FontSize="18" FontWeight="SemiBold"/>
+          <TextBlock Text="外观设置" FontSize="18" FontWeight="Medium"/>
 
           <!-- 主题 -->
           <StackPanel Spacing="4">
@@ -152,7 +152,7 @@
             <Border Background="{DynamicResource SurfaceBrush}" CornerRadius="10" Padding="16" BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
               <Grid ColumnDefinitions="*,Auto">
                 <StackPanel>
-                  <TextBlock Text="主题模式" FontSize="13" FontWeight="SemiBold"/>
+                  <TextBlock Text="主题模式" FontSize="13" FontWeight="Medium"/>
                   <TextBlock Text="选择启动器的外观主题" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
                 </StackPanel>
                 <ComboBox Grid.Column="1" Width="140" SelectedIndex="{Binding ThemeMode}">
@@ -169,7 +169,7 @@
             <TextBlock Text="通知" FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}" Margin="4,0,0,4"/>
             <Border Background="{DynamicResource SurfaceBrush}" CornerRadius="10" Padding="16" BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
               <StackPanel Spacing="12">
-                <TextBlock Text="通知样式" FontSize="13" FontWeight="SemiBold"/>
+                <TextBlock Text="通知样式" FontSize="13" FontWeight="Medium"/>
                 <TextBlock Text="选择通知消息的显示位置和样式" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,-6,0,0"/>
 
                 <Grid ColumnDefinitions="*,*" Margin="0,4,0,0">
@@ -186,14 +186,14 @@
                                   BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}"
                                   Width="180">
                             <StackPanel>
-                              <TextBlock Text="通知消息" FontSize="10" FontWeight="SemiBold"/>
+                              <TextBlock Text="通知消息" FontSize="10" FontWeight="Medium"/>
                               <TextBlock Text="这是一条示例通知" FontSize="8" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,1,0,0" TextTrimming="CharacterEllipsis"/>
                             </StackPanel>
                           </Border>
                         </Border>
                         <Border Padding="8,6" Background="{DynamicResource SurfaceBrush}" CornerRadius="0,0,8,8">
                           <StackPanel HorizontalAlignment="Center">
-                            <TextBlock Text="居中显示" FontSize="11" FontWeight="SemiBold"/>
+                            <TextBlock Text="居中显示" FontSize="11" FontWeight="Medium"/>
                             <TextBlock Text="窗口顶部居中" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}"/>
                           </StackPanel>
                         </Border>
@@ -214,14 +214,14 @@
                                   BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}"
                                   Width="180">
                             <StackPanel>
-                              <TextBlock Text="通知消息" FontSize="10" FontWeight="SemiBold"/>
+                              <TextBlock Text="通知消息" FontSize="10" FontWeight="Medium"/>
                               <TextBlock Text="这是一条示例通知" FontSize="8" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,1,0,0" TextTrimming="CharacterEllipsis"/>
                             </StackPanel>
                           </Border>
                         </Border>
                         <Border Padding="8,6" Background="{DynamicResource SurfaceBrush}" CornerRadius="0,0,8,8">
                           <StackPanel HorizontalAlignment="Center">
-                            <TextBlock Text="右下角显示" FontSize="11" FontWeight="SemiBold"/>
+                            <TextBlock Text="右下角显示" FontSize="11" FontWeight="Medium"/>
                             <TextBlock Text="窗口右下角" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}"/>
                           </StackPanel>
                         </Border>
@@ -232,7 +232,7 @@
 
                 <Grid ColumnDefinitions="*,80" IsVisible="{Binding NotificationPosition, Converter={x:Static converters:NotificationPositionToVisibilityConverter.Instance}}">
                   <StackPanel>
-                    <TextBlock Text="自动关闭时间" FontSize="13" FontWeight="SemiBold"/>
+                    <TextBlock Text="自动关闭时间" FontSize="13" FontWeight="Medium"/>
                     <TextBlock Text="右下角通知自动关闭时间（3-30秒）" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
                   </StackPanel>
                   <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
@@ -247,7 +247,7 @@
 
         <!-- 下载设置 -->
         <StackPanel IsVisible="{Binding IsDownloadTab}" Spacing="16">
-          <TextBlock Text="下载设置" FontSize="18" FontWeight="SemiBold"/>
+          <TextBlock Text="下载设置" FontSize="18" FontWeight="Medium"/>
 
           <!-- 下载源 -->
           <StackPanel Spacing="4">
@@ -256,7 +256,7 @@
               <StackPanel Spacing="14">
                 <Grid ColumnDefinitions="*,Auto">
                   <StackPanel>
-                    <TextBlock Text="下载源" FontSize="13" FontWeight="SemiBold"/>
+                    <TextBlock Text="下载源" FontSize="13" FontWeight="Medium"/>
                     <TextBlock Text="{Binding DownloadSourceDescription}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap"/>
                   </StackPanel>
                   <ComboBox Grid.Column="1" Width="200" ItemsSource="{Binding DownloadSourceOptions}" SelectedItem="{Binding DownloadSource}"/>
@@ -266,7 +266,7 @@
 
                 <Grid ColumnDefinitions="*,Auto">
                   <StackPanel>
-                    <TextBlock Text="社区镜像源" FontSize="13" FontWeight="SemiBold"/>
+                    <TextBlock Text="社区镜像源" FontSize="13" FontWeight="Medium"/>
                     <TextBlock Text="{Binding MirrorSourceModeDescription}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap"/>
                   </StackPanel>
                   <ComboBox Grid.Column="1" Width="200" ItemsSource="{Binding MirrorSourceModeOptions}" SelectedItem="{Binding MirrorSourceMode}">
@@ -288,7 +288,7 @@
               <StackPanel Spacing="14">
                 <Grid ColumnDefinitions="*,Auto">
                   <StackPanel>
-                    <TextBlock Text="最大下载线程" FontSize="13" FontWeight="SemiBold"/>
+                    <TextBlock Text="最大下载线程" FontSize="13" FontWeight="Medium"/>
                     <TextBlock Text="同时下载的文件数量" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
                   </StackPanel>
                   <ComboBox Grid.Column="1" Width="120"
@@ -300,7 +300,7 @@
 
                 <Grid ColumnDefinitions="*,Auto">
                   <StackPanel>
-                    <TextBlock Text="下载游戏时完整下载所有资源文件" FontSize="13" FontWeight="SemiBold"/>
+                    <TextBlock Text="下载游戏时完整下载所有资源文件" FontSize="13" FontWeight="Medium"/>
                     <TextBlock Text="下载游戏依赖库、声音、语言、纹理等全部资源文件" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap"/>
                   </StackPanel>
                   <ToggleSwitch Grid.Column="1" IsChecked="{Binding DownloadAssetsWithGame}"/>
@@ -317,7 +317,7 @@
 
         <!-- 通用设置 -->
         <StackPanel IsVisible="{Binding IsGeneralTab}" Spacing="16">
-          <TextBlock Text="通用设置" FontSize="18" FontWeight="SemiBold"/>
+          <TextBlock Text="通用设置" FontSize="18" FontWeight="Medium"/>
 
           <!-- 启动器 -->
           <StackPanel Spacing="4">
@@ -325,7 +325,7 @@
             <Border Background="{DynamicResource SurfaceBrush}" CornerRadius="10" Padding="16" BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
               <Grid ColumnDefinitions="*,Auto">
                 <StackPanel>
-                  <TextBlock Text="自动检查更新" FontSize="13" FontWeight="SemiBold"/>
+                  <TextBlock Text="自动检查更新" FontSize="13" FontWeight="Medium"/>
                   <TextBlock Text="启动时检查启动器更新" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
                 </StackPanel>
                 <ToggleSwitch Grid.Column="1" IsChecked="{Binding AutoCheckUpdate}"/>
@@ -350,7 +350,7 @@
                                  VerticalAlignment="Center" Margin="0,0,10,0"/>
 
                       <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                        <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,2"/>
+                        <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="Medium" Margin="0,0,0,2"/>
                         <TextBlock Text="{Binding Description}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap"/>
                       </StackPanel>
 

@@ -26,7 +26,7 @@
   <!-- 对话框标题样式 -->
   <Style Selector="TextBlock.dialog-title">
     <Setter Property="FontSize" Value="20"/>
-    <Setter Property="FontWeight" Value="SemiBold"/>
+    <Setter Property="FontWeight" Value="Medium"/>
     <Setter Property="Margin" Value="0,0,0,16"/>
   </Style>
 

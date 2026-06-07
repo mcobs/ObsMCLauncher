@@ -31,7 +31,7 @@
       <Grid ColumnDefinitions="*,Auto" Height="40">
         <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="15,0,0,0" VerticalAlignment="Center" Spacing="10">
           <TextBlock Text="⌘" FontSize="16" Foreground="{DynamicResource PrimaryBrush}" VerticalAlignment="Center" />
-          <TextBlock x:Name="TitleText" Text="游戏日志" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" />
+          <TextBlock x:Name="TitleText" Text="游戏日志" FontSize="13" FontWeight="Medium" VerticalAlignment="Center" />
         </StackPanel>
 
         <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">

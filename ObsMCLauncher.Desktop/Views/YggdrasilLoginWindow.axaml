@@ -25,7 +25,7 @@
     <Grid Margin="40" RowDefinitions="Auto,*,Auto">
       <!-- 标题栏 -->
       <StackPanel Grid.Row="0" Margin="0,0,0,20">
-        <TextBlock Text="外置登录" FontSize="24" FontWeight="Bold" Foreground="{DynamicResource TextBrush}"/>
+        <TextBlock Text="外置登录" FontSize="24" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"/>
         <TextBlock Text="使用 Yggdrasil 认证服务器登录" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,4,0,0"/>
       </StackPanel>
 
@@ -34,7 +34,7 @@
         <!-- 登录视图 -->
         <ScrollViewer IsVisible="{Binding !ShowServerManagement}">
           <StackPanel Spacing="15">
-            <TextBlock Text="认证服务器" FontSize="14" FontWeight="SemiBold"/>
+            <TextBlock Text="认证服务器" FontSize="14" FontWeight="Medium"/>
             <ComboBox HorizontalAlignment="Stretch" 
                       ItemsSource="{Binding Servers}" 
                       SelectedItem="{Binding SelectedServer}">
@@ -80,11 +80,11 @@
         <ScrollViewer IsVisible="{Binding ShowServerManagement}">
           <StackPanel Spacing="15">
             <Button Content="← 返回登录" Command="{Binding ToggleServerManagementCommand}" Classes="outline"/>
-            <TextBlock Text="管理认证服务器" FontSize="20" FontWeight="Bold"/>
+            <TextBlock Text="管理认证服务器" FontSize="20" FontWeight="SemiBold"/>
             
             <Border Background="{DynamicResource SurfaceElevatedBrush}" CornerRadius="8" Padding="15">
               <StackPanel Spacing="10">
-                <TextBlock Text="添加新服务器" FontWeight="SemiBold"/>
+                <TextBlock Text="添加新服务器" FontWeight="Medium"/>
                 <TextBox Text="{Binding NewServerName}" Watermark="服务器名称"/>
                 <TextBox Text="{Binding NewServerUrl}" Watermark="服务器地址 (如 littleskin.cn)"/>
                 <Button Content="添加" Command="{Binding AddServerCommand}" HorizontalAlignment="Right" Classes="accent"/>

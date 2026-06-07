@@ -9,7 +9,7 @@
   <Grid RowDefinitions="Auto,Auto,*" Margin="20">
 
     <StackPanel Grid.Row="0" Spacing="4" IsVisible="{Binding IsListVisible}">
-      <TextBlock Text="资源中心" FontSize="22" FontWeight="Bold" />
+      <TextBlock Text="资源中心" FontSize="22" FontWeight="SemiBold" />
       <TextBlock Text="下载 MOD、材质包、光影、数据包和整合包" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,10" />
     </StackPanel>
 
@@ -120,7 +120,7 @@
                       <Image Source="{Binding Icon}" Width="40" Height="40" />
                     </Border>
 
-                    <TextBlock Grid.Column="1" Grid.Row="0" Text="{Binding DisplayName}" FontSize="13" FontWeight="SemiBold"
+                    <TextBlock Grid.Column="1" Grid.Row="0" Text="{Binding DisplayName}" FontSize="13" FontWeight="Medium"
                                TextTrimming="CharacterEllipsis" Margin="10,0,0,2" />
 
                     <StackPanel Grid.Column="1" Grid.Row="1" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center" Margin="10,0,0,0">

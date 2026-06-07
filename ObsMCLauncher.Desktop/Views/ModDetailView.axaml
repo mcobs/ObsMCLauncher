@@ -46,7 +46,7 @@
     <!-- 下半部分：版本分组列表 -->
     <Border Grid.Row="1" CornerRadius="10" Background="{DynamicResource SurfaceBrush}" Padding="12" Margin="0,16,0,0">
       <Grid RowDefinitions="Auto,Auto,*">
-        <TextBlock Grid.Row="0" Text="可用版本" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,8"/>
+        <TextBlock Grid.Row="0" Text="可用版本" FontSize="18" FontWeight="Medium" Margin="0,0,0,8"/>
 
         <!-- 加载器筛选栏 -->
         <ListBox Grid.Row="1" ItemsSource="{Binding AvailableLoaders}"
@@ -88,7 +88,7 @@
                       <Expander.Header>
                         <Grid ColumnDefinitions="*,Auto" Margin="2">
                           <StackPanel Orientation="Horizontal" Spacing="6">
-                            <TextBlock Text="{Binding McVersion}" FontSize="14" FontWeight="Bold"/>
+                            <TextBlock Text="{Binding McVersion}" FontSize="14" FontWeight="SemiBold"/>
                             <Border IsVisible="{Binding IsLatest}"
                                     Background="{DynamicResource AccentBrush}"
                                     CornerRadius="3" Padding="5,1">
@@ -115,7 +115,7 @@
                                                                   <StackPanel Orientation="Horizontal" Spacing="6">
                                     <Image Source="{Binding LoaderIcon, Converter={StaticResource BitmapConverter}}"
                                            Width="20" Height="20" VerticalAlignment="Center"/>
-                                    <TextBlock Text="{Binding LoaderName}" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding LoaderName}" FontSize="13" FontWeight="Medium" VerticalAlignment="Center"/>
                                   </StackPanel>
                                 </Border>
 
@@ -127,7 +127,7 @@
                                         BorderBrush="{DynamicResource PrimaryBrush}"
                                         Opacity="0.9">
                                   <StackPanel Spacing="3">
-                                    <TextBlock Text="{Binding CommonDependenciesDisplay}" FontSize="12" FontWeight="SemiBold" Opacity="0.9"/>
+                                    <TextBlock Text="{Binding CommonDependenciesDisplay}" FontSize="12" FontWeight="Medium" Opacity="0.9"/>
                                     <ItemsControl ItemsSource="{Binding CommonDependencies}">
                                       <ItemsControl.ItemTemplate>
                                         <DataTemplate>
@@ -166,7 +166,7 @@
                                               Background="{DynamicResource SurfaceElevatedBrush}">
                                         <Grid ColumnDefinitions="*,Auto">
                                           <StackPanel>
-                                            <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="Medium" TextTrimming="CharacterEllipsis"/>
                                             <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,2,0,0">
                                               <TextBlock Text="{Binding DateDisplay}" FontSize="12" Opacity="0.7"/>
                                               <TextBlock Text="{Binding McVersionsDisplay}" FontSize="12" Opacity="0.7"/>

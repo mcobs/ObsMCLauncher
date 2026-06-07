@@ -14,7 +14,7 @@
           <StackPanel Spacing="16">
             <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
               <TextBlock Text="🔧" FontSize="32"/>
-              <TextBlock Text="{Binding Title}" FontSize="24" FontWeight="Bold"/>
+              <TextBlock Text="{Binding Title}" FontSize="24" FontWeight="SemiBold"/>
             </StackPanel>
 
             <TextBlock Text="{Binding ContentText}"
@@ -27,14 +27,14 @@
         <Border Background="{DynamicResource SurfaceElevatedBrush}"
                 CornerRadius="12" Padding="24">
           <StackPanel Spacing="16">
-            <TextBlock Text="插件信息" FontSize="18" FontWeight="SemiBold"/>
+            <TextBlock Text="插件信息" FontSize="18" FontWeight="Medium"/>
 
             <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="12" ColumnSpacing="16">
               <TextBlock Grid.Row="0" Grid.Column="0" Text="插件ID:" FontSize="14" Foreground="{DynamicResource TextTertiaryBrush}"/>
-              <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Title}" FontSize="14" FontWeight="SemiBold"/>
+              <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Title}" FontSize="14" FontWeight="Medium"/>
 
               <TextBlock Grid.Row="1" Grid.Column="0" Text="标签页ID:" FontSize="14" Foreground="{DynamicResource TextTertiaryBrush}"/>
-              <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding ContentText}" FontSize="14" FontWeight="SemiBold"/>
+              <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding ContentText}" FontSize="14" FontWeight="Medium"/>
 
               <TextBlock Grid.Row="2" Grid.Column="0" Text="状态:" FontSize="14" Foreground="{DynamicResource TextTertiaryBrush}"/>
               <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Spacing="8">
@@ -51,7 +51,7 @@
         <Border Background="{DynamicResource SurfaceElevatedBrush}"
                 CornerRadius="12" Padding="24">
           <StackPanel Spacing="16">
-            <TextBlock Text="Hello World!" FontSize="24" FontWeight="Bold" Foreground="{DynamicResource PrimaryBrush}"/>
+            <TextBlock Text="Hello World!" FontSize="24" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryBrush}"/>
 
             <TextBlock Text="这是一个示例插件页面，来自 ExamplePlugin 插件。"
                        FontSize="14" Foreground="{DynamicResource TextSecondaryBrush}"
@@ -63,7 +63,7 @@
 
             <Border Background="{DynamicResource SurfaceBrush}" CornerRadius="8" Padding="16" Margin="0,8,0,0">
               <TextBlock Text="🎉 恭喜！插件系统工作正常！"
-                         FontSize="16" FontWeight="SemiBold"
+                         FontSize="16" FontWeight="Medium"
                          HorizontalAlignment="Center"/>
             </Border>
           </StackPanel>

@@ -55,6 +55,7 @@
 
   <Style Selector="TextBlock">
     <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+    <Setter Property="FontWeight" Value="Normal" />
   </Style>
 
   <Style Selector="ScrollViewer">

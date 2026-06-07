@@ -38,7 +38,7 @@
 
         <Style Selector="ListBox#NavListBox ListBoxItem:selected TextBlock">
             <Setter Property="Foreground" Value="White" />
-            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="FontWeight" Value="Medium" />
         </Style>
 
         <Style Selector="ListBox#NavListBox ListBoxItem:pointerover Border.nav-item">
@@ -58,7 +58,7 @@
 
         <Style Selector="ListBox#BottomNavListBox ListBoxItem:selected TextBlock">
             <Setter Property="Foreground" Value="White" />
-            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="FontWeight" Value="Medium" />
         </Style>
 
         <Style Selector="ListBox#BottomNavListBox ListBoxItem:pointerover Border.nav-item">
@@ -193,7 +193,7 @@
 
                 <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="16,0,0,0" VerticalAlignment="Center">
                     <Image Source="/Assets/logo.png" Width="20" Height="20" Stretch="Uniform" VerticalAlignment="Center" />
-                    <TextBlock Text="黑曜石MC启动器" FontSize="13" FontWeight="SemiBold" Margin="10,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource TextBrush}" />
+                    <TextBlock Text="黑曜石MC启动器" FontSize="13" FontWeight="Medium" Margin="10,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource TextBrush}" />
                 </StackPanel>
 
                 <Panel Grid.Column="1" Background="Transparent">
@@ -553,7 +553,7 @@
                     <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
                         <Path Data="M16 1H4C2.9 1 2 1.9 2 3V17H4V3H16V1ZM19 5H8C6.9 5 6 5.9 6 7V21C6 22.1 6.9 23 8 23H19C20.1 23 21 22.1 21 21V7C21 5.9 20.1 5 19 5M19 21H8V7H19V21Z"
                               Width="14" Height="14" Stretch="Uniform" Fill="White" VerticalAlignment="Center"/>
-                        <TextBlock Text="复制授权链接" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                        <TextBlock Text="复制授权链接" FontSize="14" FontWeight="Medium" VerticalAlignment="Center"/>
                     </StackPanel>
                 </Button>
 
@@ -641,7 +641,7 @@
                         IsVisible="{Binding DownloadManager.ActiveTaskCount, Converter={x:Static converters:GreaterThanZeroToIsVisibleConverter.Instance}}">
                     <TextBlock Text="{Binding DownloadManager.ActiveTaskCount}"
                                FontSize="10"
-                               FontWeight="Bold"
+                               FontWeight="SemiBold"
                                Foreground="White"
                                HorizontalAlignment="Center"
                                VerticalAlignment="Center" />
@@ -676,7 +676,7 @@
                                   Width="16" Height="16"
                                   Stretch="Uniform" Fill="White"
                                   VerticalAlignment="Center"/>
-                            <TextBlock Text="下载管理器" FontSize="15" FontWeight="SemiBold" Foreground="White" VerticalAlignment="Center" />
+                            <TextBlock Text="下载管理器" FontSize="15" FontWeight="Medium" Foreground="White" VerticalAlignment="Center" />
                             <TextBlock FontSize="12" Foreground="White" Opacity="0.85" VerticalAlignment="Center">
                                 <Run Text="("/><Run Text="{Binding DownloadManager.ActiveTaskCount}"/><Run Text=" 个任务)"/>
                             </TextBlock>
@@ -703,7 +703,7 @@
                                 <Border CornerRadius="8" Padding="12" Margin="0,0,0,8"
                                         Background="{DynamicResource SystemControlBackgroundBaseHighBrush}">
                                     <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,Auto">
-                                        <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding Name}" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding Name}" FontSize="13" FontWeight="Medium" TextTrimming="CharacterEllipsis" />
 
                                         <Button Grid.Row="0" Grid.Column="1" Width="24" Height="24"
                                                 Classes="ghost" Padding="0"
@@ -721,7 +721,7 @@
                                         <TextBlock Grid.Row="2" Grid.Column="0" Text="{Binding StatusText}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
 
                                         <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
-                                            <TextBlock Text="{Binding ProgressText}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryBrush}" />
+                                            <TextBlock Text="{Binding ProgressText}" FontSize="11" FontWeight="Medium" Foreground="{DynamicResource PrimaryBrush}" />
                                             <TextBlock Text="{Binding SpeedText}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
                                         </StackPanel>
                                     </Grid>
@@ -797,7 +797,7 @@
                                     Margin="0,0,10,0"
                                     Background="{Binding TypeAccentColor}" />
 
-                            <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Title}" FontWeight="SemiBold" FontSize="13"/>
+                            <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Title}" FontWeight="Medium" FontSize="13"/>
                             <Button Grid.Row="0" Grid.Column="2"
                                     Width="24" Height="24"
                                     Classes="ghost" Padding="0"

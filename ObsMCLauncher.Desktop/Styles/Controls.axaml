@@ -18,7 +18,7 @@
     <Setter Property="Background" Value="{DynamicResource PrimaryBrush}" />
     <Setter Property="Foreground" Value="White" />
     <Setter Property="BorderThickness" Value="0" />
-    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="FontWeight" Value="Medium" />
   </Style>
 
   <Style Selector="Button.primary:pointerover /template/ ContentPresenter">
@@ -52,7 +52,7 @@
     </Setter>
     <Setter Property="Foreground" Value="White" />
     <Setter Property="BorderThickness" Value="0" />
-    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="FontWeight" Value="Medium" />
   </Style>
 
   <Style Selector="Button.accent:pointerover /template/ ContentPresenter">
@@ -68,7 +68,7 @@
     <Setter Property="Background" Value="{DynamicResource DangerBrush}" />
     <Setter Property="Foreground" Value="White" />
     <Setter Property="BorderThickness" Value="0" />
-    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="FontWeight" Value="Medium" />
   </Style>
 
   <Style Selector="Button.danger:pointerover /template/ ContentPresenter">
