@@ -22,8 +22,22 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
 
+        PropertyChanged += OnWindowPropertyChanged;
         DataContextChanged += (_, _) => HookNavCollapsed();
         HookNavCollapsed();
+
+        if (_vm != null)
+        {
+            _vm.WindowWidth = Width;
+        }
+    }
+
+    private void OnWindowPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
+    {
+        if (e.Property == WidthProperty && _vm != null)
+        {
+            _vm.WindowWidth = Width;
+        }
     }
 
     private void HookNavCollapsed()
@@ -40,22 +54,12 @@ public partial class MainWindow : Window
             _vm.PropertyChanged += VmOnPropertyChanged;
         }
 
-        UpdateNavWidth();
-        UpdateNavLayout();
         UpdateNotificationPosition();
     }
 
     private void VmOnPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(MainWindowViewModel.IsNavCollapsed))
-        {
-            Dispatcher.UIThread.Post(() =>
-            {
-                UpdateNavWidth();
-                UpdateNavLayout();
-            });
-        }
-        else if (e.PropertyName == nameof(MainWindowViewModel.NotificationPosition))
+        if (e.PropertyName == nameof(MainWindowViewModel.NotificationPosition))
         {
             Dispatcher.UIThread.Post(UpdateNotificationPosition);
         }
@@ -78,35 +82,6 @@ public partial class MainWindow : Window
             NotificationItemsControl.HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center;
             NotificationItemsControl.VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top;
             NotificationItemsControl.Margin = new Thickness(0, 12, 0, 0);
-        }
-    }
-
-    private void UpdateNavWidth()
-    {
-        if (_vm == null)
-            return;
-
-        if (RootGrid.ColumnDefinitions.Count < 2)
-            return;
-
-        RootGrid.ColumnDefinitions[0].Width = _vm.IsNavCollapsed ? new GridLength(72) : new GridLength(200);
-    }
-
-    private void UpdateNavLayout()
-    {
-        if (_vm == null)
-            return;
-
-        // 折叠时收紧导航列表左右留白，展开时恢复
-        if (NavListBox != null)
-        {
-            NavListBox.Margin = _vm.IsNavCollapsed ? new Thickness(0) : new Thickness(10, 0);
-        }
-
-        // 折叠时减少导航区域整体边距，贴近 WPF 的紧凑模式
-        if (NavBorder != null)
-        {
-            NavBorder.Padding = _vm.IsNavCollapsed ? new Thickness(0) : new Thickness(0);
         }
     }
 

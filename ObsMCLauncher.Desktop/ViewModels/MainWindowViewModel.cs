@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using Avalonia.Controls;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using ObsMCLauncher.Core.Models;
@@ -26,13 +27,10 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     private NavItemViewModel? selectedBottomNavItem;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsPaneOpen))]
     private bool isNavCollapsed;
 
-    private double _navWidthValue = 200;
-    public GridLength NavWidth
-    {
-        get => new GridLength(_navWidthValue);
-    }
+    public bool IsPaneOpen => !IsNavCollapsed;
 
     private double _navRotationAngle;
     public double NavRotationAngle
@@ -41,38 +39,9 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         private set => SetProperty(ref _navRotationAngle, value);
     }
 
-    private double _navTextOpacity = 1;
-    public double NavTextOpacity
-    {
-        get => _navTextOpacity;
-        private set => SetProperty(ref _navTextOpacity, value);
-    }
-
     partial void OnIsNavCollapsedChanged(bool value)
     {
-        AnimateNavWidth(value ? 48 : 200);
         AnimateNavRotation(value ? 90 : 0);
-        AnimateNavTextOpacity(value ? 0 : 1);
-    }
-
-    private async void AnimateNavWidth(double targetWidth)
-    {
-        const int steps = 15;
-        const int delay = 12;
-        var startWidth = _navWidthValue;
-        var diff = targetWidth - startWidth;
-
-        for (int i = 1; i <= steps; i++)
-        {
-            var progress = (double)i / steps;
-            var easedProgress = 1 - Math.Pow(1 - progress, 3);
-            _navWidthValue = startWidth + diff * easedProgress;
-            OnPropertyChanged(nameof(NavWidth));
-            await System.Threading.Tasks.Task.Delay(delay);
-        }
-
-        _navWidthValue = targetWidth;
-        OnPropertyChanged(nameof(NavWidth));
     }
 
     private async void AnimateNavRotation(double targetAngle)
@@ -91,23 +60,6 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         }
 
         NavRotationAngle = targetAngle;
-    }
-
-    private async void AnimateNavTextOpacity(double targetOpacity)
-    {
-        const int steps = 10;
-        const int delay = 15;
-        var startOpacity = NavTextOpacity;
-        var diff = targetOpacity - startOpacity;
-
-        for (int i = 1; i <= steps; i++)
-        {
-            var progress = (double)i / steps;
-            NavTextOpacity = startOpacity + diff * progress;
-            await System.Threading.Tasks.Task.Delay(delay);
-        }
-
-        NavTextOpacity = targetOpacity;
     }
 
     public ViewModelBase? CurrentPage => SelectedNavItem?.Page ?? SelectedBottomNavItem?.Page;
@@ -133,6 +85,22 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     private readonly PluginLoader _pluginLoader;
     private HomeViewModel? _homeViewModel;
     private MoreViewModel? _moreViewModel;
+
+    private bool _userManuallyToggled;
+    private const double CollapseThreshold = 950;
+
+    private double _windowWidth = double.NaN;
+    public double WindowWidth
+    {
+        get => _windowWidth;
+        set
+        {
+            if (SetProperty(ref _windowWidth, value))
+            {
+                CheckWidthBasedCollapse();
+            }
+        }
+    }
 
     public MainWindowViewModel()
     {
@@ -345,7 +313,31 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private void ToggleNav()
     {
+        _userManuallyToggled = true;
         IsNavCollapsed = !IsNavCollapsed;
+    }
+
+    private void CheckWidthBasedCollapse()
+    {
+        if (double.IsNaN(_windowWidth))
+            return;
+
+        var shouldCollapse = _windowWidth < CollapseThreshold;
+
+        if (_userManuallyToggled)
+        {
+            // 如果手动切换后的状态与当前宽度期望状态一致，重置手动标记
+            if (shouldCollapse == IsNavCollapsed)
+            {
+                _userManuallyToggled = false;
+            }
+            return;
+        }
+
+        if (shouldCollapse != IsNavCollapsed)
+        {
+            IsNavCollapsed = shouldCollapse;
+        }
     }
 
     private bool _disposed;
@@ -362,7 +354,6 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         {
             if (disposing)
             {
-                // 释放NotificationService
                 Notifications?.Dispose();
             }
             _disposed = true;

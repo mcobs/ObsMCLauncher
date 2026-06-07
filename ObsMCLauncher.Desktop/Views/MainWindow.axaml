@@ -185,12 +185,8 @@
     </Window.Styles>
 
     <Grid x:Name="RootGrid" RowDefinitions="40,*">
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="{Binding NavWidth}" />
-            <ColumnDefinition Width="*" />
-        </Grid.ColumnDefinitions>
 
-        <Border Grid.Row="0" Grid.ColumnSpan="2"
+        <Border Grid.Row="0"
                 Classes="chrome-surface"
                 BorderThickness="0,0,0,1">
             <Grid ColumnDefinitions="Auto,*,Auto" Height="40">
@@ -228,121 +224,132 @@
             </Grid>
         </Border>
 
-        <Border x:Name="NavBorder" Grid.Row="1" Grid.Column="0"
-                Classes="chrome-surface"
-                BorderThickness="0,0,1,0">
-            <Grid RowDefinitions="Auto,*,Auto,Auto">
+        <SplitView Grid.Row="1"
+                   x:Name="MainSplitView"
+                   IsPaneOpen="{Binding IsPaneOpen}"
+                   DisplayMode="CompactInline"
+                   OpenPaneLength="200"
+                   CompactPaneLength="48"
+                   PanePlacement="Left">
 
-                <Border Grid.Row="0" Padding="8,10" HorizontalAlignment="Left">
-                    <Button Width="36"
-                            Height="36"
-                            Command="{Binding ToggleNavCommand}"
-                            ToolTip.Tip="折叠/展开"
-                            Background="Transparent"
-                            BorderThickness="0"
-                            CornerRadius="8"
-                            RenderTransformOrigin="50%,50%">
-                        <Button.RenderTransform>
-                            <RotateTransform Angle="{Binding NavRotationAngle}" />
-                        </Button.RenderTransform>
-                        <Path Data="M3 6L21 6M3 12L21 12M3 18L21 18" Width="18" Height="14"
-                              Stretch="Uniform" Stroke="{DynamicResource TextBrush}" StrokeThickness="2"
-                              HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                    </Button>
+            <SplitView.Pane>
+                <Border x:Name="NavBorder"
+                        Classes="chrome-surface"
+                        BorderThickness="0,0,1,0">
+                    <Grid RowDefinitions="Auto,*,Auto,Auto">
+
+                        <Border Grid.Row="0" Padding="8,10" HorizontalAlignment="Left">
+                            <Button Width="36"
+                                    Height="36"
+                                    Command="{Binding ToggleNavCommand}"
+                                    ToolTip.Tip="折叠/展开"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    CornerRadius="8"
+                                    RenderTransformOrigin="50%,50%">
+                                <Button.RenderTransform>
+                                    <RotateTransform Angle="{Binding NavRotationAngle}" />
+                                </Button.RenderTransform>
+                                <Path Data="M3 6L21 6M3 12L21 12M3 18L21 18" Width="18" Height="14"
+                                      Stretch="Uniform" Stroke="{DynamicResource TextBrush}" StrokeThickness="2"
+                                      HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Button>
+                        </Border>
+
+                        <ListBox x:Name="NavListBox"
+                                 Grid.Row="1"
+                                 Margin="4,0"
+                                 ItemsSource="{Binding NavItems}"
+                                 SelectedItem="{Binding SelectedNavItem}"
+                                 HorizontalAlignment="Stretch">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Classes="nav-item"
+                                            CornerRadius="8"
+                                            Height="40"
+                                            Padding="8,0"
+                                            ToolTip.Tip="{Binding Title}">
+                                        <Grid ColumnDefinitions="24,*">
+                                            <TextBlock Grid.Column="0"
+                                                       Text="{Binding Icon}"
+                                                       FontSize="18"
+                                                       Width="24"
+                                                       Height="24"
+                                                       VerticalAlignment="Center"
+                                                       HorizontalAlignment="Center"
+                                                       TextAlignment="Center"
+                                                       Foreground="{DynamicResource TextBrush}" />
+
+                                            <TextBlock Grid.Column="1"
+                                                       Text="{Binding Title}"
+                                                       FontSize="13"
+                                                       Margin="8,0,0,0"
+                                                       VerticalAlignment="Center"
+                                                       HorizontalAlignment="Left"
+                                                       Foreground="{DynamicResource TextBrush}"
+                                                       IsVisible="{Binding $parent[Window].DataContext.IsPaneOpen}" />
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+
+                        <ListBox x:Name="BottomNavListBox"
+                                 Grid.Row="2"
+                                 Margin="4,0"
+                                 ItemsSource="{Binding BottomNavItems}"
+                                 SelectedItem="{Binding SelectedBottomNavItem}"
+                                 HorizontalAlignment="Stretch">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Classes="nav-item"
+                                            CornerRadius="8"
+                                            Height="40"
+                                            Padding="8,0"
+                                            ToolTip.Tip="{Binding Title}">
+                                        <Grid ColumnDefinitions="24,*">
+                                            <TextBlock Grid.Column="0"
+                                                       Text="{Binding Icon}"
+                                                       FontSize="18"
+                                                       Width="24"
+                                                       Height="24"
+                                                       VerticalAlignment="Center"
+                                                       HorizontalAlignment="Center"
+                                                       TextAlignment="Center"
+                                                       Foreground="{DynamicResource TextBrush}" />
+
+                                            <TextBlock Grid.Column="1"
+                                                       Text="{Binding Title}"
+                                                       FontSize="13"
+                                                       Margin="8,0,0,0"
+                                                       VerticalAlignment="Center"
+                                                       HorizontalAlignment="Left"
+                                                       Foreground="{DynamicResource TextBrush}"
+                                                       IsVisible="{Binding $parent[Window].DataContext.IsPaneOpen}" />
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+
+                        <StackPanel Grid.Row="3" Margin="4,12" IsVisible="{Binding IsPaneOpen}">
+                            <TextBlock Text="{Binding NavCopyrightText}" FontSize="10" Opacity="0.5" HorizontalAlignment="Center" Foreground="{DynamicResource TextTertiaryBrush}" />
+                        </StackPanel>
+
+                    </Grid>
                 </Border>
+            </SplitView.Pane>
 
-                <ListBox x:Name="NavListBox"
-                         Grid.Row="1"
-                         Margin="6,0"
-                         ItemsSource="{Binding NavItems}"
-                         SelectedItem="{Binding SelectedNavItem}"
-                         HorizontalAlignment="Stretch">
-                    <ListBox.ItemTemplate>
-                        <DataTemplate>
-                            <Border Classes="nav-item"
-                                    CornerRadius="8"
-                                    Height="40"
-                                    Padding="8,0"
-                                    ToolTip.Tip="{Binding Title}">
-                                <Grid ColumnDefinitions="24,*">
-                                    <TextBlock Grid.Column="0"
-                                               Text="{Binding Icon}"
-                                               FontSize="18"
-                                               Width="24"
-                                               Height="24"
-                                               VerticalAlignment="Center"
-                                               HorizontalAlignment="Center"
-                                               TextAlignment="Center"
-                                               Foreground="{DynamicResource TextBrush}" />
-
-                                    <TextBlock Grid.Column="1"
-                                               Text="{Binding Title}"
-                                               FontSize="13"
-                                               Margin="8,0,0,0"
-                                               VerticalAlignment="Center"
-                                               HorizontalAlignment="Left"
-                                               Foreground="{DynamicResource TextBrush}"
-                                               Opacity="{Binding $parent[Window].DataContext.NavTextOpacity}"
-                                               IsVisible="{Binding $parent[Window].DataContext.IsNavCollapsed, Converter={x:Static converters:NotConverter.Instance}}" />
-                                </Grid>
-                            </Border>
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
-
-                <ListBox x:Name="BottomNavListBox"
-                         Grid.Row="2"
-                         Margin="6,0"
-                         ItemsSource="{Binding BottomNavItems}"
-                         SelectedItem="{Binding SelectedBottomNavItem}"
-                         HorizontalAlignment="Stretch">
-                    <ListBox.ItemTemplate>
-                        <DataTemplate>
-                            <Border Classes="nav-item"
-                                    CornerRadius="8"
-                                    Height="40"
-                                    Padding="8,0"
-                                    ToolTip.Tip="{Binding Title}">
-                                <Grid ColumnDefinitions="24,*">
-                                    <TextBlock Grid.Column="0"
-                                               Text="{Binding Icon}"
-                                               FontSize="18"
-                                               Width="24"
-                                               Height="24"
-                                               VerticalAlignment="Center"
-                                               HorizontalAlignment="Center"
-                                               TextAlignment="Center"
-                                               Foreground="{DynamicResource TextBrush}" />
-
-                                    <TextBlock Grid.Column="1"
-                                               Text="{Binding Title}"
-                                               FontSize="13"
-                                               Margin="8,0,0,0"
-                                               VerticalAlignment="Center"
-                                               HorizontalAlignment="Left"
-                                               Foreground="{DynamicResource TextBrush}"
-                                               Opacity="{Binding $parent[Window].DataContext.NavTextOpacity}"
-                                               IsVisible="{Binding $parent[Window].DataContext.IsNavCollapsed, Converter={x:Static converters:NotConverter.Instance}}" />
-                                </Grid>
-                            </Border>
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
-
-                <StackPanel Grid.Row="3" Margin="6,12" IsVisible="{Binding !IsNavCollapsed}">
-                    <TextBlock Text="{Binding NavCopyrightText}" FontSize="10" Opacity="0.5" HorizontalAlignment="Center" Foreground="{DynamicResource TextTertiaryBrush}" />
-                </StackPanel>
-
-            </Grid>
-        </Border>
-
-        <Border Grid.Row="1" Grid.Column="1" Background="{DynamicResource SystemControlBackgroundBaseHighBrush}">
-            <TransitioningContentControl Content="{Binding CurrentPage}" Margin="20">
-                <TransitioningContentControl.PageTransition>
-                    <CrossFade Duration="0:0:0.2" />
-                </TransitioningContentControl.PageTransition>
-            </TransitioningContentControl>
-        </Border>
+            <SplitView.Content>
+                <Border Background="{DynamicResource SystemControlBackgroundBaseHighBrush}">
+                    <TransitioningContentControl Content="{Binding CurrentPage}" Margin="20">
+                        <TransitioningContentControl.PageTransition>
+                            <CrossFade Duration="0:0:0.2" />
+                        </TransitioningContentControl.PageTransition>
+                    </TransitioningContentControl>
+                </Border>
+            </SplitView.Content>
+        </SplitView>
 
         <Border Grid.Row="0" Grid.Column="0" Grid.RowSpan="2" Grid.ColumnSpan="2"
                 Background="#80000000"
