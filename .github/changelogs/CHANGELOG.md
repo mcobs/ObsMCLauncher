@@ -20,3 +20,4 @@
 - 修复主题切换时 SVG 图标颜色不更新的问题：Converter 新增 IMultiValueConverter 实现，XAML 改用 MultiBinding 绑定 ActualThemeVariant
 - 修复 SVG 图标颜色：深色主题用 #FFFFFF，浅色主题用 #000000，直接检查 ActualThemeVariant 而非依赖 TextBrush 资源
 - 账号管理添加账号按钮改用 SVG 图标（microsoft.svg / yggdrasil.svg / offline.svg），替换硬编码 Path 元素
+- 设置界面重组：将"启动器"标签拆分为"外观"和"通用"，游戏启动行为归入游戏设置，相关设置项合并为分组卡片并添加分区标题

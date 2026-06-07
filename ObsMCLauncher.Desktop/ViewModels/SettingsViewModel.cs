@@ -37,15 +37,15 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnSelectedSettingsTabChanged(int value)
     {
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(IsGameTab)));
-        OnPropertyChanged(new PropertyChangedEventArgs(nameof(IsLauncherTab)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(IsAppearanceTab)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(IsDownloadTab)));
-        OnPropertyChanged(new PropertyChangedEventArgs(nameof(IsHomeTab)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(IsGeneralTab)));
     }
 
     public bool IsGameTab => SelectedSettingsTab == 0;
-    public bool IsLauncherTab => SelectedSettingsTab == 1;
+    public bool IsAppearanceTab => SelectedSettingsTab == 1;
     public bool IsDownloadTab => SelectedSettingsTab == 2;
-    public bool IsHomeTab => SelectedSettingsTab == 3;
+    public bool IsGeneralTab => SelectedSettingsTab == 3;
 
     public void Save() => AutoSave();
 
