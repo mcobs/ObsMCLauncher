@@ -220,13 +220,18 @@ namespace ObsMCLauncher.Core.Plugins
 
 ### 1. 事件系统
 
-订阅和发布事件：
+订阅和发布事件。建议使用 `IPluginContext.EventNames` 常量避免拼写错误：
 
 ```csharp
+using ObsMCLauncher.Core.Plugins;
+using ObsMCLauncher.Core.Plugins.Events;
+
 public void OnLoad(IPluginContext context)
 {
-    context.SubscribeEvent("GameLaunched", OnGameLaunched);
-    context.SubscribeEvent("GameClosed", OnGameClosed);
+    context.SubscribeEvent(IPluginContext.EventNames.GameLaunched, OnGameLaunched);
+    context.SubscribeEvent(IPluginContext.EventNames.VersionInstalled, OnVersionInstalled);
+    context.SubscribeEvent(IPluginContext.EventNames.AccountChanged, OnAccountChanged);
+    context.SubscribeEvent(IPluginContext.EventNames.DownloadProgress, OnDownloadProgress);
 }
 
 private void OnGameLaunched(object? eventData)
@@ -234,17 +239,75 @@ private void OnGameLaunched(object? eventData)
     System.Diagnostics.Debug.WriteLine("游戏已启动");
 }
 
-private void OnGameClosed(object? eventData)
+private void OnVersionInstalled(object? eventData)
 {
-    System.Diagnostics.Debug.WriteLine("游戏已关闭");
+    if (eventData is VersionInstalledEventArgs args)
+    {
+        System.Diagnostics.Debug.WriteLine(
+            args.Success
+                ? $"版本 {args.VersionName} 安装成功，目录：{args.VersionDirectory}"
+                : $"版本 {args.VersionName} 安装失败：{args.ErrorMessage}");
+    }
+}
+
+private void OnAccountChanged(object? eventData)
+{
+    if (eventData is AccountChangedEventArgs args)
+    {
+        System.Diagnostics.Debug.WriteLine($"账户变更：{args.ChangeType} - {args.Username}");
+    }
+}
+
+private void OnDownloadProgress(object? eventData)
+{
+    if (eventData is DownloadProgressEventArgs args)
+    {
+        System.Diagnostics.Debug.WriteLine($"下载进度：{args.TaskName} - {args.Progress:F1}%");
+    }
 }
 ```
 
 **可用事件**：
-- `GameLaunched` - 游戏启动
-- `GameClosed` - 游戏关闭
-- `VersionDownloaded` - 版本下载完成
-- 插件也可以发布自定义事件
+
+| 事件名 | 常量 | 说明 | 事件数据类型 |
+|--------|------|------|-------------|
+| `GameLaunched` | `EventNames.GameLaunched` | 游戏启动 | - |
+| `GameClosed` | `EventNames.GameClosed` | 游戏关闭 | - |
+| `VersionDownloaded` | `EventNames.VersionDownloaded` | 版本下载完成 | - |
+| `VersionInstalling` | `EventNames.VersionInstalling` | 版本安装开始 | `VersionInstallingEventArgs` |
+| `VersionInstalled` | `EventNames.VersionInstalled` | 版本安装完成/失败 | `VersionInstalledEventArgs` |
+| `AccountChanged` | `EventNames.AccountChanged` | 账户变更 | `AccountChangedEventArgs` |
+| `DownloadProgress` | `EventNames.DownloadProgress` | 下载进度更新 | `DownloadProgressEventArgs` |
+
+**VersionInstallingEventArgs** 属性：
+- `McVersion` - Minecraft 版本号
+- `VersionName` - 自定义版本名称
+- `LoaderType` - 加载器类型（vanilla, forge, fabric, quilt, neoforge, optifine）
+- `LoaderVersion` - 加载器版本
+- `GameDirectory` - 游戏目录路径
+
+**VersionInstalledEventArgs** 属性：
+- 继承 `VersionInstallingEventArgs` 的所有属性
+- `VersionDirectory` - 版本安装目录（完整路径）
+- `Success` - 是否安装成功
+- `ErrorMessage` - 失败时的错误信息
+
+**AccountChangedEventArgs** 属性：
+- `ChangeType` - 变更类型（`Switched` 切换默认、`Added` 添加、`Removed` 删除、`Updated` 更新）
+- `AccountId` - 账户ID
+- `Username` - 用户名
+- `AccountType` - 账户类型（Offline, Microsoft, Yggdrasil）
+
+**DownloadProgressEventArgs** 属性：
+- `TaskId` - 下载任务ID
+- `TaskName` - 任务名称
+- `TaskType` - 任务类型（Version, Assets, Mod, Resource）
+- `Progress` - 当前进度（0-100）
+- `StatusMessage` - 状态消息
+- `DownloadSpeed` - 下载速度（字节/秒）
+- `Status` - 下载状态（`Downloading`, `Completed`, `Failed`, `Cancelled`）
+
+插件也可以发布自定义事件。
 
 ### 2. 注册UI标签页
 

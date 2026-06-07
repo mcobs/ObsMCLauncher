@@ -3,6 +3,8 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 using System.Threading;
+using ObsMCLauncher.Core.Plugins;
+using ObsMCLauncher.Core.Plugins.Events;
 
 namespace ObsMCLauncher.Core.Services.Download;
 
@@ -84,6 +86,18 @@ public class DownloadTaskManager : INotifyPropertyChanged
             if (message != null)
                 task.StatusMessage = message;
             task.DownloadSpeed = speed;
+
+            PluginContext.TriggerGlobalEvent(IPluginContext.EventNames.DownloadProgress,
+                new DownloadProgressEventArgs
+                {
+                    TaskId = taskId,
+                    TaskName = task.Name,
+                    TaskType = task.Type.ToString(),
+                    Progress = progress,
+                    StatusMessage = message,
+                    DownloadSpeed = speed,
+                    Status = DownloadStatus.Downloading
+                });
         }
     }
 
@@ -96,6 +110,16 @@ public class DownloadTaskManager : INotifyPropertyChanged
             task.Progress = 100;
             task.DownloadSpeed = 0;
             NotifyTasksChanged();
+
+            PluginContext.TriggerGlobalEvent(IPluginContext.EventNames.DownloadProgress,
+                new DownloadProgressEventArgs
+                {
+                    TaskId = taskId,
+                    TaskName = task.Name,
+                    TaskType = task.Type.ToString(),
+                    Progress = 100,
+                    Status = DownloadStatus.Completed
+                });
         }
     }
 
@@ -108,6 +132,17 @@ public class DownloadTaskManager : INotifyPropertyChanged
             task.StatusMessage = errorMessage;
             task.DownloadSpeed = 0;
             NotifyTasksChanged();
+
+            PluginContext.TriggerGlobalEvent(IPluginContext.EventNames.DownloadProgress,
+                new DownloadProgressEventArgs
+                {
+                    TaskId = taskId,
+                    TaskName = task.Name,
+                    TaskType = task.Type.ToString(),
+                    Progress = task.Progress,
+                    StatusMessage = errorMessage,
+                    Status = DownloadStatus.Failed
+                });
         }
     }
 

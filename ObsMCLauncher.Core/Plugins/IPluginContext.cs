@@ -9,6 +9,32 @@ namespace ObsMCLauncher.Core.Plugins;
 public interface IPluginContext
 {
     /// <summary>
+    /// 全局事件名称常量
+    /// </summary>
+    public static class EventNames
+    {
+        /// <summary>游戏启动</summary>
+        public const string GameLaunched = "GameLaunched";
+
+        /// <summary>游戏关闭</summary>
+        public const string GameClosed = "GameClosed";
+
+        /// <summary>版本下载完成</summary>
+        public const string VersionDownloaded = "VersionDownloaded";
+
+        /// <summary>版本安装开始</summary>
+        public const string VersionInstalling = "VersionInstalling";
+
+        /// <summary>版本安装完成</summary>
+        public const string VersionInstalled = "VersionInstalled";
+
+        /// <summary>账户变更</summary>
+        public const string AccountChanged = "AccountChanged";
+
+        /// <summary>下载进度更新</summary>
+        public const string DownloadProgress = "DownloadProgress";
+    }
+    /// <summary>
     /// 获取启动器版本信息
     /// </summary>
     string LauncherVersion { get; }

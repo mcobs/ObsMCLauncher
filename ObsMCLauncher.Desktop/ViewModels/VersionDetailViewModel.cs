@@ -13,6 +13,8 @@ using ObsMCLauncher.Core.Services;
 using ObsMCLauncher.Core.Services.Installers;
 using ObsMCLauncher.Core.Services.Minecraft;
 using ObsMCLauncher.Core.Utils;
+using ObsMCLauncher.Core.Plugins;
+using ObsMCLauncher.Core.Plugins.Events;
 using ObsMCLauncher.Desktop.ViewModels.Notifications;
 using ObsMCLauncher.Desktop.ViewModels.Dialogs;
 
@@ -756,12 +758,34 @@ public class VersionDetailViewModel : ViewModelBase
         _installCts = new CancellationTokenSource();
         var token = _installCts.Token;
 
+        // 确定加载器类型（在try外声明，catch块中也需要使用）
+        string loaderType = "vanilla";
+        string? loaderVersion = null;
+        if (IsForgeSelected) { loaderType = "forge"; loaderVersion = ForgeVersion; }
+        else if (IsFabricSelected) { loaderType = "fabric"; loaderVersion = FabricLoaderVersion; }
+        else if (IsQuiltSelected) { loaderType = "quilt"; loaderVersion = QuiltLoaderVersion; }
+        else if (IsNeoForgeSelected) { loaderType = "neoforge"; loaderVersion = NeoForgeVersion; }
+        else if (IsOptiFineEnabled && SelectedOptiFineVersion != null) { loaderType = "optifine"; loaderVersion = SelectedOptiFineVersion.FullVersion; }
+
+        string gameDir = "";
+
         try
         {
             IsBusy = true;
             Progress = 0;
             var cfg = LauncherConfig.Load();
-            var gameDir = cfg.GameDirectory;
+            gameDir = cfg.GameDirectory;
+
+            // 触发版本安装开始事件
+            PluginContext.TriggerGlobalEvent(IPluginContext.EventNames.VersionInstalling,
+                new VersionInstallingEventArgs
+                {
+                    McVersion = SelectedMcVersion,
+                    VersionName = CustomVersionName,
+                    LoaderType = loaderType,
+                    LoaderVersion = loaderVersion,
+                    GameDirectory = gameDir
+                });
 
             var hasLoader = IsForgeSelected || IsFabricSelected || IsQuiltSelected || IsNeoForgeSelected;
             var hasOptiFine = IsOptiFineEnabled && SelectedOptiFineVersion != null;
@@ -905,6 +929,20 @@ public class VersionDetailViewModel : ViewModelBase
             Status = "安装成功！";
             _notificationService.Show("安装成功", $"{SelectedMcVersion} 已成功安装", NotificationType.Success);
 
+            // 触发版本安装完成事件
+            var versionDir = System.IO.Path.Combine(gameDir, "versions", CustomVersionName);
+            PluginContext.TriggerGlobalEvent(IPluginContext.EventNames.VersionInstalled,
+                new VersionInstalledEventArgs
+                {
+                    McVersion = SelectedMcVersion,
+                    VersionName = CustomVersionName,
+                    LoaderType = loaderType,
+                    LoaderVersion = loaderVersion,
+                    GameDirectory = gameDir,
+                    VersionDirectory = versionDir,
+                    Success = true
+                });
+
             // 如果开启了自动下载资源，则在后台启动下载任务
             if (cfg.DownloadAssetsWithGame)
             {
@@ -996,6 +1034,19 @@ public class VersionDetailViewModel : ViewModelBase
             {
                 Status = $"安装失败: {ex.Message}";
                 _notificationService.Show("安装失败", ex.Message, NotificationType.Error);
+
+                // 触发版本安装失败事件
+                PluginContext.TriggerGlobalEvent(IPluginContext.EventNames.VersionInstalled,
+                    new VersionInstalledEventArgs
+                    {
+                        McVersion = SelectedMcVersion,
+                        VersionName = CustomVersionName,
+                        LoaderType = loaderType,
+                        LoaderVersion = loaderVersion,
+                        GameDirectory = gameDir,
+                        Success = false,
+                        ErrorMessage = ex.Message
+                    });
             }
         }
         finally

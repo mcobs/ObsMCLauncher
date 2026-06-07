@@ -6,6 +6,8 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using ObsMCLauncher.Core.Models;
+using ObsMCLauncher.Core.Plugins;
+using ObsMCLauncher.Core.Plugins.Events;
 
 namespace ObsMCLauncher.Core.Services.Accounts;
 
@@ -109,6 +111,15 @@ public class AccountService
         _accounts.Add(account);
         SaveAccounts();
 
+        PluginContext.TriggerGlobalEvent(IPluginContext.EventNames.AccountChanged,
+            new AccountChangedEventArgs
+            {
+                ChangeType = AccountChangeType.Added,
+                AccountId = account.Id,
+                Username = account.Username,
+                AccountType = account.Type.ToString()
+            });
+
         return account;
     }
 
@@ -132,6 +143,16 @@ public class AccountService
             account.LastUsed = DateTime.Now;
             _accounts.Add(account);
             SaveAccounts();
+
+            PluginContext.TriggerGlobalEvent(IPluginContext.EventNames.AccountChanged,
+                new AccountChangedEventArgs
+                {
+                    ChangeType = AccountChangeType.Added,
+                    AccountId = account.Id,
+                    Username = account.Username,
+                    AccountType = account.Type.ToString()
+                });
+
             return account;
         }
 
@@ -146,6 +167,16 @@ public class AccountService
         existing.LastUsed = DateTime.Now;
 
         SaveAccounts();
+
+        PluginContext.TriggerGlobalEvent(IPluginContext.EventNames.AccountChanged,
+            new AccountChangedEventArgs
+            {
+                ChangeType = AccountChangeType.Updated,
+                AccountId = existing.Id,
+                Username = existing.Username,
+                AccountType = existing.Type.ToString()
+            });
+
         return existing;
     }
 
@@ -211,6 +242,9 @@ public class AccountService
         var account = _accounts.FirstOrDefault(a => a.Id == accountId);
         if (account != null)
         {
+            var deletedUsername = account.Username;
+            var deletedType = account.Type.ToString();
+
             _accounts.Remove(account);
 
             if (account.IsDefault && _accounts.Count > 0)
@@ -219,6 +253,15 @@ public class AccountService
             }
 
             SaveAccounts();
+
+            PluginContext.TriggerGlobalEvent(IPluginContext.EventNames.AccountChanged,
+                new AccountChangedEventArgs
+                {
+                    ChangeType = AccountChangeType.Removed,
+                    AccountId = accountId,
+                    Username = deletedUsername,
+                    AccountType = deletedType
+                });
         }
     }
 
@@ -235,6 +278,15 @@ public class AccountService
             account.IsDefault = true;
             account.LastUsed = DateTime.Now;
             SaveAccounts();
+
+            PluginContext.TriggerGlobalEvent(IPluginContext.EventNames.AccountChanged,
+                new AccountChangedEventArgs
+                {
+                    ChangeType = AccountChangeType.Switched,
+                    AccountId = accountId,
+                    Username = account.Username,
+                    AccountType = account.Type.ToString()
+                });
         }
     }
 
@@ -280,6 +332,16 @@ public class AccountService
             account.LastUsed = DateTime.Now;
             _accounts.Add(account);
             SaveAccounts();
+
+            PluginContext.TriggerGlobalEvent(IPluginContext.EventNames.AccountChanged,
+                new AccountChangedEventArgs
+                {
+                    ChangeType = AccountChangeType.Added,
+                    AccountId = account.Id,
+                    Username = account.Username,
+                    AccountType = account.Type.ToString()
+                });
+
             return account;
         }
         else
@@ -292,6 +354,16 @@ public class AccountService
             existing.LastUsed = DateTime.Now;
             
             SaveAccounts();
+
+            PluginContext.TriggerGlobalEvent(IPluginContext.EventNames.AccountChanged,
+                new AccountChangedEventArgs
+                {
+                    ChangeType = AccountChangeType.Updated,
+                    AccountId = existing.Id,
+                    Username = existing.Username,
+                    AccountType = existing.Type.ToString()
+                });
+
             return existing;
         }
     }
