@@ -6,15 +6,16 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using ObsMCLauncher.Core.Models;
-using ObsMCLauncher.Core.Services;
 using ObsMCLauncher.Core.Services.Minecraft;
 using ObsMCLauncher.Desktop.ViewModels.Notifications;
+using ObsMCLauncher.Desktop.ViewModels.Dialogs;
 
 namespace ObsMCLauncher.Desktop.ViewModels;
 
 public partial class InstanceViewModel : ViewModelBase
 {
     private readonly NotificationService _notificationService;
+    private readonly DialogService _dialogService;
     private ObsMCLauncher.Core.Services.Minecraft.InstalledVersion? _version;
     private string _versionPath = string.Empty;
     private bool _isLoadingConfig;
@@ -55,11 +56,27 @@ public partial class InstanceViewModel : ViewModelBase
     [ObservableProperty]
     private bool _isVisible;
 
+    [ObservableProperty]
+    private ObservableCollection<GroupListItem> _groupListItems = new();
+
+    [ObservableProperty]
+    private GroupListItem? _selectedGroupItem;
+
+    [ObservableProperty]
+    private bool _isGroupManagerOpen;
+
+    [ObservableProperty]
+    private string _newGroupName = string.Empty;
+
+    [ObservableProperty]
+    private ObservableCollection<VersionGroup> _managedGroups = new();
+
     public Action? OnCloseRequested { get; set; }
 
     public InstanceViewModel(NotificationService notificationService)
     {
         _notificationService = notificationService;
+        _dialogService = NavigationStore.MainWindow?.Dialogs ?? new DialogService();
     }
 
     public void SetVersion(ObsMCLauncher.Core.Services.Minecraft.InstalledVersion version)
@@ -130,6 +147,104 @@ public partial class InstanceViewModel : ViewModelBase
 
         var gameDir = GetGameDirectory();
         StoragePath = gameDir;
+
+        // 加载分组信息
+        LoadGroupInfo();
+    }
+
+    private void LoadGroupInfo()
+    {
+        if (_version == null) return;
+
+        var groups = Core.Services.VersionGroupService.GetAllGroups();
+        var currentGroupId = Core.Services.VersionGroupService.GetEffectiveGroupId(_version);
+
+        var items = new ObservableCollection<GroupListItem>();
+
+        // 添加分组选项
+        foreach (var g in groups)
+        {
+            items.Add(new GroupListItem { Id = g.Id, Name = g.Name, IsSystem = g.IsSystem, IsDeletable = g.IsDeletable });
+        }
+
+        // 添加分隔线和管理入口
+        items.Add(new GroupListItem { Id = "__separator__", Name = "", IsSeparator = true });
+        items.Add(new GroupListItem { Id = "__manage__", Name = "管理分组...", IsManageEntry = true });
+
+        GroupListItems = items;
+        SelectedGroupItem = items.FirstOrDefault(g => g.Id == currentGroupId);
+
+        // 同步管理列表
+        ManagedGroups = new ObservableCollection<VersionGroup>(groups);
+    }
+
+    partial void OnSelectedGroupItemChanged(GroupListItem? value)
+    {
+        if (_version == null || value == null) return;
+
+        if (value.IsManageEntry)
+        {
+            IsGroupManagerOpen = true;
+            // 恢复之前的选择
+            var currentGroupId = Core.Services.VersionGroupService.GetEffectiveGroupId(_version);
+            SelectedGroupItem = GroupListItems.FirstOrDefault(g => g.Id == currentGroupId);
+            return;
+        }
+
+        if (value.IsSeparator) return;
+
+        // 避免初始化时触发保存
+        var existingGroupId = Core.Services.VersionGroupService.GetEffectiveGroupId(_version);
+        if (existingGroupId == value.Id) return;
+
+        Core.Services.VersionGroupService.SetVersionGroup(_version.Id, _versionPath, value.Id);
+        _notificationService.Show("分组已更新", $"版本 {_version.Id} 已移动到 \"{value.Name}\"", NotificationType.Success, 2);
+    }
+
+    [RelayCommand]
+    private void CreateGroup()
+    {
+        if (string.IsNullOrWhiteSpace(NewGroupName)) return;
+
+        var group = Core.Services.VersionGroupService.CreateGroup(NewGroupName.Trim());
+        NewGroupName = string.Empty;
+        LoadGroupInfo();
+        SelectedGroupItem = GroupListItems.FirstOrDefault(g => g.Id == group.Id);
+        _notificationService.Show("分组已创建", $"分组 \"{group.Name}\" 已创建", NotificationType.Success);
+    }
+
+    [RelayCommand]
+    private async Task RenameGroupAsync(VersionGroup? group)
+    {
+        if (group == null || group.IsSystem) return;
+
+        var (result, newName) = await _dialogService.ShowInputAsync("重命名分组", "请输入新的分组名称", group.Name);
+        if (result != DialogResult.OK || string.IsNullOrWhiteSpace(newName)) return;
+
+        Core.Services.VersionGroupService.RenameGroup(group.Id, newName.Trim());
+        LoadGroupInfo();
+        SelectedGroupItem = GroupListItems.FirstOrDefault(g => g.Id == group.Id);
+        _notificationService.Show("分组已重命名", $"分组已重命名为 \"{newName.Trim()}\"", NotificationType.Success);
+    }
+
+    [RelayCommand]
+    private async Task DeleteGroupAsync(VersionGroup? group)
+    {
+        if (group == null || !group.IsDeletable) return;
+
+        var result = await _dialogService.ShowQuestion("确认删除", $"确定要删除分组 \"{group.Name}\" 吗？\n组内版本将归入\"自动\"分组。");
+        if (result != DialogResult.Yes) return;
+
+        Core.Services.VersionGroupService.DeleteGroup(group.Id);
+        LoadGroupInfo();
+        SelectedGroupItem = GroupListItems.FirstOrDefault();
+        _notificationService.Show("分组已删除", $"分组 \"{group.Name}\" 已删除", NotificationType.Success);
+    }
+
+    [RelayCommand]
+    private void CloseGroupManager()
+    {
+        IsGroupManagerOpen = false;
     }
 
     private string GetGameDirectory()
@@ -417,4 +532,17 @@ public class ModInfo : ObservableObject
     }
 
     public string DisplayName => IsEnabled ? Name : Name.Replace(".disabled", "");
+}
+
+/// <summary>
+/// 分组下拉框列表项模型
+/// </summary>
+public class GroupListItem
+{
+    public string Id { get; set; } = "";
+    public string Name { get; set; } = "";
+    public bool IsSystem { get; set; }
+    public bool IsDeletable { get; set; }
+    public bool IsSeparator { get; set; }
+    public bool IsManageEntry { get; set; }
 }

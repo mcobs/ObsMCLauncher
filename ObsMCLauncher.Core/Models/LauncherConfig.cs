@@ -169,6 +169,16 @@ public class LauncherConfig
 
     public List<string> CustomGameDirectories { get; set; } = [];
 
+    /// <summary>
+    /// 自定义版本分组列表（系统分组不存储在此，由 VersionGroup.GetSystemGroups() 提供）
+    /// </summary>
+    public List<VersionGroup> CustomVersionGroups { get; set; } = [];
+
+    /// <summary>
+    /// 版本到分组的映射：versionId -> groupId
+    /// </summary>
+    public Dictionary<string, string> VersionGroupMappings { get; set; } = new();
+
     public static string GetConfigFilePath()
     {
         return Path.Combine(

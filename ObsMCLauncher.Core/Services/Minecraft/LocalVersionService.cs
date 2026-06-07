@@ -80,6 +80,11 @@ namespace ObsMCLauncher.Core.Services.Minecraft
         public bool? UseVersionIsolation { get; set; } = null; // null表示使用全局设置
 
         /// <summary>
+        /// 版本所属分组ID
+        /// </summary>
+        public string GroupId { get; set; } = VersionGroup.AutoGroupId;
+
+        /// <summary>
         /// UI 绑定属性：获取详情描述文本
         /// </summary>
         public string DetailText
@@ -226,8 +231,14 @@ namespace ObsMCLauncher.Core.Services.Minecraft
                                 Path = versionDir,
                                 IsSelected = false,
                                 LoaderType = loaderType,
-                                UseVersionIsolation = versionConfig.UseVersionIsolation
+                                UseVersionIsolation = versionConfig.UseVersionIsolation,
+                                GroupId = VersionGroupService.GetEffectiveGroupId(
+                                    new InstalledVersion { Id = versionId, LoaderType = loaderType, LastPlayed = lastPlayed })
                             });
+
+                            // 确保版本目录下存在 OMCL/init.json
+                            try { VersionGroupService.EnsureInitJson(versionDir); }
+                            catch { /* 不影响主流程 */ }
                             
                             var loaderInfo = string.IsNullOrEmpty(loaderType) ? "" : $" [{loaderType}]";
                             var isolationInfo = versionConfig.UseVersionIsolation.HasValue ? 
@@ -308,6 +319,15 @@ namespace ObsMCLauncher.Core.Services.Minecraft
         {
             try
             {
+                // 删除前清理分组映射
+                var versionId = Path.GetFileName(versionPath);
+                var config = LauncherConfig.Load();
+                if (config.VersionGroupMappings.ContainsKey(versionId))
+                {
+                    config.VersionGroupMappings.Remove(versionId);
+                    config.Save();
+                }
+
                 if (Directory.Exists(versionPath))
                 {
                     Directory.Delete(versionPath, true);

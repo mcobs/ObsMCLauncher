@@ -72,6 +72,9 @@ public partial class VersionDownloadViewModel : ViewModelBase
     [ObservableProperty]
     private bool _isCurrentDirectoryValid = true;
 
+    [ObservableProperty]
+    private ObservableCollection<GroupSection> _groupSections = new();
+
     public InstanceViewModel InstanceViewModel { get; }
 
     public VersionDownloadViewModel(ObsMCLauncher.Core.Services.Ui.IDispatcher dispatcher, NotificationService notificationService)
@@ -86,6 +89,48 @@ public partial class VersionDownloadViewModel : ViewModelBase
         LoadGameDirectories();
 
         InitializeAsync();
+    }
+
+    private void BuildGroupSections()
+    {
+        var groups = Core.Services.VersionGroupService.GetAllGroups();
+        var allVersions = InstalledVersions.ToList();
+        var sections = new ObservableCollection<GroupSection>();
+
+        foreach (var group in groups)
+        {
+            // "自动"分组不在界面显示，其下版本自动归类到其他分组
+            if (group.Id == VersionGroup.AutoGroupId) continue;
+
+            var versions = allVersions.Where(v =>
+            {
+                var displayGroup = Core.Services.VersionGroupService.GetDisplayGroupId(v);
+                return displayGroup == group.Id;
+            }).ToList();
+
+            var description = group.Id switch
+            {
+                VersionGroup.ModdableGroupId => "安装了Mod加载器的版本",
+                VersionGroup.CommonGroupId => "30天内游玩过的版本",
+                VersionGroup.UncommonGroupId => "超过30天未游玩或从未游玩的版本",
+                _ => ""
+            };
+
+            sections.Add(new GroupSection
+            {
+                GroupId = group.Id,
+                GroupName = group.Name,
+                IsSystem = group.IsSystem,
+                IsDeletable = group.IsDeletable,
+                Description = description,
+                HasDescription = !string.IsNullOrEmpty(description),
+                VersionCount = versions.Count,
+                HasVersions = versions.Count > 0,
+                Versions = new ObservableCollection<Core.Services.Minecraft.InstalledVersion>(versions)
+            });
+        }
+
+        GroupSections = sections;
     }
 
     private async void InitializeAsync()
@@ -127,6 +172,7 @@ public partial class VersionDownloadViewModel : ViewModelBase
         var list = LocalVersionService.GetInstalledVersions(_config.GameDirectory);
         InstalledVersions = new ObservableCollection<Core.Services.Minecraft.InstalledVersion>(list);
         InstalledVersionsCount = list.Count;
+        BuildGroupSections();
     }
 
     private void RefreshCurrentDirectoryDisplay()
@@ -733,4 +779,20 @@ public partial class GameDirectoryItem : ObservableObject
 
     [ObservableProperty]
     private bool _isDeletable = true;
+}
+
+/// <summary>
+/// 版本分组展示区段模型
+/// </summary>
+public class GroupSection
+{
+    public string GroupId { get; set; } = "";
+    public string GroupName { get; set; } = "";
+    public bool IsSystem { get; set; }
+    public bool IsDeletable { get; set; }
+    public string Description { get; set; } = "";
+    public bool HasDescription { get; set; }
+    public int VersionCount { get; set; }
+    public bool HasVersions { get; set; }
+    public ObservableCollection<ObsMCLauncher.Core.Services.Minecraft.InstalledVersion> Versions { get; set; } = new();
 }

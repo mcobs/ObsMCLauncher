@@ -5,11 +5,11 @@
              x:Class="ObsMCLauncher.Desktop.Views.InstanceView"
              x:DataType="vm:InstanceViewModel">
 
-  <Border Background="{DynamicResource BackgroundBrush}"
-          IsVisible="{Binding IsVisible}"
-          ZIndex="10"
-          HorizontalAlignment="Stretch"
-          VerticalAlignment="Stretch">
+  <Panel IsVisible="{Binding IsVisible}"
+         ZIndex="10"
+         HorizontalAlignment="Stretch"
+         VerticalAlignment="Stretch">
+    <Border Background="{DynamicResource BackgroundBrush}">
     <Grid RowDefinitions="Auto,*,Auto">
       <Border Grid.Row="0"
               Background="{DynamicResource SurfaceBrush}"
@@ -75,6 +75,33 @@
                   <ComboBoxItem Content="跟随全局"/>
                   <ComboBoxItem Content="开启"/>
                   <ComboBoxItem Content="关闭"/>
+                </ComboBox>
+              </Grid>
+
+              <Grid ColumnDefinitions="*,Auto">
+                <StackPanel>
+                  <TextBlock Text="版本分组" FontSize="12" FontWeight="SemiBold"/>
+                  <TextBlock Text="将此版本分配到指定分组" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,1,0,0"/>
+                </StackPanel>
+                <ComboBox Grid.Column="1" Width="160"
+                          ItemsSource="{Binding GroupListItems}"
+                          SelectedItem="{Binding SelectedGroupItem}"
+                          FontSize="12">
+                  <ComboBox.ItemTemplate>
+                    <DataTemplate>
+                      <Panel>
+                        <!-- 普通分组项 -->
+                        <TextBlock Text="{Binding Name}" FontSize="12"
+                                   IsVisible="{Binding !IsSeparator}"/>
+                        <!-- 管理入口项 -->
+                        <StackPanel Orientation="Horizontal" Spacing="4" IsVisible="{Binding IsManageEntry}">
+                          <Path Data="M19.14 12.94C19.18 12.64 19.2 12.33 19.2 12C19.2 11.68 19.18 11.36 19.13 11.06L21.16 9.48C21.34 9.34 21.39 9.07 21.28 8.87L19.36 5.55C19.24 5.33 18.99 5.26 18.77 5.33L16.38 6.29C15.88 5.91 15.35 5.59 14.76 5.35L14.4 2.81C14.36 2.57 14.16 2.4 13.92 2.4H10.08C9.84 2.4 9.65 2.57 9.61 2.81L9.25 5.35C8.66 5.59 8.12 5.92 7.63 6.29L5.24 5.33C5.02 5.25 4.77 5.33 4.65 5.55L2.74 8.87C2.62 9.08 2.66 9.34 2.86 9.48L4.89 11.06C4.84 11.36 4.8 11.69 4.8 12C4.8 12.31 4.82 12.64 4.87 12.94L2.85 14.52C2.67 14.66 2.62 14.93 2.73 15.13L4.65 18.45C4.77 18.67 5.02 18.74 5.24 18.67L7.63 17.71C8.13 18.09 8.66 18.41 9.25 18.65L9.61 21.19C9.65 21.43 9.84 21.6 10.08 21.6H13.92C14.16 21.6 14.36 21.43 14.4 21.19L14.76 18.65C15.35 18.41 15.89 18.09 16.38 17.71L18.77 18.67C18.99 18.74 19.24 18.67 19.36 18.45L21.28 15.13C21.39 14.91 21.34 14.66 21.16 14.52L19.14 12.94ZM12 15.6C10.02 15.6 8.4 13.98 8.4 12C8.4 10.02 10.02 8.4 12 8.4C13.98 8.4 15.6 10.02 15.6 12C15.6 13.98 13.98 15.6 12 15.6Z"
+                                Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource PrimaryBrush}" VerticalAlignment="Center"/>
+                          <TextBlock Text="管理分组..." FontSize="12" Foreground="{DynamicResource PrimaryBrush}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                      </Panel>
+                    </DataTemplate>
+                  </ComboBox.ItemTemplate>
                 </ComboBox>
               </Grid>
 
@@ -209,6 +236,88 @@
         </StackPanel>
       </Border>
     </Grid>
-  </Border>
+    </Border>
 
+    <!-- 分组管理弹窗 -->
+    <Border IsVisible="{Binding IsGroupManagerOpen}"
+            Background="#80000000"
+            ZIndex="200"
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Stretch">
+      <Border Background="{DynamicResource BackgroundBrush}"
+              CornerRadius="12"
+              Width="360"
+              VerticalAlignment="Center"
+              HorizontalAlignment="Center"
+              BorderThickness="1"
+              BorderBrush="{DynamicResource BorderBrush}"
+              BoxShadow="0 8 32 0 #40000000">
+        <Grid RowDefinitions="Auto,*,Auto" Margin="0">
+
+          <Border Grid.Row="0" Padding="16,14" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource BorderBrush}">
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Text="分组管理" FontSize="16" FontWeight="Medium" VerticalAlignment="Center"/>
+              <Button Grid.Column="1" Width="28" Height="28" Padding="0" Classes="ghost"
+                      Command="{Binding CloseGroupManagerCommand}">
+                <Path Data="M19 6.41L17.59 5L12 10.59L6.41 5L5 6.41L10.59 12L5 17.59L6.41 19L12 13.41L17.59 19L19 17.59L13.41 12L19 6.41Z"
+                      Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource TextSecondaryBrush}"
+                      HorizontalAlignment="Center" VerticalAlignment="Center"/>
+              </Button>
+            </Grid>
+          </Border>
+
+          <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" MaxHeight="300">
+            <StackPanel Margin="8,8,8,4">
+              <ItemsControl ItemsSource="{Binding ManagedGroups}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <Border Background="{DynamicResource SurfaceBrush}"
+                            CornerRadius="6" Padding="12,10" Margin="0,0,0,4"
+                            BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
+                      <Grid ColumnDefinitions="Auto,Auto,*,Auto">
+                        <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="Medium" VerticalAlignment="Center"/>
+                        <Border Grid.Column="1" CornerRadius="3" Padding="4,1" Margin="6,0,0,0"
+                                Background="{DynamicResource SurfaceElevatedBrush}"
+                                IsVisible="{Binding IsSystem}"
+                                VerticalAlignment="Center">
+                          <TextBlock Text="系统组" FontSize="9" Foreground="{DynamicResource TextTertiaryBrush}"/>
+                        </Border>
+                        <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center"
+                                    IsVisible="{Binding IsDeletable}">
+                          <Button Width="26" Height="26" Padding="0" Classes="ghost" ToolTip.Tip="重命名"
+                                  Command="{Binding $parent[UserControl].((vm:InstanceViewModel)DataContext).RenameGroupCommand}"
+                                  CommandParameter="{Binding}">
+                            <Path Data="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"
+                                  Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource TextBrush}"
+                                  HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                          </Button>
+                          <Button Width="26" Height="26" Padding="0" Classes="ghost" ToolTip.Tip="删除"
+                                  Command="{Binding $parent[UserControl].((vm:InstanceViewModel)DataContext).DeleteGroupCommand}"
+                                  CommandParameter="{Binding}">
+                            <Path Data="M19 4H15.5L14.5 3H9.5L8.5 4H5V6H19M6 19A2 2 0 0 0 8 21H16A2 2 0 0 0 18 19V7H6V19Z"
+                                  Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource DangerBrush}"
+                                  HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                          </Button>
+                        </StackPanel>
+                      </Grid>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </ScrollViewer>
+
+          <Border Grid.Row="2" Padding="12,10" BorderThickness="0,1,0,0" BorderBrush="{DynamicResource BorderBrush}">
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBox Watermark="输入新分组名称" Text="{Binding NewGroupName}" FontSize="13"/>
+              <Button Grid.Column="1" Content="创建" Margin="8,0,0,0" Padding="14,0"
+                      Command="{Binding CreateGroupCommand}"/>
+            </Grid>
+          </Border>
+
+        </Grid>
+      </Border>
+    </Border>
+
+  </Panel>
 </UserControl>
