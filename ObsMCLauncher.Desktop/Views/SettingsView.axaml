@@ -173,23 +173,66 @@
                 <TextBlock Text="选择通知消息的显示位置和样式" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,-6,0,0"/>
 
                 <Grid ColumnDefinitions="*,*" Margin="0,4,0,0">
+                  <!-- 居中通知预览 -->
                   <Border Grid.Column="0"
-                          CornerRadius="8" Padding="0" Margin="0,0,6,0"
+                          CornerRadius="8" Margin="0,0,6,0"
                           BorderThickness="2"
                           BorderBrush="{Binding NotificationPosition, Converter={x:Static converters:NotificationPositionToBorderConverter.Instance}, ConverterParameter=Center}">
                     <Button Classes="ghost" Padding="0"
                             Command="{Binding SelectCenterNotificationCommand}">
                       <StackPanel>
-                        <Border Height="100" Background="{DynamicResource SurfaceElevatedBrush}" CornerRadius="8,8,0,0" Padding="6">
-                          <Border Background="{DynamicResource SurfaceBrush}" CornerRadius="6" Padding="8,6"
-                                  HorizontalAlignment="Center" VerticalAlignment="Top"
-                                  BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}"
-                                  Width="180">
-                            <StackPanel>
-                              <TextBlock Text="通知消息" FontSize="10" FontWeight="Medium"/>
-                              <TextBlock Text="这是一条示例通知" FontSize="8" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,1,0,0" TextTrimming="CharacterEllipsis"/>
-                            </StackPanel>
-                          </Border>
+                        <!-- 缩略启动器窗口 -->
+                        <Border Height="180" CornerRadius="8,8,0,0" Background="{DynamicResource SurfaceElevatedBrush}"
+                                BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
+                          <Grid RowDefinitions="14,*">
+                            <!-- 标题栏 -->
+                            <Border Grid.Row="0" Background="{DynamicResource SurfaceBrush}" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource BorderBrush}">
+                              <Grid ColumnDefinitions="Auto,*,Auto">
+                                <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="6,0,0,0" VerticalAlignment="Center" Spacing="3">
+                                  <Border Width="8" Height="8" CornerRadius="2" Background="{DynamicResource PrimaryBrush}"/>
+                                  <TextBlock Text="ObsMCLauncher" FontSize="6" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="0">
+                                  <Border Width="14" Height="10" Background="Transparent"/>
+                                  <Border Width="14" Height="10" Background="Transparent"/>
+                                  <Border Width="14" Height="10" CornerRadius="0,4,0,0" Background="#30E81123"/>
+                                </StackPanel>
+                              </Grid>
+                            </Border>
+                            <!-- 窗口主体 -->
+                            <Grid Grid.Row="1" ColumnDefinitions="22,*">
+                              <!-- 侧边栏 -->
+                              <Border Grid.Column="0" Background="{DynamicResource SurfaceBrush}" BorderThickness="0,0,1,0" BorderBrush="{DynamicResource BorderBrush}" Padding="3,5">
+                                <StackPanel Spacing="3">
+                                  <Border Height="6" CornerRadius="3" Background="{DynamicResource PrimaryBrush}"/>
+                                  <Border Height="6" CornerRadius="3" Background="{DynamicResource SurfaceHoverBrush}"/>
+                                  <Border Height="6" CornerRadius="3" Background="{DynamicResource SurfaceHoverBrush}"/>
+                                  <Border Height="6" CornerRadius="3" Background="{DynamicResource SurfaceHoverBrush}"/>
+                                  <Border Height="6" CornerRadius="3" Background="{DynamicResource SurfaceHoverBrush}"/>
+                                </StackPanel>
+                              </Border>
+                              <!-- 内容区 -->
+                              <Border Grid.Column="1" Background="{DynamicResource SystemControlBackgroundBaseHighBrush}" Padding="6,5">
+                                <StackPanel Spacing="3">
+                                  <Border Height="6" Width="55" CornerRadius="3" Background="{DynamicResource TextTertiaryBrush}" Opacity="0.3"/>
+                                  <Border Height="4" Width="80" CornerRadius="2" Background="{DynamicResource TextTertiaryBrush}" Opacity="0.15"/>
+                                  <Border Height="4" Width="65" CornerRadius="2" Background="{DynamicResource TextTertiaryBrush}" Opacity="0.15"/>
+                                </StackPanel>
+                              </Border>
+                            </Grid>
+                            <!-- 居中通知覆盖层 -->
+                            <Border Grid.Row="1" Grid.ColumnSpan="2"
+                                    HorizontalAlignment="Center" VerticalAlignment="Top"
+                                    Margin="0,6,0,0"
+                                    Background="{DynamicResource SurfaceElevatedBrush}" CornerRadius="5"
+                                    BorderThickness="1" BorderBrush="{DynamicResource PrimaryBrush}"
+                                    Padding="8,5" Width="110">
+                              <StackPanel>
+                                <Border Width="30" Height="3" CornerRadius="1.5" Background="{DynamicResource PrimaryBrush}" HorizontalAlignment="Left"/>
+                                <Border Width="70" Height="2" CornerRadius="1" Background="{DynamicResource TextTertiaryBrush}" Opacity="0.4" Margin="0,3,0,0" HorizontalAlignment="Left"/>
+                              </StackPanel>
+                            </Border>
+                          </Grid>
                         </Border>
                         <Border Padding="8,6" Background="{DynamicResource SurfaceBrush}" CornerRadius="0,0,8,8">
                           <StackPanel HorizontalAlignment="Center">
@@ -201,23 +244,66 @@
                     </Button>
                   </Border>
 
+                  <!-- 右下角通知预览 -->
                   <Border Grid.Column="1"
-                          CornerRadius="8" Padding="0"
+                          CornerRadius="8"
                           BorderThickness="2"
                           BorderBrush="{Binding NotificationPosition, Converter={x:Static converters:NotificationPositionToBorderConverter.Instance}, ConverterParameter=BottomRight}">
                     <Button Classes="ghost" Padding="0"
                             Command="{Binding SelectBottomRightNotificationCommand}">
                       <StackPanel>
-                        <Border Height="100" Background="{DynamicResource SurfaceElevatedBrush}" CornerRadius="8,8,0,0" Padding="6">
-                          <Border Background="{DynamicResource SurfaceBrush}" CornerRadius="6" Padding="8,6"
-                                  HorizontalAlignment="Right" VerticalAlignment="Bottom"
-                                  BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}"
-                                  Width="180">
-                            <StackPanel>
-                              <TextBlock Text="通知消息" FontSize="10" FontWeight="Medium"/>
-                              <TextBlock Text="这是一条示例通知" FontSize="8" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,1,0,0" TextTrimming="CharacterEllipsis"/>
-                            </StackPanel>
-                          </Border>
+                        <!-- 缩略启动器窗口 -->
+                        <Border Height="180" CornerRadius="8,8,0,0" Background="{DynamicResource SurfaceElevatedBrush}"
+                                BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
+                          <Grid RowDefinitions="14,*">
+                            <!-- 标题栏 -->
+                            <Border Grid.Row="0" Background="{DynamicResource SurfaceBrush}" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource BorderBrush}">
+                              <Grid ColumnDefinitions="Auto,*,Auto">
+                                <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="6,0,0,0" VerticalAlignment="Center" Spacing="3">
+                                  <Border Width="8" Height="8" CornerRadius="2" Background="{DynamicResource PrimaryBrush}"/>
+                                  <TextBlock Text="ObsMCLauncher" FontSize="6" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="0">
+                                  <Border Width="14" Height="10" Background="Transparent"/>
+                                  <Border Width="14" Height="10" Background="Transparent"/>
+                                  <Border Width="14" Height="10" CornerRadius="0,4,0,0" Background="#30E81123"/>
+                                </StackPanel>
+                              </Grid>
+                            </Border>
+                            <!-- 窗口主体 -->
+                            <Grid Grid.Row="1" ColumnDefinitions="22,*">
+                              <!-- 侧边栏 -->
+                              <Border Grid.Column="0" Background="{DynamicResource SurfaceBrush}" BorderThickness="0,0,1,0" BorderBrush="{DynamicResource BorderBrush}" Padding="3,5">
+                                <StackPanel Spacing="3">
+                                  <Border Height="6" CornerRadius="3" Background="{DynamicResource PrimaryBrush}"/>
+                                  <Border Height="6" CornerRadius="3" Background="{DynamicResource SurfaceHoverBrush}"/>
+                                  <Border Height="6" CornerRadius="3" Background="{DynamicResource SurfaceHoverBrush}"/>
+                                  <Border Height="6" CornerRadius="3" Background="{DynamicResource SurfaceHoverBrush}"/>
+                                  <Border Height="6" CornerRadius="3" Background="{DynamicResource SurfaceHoverBrush}"/>
+                                </StackPanel>
+                              </Border>
+                              <!-- 内容区 -->
+                              <Border Grid.Column="1" Background="{DynamicResource SystemControlBackgroundBaseHighBrush}" Padding="6,5">
+                                <StackPanel Spacing="3">
+                                  <Border Height="6" Width="55" CornerRadius="3" Background="{DynamicResource TextTertiaryBrush}" Opacity="0.3"/>
+                                  <Border Height="4" Width="80" CornerRadius="2" Background="{DynamicResource TextTertiaryBrush}" Opacity="0.15"/>
+                                  <Border Height="4" Width="65" CornerRadius="2" Background="{DynamicResource TextTertiaryBrush}" Opacity="0.15"/>
+                                </StackPanel>
+                              </Border>
+                            </Grid>
+                            <!-- 右下角通知覆盖层 -->
+                            <Border Grid.Row="1" Grid.ColumnSpan="2"
+                                    HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                    Margin="0,0,6,6"
+                                    Background="{DynamicResource SurfaceElevatedBrush}" CornerRadius="5"
+                                    BorderThickness="1" BorderBrush="{DynamicResource PrimaryBrush}"
+                                    Padding="8,5" Width="110">
+                              <StackPanel>
+                                <Border Width="30" Height="3" CornerRadius="1.5" Background="{DynamicResource PrimaryBrush}" HorizontalAlignment="Left"/>
+                                <Border Width="70" Height="2" CornerRadius="1" Background="{DynamicResource TextTertiaryBrush}" Opacity="0.4" Margin="0,3,0,0" HorizontalAlignment="Left"/>
+                              </StackPanel>
+                            </Border>
+                          </Grid>
                         </Border>
                         <Border Padding="8,6" Background="{DynamicResource SurfaceBrush}" CornerRadius="0,0,8,8">
                           <StackPanel HorizontalAlignment="Center">
