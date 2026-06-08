@@ -31,7 +31,7 @@
         </TabControl.ItemTemplate>
         <TabControl.ContentTemplate>
           <DataTemplate x:DataType="vm:TabItemViewModel">
-            <ContentPresenter Content="{Binding Content}"/>
+            <ContentControl Content="{Binding Content}"/>
           </DataTemplate>
         </TabControl.ContentTemplate>
 

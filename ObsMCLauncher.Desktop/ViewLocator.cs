@@ -35,7 +35,10 @@ public class ViewLocator : IDataTemplate
 
         if (type != null)
         {
-            return (Control)Activator.CreateInstance(type)!;
+            var control = (Control)Activator.CreateInstance(type)!;
+            // 立即设置 DataContext，避免 Avalonia 布局时绑定解析到 null
+            control.DataContext = param;
+            return control;
         }
 
         // 占位页：直接返回一个简单的视图，避免必须为每个页面先创建 View 文件

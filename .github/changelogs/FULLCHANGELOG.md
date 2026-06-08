@@ -7,6 +7,9 @@
  ### 修复
 - 版本详情页返回时崩溃：修复集合并发修改问题，所有ObservableCollection操作统一走UI线程调度，返回时取消后台加载任务
 - 主页点击版本详情按钮时崩溃：InstanceViewModel.LoadAsync中I/O与UI更新分离，后台线程收集数据后通过Dispatcher.UIThread派发ObservableCollection更新
+- 版本管理页大量绑定错误：将嵌套DataTemplate中的$parent[UserControl]改为x:Name元素引用，避免DataContext未就绪时产生绑定错误日志
+- 全局绑定错误消除：ViewLocator.Build()创建View时立即设置DataContext，解决所有页面初始化时#ElementName.DataContext为null的绑定报错
+- 更多页面标签页Content类型转换错误：TabControl.ContentTemplate中的ContentPresenter改用ContentControl，避免父级DataTemplate的x:DataType编译绑定强制类型转换
 - 游戏日志窗口关闭时递归调用Shutdown导致栈溢出：添加防重入标志
 - 截图管理黑屏：使用FilePathToBitmapConverter正确加载本地图片
 - 截图按版本筛选无效：修复"主目录"选项筛选逻辑，正确区分主目录和版本隔离目录截图
