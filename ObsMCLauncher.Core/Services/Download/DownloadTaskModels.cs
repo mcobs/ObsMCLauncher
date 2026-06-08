@@ -42,6 +42,8 @@ public class DownloadTask : INotifyPropertyChanged
                 OnPropertyChanged(nameof(Status));
                 OnPropertyChanged(nameof(StatusText));
                 OnPropertyChanged(nameof(CanCancel));
+                OnPropertyChanged(nameof(StatusColor));
+                OnPropertyChanged(nameof(IsFailed));
             }
         }
     }
@@ -117,6 +119,26 @@ public class DownloadTask : INotifyPropertyChanged
     }
 
     public bool CanCancel => Status == DownloadTaskStatus.Downloading;
+
+    public bool IsFailed => Status == DownloadTaskStatus.Failed;
+
+    public string StatusColor => Status switch
+    {
+        DownloadTaskStatus.Downloading => "#3B82F6",
+        DownloadTaskStatus.Completed => "#10B981",
+        DownloadTaskStatus.Failed => "#EF4444",
+        DownloadTaskStatus.Cancelled => "#9CA3AF",
+        _ => "#9CA3AF"
+    };
+
+    public string TypeText => Type switch
+    {
+        DownloadTaskType.Version => "版本",
+        DownloadTaskType.Assets => "资源",
+        DownloadTaskType.Mod => "模组",
+        DownloadTaskType.Resource => "资源包",
+        _ => ""
+    };
 
     public event PropertyChangedEventHandler? PropertyChanged;
 

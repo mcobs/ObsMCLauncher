@@ -143,19 +143,12 @@
         </Style>
 
         <Style Selector="Border.download-panel">
-            <Setter Property="RenderTransform" Value="translate(0, 20px)" />
-            <Setter Property="Opacity" Value="0" />
             <Setter Property="Transitions">
                 <Transitions>
                     <DoubleTransition Property="Opacity" Duration="0:0:0.25" Easing="CircularEaseOut" />
                     <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.25" Easing="CircularEaseOut" />
                 </Transitions>
             </Setter>
-        </Style>
-
-        <Style Selector="Border.download-panel:visible">
-            <Setter Property="RenderTransform" Value="translate(0, 0)" />
-            <Setter Property="Opacity" Value="1" />
         </Style>
 
         <Style Selector="Button.titlebar-btn">
@@ -664,25 +657,29 @@
                 IsVisible="{Binding DownloadManager.IsPanelVisible}"
                 BoxShadow="0 8 32 0 #66000000"
                 ZIndex="100"
-                x:CompileBindings="False"
                 Classes="download-panel">
 
             <Grid RowDefinitions="Auto,*,Auto">
+                <!-- 标题栏 -->
                 <Border CornerRadius="14,14,0,0"
-                        Padding="16,12">
+                        Padding="14,12">
                     <Border.Background>
                         <SolidColorBrush Color="{DynamicResource SystemAccentColor}" />
                     </Border.Background>
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Orientation="Horizontal" Spacing="8">
-                            <Path Data="M12 4V1L8 5L12 9V6C15.31 6 18 8.69 18 12C18 13.01 17.75 13.97 17.3 14.8L18.76 16.26C19.54 14.99 20 13.55 20 12C20 7.58 16.42 4 12 4M12 18C8.69 18 6 15.31 6 12C6 10.99 6.25 10.03 6.7 9.2L5.24 7.74C4.46 9.01 4 10.45 4 12C4 16.42 7.58 20 12 20V23L16 19L12 15V18Z"
+                            <Path Data="M19 9H15V3H9V9H5L12 16L19 9M5 18V20H19V18H5Z"
                                   Width="16" Height="16"
                                   Stretch="Uniform" Fill="White"
                                   VerticalAlignment="Center"/>
-                            <TextBlock Text="下载管理器" FontSize="15" FontWeight="Medium" Foreground="White" VerticalAlignment="Center" />
-                            <TextBlock FontSize="12" Foreground="White" Opacity="0.85" VerticalAlignment="Center">
-                                <Run Text="("/><Run Text="{Binding DownloadManager.ActiveTaskCount}"/><Run Text=" 个任务)"/>
-                            </TextBlock>
+                            <TextBlock Text="下载管理器" FontSize="15" FontWeight="SemiBold" Foreground="White" VerticalAlignment="Center" />
+                            <Border CornerRadius="8" Padding="6,2" Background="#30FFFFFF"
+                                    IsVisible="{Binding DownloadManager.ActiveTaskCount, FallbackValue=0}">
+                                <TextBlock FontSize="11" FontWeight="SemiBold" Foreground="White">
+                                    <Run Text="{Binding DownloadManager.ActiveTaskCount, FallbackValue=0}"/>
+                                    <Run Text=" 个进行中"/>
+                                </TextBlock>
+                            </Border>
                         </StackPanel>
 
                         <Button Grid.Column="1"
@@ -699,51 +696,158 @@
                     </Grid>
                 </Border>
 
-                <ScrollViewer Grid.Row="1" MaxHeight="400">
-                    <ItemsControl ItemsSource="{Binding DownloadManager.Tasks}" Margin="12">
+                <!-- 内容区域 -->
+                <ScrollViewer Grid.Row="1" MaxHeight="380">
+                    <Panel>
+                        <!-- 空状态 -->
+                        <Border IsVisible="{Binding DownloadManager.HasAnyTasks, FallbackValue=False, Converter={x:Static converters:NotConverter.Instance}}"
+                            Padding="32,40">
+                        <StackPanel Spacing="12" HorizontalAlignment="Center">
+                            <Path Data="M19 9H15V3H9V9H5L12 16L19 9Z"
+                                  Width="40" Height="40"
+                                  Stretch="Uniform"
+                                  Fill="{DynamicResource TextTertiaryBrush}"
+                                  Opacity="0.4"
+                                  HorizontalAlignment="Center"/>
+                            <TextBlock Text="暂无下载任务"
+                                       FontSize="14"
+                                       FontWeight="Medium"
+                                       Foreground="{DynamicResource TextSecondaryBrush}"
+                                       HorizontalAlignment="Center" />
+                            <TextBlock Text="下载内容将在此处显示"
+                                       FontSize="12"
+                                       Foreground="{DynamicResource TextTertiaryBrush}"
+                                       HorizontalAlignment="Center" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 任务列表 -->
+                    <ItemsControl ItemsSource="{Binding DownloadManager.Tasks}" Margin="12"
+                                  IsVisible="{Binding DownloadManager.HasAnyTasks}">
                         <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Border CornerRadius="8" Padding="12" Margin="0,0,0,8"
+                            <DataTemplate x:CompileBindings="False">
+                                <Border CornerRadius="10"
+                                        Padding="0"
+                                        Margin="0,0,0,8"
                                         Background="{DynamicResource SystemControlBackgroundBaseHighBrush}">
-                                    <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,Auto">
-                                        <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding Name}" FontSize="13" FontWeight="Medium" TextTrimming="CharacterEllipsis" />
+                                    <Grid ColumnDefinitions="4,*" MinHeight="72">
+                                        <!-- 状态指示条 -->
+                                        <Border Grid.Column="0"
+                                                CornerRadius="10,0,0,10"
+                                                Width="4"
+                                                HorizontalAlignment="Left">
+                                            <Border.Background>
+                                                <SolidColorBrush Color="{Binding StatusColor, FallbackValue=#3B82F6}" />
+                                            </Border.Background>
+                                        </Border>
 
-                                        <Button Grid.Row="0" Grid.Column="1" Width="24" Height="24"
-                                                Classes="ghost" Padding="0"
-                                                IsVisible="{Binding CanCancel}"
-                                                Command="{Binding $parent[Window].DataContext.DownloadManager.CancelTaskCommand}"
-                                                CommandParameter="{Binding Id}">
-                                            <Path Data="M6 6L18 18M6 18L18 6" 
-                                                  Width="10" Height="10"
-                                                  Stretch="Uniform"
-                                                  Stroke="{DynamicResource TextSecondaryBrush}" StrokeThickness="2"/>
-                                        </Button>
+                                        <Grid Grid.Column="1"
+                                              RowDefinitions="Auto,Auto,Auto"
+                                              ColumnDefinitions="*,Auto"
+                                              Margin="10,10,10,8">
 
-                                        <ProgressBar Grid.Row="1" Grid.ColumnSpan="2" Height="4" Minimum="0" Maximum="100" Value="{Binding Progress}" Margin="0,8,0,6" />
+                                            <!-- 第1行：名称 + 取消 -->
+                                            <StackPanel Grid.Row="0" Grid.Column="0"
+                                                        Orientation="Horizontal" Spacing="8"
+                                                        VerticalAlignment="Center">
+                                                <Border CornerRadius="4"
+                                                        Padding="4,1"
+                                                        Background="{DynamicResource SystemControlBackgroundAltHighBrush}">
+                                                    <TextBlock Text="{Binding TypeText, FallbackValue=版本}"
+                                                               FontSize="10"
+                                                               Foreground="{DynamicResource TextTertiaryBrush}" />
+                                                </Border>
+                                                <TextBlock Text="{Binding Name}"
+                                                           FontSize="13"
+                                                           FontWeight="Medium"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           MaxWidth="220"
+                                                           VerticalAlignment="Center" />
+                                            </StackPanel>
 
-                                        <TextBlock Grid.Row="2" Grid.Column="0" Text="{Binding StatusText}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                            <Button Grid.Row="0" Grid.Column="1"
+                                                    Width="24" Height="24"
+                                                    Classes="ghost" Padding="0"
+                                                    IsVisible="{Binding CanCancel, FallbackValue=False}"
+                                                    Command="{Binding $parent[Window].DataContext.DownloadManager.CancelTaskCommand}"
+                                                    CommandParameter="{Binding Id}">
+                                                <Path Data="M6 6L18 18M6 18L18 6" 
+                                                      Width="10" Height="10"
+                                                      Stretch="Uniform"
+                                                      Stroke="{DynamicResource TextSecondaryBrush}" StrokeThickness="2"/>
+                                            </Button>
 
-                                        <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
-                                            <TextBlock Text="{Binding ProgressText}" FontSize="11" FontWeight="Medium" Foreground="{DynamicResource PrimaryBrush}" />
-                                            <TextBlock Text="{Binding SpeedText}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
-                                        </StackPanel>
+                                            <!-- 第2行：进度条 -->
+                                            <ProgressBar Grid.Row="1" Grid.ColumnSpan="2"
+                                                         Height="6"
+                                                         Minimum="0" Maximum="100"
+                                                         Value="{Binding Progress}"
+                                                         Margin="0,10,0,8" />
+
+                                            <!-- 第3行：状态信息 -->
+                                            <StackPanel Grid.Row="2" Grid.Column="0"
+                                                        Orientation="Horizontal" Spacing="6">
+                                                <Ellipse Width="6" Height="6"
+                                                         VerticalAlignment="Center">
+                                                    <Ellipse.Fill>
+                                                        <SolidColorBrush Color="{Binding StatusColor, FallbackValue=#3B82F6}" />
+                                                    </Ellipse.Fill>
+                                                </Ellipse>
+                                                <TextBlock Text="{Binding StatusText, FallbackValue=下载中}"
+                                                           FontSize="11"
+                                                           VerticalAlignment="Center">
+                                                    <TextBlock.Foreground>
+                                                        <SolidColorBrush Color="{Binding StatusColor, FallbackValue=#3B82F6}" />
+                                                    </TextBlock.Foreground>
+                                                </TextBlock>
+                                            </StackPanel>
+
+                                            <StackPanel Grid.Row="2" Grid.Column="1"
+                                                        Orientation="Horizontal" Spacing="8"
+                                                        HorizontalAlignment="Right">
+                                                <TextBlock Text="{Binding ProgressText, FallbackValue=0%}"
+                                                           FontSize="11"
+                                                           FontWeight="SemiBold"
+                                                           VerticalAlignment="Center">
+                                                    <TextBlock.Foreground>
+                                                        <SolidColorBrush Color="{Binding StatusColor, FallbackValue=#3B82F6}" />
+                                                    </TextBlock.Foreground>
+                                                </TextBlock>
+                                                <TextBlock Text="{Binding SpeedText}"
+                                                           FontSize="11"
+                                                           Foreground="{DynamicResource TextTertiaryBrush}"
+                                                           VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </Grid>
                                     </Grid>
                                 </Border>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
+                    </Panel>
                 </ScrollViewer>
 
+                <!-- 底部操作栏 -->
                 <Border Grid.Row="2"
                         BorderThickness="0,1,0,0"
                         BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
                         Background="{DynamicResource SystemControlBackgroundAltHighBrush}"
                         CornerRadius="0,0,14,14"
-                        Padding="12">
-                    <Button Content="清除已完成"
-                            Classes="ghost"
-                            HorizontalAlignment="Right"
-                            Command="{Binding DownloadManager.ClearInactiveTasksCommand}" />
+                        Padding="14,10">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0"
+                                   Text="{Binding DownloadManager.TaskSummary}"
+                                   FontSize="11"
+                                   Foreground="{DynamicResource TextTertiaryBrush}"
+                                   VerticalAlignment="Center"
+                                   TextTrimming="CharacterEllipsis" />
+                        <Button Grid.Column="1"
+                                Content="清除已完成"
+                                Classes="ghost"
+                                FontSize="12"
+                                IsVisible="{Binding DownloadManager.HasCompletedOrCancelledTasks, FallbackValue=False}"
+                                Command="{Binding DownloadManager.ClearInactiveTasksCommand}" />
+                    </Grid>
                 </Border>
             </Grid>
         </Border>
