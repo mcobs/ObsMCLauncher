@@ -2,6 +2,7 @@
 
 ### 修复
 - 版本详情页返回时崩溃：修复集合并发修改问题，所有ObservableCollection操作统一走UI线程调度，返回时取消后台加载任务
+- 游戏日志窗口关闭时递归调用Shutdown导致栈溢出：添加防重入标志
 
 ### 优化
 - Java检测：路径去重（规范化路径+仅使用javaw.exe），扩展厂商识别（Dragonwell/Zulu/Liberica/Temurin/Corretto等），新增更多JDK安装目录和注册表路径；选择框显示安装路径（次要文本色）

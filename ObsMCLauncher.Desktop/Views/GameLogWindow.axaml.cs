@@ -360,8 +360,12 @@ public partial class GameLogWindow : Window
             AppendLog($"游戏异常退出 (退出代码: {exitCode})");
     }
 
+    private bool _isShuttingDown;
+
     private void GameLogWindow_Closing(object? sender, WindowClosingEventArgs e)
     {
+        if (_isShuttingDown) return;
+
         if (Application.Current != null)
         {
             Application.Current.ActualThemeVariantChanged -= OnThemeChanged;
@@ -371,6 +375,7 @@ public partial class GameLogWindow : Window
         {
             if (desktop.MainWindow == null || !desktop.MainWindow.IsVisible)
             {
+                _isShuttingDown = true;
                 desktop.Shutdown();
             }
         }
