@@ -95,7 +95,6 @@ public partial class ServersViewModel : ViewModelBase, IDisposable
         }
         catch (Exception ex)
         {
-            _notificationService.Show("错误", $"加载服务器列表失败: {ex.Message}", NotificationType.Error);
             DebugLogger.Error("ServersVM", $"加载服务器列表失败: {ex}");
         }
         finally
@@ -160,12 +159,9 @@ public partial class ServersViewModel : ViewModelBase, IDisposable
         try
         {
             IsRefreshing = true;
-            _notificationService.Show("提示", "正在检测服务器状态...", NotificationType.Info);
 
             var allServers = LauncherConfig.Load().Servers ?? new List<ServerInfo>();
-            DebugLogger.Info("ServersVM", $"开始查询 {allServers.Count} 个服务器状态");
             var updated = await ServerManager.Instance.QueryServersAsync(allServers);
-            DebugLogger.Info("ServersVM", $"查询完成，{updated.Count} 个服务器返回结果");
 
             var config = LauncherConfig.Load();
             foreach (var updatedServer in updated)
@@ -195,22 +191,13 @@ public partial class ServersViewModel : ViewModelBase, IDisposable
                     inMemory.MaxPlayers = updatedServer.MaxPlayers;
                     inMemory.Motd = updatedServer.Motd;
                     inMemory.IconPath = updatedServer.IconPath;
-                    DebugLogger.Info("ServersVM", $"更新内存对象: {inMemory.Name} - 在线:{inMemory.IsOnline}, Ping:{inMemory.Ping}, 版本:{inMemory.Version ?? "null"}, 玩家:{inMemory.OnlinePlayers}/{inMemory.MaxPlayers}, MOTD:{inMemory.Motd?.Length ?? 0}字符, 图标:{inMemory.IconPath ?? "null"}");
-                }
-                else
-                {
-                    DebugLogger.Warn("ServersVM", $"内存中未找到匹配: {updatedServer.Name} ({updatedServer.Address})");
                 }
             }
 
             ApplyPaging();
-
-            var online = updated.Count(s => s.IsOnline);
-            _notificationService.Show("检测完成", $"共 {updated.Count} 个服务器，{online} 个在线", NotificationType.Success);
         }
         catch (Exception ex)
         {
-            _notificationService.Show("错误", $"刷新服务器状态失败: {ex.Message}", NotificationType.Error);
             DebugLogger.Error("ServersVM", $"刷新状态失败: {ex}");
         }
         finally
@@ -668,14 +655,10 @@ public partial class ServersViewModel : ViewModelBase, IDisposable
             server.Ping = ping;
             server.IsOnline = ping > 0;
             server.LastPingTime = DateTime.Now;
-
-            var status = ping > 0 ? $"在线，延迟 {ping}ms" : "离线";
-            _notificationService.Show(server.Name, status,
-                ping > 0 ? NotificationType.Success : NotificationType.Warning);
         }
         catch (Exception ex)
         {
-            _notificationService.Show("检测失败", ex.Message, NotificationType.Error);
+            DebugLogger.Error("ServersVM", $"快速Ping失败: {ex.Message}");
         }
     }
 

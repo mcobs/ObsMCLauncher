@@ -3,9 +3,14 @@
 ### 修复
 - 版本详情页返回时崩溃：修复集合并发修改问题，所有ObservableCollection操作统一走UI线程调度，返回时取消后台加载任务
 - 游戏日志窗口关闭时递归调用Shutdown导致栈溢出：添加防重入标志
+- 截图管理黑屏：使用FilePathToBitmapConverter正确加载本地图片
+- 截图按版本筛选无效：修复"主目录"选项筛选逻辑，正确区分主目录和版本隔离目录截图
+- 版本详情路径显示错误：始终显示版本目录(.minecraft\versions\xxx)而非游戏根目录
+- 版本详情MODS无法显示：统一使用LauncherConfig.GetRunDirectory获取正确的mods目录路径
 
 ### 优化
 - Java检测：路径去重（规范化路径+仅使用javaw.exe），扩展厂商识别（Dragonwell/Zulu/Liberica/Temurin/Corretto等），新增更多JDK安装目录和注册表路径；选择框显示安装路径（次要文本色）
+- 服务器管理：移除状态刷新相关的通知推送，避免频繁通知刷屏
 - 通知样式预览窗：增大模拟窗口尺寸（宽度+29%），内部元素等比放大，更接近实际窗口比例
 - 全局字重优化：页面标题 Bold→SemiBold，节标题和设置项标签 SemiBold→Medium，按钮 SemiBold→Medium，徽章和强调符号保持不变
 - 侧边栏导航重构为 SplitView 组件，使用原生动画替代手动宽度动画，提升流畅度和性能

@@ -480,7 +480,7 @@
                         BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
                   <Grid RowDefinitions="150,Auto,Auto,Auto">
                     <Border Grid.Row="0" CornerRadius="8" Background="{DynamicResource SurfaceElevatedBrush}" Margin="0,0,0,8">
-                      <Image Source="{Binding FullPath}" Stretch="UniformToFill"/>
+                      <Image Source="{Binding FullPath, Converter={x:Static converters:FilePathToBitmapConverter.Instance}}" Stretch="UniformToFill"/>
                     </Border>
                     <TextBlock Grid.Row="1" Text="{Binding FileName}" FontSize="13"
                                FontWeight="Medium" TextTrimming="CharacterEllipsis" Margin="0,0,0,4"/>

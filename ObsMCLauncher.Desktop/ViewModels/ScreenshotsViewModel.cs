@@ -123,8 +123,8 @@ public partial class ScreenshotsViewModel : ViewModelBase
         {
             var config = LauncherConfig.Load();
             string? versionName = null;
-            
-            if (SelectedVersion != null && SelectedVersion != "全部")
+
+            if (SelectedVersion != null && SelectedVersion != "全部" && SelectedVersion != "主目录")
             {
                 versionName = SelectedVersion;
             }
@@ -132,6 +132,12 @@ public partial class ScreenshotsViewModel : ViewModelBase
             await Task.Run(() =>
             {
                 var filtered = ScreenshotManager.Instance.GetScreenshots(config.GameDirectory, versionName);
+
+                // 选择"主目录"时只显示主目录的截图
+                if (SelectedVersion == "主目录")
+                {
+                    filtered = filtered.Where(s => s.VersionName == "主目录").ToList();
+                }
 
                 if (StartDate.HasValue || EndDate.HasValue)
                 {
@@ -158,7 +164,7 @@ public partial class ScreenshotsViewModel : ViewModelBase
                     {
                         Screenshots.Clear();
                     }
-                    
+
                     foreach (var s in pageData) Screenshots.Add(s);
                     IsEmpty = Screenshots.Count == 0;
                 });

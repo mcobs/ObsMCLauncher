@@ -146,7 +146,7 @@ public partial class InstanceViewModel : ViewModelBase
         }
 
         var gameDir = GetGameDirectory();
-        StoragePath = gameDir;
+        StoragePath = GetVersionDirectory();
 
         // 加载分组信息
         LoadGroupInfo();
@@ -252,27 +252,15 @@ public partial class InstanceViewModel : ViewModelBase
         if (_version == null) return "-";
 
         var config = LauncherConfig.Load();
-        var gameRoot = config.GameDirectory;
+        return config.GetRunDirectory(_version.Id);
+    }
 
-        var versionConfig = config.VersionIsolationSettings?.FirstOrDefault(v => v.VersionId == _version.Id);
-        var useIsolation = config.GameDirectoryType == GameDirectoryType.VersionFolder;
+    private string GetVersionDirectory()
+    {
+        if (_version == null) return "-";
 
-        if (versionConfig != null)
-        {
-            useIsolation = versionConfig.IsolationMode switch
-            {
-                "enabled" => true,
-                "disabled" => false,
-                _ => config.GameDirectoryType == GameDirectoryType.VersionFolder
-            };
-        }
-
-        if (useIsolation)
-        {
-            return Path.Combine(gameRoot, "versions", _version.Id);
-        }
-
-        return gameRoot;
+        var config = LauncherConfig.Load();
+        return Path.Combine(config.GameDirectory, "versions", _version.Id);
     }
 
     private void LoadWorlds()
