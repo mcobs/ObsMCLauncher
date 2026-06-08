@@ -804,24 +804,50 @@
         </ScrollViewer>
       </Grid>
 
-      <ScrollViewer VerticalScrollBarVisibility="Auto"
-                    HorizontalScrollBarVisibility="Disabled"
-                    Padding="24">
-        <ScrollViewer.IsVisible>
+      <Panel>
+        <Panel.IsVisible>
           <MultiBinding Converter="{x:Static converters:TabContentTypeConverter.Instance}" ConverterParameter="PluginTabViewModel">
             <Binding Path="#MoreViewControl.DataContext.Tabs"/>
             <Binding Path="#MoreViewControl.DataContext.SelectedTabIndex"/>
           </MultiBinding>
-        </ScrollViewer.IsVisible>
-        <ContentPresenter>
-          <ContentPresenter.Content>
-            <MultiBinding Converter="{x:Static converters:SelectedTabContentConverter.Instance}">
+        </Panel.IsVisible>
+
+        <!-- 自定义UI内容 -->
+        <ContentControl>
+          <ContentControl.Content>
+            <MultiBinding Converter="{x:Static converters:PluginTabCustomContentConverter.Instance}">
               <Binding Path="#MoreViewControl.DataContext.Tabs"/>
               <Binding Path="#MoreViewControl.DataContext.SelectedTabIndex"/>
             </MultiBinding>
-          </ContentPresenter.Content>
-        </ContentPresenter>
-      </ScrollViewer>
+          </ContentControl.Content>
+          <ContentControl.IsVisible>
+            <MultiBinding Converter="{x:Static converters:PluginTabCustomContentVisibilityConverter.Instance}">
+              <Binding Path="#MoreViewControl.DataContext.Tabs"/>
+              <Binding Path="#MoreViewControl.DataContext.SelectedTabIndex"/>
+            </MultiBinding>
+          </ContentControl.IsVisible>
+        </ContentControl>
+
+        <!-- 默认文本内容 -->
+        <ScrollViewer VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Disabled"
+                      Padding="24">
+          <ScrollViewer.IsVisible>
+            <MultiBinding Converter="{x:Static converters:PluginTabDefaultContentVisibilityConverter.Instance}">
+              <Binding Path="#MoreViewControl.DataContext.Tabs"/>
+              <Binding Path="#MoreViewControl.DataContext.SelectedTabIndex"/>
+            </MultiBinding>
+          </ScrollViewer.IsVisible>
+          <ContentPresenter>
+            <ContentPresenter.Content>
+              <MultiBinding Converter="{x:Static converters:SelectedTabContentConverter.Instance}">
+                <Binding Path="#MoreViewControl.DataContext.Tabs"/>
+                <Binding Path="#MoreViewControl.DataContext.SelectedTabIndex"/>
+              </MultiBinding>
+            </ContentPresenter.Content>
+          </ContentPresenter>
+        </ScrollViewer>
+      </Panel>
     </Grid>
   </Grid>
 </UserControl>

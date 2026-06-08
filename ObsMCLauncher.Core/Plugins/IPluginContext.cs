@@ -54,6 +54,16 @@ public interface IPluginContext
     void RegisterTab(string title, string tabId, string? icon = null, object? payload = null);
 
     /// <summary>
+    /// 注册带自定义UI内容的插件标签页
+    /// </summary>
+    /// <param name="title">标签页标题</param>
+    /// <param name="tabId">标签页唯一标识符</param>
+    /// <param name="customContent">自定义UI控件（Avalonia UserControl 实例）</param>
+    /// <param name="icon">图标名称（可选）</param>
+    /// <param name="payload">自定义数据（可选）</param>
+    void RegisterTab(string title, string tabId, object? customContent, string? icon = null, object? payload = null);
+
+    /// <summary>
     /// 注销插件标签页
     /// </summary>
     /// <param name="tabId">标签页唯一标识符</param>

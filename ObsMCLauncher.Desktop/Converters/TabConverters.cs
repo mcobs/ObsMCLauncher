@@ -204,3 +204,90 @@ public class TabContentTypeConverter : IMultiValueConverter
         throw new NotImplementedException();
     }
 }
+
+/// <summary>
+/// 判断当前选中的PluginTab是否有自定义UI内容
+/// </summary>
+public class PluginTabCustomContentVisibilityConverter : IMultiValueConverter
+{
+    public static readonly PluginTabCustomContentVisibilityConverter Instance = new();
+
+    public object? Convert(IList<object?> values, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (values.Count >= 2 && values[0] is ObservableCollection<TabItemViewModel> tabs && values[1] is int selectedIndex)
+        {
+            if (selectedIndex >= 0 && selectedIndex < tabs.Count)
+            {
+                var content = tabs[selectedIndex].Content;
+                if (content is PluginTabViewModel pluginTab)
+                {
+                    return pluginTab.HasCustomContent;
+                }
+            }
+        }
+        return false;
+    }
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+}
+
+/// <summary>
+/// 提取当前选中PluginTab的自定义UI内容
+/// </summary>
+public class PluginTabCustomContentConverter : IMultiValueConverter
+{
+    public static readonly PluginTabCustomContentConverter Instance = new();
+
+    public object? Convert(IList<object?> values, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (values.Count >= 2 && values[0] is ObservableCollection<TabItemViewModel> tabs && values[1] is int selectedIndex)
+        {
+            if (selectedIndex >= 0 && selectedIndex < tabs.Count)
+            {
+                var content = tabs[selectedIndex].Content;
+                if (content is PluginTabViewModel pluginTab)
+                {
+                    return pluginTab.CustomContent;
+                }
+            }
+        }
+        return null;
+    }
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+}
+
+/// <summary>
+/// 判断当前选中的PluginTab是否应显示默认文本内容（无自定义UI时）
+/// </summary>
+public class PluginTabDefaultContentVisibilityConverter : IMultiValueConverter
+{
+    public static readonly PluginTabDefaultContentVisibilityConverter Instance = new();
+
+    public object? Convert(IList<object?> values, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (values.Count >= 2 && values[0] is ObservableCollection<TabItemViewModel> tabs && values[1] is int selectedIndex)
+        {
+            if (selectedIndex >= 0 && selectedIndex < tabs.Count)
+            {
+                var content = tabs[selectedIndex].Content;
+                if (content is PluginTabViewModel pluginTab)
+                {
+                    return !pluginTab.HasCustomContent;
+                }
+            }
+        }
+        return false;
+    }
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+}

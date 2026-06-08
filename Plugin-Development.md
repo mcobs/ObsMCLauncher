@@ -335,6 +335,7 @@ private void OnDownloadProgress(object? eventData)
 插件可以在"更多"页面添加自己的标签页：
 
 ```csharp
+// 注册普通标签页（显示默认文本信息）
 public void OnLoad(IPluginContext context)
 {
     context.RegisterTab(
@@ -346,10 +347,35 @@ public void OnLoad(IPluginContext context)
 }
 ```
 
+**注册带自定义UI的标签页**：
+
+```csharp
+using Avalonia.Controls;
+
+public void OnLoad(IPluginContext context)
+{
+    // 创建自定义UI控件
+    var panel = new StackPanel();
+    panel.Children.Add(new TextBlock { Text = "Hello from plugin!" });
+    panel.Children.Add(new Button { Content = "Click Me" });
+
+    // 注册带自定义UI的标签页
+    context.RegisterTab(
+        "我的插件",           // 标签页标题
+        "my-plugin-tab",     // 标签页ID（唯一）
+        panel,               // 自定义UI控件（Avalonia Control）
+        "Star",              // 图标名称（可选）
+        null                 // 自定义数据（可选）
+    );
+}
+```
+
 **说明**：
 - 标签页会显示在"更多"页面的顶部导航栏
 - `tabId` 必须唯一，建议使用插件ID作为前缀
 - 图标使用 Material Design 图标名称
+- 传入 `Control` 对象时，标签页直接渲染该控件（方案A）
+- 不传 `Control` 时，标签页显示默认文本信息
 
 ### 3. 注册主页卡片
 

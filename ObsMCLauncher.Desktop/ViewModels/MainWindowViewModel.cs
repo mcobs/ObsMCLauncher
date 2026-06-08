@@ -223,6 +223,17 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             });
         };
 
+        PluginContext.OnTabRegisteredWithContent = (title, tabId, customContent, payload) =>
+        {
+            DebugLogger.Info("Plugin", $"注册带自定义UI的标签页: {title} (tabId: {tabId}, hasContent: {customContent != null})");
+
+            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            {
+                var control = customContent as Avalonia.Controls.Control;
+                _moreViewModel?.OnPluginTabRegisteredWithContent("plugin", title, tabId, control, payload);
+            });
+        };
+
         PluginContext.OnHomeCardRegistered = (cardId, title, description, icon, commandId, payload) =>
         {
             DebugLogger.Info("Plugin", $"注册主页卡片: {title} (cardId: {cardId})");

@@ -59,6 +59,11 @@ public partial class MoreViewModel : ViewModelBase
 
     public void OnPluginTabRegistered(string pluginId, string title, string tabId, string? icon, object? payload)
     {
+        OnPluginTabRegisteredWithContent(pluginId, title, tabId, null, payload);
+    }
+
+    public void OnPluginTabRegisteredWithContent(string pluginId, string title, string tabId, Avalonia.Controls.Control? customContent, object? payload)
+    {
         Avalonia.Threading.Dispatcher.UIThread.Post(() =>
         {
             try
@@ -66,13 +71,13 @@ public partial class MoreViewModel : ViewModelBase
                 var existingTab = Tabs.FirstOrDefault(t => t.Header == title);
                 if (existingTab == null)
                 {
-                    var pluginTabViewModel = new PluginTabViewModel(pluginId, tabId, title, payload);
+                    var pluginTabViewModel = new PluginTabViewModel(pluginId, tabId, title, payload, customContent);
                     var tabItem = new TabItemViewModel(title, pluginTabViewModel);
 
                     var pluginTabIndex = Tabs.IndexOf(Tabs.First(t => t.Header == "插件"));
                     Tabs.Insert(pluginTabIndex + 1, tabItem);
 
-                    DebugLogger.Info("MoreViewModel", $"已添加插件标签页: {title} (插件: {pluginId})");
+                    DebugLogger.Info("MoreViewModel", $"已添加插件标签页: {title} (插件: {pluginId}, 自定义UI: {customContent != null})");
                 }
             }
             catch (Exception ex)

@@ -16,6 +16,8 @@ public class PluginContext : IPluginContext
 
     public static Action<string, string, string, string?, object?>? OnTabRegistered { get; set; }
 
+    public static Action<string, string, object?, object?>? OnTabRegisteredWithContent { get; set; }
+
     public static Action<string, string>? OnTabUnregistered { get; set; }
 
     public static Action<string, string, string, string?, string?, object?>? OnHomeCardRegistered { get; set; }
@@ -47,6 +49,11 @@ public class PluginContext : IPluginContext
     public void RegisterTab(string title, string tabId, string? icon = null, object? payload = null)
     {
         OnTabRegistered?.Invoke(_pluginId, title, tabId, icon, payload);
+    }
+
+    public void RegisterTab(string title, string tabId, object? customContent, string? icon = null, object? payload = null)
+    {
+        OnTabRegisteredWithContent?.Invoke(title, tabId, customContent, payload);
     }
 
     public void UnregisterTab(string tabId)
