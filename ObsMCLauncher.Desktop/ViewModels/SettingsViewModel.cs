@@ -1129,6 +1129,7 @@ public partial class SettingsViewModel : ViewModelBase
         public int MajorVersion { get; init; }
         public string Architecture { get; init; } = "";
         public string Source { get; init; } = "";
+        public bool IsPathVisible => Type == JavaOptionType.Detected && !string.IsNullOrWhiteSpace(Path);
 
         public override string ToString() => string.IsNullOrWhiteSpace(Display) ? Path : Display;
 
