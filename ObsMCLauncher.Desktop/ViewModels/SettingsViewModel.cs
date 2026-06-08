@@ -683,7 +683,10 @@ public partial class SettingsViewModel : ViewModelBase
             try
             {
                 if (File.Exists(path))
-                    candidates.Add(path);
+                {
+                    var normalized = Path.GetFullPath(path);
+                    candidates.Add(normalized);
+                }
             }
             catch
             {
@@ -699,11 +702,24 @@ public partial class SettingsViewModel : ViewModelBase
             if (OperatingSystem.IsWindows())
             {
                 AddIfExists(Path.Combine(d, "javaw.exe"));
-                AddIfExists(Path.Combine(d, "java.exe"));
             }
             else
             {
                 AddIfExists(Path.Combine(d, "java"));
+            }
+        }
+
+        // JAVA_HOME
+        var javaHome = Environment.GetEnvironmentVariable("JAVA_HOME");
+        if (!string.IsNullOrWhiteSpace(javaHome))
+        {
+            if (OperatingSystem.IsWindows())
+            {
+                AddIfExists(Path.Combine(javaHome, "bin", "javaw.exe"));
+            }
+            else
+            {
+                AddIfExists(Path.Combine(javaHome, "bin", "java"));
             }
         }
 
@@ -717,7 +733,7 @@ public partial class SettingsViewModel : ViewModelBase
             {
                 if (string.IsNullOrWhiteSpace(root) || !Directory.Exists(root)) continue;
 
-                foreach (var baseDir in new[] { "Java", "Eclipse Adoptium" })
+                foreach (var baseDir in new[] { "Java", "Eclipse Adoptium", "Eclipse Foundation", "Microsoft", "Zulu", "BellSoft", "Amazon Corretto", "Alibaba", "GraalVM", "SapMachine" })
                 {
                     var dir = Path.Combine(root, baseDir);
                     if (!Directory.Exists(dir)) continue;
@@ -725,8 +741,18 @@ public partial class SettingsViewModel : ViewModelBase
                     foreach (var sub in Directory.GetDirectories(dir))
                     {
                         AddIfExists(Path.Combine(sub, "bin", "javaw.exe"));
-                        AddIfExists(Path.Combine(sub, "bin", "java.exe"));
                     }
+                }
+            }
+
+            // 用户级JDK目录
+            var homeDir = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            var userJdksDir = Path.Combine(homeDir, ".jdks");
+            if (Directory.Exists(userJdksDir))
+            {
+                foreach (var sub in Directory.GetDirectories(userJdksDir))
+                {
+                    AddIfExists(Path.Combine(sub, "bin", "javaw.exe"));
                 }
             }
         }
@@ -748,7 +774,7 @@ public partial class SettingsViewModel : ViewModelBase
         }
         else if (OperatingSystem.IsLinux())
         {
-            var linuxDirs = new[] { "/usr/lib/jvm", "/usr/java", "/opt/jdk", "/opt/jre" };
+            var linuxDirs = new[] { "/usr/lib/jvm", "/usr/java", "/opt/jdk", "/opt/jre", "/opt/java" };
             var homeDir = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
             var userDirs = new[]
             {
@@ -806,7 +832,6 @@ public partial class SettingsViewModel : ViewModelBase
 
             var text = (stderr + "\n" + stdout).Trim();
 
-            // 示例：java version "17.0.10"  / openjdk version "21.0.2" 2024-01-16
             var m = Regex.Match(text, "version\\s+\"(?<ver>[^\"]+)\"");
             if (!m.Success) return null;
 
@@ -814,21 +839,53 @@ public partial class SettingsViewModel : ViewModelBase
             var major = ParseMajor(ver);
 
             var arch = text.Contains("64-Bit", StringComparison.OrdinalIgnoreCase) ? "x64" : "x86";
-            var source = text.Contains("OpenJDK", StringComparison.OrdinalIgnoreCase) ? "OpenJDK" : "Oracle/Unknown";
+            var vendor = DetectVendor(text);
 
             return new JavaOption(JavaOptionType.Detected, javaExePath)
             {
                 Version = ver,
                 MajorVersion = major,
                 Architecture = arch,
-                Source = source,
-                Display = $"☕ Java {major} ({arch}) - {source}"
+                Source = vendor,
+                Display = $"Java {major} ({arch}) - {vendor}"
             };
         }
         catch
         {
             return null;
         }
+    }
+
+    private static string DetectVendor(string output)
+    {
+        if (output.Contains("Dragonwell", StringComparison.OrdinalIgnoreCase))
+            return "Alibaba Dragonwell";
+        if (output.Contains("Zulu", StringComparison.OrdinalIgnoreCase))
+            return "Azul Zulu";
+        if (output.Contains("BellSoft", StringComparison.OrdinalIgnoreCase) ||
+            output.Contains("Liberica", StringComparison.OrdinalIgnoreCase))
+            return "Liberica";
+        if (output.Contains("Temurin", StringComparison.OrdinalIgnoreCase))
+            return "Eclipse Temurin";
+        if (output.Contains("Adoptium", StringComparison.OrdinalIgnoreCase))
+            return "Eclipse Adoptium";
+        if (output.Contains("Corretto", StringComparison.OrdinalIgnoreCase))
+            return "Amazon Corretto";
+        if (output.Contains("Microsoft", StringComparison.OrdinalIgnoreCase))
+            return "Microsoft";
+        if (output.Contains("GraalVM", StringComparison.OrdinalIgnoreCase))
+            return "GraalVM";
+        if (output.Contains("SapMachine", StringComparison.OrdinalIgnoreCase))
+            return "SapMachine";
+        if (output.Contains("Red Hat", StringComparison.OrdinalIgnoreCase))
+            return "Red Hat";
+        if (output.Contains("IBM", StringComparison.OrdinalIgnoreCase))
+            return "IBM";
+        if (output.Contains("Java(TM) SE", StringComparison.OrdinalIgnoreCase))
+            return "Oracle";
+        if (output.Contains("OpenJDK", StringComparison.OrdinalIgnoreCase))
+            return "OpenJDK";
+        return "Unknown";
     }
 
     private static int ParseMajor(string version)

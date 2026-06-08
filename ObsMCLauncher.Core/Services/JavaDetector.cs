@@ -14,6 +14,7 @@ public class JavaInfo
     public int MajorVersion { get; set; }
     public string Architecture { get; set; } = string.Empty;
     public string Source { get; set; } = string.Empty;
+    public string Vendor { get; set; } = string.Empty;
 }
 
 public static class JavaDetector
@@ -126,9 +127,7 @@ public static class JavaDetector
             if (IsWindows)
             {
                 var javawPath = Path.Combine(dir.Trim(), "javaw.exe");
-                var javaPath = Path.Combine(dir.Trim(), "java.exe");
                 if (File.Exists(javawPath)) AddJavaIfValid(javaList, foundPaths, javawPath, "PATH");
-                else if (File.Exists(javaPath)) AddJavaIfValid(javaList, foundPaths, javaPath, "PATH");
             }
             else
             {
@@ -146,9 +145,7 @@ public static class JavaDetector
         if (IsWindows)
         {
             var javawPath = Path.Combine(javaHome, "bin", "javaw.exe");
-            var javaPath = Path.Combine(javaHome, "bin", "java.exe");
             if (File.Exists(javawPath)) AddJavaIfValid(javaList, foundPaths, javawPath, "JAVA_HOME");
-            else if (File.Exists(javaPath)) AddJavaIfValid(javaList, foundPaths, javaPath, "JAVA_HOME");
         }
         else
         {
@@ -162,12 +159,28 @@ public static class JavaDetector
     {
         var registryPaths = new[]
         {
+            // Oracle JDK / OpenJDK
             @"SOFTWARE\JavaSoft\Java Runtime Environment",
             @"SOFTWARE\JavaSoft\Java Development Kit",
             @"SOFTWARE\JavaSoft\JDK",
             @"SOFTWARE\JavaSoft\JRE",
+            // Eclipse Adoptium / Temurin
+            @"SOFTWARE\Eclipse Adoptium\JDK",
+            @"SOFTWARE\Eclipse Foundation\JDK",
+            // Azul Zulu
+            @"SOFTWARE\Azul Systems\Zulu",
+            @"SOFTWARE\Azul Systems\Zulu runtimes",
+            // Microsoft
+            @"SOFTWARE\Microsoft\JDK",
+            // Amazon Corretto
+            @"SOFTWARE\Amazon Services LLC\Corretto",
+            // BellSoft Liberica
+            @"SOFTWARE\BellSoft\Liberica",
+            // WOW6432Node
             @"SOFTWARE\WOW6432Node\JavaSoft\Java Runtime Environment",
-            @"SOFTWARE\WOW6432Node\JavaSoft\Java Development Kit"
+            @"SOFTWARE\WOW6432Node\JavaSoft\Java Development Kit",
+            @"SOFTWARE\WOW6432Node\Eclipse Adoptium\JDK",
+            @"SOFTWARE\WOW6432Node\Azul Systems\Zulu",
         };
 
         foreach (var regPath in registryPaths)
@@ -215,9 +228,26 @@ public static class JavaDetector
         {
             commonLocations.Add(Path.Combine(programFiles, "Java"));
             commonLocations.Add(Path.Combine(programFiles, "Eclipse Adoptium"));
+            commonLocations.Add(Path.Combine(programFiles, "Eclipse Foundation"));
             commonLocations.Add(Path.Combine(programFiles, "Microsoft"));
+            commonLocations.Add(Path.Combine(programFiles, "Zulu"));
+            commonLocations.Add(Path.Combine(programFiles, "BellSoft"));
+            commonLocations.Add(Path.Combine(programFiles, "Amazon Corretto"));
+            commonLocations.Add(Path.Combine(programFiles, "Alibaba"));
+            commonLocations.Add(Path.Combine(programFiles, "GraalVM"));
+            commonLocations.Add(Path.Combine(programFiles, "SapMachine"));
         }
-        if (!string.IsNullOrEmpty(programFilesX86)) commonLocations.Add(Path.Combine(programFilesX86, "Java"));
+        if (!string.IsNullOrEmpty(programFilesX86))
+        {
+            commonLocations.Add(Path.Combine(programFilesX86, "Java"));
+            commonLocations.Add(Path.Combine(programFilesX86, "Eclipse Adoptium"));
+            commonLocations.Add(Path.Combine(programFilesX86, "Zulu"));
+            commonLocations.Add(Path.Combine(programFilesX86, "BellSoft"));
+        }
+
+        // 用户级JDK目录
+        var homeDir = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        commonLocations.Add(Path.Combine(homeDir, ".jdks"));
 
         foreach (var location in commonLocations)
         {
@@ -343,11 +373,12 @@ public static class JavaDetector
             Version = versionInfo.Value.Version,
             MajorVersion = versionInfo.Value.MajorVersion,
             Architecture = versionInfo.Value.Architecture,
-            Source = source
+            Source = source,
+            Vendor = versionInfo.Value.Vendor
         });
     }
 
-    private static (string Version, int MajorVersion, string Architecture)? GetJavaVersion(string javaPath)
+    private static (string Version, int MajorVersion, string Architecture, string Vendor)? GetJavaVersion(string javaPath)
     {
         try
         {
@@ -389,8 +420,41 @@ public static class JavaDetector
             }
 
             var architecture = output.Contains("64-Bit") || output.Contains("64-bit") ? "x64" : "x86";
-            return (version, majorVersion, architecture);
+            var vendor = DetectVendor(output);
+            return (version, majorVersion, architecture, vendor);
         }
         catch { return null; }
+    }
+
+    private static string DetectVendor(string output)
+    {
+        if (output.Contains("Dragonwell", StringComparison.OrdinalIgnoreCase))
+            return "Alibaba Dragonwell";
+        if (output.Contains("Zulu", StringComparison.OrdinalIgnoreCase))
+            return "Azul Zulu";
+        if (output.Contains("BellSoft", StringComparison.OrdinalIgnoreCase) ||
+            output.Contains("Liberica", StringComparison.OrdinalIgnoreCase))
+            return "Liberica";
+        if (output.Contains("Temurin", StringComparison.OrdinalIgnoreCase))
+            return "Eclipse Temurin";
+        if (output.Contains("Adoptium", StringComparison.OrdinalIgnoreCase))
+            return "Eclipse Adoptium";
+        if (output.Contains("Corretto", StringComparison.OrdinalIgnoreCase))
+            return "Amazon Corretto";
+        if (output.Contains("Microsoft", StringComparison.OrdinalIgnoreCase))
+            return "Microsoft";
+        if (output.Contains("GraalVM", StringComparison.OrdinalIgnoreCase))
+            return "GraalVM";
+        if (output.Contains("SapMachine", StringComparison.OrdinalIgnoreCase))
+            return "SapMachine";
+        if (output.Contains("Red Hat", StringComparison.OrdinalIgnoreCase))
+            return "Red Hat";
+        if (output.Contains("IBM", StringComparison.OrdinalIgnoreCase))
+            return "IBM";
+        if (output.Contains("Java(TM) SE", StringComparison.OrdinalIgnoreCase))
+            return "Oracle";
+        if (output.Contains("OpenJDK", StringComparison.OrdinalIgnoreCase))
+            return "OpenJDK";
+        return "Unknown";
     }
 }
