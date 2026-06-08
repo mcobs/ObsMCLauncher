@@ -29,6 +29,9 @@ public class VersionDetailViewModel : ViewModelBase
     private readonly DialogService _dialogService;
     private readonly OptiFineService _optiFineService;
     private CancellationTokenSource? _installCts;
+    private CancellationTokenSource? _loadCts;
+    private bool _isDisposed;
+    private bool _isInitializing;
 
     private string _versionTypeText = "未知类型";
     public string VersionTypeText
@@ -154,8 +157,8 @@ public class VersionDetailViewModel : ViewModelBase
                 _selectedMcVersion = value;
                 OnPropertyChanged(new PropertyChangedEventArgs(nameof(SelectedMcVersion)));
                 InstallCommand.NotifyCanExecuteChanged();
-
-                if (!string.IsNullOrWhiteSpace(_selectedMcVersion))
+                
+                if (!string.IsNullOrWhiteSpace(_selectedMcVersion) && !_isInitializing)
                 {
                     _ = LoadLoaderVersionsAsync();
                 }
@@ -656,10 +659,11 @@ public class VersionDetailViewModel : ViewModelBase
 
         var cfg = LauncherConfig.Load();
         var selectedId = cfg.SelectedVersion ?? "";
-        
-        // 直接赋值给字段以避免触发未完全初始化的逻辑，或者在命令初始化后赋值
+
+        _isInitializing = true;
         _selectedMcVersion = selectedId;
         _customVersionName = string.IsNullOrEmpty(selectedId) ? "" : $"{selectedId}-custom";
+        _isInitializing = false;
 
         Status = string.IsNullOrEmpty(selectedId)
             ? "未选择版本，请先在主页选择一个本地版本"
@@ -674,12 +678,21 @@ public class VersionDetailViewModel : ViewModelBase
     public VersionDetailViewModel(MinecraftVersion version, ObsMCLauncher.Core.Services.Ui.IDispatcher? dispatcher, NotificationService notificationService)
         : this(dispatcher, notificationService)
     {
+        _isInitializing = true;
         VersionInfo = version;
         CustomVersionName = version.Id;
+        _isInitializing = false;
+
+        // VersionInfo setter 设置了 SelectedMcVersion，但 _isInitializing 阻止了自动加载
+        // 这里手动触发一次
+        _ = LoadLoaderVersionsAsync();
     }
 
     private void BackToVersionList()
     {
+        _isDisposed = true;
+        _loadCts?.Cancel();
+        _installCts?.Cancel();
         CloseRequested?.Invoke();
     }
 
@@ -1074,6 +1087,11 @@ public class VersionDetailViewModel : ViewModelBase
     {
         if (string.IsNullOrWhiteSpace(SelectedMcVersion)) return;
 
+        // 取消上一次加载任务，防止并发修改集合
+        _loadCts?.Cancel();
+        _loadCts = new CancellationTokenSource();
+        var token = _loadCts.Token;
+
         try
         {
             Status = "正在加载加载器版本列表...";
@@ -1083,23 +1101,26 @@ public class VersionDetailViewModel : ViewModelBase
             IsQuiltVersionsLoaded = false;
             IsOptiFineVersionsLoaded = false;
 
-            ForgeVersionOptions.Clear();
-            ForgeVersionOptions.Add("加载中...");
-            ForgeVersion = "加载中...";
+            await InvokeOnUIThreadAsync(() =>
+            {
+                ForgeVersionOptions.Clear();
+                ForgeVersionOptions.Add("加载中...");
+                ForgeVersion = "加载中...";
 
-            NeoForgeVersionOptions.Clear();
-            NeoForgeVersionOptions.Add("加载中...");
-            NeoForgeVersion = "加载中...";
+                NeoForgeVersionOptions.Clear();
+                NeoForgeVersionOptions.Add("加载中...");
+                NeoForgeVersion = "加载中...";
 
-            FabricLoaderVersionOptions.Clear();
-            FabricLoaderVersionOptions.Add("加载中...");
-            FabricLoaderVersion = "加载中...";
+                FabricLoaderVersionOptions.Clear();
+                FabricLoaderVersionOptions.Add("加载中...");
+                FabricLoaderVersion = "加载中...";
 
-            QuiltLoaderVersionOptions.Clear();
-            QuiltLoaderVersionOptions.Add("加载中...");
-            QuiltLoaderVersion = "加载中...";
+                QuiltLoaderVersionOptions.Clear();
+                QuiltLoaderVersionOptions.Add("加载中...");
+                QuiltLoaderVersion = "加载中...";
 
-            OptiFineVersionOptions.Clear();
+                OptiFineVersionOptions.Clear();
+            });
 
             var forgeTask = ForgeService.GetForgeVersionsAsync(SelectedMcVersion);
             var fabricTask = FabricService.GetFabricVersionsAsync(SelectedMcVersion);
@@ -1109,23 +1130,41 @@ public class VersionDetailViewModel : ViewModelBase
 
             await Task.WhenAll(forgeTask, fabricTask, quiltTask, neoForgeTask, optiTask);
 
-            if (_dispatcher != null)
+            token.ThrowIfCancellationRequested();
+            if (_isDisposed) return;
+
+            await InvokeOnUIThreadAsync(() =>
             {
-                await _dispatcher.InvokeAsync(() =>
-                {
-                    UpdateOptions(
-                        forgeTask.Result.Select(x => x.Version), 
-                        fabricTask.Result.Select(x => x.Version), 
-                        quiltTask.Result.Select(x => x.Version),
-                        neoForgeTask.Result.Select(x => x.Version),
-                        optiTask.Result);
-                });
-            }
+                UpdateOptions(
+                    forgeTask.Result.Select(x => x.Version),
+                    fabricTask.Result.Select(x => x.Version),
+                    quiltTask.Result.Select(x => x.Version),
+                    neoForgeTask.Result.Select(x => x.Version),
+                    optiTask.Result);
+            });
+        }
+        catch (OperationCanceledException)
+        {
+            // 被取消，不做任何处理
         }
         catch (Exception ex)
         {
+            if (_isDisposed) return;
             Status = $"加载失败: {ex.Message}";
-            SetNoVersionPlaceholders();
+            await InvokeOnUIThreadAsync(() => SetNoVersionPlaceholders());
+        }
+    }
+
+    private async Task InvokeOnUIThreadAsync(Action action)
+    {
+        if (_dispatcher != null)
+        {
+            await _dispatcher.InvokeAsync(action);
+        }
+        else
+        {
+            // 没有 dispatcher 时尝试使用 Avalonia 的 Dispatcher
+            await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(action);
         }
     }
 
