@@ -1,8 +1,10 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using ObsMCLauncher.Core.Models;
@@ -95,26 +97,33 @@ public partial class InstanceViewModel : ViewModelBase
 
         try
         {
-            await Task.Run(() =>
+            // 在后台线程收集 I/O 数据，避免阻塞 UI
+            var data = await Task.Run(() => CollectLoadData());
+
+            // 在 UI 线程上更新 ObservableCollection，避免布局期间并发修改
+            Dispatcher.UIThread.Post(() =>
             {
-                LoadVersionInfo();
-                LoadWorlds();
-                LoadMods();
+                ApplyVersionData(data);
+                ApplyWorlds(data.Worlds);
+                ApplyMods(data.Mods);
+                IsLoading = false;
             });
         }
-        finally
+        catch
         {
-            IsLoading = false;
+            Dispatcher.UIThread.Post(() => IsLoading = false);
         }
     }
 
-    private void LoadVersionInfo()
+    private LoadData CollectLoadData()
     {
-        if (_version == null) return;
+        var data = new LoadData();
 
-        VersionId = _version.Id;
-        ActualVersion = _version.ActualVersionId ?? _version.Id;
-        VersionType = _version.Type ?? "未知";
+        if (_version == null) return data;
+
+        data.VersionId = _version.Id;
+        data.ActualVersion = _version.ActualVersionId ?? _version.Id;
+        data.VersionType = _version.Type ?? "未知";
 
         var lastPlayedFile = Path.Combine(_versionPath, ".lastplayed");
         if (File.Exists(lastPlayedFile))
@@ -122,60 +131,152 @@ public partial class InstanceViewModel : ViewModelBase
             try
             {
                 var lastPlayed = File.GetLastWriteTime(lastPlayedFile);
-                LastPlayed = lastPlayed.ToString("yyyy-MM-dd HH:mm");
+                data.LastPlayed = lastPlayed.ToString("yyyy-MM-dd HH:mm");
             }
-            catch { LastPlayed = "从未"; }
+            catch { data.LastPlayed = "从未"; }
         }
         else
         {
-            LastPlayed = "从未";
+            data.LastPlayed = "从未";
         }
 
         var config = LauncherConfig.Load();
         var versionConfig = config.VersionIsolationSettings?.FirstOrDefault(v => v.VersionId == _version.Id);
         if (versionConfig != null)
         {
-            _isLoadingConfig = true;
-            IsolationMode = versionConfig.IsolationMode switch
+            data.IsolationMode = versionConfig.IsolationMode switch
             {
                 "enabled" => 1,
                 "disabled" => 2,
                 _ => 0
             };
-            _isLoadingConfig = false;
+        }
+        else
+        {
+            data.IsolationMode = 0;
         }
 
-        var gameDir = GetGameDirectory();
-        StoragePath = GetVersionDirectory();
+        data.GameDir = config.GetRunDirectory(_version.Id);
+        data.StoragePath = Path.Combine(config.GameDirectory, "versions", _version.Id);
 
-        // 加载分组信息
-        LoadGroupInfo();
+        // 收集分组数据
+        data.Groups = Core.Services.VersionGroupService.GetAllGroups();
+        data.CurrentGroupId = Core.Services.VersionGroupService.GetEffectiveGroupId(_version);
+
+        // 收集世界数据
+        CollectWorlds(data);
+
+        // 收集 Mod 数据
+        CollectMods(data);
+
+        return data;
     }
 
-    private void LoadGroupInfo()
+    private void ApplyVersionData(LoadData data)
     {
         if (_version == null) return;
 
-        var groups = Core.Services.VersionGroupService.GetAllGroups();
-        var currentGroupId = Core.Services.VersionGroupService.GetEffectiveGroupId(_version);
+        VersionId = data.VersionId;
+        ActualVersion = data.ActualVersion;
+        VersionType = data.VersionType;
+        LastPlayed = data.LastPlayed;
+        StoragePath = data.StoragePath;
 
+        _isLoadingConfig = true;
+        IsolationMode = data.IsolationMode;
+        _isLoadingConfig = false;
+
+        // 应用分组信息
         var items = new ObservableCollection<GroupListItem>();
-
-        // 添加分组选项
-        foreach (var g in groups)
+        foreach (var g in data.Groups)
         {
             items.Add(new GroupListItem { Id = g.Id, Name = g.Name, IsSystem = g.IsSystem, IsDeletable = g.IsDeletable });
         }
-
-        // 添加分隔线和管理入口
         items.Add(new GroupListItem { Id = "__separator__", Name = "", IsSeparator = true });
         items.Add(new GroupListItem { Id = "__manage__", Name = "管理分组...", IsManageEntry = true });
 
         GroupListItems = items;
-        SelectedGroupItem = items.FirstOrDefault(g => g.Id == currentGroupId);
+        SelectedGroupItem = items.FirstOrDefault(g => g.Id == data.CurrentGroupId);
+        ManagedGroups = new ObservableCollection<VersionGroup>(data.Groups);
+    }
 
-        // 同步管理列表
-        ManagedGroups = new ObservableCollection<VersionGroup>(groups);
+    private void CollectWorlds(LoadData data)
+    {
+        var savesDir = Path.Combine(data.GameDir, "saves");
+        if (Directory.Exists(savesDir))
+        {
+            foreach (var dir in Directory.GetDirectories(savesDir))
+            {
+                try
+                {
+                    var levelDat = Path.Combine(dir, "level.dat");
+                    if (File.Exists(levelDat))
+                    {
+                        data.Worlds.Add(new WorldInfo
+                        {
+                            Name = Path.GetFileName(dir),
+                            Path = dir,
+                            LastModified = File.GetLastWriteTime(dir)
+                        });
+                    }
+                }
+                catch { }
+            }
+        }
+    }
+
+    private void ApplyWorlds(List<WorldInfo> worlds)
+    {
+        Worlds.Clear();
+        foreach (var w in worlds) Worlds.Add(w);
+        HasWorlds = Worlds.Count > 0;
+    }
+
+    private void CollectMods(LoadData data)
+    {
+        var modsDir = Path.Combine(data.GameDir, "mods");
+        if (Directory.Exists(modsDir))
+        {
+            foreach (var file in Directory.GetFiles(modsDir, "*.jar"))
+            {
+                try
+                {
+                    data.Mods.Add(new ModInfo
+                    {
+                        Name = Path.GetFileNameWithoutExtension(file),
+                        FileName = Path.GetFileName(file),
+                        Path = file,
+                        Size = new FileInfo(file).Length,
+                        IsEnabled = true
+                    });
+                }
+                catch { }
+            }
+
+            foreach (var file in Directory.GetFiles(modsDir, "*.jar.disabled"))
+            {
+                try
+                {
+                    var fileName = Path.GetFileName(file);
+                    data.Mods.Add(new ModInfo
+                    {
+                        Name = fileName,
+                        FileName = fileName,
+                        Path = file,
+                        Size = new FileInfo(file).Length,
+                        IsEnabled = false
+                    });
+                }
+                catch { }
+            }
+        }
+    }
+
+    private void ApplyMods(List<ModInfo> mods)
+    {
+        Mods.Clear();
+        foreach (var m in mods) Mods.Add(m);
+        HasMods = Mods.Count > 0;
     }
 
     partial void OnSelectedGroupItemChanged(GroupListItem? value)
@@ -263,11 +364,31 @@ public partial class InstanceViewModel : ViewModelBase
         return Path.Combine(config.GameDirectory, "versions", _version.Id);
     }
 
+    private void LoadGroupInfo()
+    {
+        if (_version == null) return;
+
+        var groups = Core.Services.VersionGroupService.GetAllGroups();
+        var currentGroupId = Core.Services.VersionGroupService.GetEffectiveGroupId(_version);
+
+        var items = new ObservableCollection<GroupListItem>();
+        foreach (var g in groups)
+        {
+            items.Add(new GroupListItem { Id = g.Id, Name = g.Name, IsSystem = g.IsSystem, IsDeletable = g.IsDeletable });
+        }
+        items.Add(new GroupListItem { Id = "__separator__", Name = "", IsSeparator = true });
+        items.Add(new GroupListItem { Id = "__manage__", Name = "管理分组...", IsManageEntry = true });
+
+        GroupListItems = items;
+        SelectedGroupItem = items.FirstOrDefault(g => g.Id == currentGroupId);
+        ManagedGroups = new ObservableCollection<VersionGroup>(groups);
+    }
+
     private void LoadWorlds()
     {
-        Worlds.Clear();
         var gameDir = GetGameDirectory();
         var savesDir = Path.Combine(gameDir, "saves");
+        var list = new List<WorldInfo>();
 
         if (Directory.Exists(savesDir))
         {
@@ -278,27 +399,26 @@ public partial class InstanceViewModel : ViewModelBase
                     var levelDat = Path.Combine(dir, "level.dat");
                     if (File.Exists(levelDat))
                     {
-                        var info = new WorldInfo
+                        list.Add(new WorldInfo
                         {
                             Name = Path.GetFileName(dir),
                             Path = dir,
                             LastModified = File.GetLastWriteTime(dir)
-                        };
-                        Worlds.Add(info);
+                        });
                     }
                 }
                 catch { }
             }
         }
 
-        HasWorlds = Worlds.Count > 0;
+        ApplyWorlds(list);
     }
 
     private void LoadMods()
     {
-        Mods.Clear();
         var gameDir = GetGameDirectory();
         var modsDir = Path.Combine(gameDir, "mods");
+        var list = new List<ModInfo>();
 
         if (Directory.Exists(modsDir))
         {
@@ -306,15 +426,14 @@ public partial class InstanceViewModel : ViewModelBase
             {
                 try
                 {
-                    var info = new ModInfo
+                    list.Add(new ModInfo
                     {
                         Name = Path.GetFileNameWithoutExtension(file),
                         FileName = Path.GetFileName(file),
                         Path = file,
                         Size = new FileInfo(file).Length,
                         IsEnabled = true
-                    };
-                    Mods.Add(info);
+                    });
                 }
                 catch { }
             }
@@ -324,21 +443,20 @@ public partial class InstanceViewModel : ViewModelBase
                 try
                 {
                     var fileName = Path.GetFileName(file);
-                    var info = new ModInfo
+                    list.Add(new ModInfo
                     {
                         Name = fileName,
                         FileName = fileName,
                         Path = file,
                         Size = new FileInfo(file).Length,
                         IsEnabled = false
-                    };
-                    Mods.Add(info);
+                    });
                 }
                 catch { }
             }
         }
 
-        HasMods = Mods.Count > 0;
+        ApplyMods(list);
     }
 
     [RelayCommand]
@@ -465,6 +583,21 @@ public partial class InstanceViewModel : ViewModelBase
         {
             _notificationService.Show("已保存", "版本隔离设置已更新", NotificationType.Success, 2);
         }
+    }
+
+    private class LoadData
+    {
+        public string VersionId { get; set; } = "-";
+        public string ActualVersion { get; set; } = "-";
+        public string VersionType { get; set; } = "-";
+        public string LastPlayed { get; set; } = "-";
+        public string GameDir { get; set; } = "-";
+        public string StoragePath { get; set; } = "-";
+        public int IsolationMode { get; set; }
+        public List<VersionGroup> Groups { get; set; } = new();
+        public string CurrentGroupId { get; set; } = "";
+        public List<WorldInfo> Worlds { get; set; } = new();
+        public List<ModInfo> Mods { get; set; } = new();
     }
 }
 

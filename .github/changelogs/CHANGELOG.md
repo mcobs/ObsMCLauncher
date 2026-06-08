@@ -2,6 +2,7 @@
 
 ### 修复
 - 版本详情页返回时崩溃：修复集合并发修改问题，所有ObservableCollection操作统一走UI线程调度，返回时取消后台加载任务
+- 主页点击版本详情按钮时崩溃：InstanceViewModel.LoadAsync中I/O与UI更新分离，后台线程收集数据后通过Dispatcher.UIThread派发ObservableCollection更新
 - 游戏日志窗口关闭时递归调用Shutdown导致栈溢出：添加防重入标志
 - 截图管理黑屏：使用FilePathToBitmapConverter正确加载本地图片
 - 截图按版本筛选无效：修复"主目录"选项筛选逻辑，正确区分主目录和版本隔离目录截图
