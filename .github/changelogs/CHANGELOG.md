@@ -1,6 +1,7 @@
  ## [v1.0.0-rc.5] - 2026-06-xx
 
 ### 修复
+- 下载管理器面板无法打开：添加ZIndex=100确保面板渲染在SplitView之上，禁用编译绑定以修复CSS :visible伪类动画兼容问题
 - 版本详情页返回时崩溃：修复集合并发修改问题，所有ObservableCollection操作统一走UI线程调度，返回时取消后台加载任务
 - 主页点击版本详情按钮时崩溃：InstanceViewModel.LoadAsync中I/O与UI更新分离，后台线程收集数据后通过Dispatcher.UIThread派发ObservableCollection更新
 - 版本管理页大量绑定错误：将嵌套DataTemplate中的$parent[UserControl]改为x:Name元素引用，避免DataContext未就绪时产生绑定错误日志

@@ -620,6 +620,7 @@
                 Margin="0,0,28,28"
                 CornerRadius="26"
                 Foreground="White"
+                ZIndex="100"
                 IsVisible="{Binding DownloadManager.HasActiveTasks}"
                 Command="{Binding DownloadManager.TogglePanelVisibilityCommand}">
             <Button.Background>
@@ -662,6 +663,8 @@
                 Margin="0,0,96,28"
                 IsVisible="{Binding DownloadManager.IsPanelVisible}"
                 BoxShadow="0 8 32 0 #66000000"
+                ZIndex="100"
+                x:CompileBindings="False"
                 Classes="download-panel">
 
             <Grid RowDefinitions="Auto,*,Auto">
