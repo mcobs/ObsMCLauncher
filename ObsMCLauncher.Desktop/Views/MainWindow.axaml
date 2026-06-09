@@ -41,9 +41,7 @@
             <Setter Property="FontWeight" Value="Medium" />
         </Style>
 
-        <Style Selector="ListBox#NavListBox ListBoxItem:pointerover Border.nav-item">
-            <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
-        </Style>
+        <!-- pointerover 背景由代码后端 hover-intent 控制，此处不再设置 -->
 
         <Style Selector="ListBox#BottomNavListBox ListBoxItem">
             <Setter Property="Padding" Value="0" />
@@ -61,16 +59,22 @@
             <Setter Property="FontWeight" Value="Medium" />
         </Style>
 
-        <Style Selector="ListBox#BottomNavListBox ListBoxItem:pointerover Border.nav-item">
-            <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
-        </Style>
-
+        <!-- nav-item 基础过渡 -->
         <Style Selector="Border.nav-item">
+            <Setter Property="RenderTransformOrigin" Value="0.5,0.5" />
             <Setter Property="Transitions">
                 <Transitions>
-                    <BrushTransition Property="Background" Duration="0:0:0.15" />
+                    <BrushTransition Property="Background" Duration="0:0:0.3" />
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.35" Easing="CircularEaseOut" />
                 </Transitions>
             </Setter>
+        </Style>
+
+        <!-- hover-intent 触发的悬浮样式 -->
+        <Style Selector="Border.nav-item-hovered">
+            <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
+            <Setter Property="RenderTransform" Value="scale(1.03)" />
+            <Setter Property="BoxShadow" Value="0 2 8 0 #30000000" />
         </Style>
 
         <Style Selector="Border.notification-card">

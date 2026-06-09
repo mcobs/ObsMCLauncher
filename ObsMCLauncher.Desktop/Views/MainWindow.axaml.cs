@@ -1,11 +1,14 @@
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using ObsMCLauncher.Core.Models;
 using ObsMCLauncher.Desktop.ViewModels;
 using ObsMCLauncher.Desktop.ViewModels.Notifications;
@@ -18,9 +21,16 @@ public partial class MainWindow : Window
     private readonly Dictionary<string, Point> _swipeStartPoints = new();
     private readonly HashSet<string> _swipeActive = new();
 
+    // 导航栏 hover-intent 防抖
+    private readonly DispatcherTimer _hoverTimer;
+    private ListBoxItem? _pendingHoverItem;
+
     public MainWindow()
     {
         InitializeComponent();
+
+        _hoverTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(80) };
+        _hoverTimer.Tick += OnHoverTimerTick;
 
         PropertyChanged += OnWindowPropertyChanged;
         DataContextChanged += (_, _) => HookNavCollapsed();
@@ -30,6 +40,11 @@ public partial class MainWindow : Window
         {
             _vm.WindowWidth = Width;
         }
+
+        NavListBox.ContainerPrepared += OnNavContainerPrepared;
+        BottomNavListBox.ContainerPrepared += OnNavContainerPrepared;
+        NavListBox.SelectionChanged += OnNavSelectionChanged;
+        BottomNavListBox.SelectionChanged += OnNavSelectionChanged;
     }
 
     private void OnWindowPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
@@ -182,5 +197,81 @@ public partial class MainWindow : Window
         _swipeStartPoints.Remove(vm.Id);
 
         vm.EndSwipeDrag(totalDeltaX);
+    }
+
+    // ===== 导航栏 hover-intent 防抖 =====
+
+    private void OnNavContainerPrepared(object? sender, ContainerPreparedEventArgs e)
+    {
+        if (e.Container is ListBoxItem item)
+        {
+            item.PointerEntered += OnNavPointerEntered;
+            item.PointerExited += OnNavPointerExited;
+        }
+    }
+
+    private void OnNavPointerEntered(object? sender, PointerEventArgs e)
+    {
+        if (sender is not ListBoxItem item || item.IsSelected) return;
+
+        CancelPendingHover();
+        _pendingHoverItem = item;
+        _hoverTimer.Start();
+    }
+
+    private void OnNavPointerExited(object? sender, PointerEventArgs e)
+    {
+        if (sender is not ListBoxItem item) return;
+
+        RemoveHoverClass(item);
+
+        if (_pendingHoverItem == item)
+        {
+            CancelPendingHover();
+        }
+    }
+
+    private void OnNavSelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        // 选中切换时立即取消待处理的悬浮动画，避免与 :selected 样式冲突闪烁
+        CancelPendingHover();
+    }
+
+    private void OnHoverTimerTick(object? sender, EventArgs e)
+    {
+        _hoverTimer.Stop();
+        var item = _pendingHoverItem;
+        _pendingHoverItem = null;
+
+        if (item is { IsSelected: false })
+        {
+            ApplyHoverClass(item);
+        }
+    }
+
+    private void CancelPendingHover()
+    {
+        _hoverTimer.Stop();
+        if (_pendingHoverItem != null)
+        {
+            RemoveHoverClass(_pendingHoverItem);
+            _pendingHoverItem = null;
+        }
+    }
+
+    private static void ApplyHoverClass(ListBoxItem item)
+    {
+        var border = item.GetVisualDescendants()
+            .OfType<Border>()
+            .FirstOrDefault(b => b.Classes.Contains("nav-item"));
+        border?.Classes.Add("nav-item-hovered");
+    }
+
+    private static void RemoveHoverClass(ListBoxItem item)
+    {
+        var border = item.GetVisualDescendants()
+            .OfType<Border>()
+            .FirstOrDefault(b => b.Classes.Contains("nav-item"));
+        border?.Classes.Remove("nav-item-hovered");
     }
 }
