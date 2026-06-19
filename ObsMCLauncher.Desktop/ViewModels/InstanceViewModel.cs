@@ -361,7 +361,7 @@ public partial class InstanceViewModel : ViewModelBase
         }
     }
 
-    private static readonly string ModIconCacheDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "OMCL", "cache", "mod_icons");
+    private static readonly string ModIconCacheDir = Path.Combine(Path.GetTempPath(), "OMCL", "mod_icons");
 
     /// <summary>
     /// 从 JAR 中提取 Mod 图标，返回缓存文件路径，未找到则返回 null
@@ -825,4 +825,9 @@ public class GroupListItem
     public bool IsDeletable { get; set; }
     public bool IsSeparator { get; set; }
     public bool IsManageEntry { get; set; }
+
+    /// <summary>
+    /// 是否为普通分组项（非分隔线、非管理入口）
+    /// </summary>
+    public bool IsNormalItem => !IsSeparator && !IsManageEntry;
 }
