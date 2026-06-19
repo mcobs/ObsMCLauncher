@@ -642,25 +642,32 @@ public partial class ModDetailViewModel : ViewModelBase
             group.NotifyHasLoaderGroupsChanged();
         }
 
-        // 构建加载器筛选列表
-        var allLoaders = VersionGroups
-            .SelectMany(g => g.LoaderGroups)
-            .GroupBy(lg => lg.LoaderName)
-            .Select(g => new LoaderFilterItem
-            {
-                LoaderName = g.Key,
-                IconUri = GetLoaderIcon(g.Key),
-                Count = g.Sum(lg => lg.Files.Count)
-            })
-            .OrderBy(l => l.LoaderName, new LoaderComparer())
-            .ToList();
+        // 构建加载器筛选列表（大小写不敏感去重）
+var allLoaders = VersionGroups
+    .SelectMany(g => g.LoaderGroups)
+    .GroupBy(lg => lg.LoaderName, StringComparer.OrdinalIgnoreCase)
+    .Select(g => new LoaderFilterItem
+    {
+        LoaderName = g.First().LoaderName,
+        IconUri = GetLoaderIcon(g.First().LoaderName),
+        Count = g.Sum(lg => lg.Files.Count)
+    })
+    .OrderBy(l => l.LoaderName, new LoaderComparer())
+    .ToList();
 
-        AvailableLoaders.Clear();
-        AvailableLoaders.Add(new LoaderFilterItem { LoaderName = "全部", IconUri = "", Count = allLoaders.Sum(l => l.Count) });
-        foreach (var loader in allLoaders)
-            AvailableLoaders.Add(loader);
+// 记住当前选中的加载器名称，重建后恢复
+var previousSelection = SelectedLoaderFilter?.LoaderName;
 
-        SelectedLoaderFilter = AvailableLoaders.FirstOrDefault();
+AvailableLoaders.Clear();
+AvailableLoaders.Add(new LoaderFilterItem { LoaderName = "全部", IconUri = "", Count = allLoaders.Sum(l => l.Count) });
+foreach (var loader in allLoaders)
+    AvailableLoaders.Add(loader);
+
+// 恢复选中状态：优先匹配之前的选中项，否则默认选"全部"
+SelectedLoaderFilter = string.IsNullOrEmpty(previousSelection)
+    ? AvailableLoaders.FirstOrDefault()
+    : AvailableLoaders.FirstOrDefault(l => string.Equals(l.LoaderName, previousSelection, StringComparison.OrdinalIgnoreCase))
+      ?? AvailableLoaders.FirstOrDefault();
     }
 
     private async Task LoadCurseForgeVersionsAsync(CurseForgeMod mod, CancellationToken cancellationToken)
@@ -1448,4 +1455,11 @@ public class LoaderFilterItem
     public string LoaderName { get; init; } = "";
     public string IconUri { get; init; } = "";
     public int Count { get; init; }
+
+    // 基于名称做值相等，确保 ListBox SelectedItem 能正确匹配重建后的对象
+    public override bool Equals(object? obj) =>
+        obj is LoaderFilterItem other && string.Equals(LoaderName, other.LoaderName, StringComparison.OrdinalIgnoreCase);
+
+    public override int GetHashCode() =>
+        StringComparer.OrdinalIgnoreCase.GetHashCode(LoaderName);
 }
