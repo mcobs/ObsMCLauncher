@@ -79,6 +79,7 @@
 
         <Style Selector="Border.notification-card">
             <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="ClipToBounds" Value="True" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
             <Setter Property="Background" Value="{DynamicResource SurfaceElevatedBrush}" />
