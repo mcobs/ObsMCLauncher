@@ -85,6 +85,26 @@ namespace ObsMCLauncher.Core.Services.Minecraft
         public string GroupId { get; set; } = VersionGroup.AutoGroupId;
 
         /// <summary>
+        /// 版本描述（来自 init.json）
+        /// </summary>
+        public string Description { get; set; } = "";
+
+        /// <summary>
+        /// 是否有描述文本
+        /// </summary>
+        public bool HasDescription => !string.IsNullOrEmpty(Description);
+
+        /// <summary>
+        /// 自定义最大内存(MB)，null 表示使用全局设置
+        /// </summary>
+        public int? CustomMaxMemory { get; set; } = null;
+
+        /// <summary>
+        /// 自定义最小内存(MB)，null 表示使用全局设置
+        /// </summary>
+        public int? CustomMinMemory { get; set; } = null;
+
+        /// <summary>
         /// UI 绑定属性：获取详情描述文本
         /// </summary>
         public string DetailText
@@ -217,10 +237,42 @@ namespace ObsMCLauncher.Core.Services.Minecraft
                         if (versionData != null)
                         {
                             var lastPlayed = Directory.GetLastAccessTime(versionDir);
-                            
-                            // 加载版本配置
-                            var versionConfig = VersionConfigService.LoadVersionConfig(versionDir);
-                            
+
+                            // 确保 init.json 存在并迁移旧数据
+                            try { VersionGroupService.EnsureInitJson(versionDir); }
+                            catch { /* 不影响主流程 */ }
+
+                            // 从 init.json 读取所有版本级配置
+                            var initData = VersionInitService.Load(versionDir);
+
+                            // 兼容旧的全局隔离配置：如果 init.json 里是 global，回退读 version_config.json
+                            bool? useIsolation = initData.IsolationMode switch
+                            {
+                                "enabled" => true,
+                                "disabled" => false,
+                                _ => null
+                            };
+                            if (useIsolation == null)
+                            {
+                                // 旧的 version_config.json 兼容读取
+                                var legacyConfigPath = System.IO.Path.Combine(versionDir, "version_config.json");
+                                if (File.Exists(legacyConfigPath))
+                                {
+                                    try
+                                    {
+                                        var legacyJson = File.ReadAllText(legacyConfigPath);
+                                        var legacyCfg = JsonSerializer.Deserialize<LegacyVersionConfig>(legacyJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                                        if (legacyCfg?.UseVersionIsolation.HasValue == true)
+                                        {
+                                            useIsolation = legacyCfg.UseVersionIsolation.Value;
+                                            // 迁移到 init.json
+                                            VersionInitService.SetIsolationMode(versionDir, useIsolation.Value ? "enabled" : "disabled");
+                                        }
+                                    }
+                                    catch { }
+                                }
+                            }
+
                             installedVersions.Add(new InstalledVersion
                             {
                                 Id = versionId, // 文件夹名称（显示名称）
@@ -231,18 +283,16 @@ namespace ObsMCLauncher.Core.Services.Minecraft
                                 Path = versionDir,
                                 IsSelected = false,
                                 LoaderType = loaderType,
-                                UseVersionIsolation = versionConfig.UseVersionIsolation,
-                                GroupId = VersionGroupService.GetEffectiveGroupId(
-                                    new InstalledVersion { Id = versionId, LoaderType = loaderType, LastPlayed = lastPlayed })
+                                UseVersionIsolation = useIsolation,
+                                GroupId = string.IsNullOrEmpty(initData.Group) ? VersionGroup.AutoGroupId : initData.Group,
+                                Description = initData.Description ?? "",
+                                CustomMaxMemory = initData.MaxMemory,
+                                CustomMinMemory = initData.MinMemory
                             });
 
-                            // 确保版本目录下存在 OMCL/init.json
-                            try { VersionGroupService.EnsureInitJson(versionDir); }
-                            catch { /* 不影响主流程 */ }
-                            
                             var loaderInfo = string.IsNullOrEmpty(loaderType) ? "" : $" [{loaderType}]";
-                            var isolationInfo = versionConfig.UseVersionIsolation.HasValue ? 
-                                (versionConfig.UseVersionIsolation.Value ? " [版本隔离]" : " [共享]") : "";
+                            var isolationInfo = useIsolation.HasValue ? 
+                                (useIsolation.Value ? " [版本隔离]" : " [共享]") : "";
                             DebugLogger.Info("LocalVersion", $"找到版本: {versionId} (实际版本: {versionData.Id}){loaderInfo}{isolationInfo}");
                         }
                     }
@@ -319,14 +369,7 @@ namespace ObsMCLauncher.Core.Services.Minecraft
         {
             try
             {
-                // 删除前清理分组映射
-                var versionId = Path.GetFileName(versionPath);
-                var config = LauncherConfig.Load();
-                if (config.VersionGroupMappings.ContainsKey(versionId))
-                {
-                    config.VersionGroupMappings.Remove(versionId);
-                    config.Save();
-                }
+                // 分组等配置已存在 init.json 中，随版本目录一起删除，无需额外清理
 
                 if (Directory.Exists(versionPath))
                 {
@@ -401,6 +444,12 @@ namespace ObsMCLauncher.Core.Services.Minecraft
             public string? Id { get; set; }
             public string? Type { get; set; }
             public DateTime ReleaseTime { get; set; }
+        }
+
+        // 旧的 version_config.json 兼容模型
+        private class LegacyVersionConfig
+        {
+            public bool? UseVersionIsolation { get; set; }
         }
     }
 }

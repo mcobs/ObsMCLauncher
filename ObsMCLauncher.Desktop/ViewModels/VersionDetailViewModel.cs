@@ -944,6 +944,23 @@ public class VersionDetailViewModel : ViewModelBase
 
             // 触发版本安装完成事件
             var versionDir = System.IO.Path.Combine(gameDir, "versions", CustomVersionName);
+
+            // 生成默认描述并写入 init.json
+            try
+            {
+                var optiVer = (IsOptiFineEnabled && SelectedOptiFineVersion != null)
+                    ? SelectedOptiFineVersion.FullVersion
+                    : null;
+                var desc = VersionInitService.GenerateDefaultDescription(
+                    VersionInfo?.Type ?? "release",
+                    SelectedMcVersion,
+                    loaderType,
+                    loaderVersion,
+                    optiVer);
+                VersionInitService.SetDescription(versionDir, desc);
+            }
+            catch { /* 描述写入失败不影响主流程 */ }
+
             PluginContext.TriggerGlobalEvent(IPluginContext.EventNames.VersionInstalled,
                 new VersionInstalledEventArgs
                 {

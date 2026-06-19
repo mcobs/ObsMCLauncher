@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Threading.Tasks;
 using Avalonia.Threading;
@@ -73,6 +74,55 @@ public partial class InstanceViewModel : ViewModelBase
     [ObservableProperty]
     private ObservableCollection<VersionGroup> _managedGroups = new();
 
+    // 导航栏相关
+    [ObservableProperty]
+    private int _selectedNavIndex = 0;
+
+    public bool IsBasicTab => SelectedNavIndex == 0;
+    public bool IsSettingsTab => SelectedNavIndex == 1;
+    public bool IsWorldsTab => SelectedNavIndex == 2;
+    public bool IsModsTab => SelectedNavIndex == 3;
+
+    partial void OnSelectedNavIndexChanged(int value)
+    {
+        OnPropertyChanged(nameof(IsBasicTab));
+        OnPropertyChanged(nameof(IsSettingsTab));
+        OnPropertyChanged(nameof(IsWorldsTab));
+        OnPropertyChanged(nameof(IsModsTab));
+    }
+
+    [RelayCommand]
+    private void SelectNav(object? parameter)
+    {
+        if (parameter is int index)
+            SelectedNavIndex = index;
+        else if (parameter is string s && int.TryParse(s, out var parsed))
+            SelectedNavIndex = parsed;
+    }
+
+    // 内存配置
+    [ObservableProperty]
+    private bool _useCustomMemory;
+
+    [ObservableProperty]
+    private int _customMaxMemory = 4096;
+
+    [ObservableProperty]
+    private int _customMinMemory = 1024;
+
+    [ObservableProperty]
+    private string _globalMemoryText = "";
+
+    // 描述
+    [ObservableProperty]
+    private string _description = "";
+
+    [ObservableProperty]
+    private string _editingDescription = "";
+
+    [ObservableProperty]
+    private bool _isEditingDescription;
+
     public Action? OnCloseRequested { get; set; }
 
     public InstanceViewModel(NotificationService notificationService)
@@ -97,10 +147,8 @@ public partial class InstanceViewModel : ViewModelBase
 
         try
         {
-            // 在后台线程收集 I/O 数据，避免阻塞 UI
             var data = await Task.Run(() => CollectLoadData());
 
-            // 在 UI 线程上更新 ObservableCollection，避免布局期间并发修改
             Dispatcher.UIThread.Post(() =>
             {
                 ApplyVersionData(data);
@@ -141,19 +189,34 @@ public partial class InstanceViewModel : ViewModelBase
         }
 
         var config = LauncherConfig.Load();
-        var versionConfig = config.VersionIsolationSettings?.FirstOrDefault(v => v.VersionId == _version.Id);
-        if (versionConfig != null)
+
+        // 从 init.json 读取隔离模式
+        var initIsolation = Core.Services.VersionInitService.GetIsolationMode(_versionPath);
+        data.IsolationMode = initIsolation switch
         {
-            data.IsolationMode = versionConfig.IsolationMode switch
+            "enabled" => 1,
+            "disabled" => 2,
+            _ => 0
+        };
+
+        // 兼容旧的全局隔离配置
+        if (initIsolation == "global")
+        {
+            var legacySetting = config.VersionIsolationSettings?.FirstOrDefault(v => v.VersionId == _version.Id);
+            if (legacySetting != null)
             {
-                "enabled" => 1,
-                "disabled" => 2,
-                _ => 0
-            };
-        }
-        else
-        {
-            data.IsolationMode = 0;
+                data.IsolationMode = legacySetting.IsolationMode switch
+                {
+                    "enabled" => 1,
+                    "disabled" => 2,
+                    _ => 0
+                };
+                // 迁移到 init.json
+                if (data.IsolationMode != 0)
+                {
+                    Core.Services.VersionInitService.SetIsolationMode(_versionPath, legacySetting.IsolationMode);
+                }
+            }
         }
 
         data.GameDir = config.GetRunDirectory(_version.Id);
@@ -163,10 +226,17 @@ public partial class InstanceViewModel : ViewModelBase
         data.Groups = Core.Services.VersionGroupService.GetAllGroups();
         data.CurrentGroupId = Core.Services.VersionGroupService.GetEffectiveGroupId(_version);
 
-        // 收集世界数据
-        CollectWorlds(data);
+        // 内存配置
+        var (max, min) = Core.Services.VersionInitService.GetMemory(_versionPath);
+        data.UseCustomMemory = max.HasValue || min.HasValue;
+        data.CustomMaxMemory = max ?? config.MaxMemory;
+        data.CustomMinMemory = min ?? config.MinMemory;
+        data.GlobalMaxMemory = config.MaxMemory;
 
-        // 收集 Mod 数据
+        // 描述
+        data.Description = Core.Services.VersionInitService.GetDescription(_versionPath);
+
+        CollectWorlds(data);
         CollectMods(data);
 
         return data;
@@ -184,9 +254,26 @@ public partial class InstanceViewModel : ViewModelBase
 
         _isLoadingConfig = true;
         IsolationMode = data.IsolationMode;
+        UseCustomMemory = data.UseCustomMemory;
+        CustomMaxMemory = data.CustomMaxMemory;
+        CustomMinMemory = data.CustomMinMemory;
+        GlobalMemoryText = $"全局: {data.GlobalMaxMemory} MB";
+        Description = data.Description;
+        EditingDescription = data.Description;
+
+        // 如果描述为空，用版本信息重新生成默认描述
+        if (string.IsNullOrEmpty(Description) && _version != null)
+        {
+            var defaultDesc = Core.Services.VersionInitService.GenerateDefaultDescription(
+                _version.Type,
+                _version.ActualVersionId,
+                _version.LoaderType ?? "vanilla");
+            Core.Services.VersionInitService.SetDescription(_versionPath, defaultDesc);
+            Description = defaultDesc;
+            EditingDescription = defaultDesc;
+        }
         _isLoadingConfig = false;
 
-        // 应用分组信息
         var items = new ObservableCollection<GroupListItem>();
         foreach (var g in data.Groups)
         {
@@ -247,7 +334,8 @@ public partial class InstanceViewModel : ViewModelBase
                         FileName = Path.GetFileName(file),
                         Path = file,
                         Size = new FileInfo(file).Length,
-                        IsEnabled = true
+                        IsEnabled = true,
+                        IconPath = ExtractModIcon(file)
                     });
                 }
                 catch { }
@@ -264,12 +352,59 @@ public partial class InstanceViewModel : ViewModelBase
                         FileName = fileName,
                         Path = file,
                         Size = new FileInfo(file).Length,
-                        IsEnabled = false
+                        IsEnabled = false,
+                        IconPath = ExtractModIcon(file)
                     });
                 }
                 catch { }
             }
         }
+    }
+
+    private static readonly string ModIconCacheDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "OMCL", "cache", "mod_icons");
+
+    /// <summary>
+    /// 从 JAR 中提取 Mod 图标，返回缓存文件路径，未找到则返回 null
+    /// </summary>
+    private static string? ExtractModIcon(string jarPath)
+    {
+        try
+        {
+            using var archive = ZipFile.OpenRead(jarPath);
+            // 按优先级查找图标
+            string[] candidates = ["pack.png", "logo.png", "icon.png"];
+            foreach (var candidate in candidates)
+            {
+                var entry = archive.GetEntry(candidate);
+                if (entry != null)
+                {
+                    Directory.CreateDirectory(ModIconCacheDir);
+                    var hash = Math.Abs(jarPath.GetHashCode()).ToString("x8");
+                    var tmpPath = Path.Combine(ModIconCacheDir, $"{hash}.png");
+                    if (!File.Exists(tmpPath) || new FileInfo(tmpPath).Length != entry.Length)
+                        entry.ExtractToFile(tmpPath, true);
+                    return tmpPath;
+                }
+            }
+
+            // 尝试 assets/<modid>/icon.png
+            foreach (var entry in archive.Entries)
+            {
+                var name = entry.FullName;
+                if (name.StartsWith("assets/", StringComparison.OrdinalIgnoreCase) &&
+                    name.EndsWith("/icon.png", StringComparison.OrdinalIgnoreCase))
+                {
+                    Directory.CreateDirectory(ModIconCacheDir);
+                    var hash = Math.Abs(jarPath.GetHashCode()).ToString("x8");
+                    var tmpPath = Path.Combine(ModIconCacheDir, $"{hash}.png");
+                    if (!File.Exists(tmpPath) || new FileInfo(tmpPath).Length != entry.Length)
+                        entry.ExtractToFile(tmpPath, true);
+                    return tmpPath;
+                }
+            }
+        }
+        catch { }
+        return null;
     }
 
     private void ApplyMods(List<ModInfo> mods)
@@ -286,7 +421,6 @@ public partial class InstanceViewModel : ViewModelBase
         if (value.IsManageEntry)
         {
             IsGroupManagerOpen = true;
-            // 恢复之前的选择
             var currentGroupId = Core.Services.VersionGroupService.GetEffectiveGroupId(_version);
             SelectedGroupItem = GroupListItems.FirstOrDefault(g => g.Id == currentGroupId);
             return;
@@ -294,7 +428,6 @@ public partial class InstanceViewModel : ViewModelBase
 
         if (value.IsSeparator) return;
 
-        // 避免初始化时触发保存
         var existingGroupId = Core.Services.VersionGroupService.GetEffectiveGroupId(_version);
         if (existingGroupId == value.Id) return;
 
@@ -336,7 +469,8 @@ public partial class InstanceViewModel : ViewModelBase
         var result = await _dialogService.ShowQuestion("确认删除", $"确定要删除分组 \"{group.Name}\" 吗？\n组内版本将归入\"自动\"分组。");
         if (result != DialogResult.Yes) return;
 
-        Core.Services.VersionGroupService.DeleteGroup(group.Id);
+        var config = LauncherConfig.Load();
+        Core.Services.VersionGroupService.DeleteGroup(group.Id, config.GameDirectory);
         LoadGroupInfo();
         SelectedGroupItem = GroupListItems.FirstOrDefault();
         _notificationService.Show("分组已删除", $"分组 \"{group.Name}\" 已删除", NotificationType.Success);
@@ -354,14 +488,6 @@ public partial class InstanceViewModel : ViewModelBase
 
         var config = LauncherConfig.Load();
         return config.GetRunDirectory(_version.Id);
-    }
-
-    private string GetVersionDirectory()
-    {
-        if (_version == null) return "-";
-
-        var config = LauncherConfig.Load();
-        return Path.Combine(config.GameDirectory, "versions", _version.Id);
     }
 
     private void LoadGroupInfo()
@@ -382,81 +508,6 @@ public partial class InstanceViewModel : ViewModelBase
         GroupListItems = items;
         SelectedGroupItem = items.FirstOrDefault(g => g.Id == currentGroupId);
         ManagedGroups = new ObservableCollection<VersionGroup>(groups);
-    }
-
-    private void LoadWorlds()
-    {
-        var gameDir = GetGameDirectory();
-        var savesDir = Path.Combine(gameDir, "saves");
-        var list = new List<WorldInfo>();
-
-        if (Directory.Exists(savesDir))
-        {
-            foreach (var dir in Directory.GetDirectories(savesDir))
-            {
-                try
-                {
-                    var levelDat = Path.Combine(dir, "level.dat");
-                    if (File.Exists(levelDat))
-                    {
-                        list.Add(new WorldInfo
-                        {
-                            Name = Path.GetFileName(dir),
-                            Path = dir,
-                            LastModified = File.GetLastWriteTime(dir)
-                        });
-                    }
-                }
-                catch { }
-            }
-        }
-
-        ApplyWorlds(list);
-    }
-
-    private void LoadMods()
-    {
-        var gameDir = GetGameDirectory();
-        var modsDir = Path.Combine(gameDir, "mods");
-        var list = new List<ModInfo>();
-
-        if (Directory.Exists(modsDir))
-        {
-            foreach (var file in Directory.GetFiles(modsDir, "*.jar"))
-            {
-                try
-                {
-                    list.Add(new ModInfo
-                    {
-                        Name = Path.GetFileNameWithoutExtension(file),
-                        FileName = Path.GetFileName(file),
-                        Path = file,
-                        Size = new FileInfo(file).Length,
-                        IsEnabled = true
-                    });
-                }
-                catch { }
-            }
-
-            foreach (var file in Directory.GetFiles(modsDir, "*.jar.disabled"))
-            {
-                try
-                {
-                    var fileName = Path.GetFileName(file);
-                    list.Add(new ModInfo
-                    {
-                        Name = fileName,
-                        FileName = fileName,
-                        Path = file,
-                        Size = new FileInfo(file).Length,
-                        IsEnabled = false
-                    });
-                }
-                catch { }
-            }
-        }
-
-        ApplyMods(list);
     }
 
     [RelayCommand]
@@ -558,31 +609,127 @@ public partial class InstanceViewModel : ViewModelBase
 
     partial void OnIsolationModeChanged(int value)
     {
-        if (_version == null) return;
+        if (_version == null || _isLoadingConfig) return;
 
-        var config = LauncherConfig.Load();
-        config.VersionIsolationSettings ??= new();
-
-        var existing = config.VersionIsolationSettings.FirstOrDefault(v => v.VersionId == _version.Id);
-        if (existing == null)
-        {
-            existing = new VersionIsolationSetting { VersionId = _version.Id };
-            config.VersionIsolationSettings.Add(existing);
-        }
-
-        existing.IsolationMode = value switch
+        var mode = value switch
         {
             1 => "enabled",
             2 => "disabled",
             _ => "global"
         };
 
-        config.Save();
+        Core.Services.VersionInitService.SetIsolationMode(_versionPath, mode);
+        _notificationService.Show("已保存", "版本隔离设置已更新", NotificationType.Success, 2);
+    }
 
-        if (!_isLoadingConfig)
+    partial void OnUseCustomMemoryChanged(bool value)
+    {
+        if (_version == null || _isLoadingConfig) return;
+        SaveMemoryConfig();
+    }
+
+    partial void OnCustomMaxMemoryChanged(int value)
+    {
+        if (_version == null || _isLoadingConfig) return;
+        // 限制最小值
+        if (value < 512) CustomMaxMemory = 512;
+        SaveMemoryConfig();
+    }
+
+    partial void OnCustomMinMemoryChanged(int value)
+    {
+        if (_version == null || _isLoadingConfig) return;
+        if (value < 256) CustomMinMemory = 256;
+        SaveMemoryConfig();
+    }
+
+    private void SaveMemoryConfig()
+    {
+        if (_version == null) return;
+
+        if (UseCustomMemory)
         {
-            _notificationService.Show("已保存", "版本隔离设置已更新", NotificationType.Success, 2);
+            // 保证 min <= max
+            var min = Math.Min(CustomMinMemory, CustomMaxMemory);
+            var max = Math.Max(CustomMinMemory, CustomMaxMemory);
+            Core.Services.VersionInitService.SetMemory(_versionPath, max, min);
         }
+        else
+        {
+            // 清除自定义配置，回退到全局
+            Core.Services.VersionInitService.SetMemory(_versionPath, null, null);
+        }
+    }
+
+    [RelayCommand]
+    private void StartEditDescription()
+    {
+        EditingDescription = Description;
+        IsEditingDescription = true;
+    }
+
+    [RelayCommand]
+    private void SaveDescription()
+    {
+        if (_version == null) return;
+
+        var text = EditingDescription?.Trim() ?? "";
+        Core.Services.VersionInitService.SetDescription(_versionPath, text);
+        Description = text;
+        IsEditingDescription = false;
+        _notificationService.Show("已保存", "版本描述已更新", NotificationType.Success, 2);
+    }
+
+    [RelayCommand]
+    private void CancelEditDescription()
+    {
+        IsEditingDescription = false;
+        EditingDescription = Description;
+    }
+
+    private void LoadMods()
+    {
+        var gameDir = GetGameDirectory();
+        var modsDir = Path.Combine(gameDir, "mods");
+        var list = new List<ModInfo>();
+
+        if (Directory.Exists(modsDir))
+        {
+            foreach (var file in Directory.GetFiles(modsDir, "*.jar"))
+            {
+                try
+                {
+                    list.Add(new ModInfo
+                    {
+                        Name = Path.GetFileNameWithoutExtension(file),
+                        FileName = Path.GetFileName(file),
+                        Path = file,
+                        Size = new FileInfo(file).Length,
+                        IsEnabled = true
+                    });
+                }
+                catch { }
+            }
+
+            foreach (var file in Directory.GetFiles(modsDir, "*.jar.disabled"))
+            {
+                try
+                {
+                    var fileName = Path.GetFileName(file);
+                    list.Add(new ModInfo
+                    {
+                        Name = fileName,
+                        FileName = fileName,
+                        Path = file,
+                        Size = new FileInfo(file).Length,
+                        IsEnabled = false
+                    });
+                }
+                catch { }
+            }
+        }
+
+        ApplyMods(list);
     }
 
     private class LoadData
@@ -598,6 +745,11 @@ public partial class InstanceViewModel : ViewModelBase
         public string CurrentGroupId { get; set; } = "";
         public List<WorldInfo> Worlds { get; set; } = new();
         public List<ModInfo> Mods { get; set; } = new();
+        public bool UseCustomMemory { get; set; }
+        public int CustomMaxMemory { get; set; }
+        public int CustomMinMemory { get; set; }
+        public int GlobalMaxMemory { get; set; }
+        public string Description { get; set; } = "";
     }
 }
 
@@ -615,6 +767,7 @@ public class ModInfo : ObservableObject
     private string _path = string.Empty;
     private long _size;
     private bool _isEnabled;
+    private string? _iconPath;
 
     public string Name
     {
@@ -653,6 +806,12 @@ public class ModInfo : ObservableObject
     }
 
     public string DisplayName => IsEnabled ? Name : Name.Replace(".disabled", "");
+
+    public string? IconPath
+    {
+        get => _iconPath;
+        set => SetProperty(ref _iconPath, value);
+    }
 }
 
 /// <summary>

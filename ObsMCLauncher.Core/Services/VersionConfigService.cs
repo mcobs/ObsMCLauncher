@@ -1,11 +1,13 @@
 using System;
-using System.Diagnostics;
 using System.IO;
-using System.Text.Json;
 using ObsMCLauncher.Core.Utils;
 
 namespace ObsMCLauncher.Core.Services;
 
+/// <summary>
+/// 版本隔离配置的兼容访问层
+/// 实际数据已迁移到 OMCL/init.json，由 VersionInitService 管理
+/// </summary>
 public class VersionConfig
 {
     public bool? UseVersionIsolation { get; set; } = null;
@@ -13,55 +15,50 @@ public class VersionConfig
 
 public static class VersionConfigService
 {
-    private const string ConfigFileName = "version_config.json";
-
-    private static string GetConfigPath(string versionPath) => Path.Combine(versionPath, ConfigFileName);
-
+    /// <summary>
+    /// 加载版本隔离配置（从 init.json 读取并转换）
+    /// </summary>
     public static VersionConfig LoadVersionConfig(string versionPath)
     {
-        var configPath = GetConfigPath(versionPath);
-        if (!File.Exists(configPath)) return new VersionConfig();
-
-        try
+        var mode = VersionInitService.GetIsolationMode(versionPath);
+        return new VersionConfig
         {
-            var json = File.ReadAllText(configPath);
-            var config = JsonSerializer.Deserialize<VersionConfig>(json);
-            return config ?? new VersionConfig();
-        }
-        catch (Exception ex)
-        {
-            DebugLogger.Error("VersionConfig", $"加载配置失败: {ex.Message}");
-            return new VersionConfig();
-        }
-    }
-
-    public static bool SaveVersionConfig(string versionPath, VersionConfig config)
-    {
-        try
-        {
-            var configPath = GetConfigPath(versionPath);
-            var options = new JsonSerializerOptions { WriteIndented = true };
-            File.WriteAllText(configPath, JsonSerializer.Serialize(config, options));
-            DebugLogger.Info("VersionConfig", $"配置已保存: {versionPath}");
-            return true;
-        }
-        catch (Exception ex)
-        {
-            DebugLogger.Error("VersionConfig", $"保存配置失败: {ex.Message}");
-            return false;
-        }
-    }
-
-    public static bool SetVersionIsolation(string versionPath, bool? useIsolation)
-    {
-        var config = LoadVersionConfig(versionPath);
-        config.UseVersionIsolation = useIsolation;
-        return SaveVersionConfig(versionPath, config);
+            UseVersionIsolation = mode switch
+            {
+                "enabled" => true,
+                "disabled" => false,
+                _ => null
+            }
+        };
     }
 
     public static bool? GetVersionIsolation(string versionPath)
     {
-        var config = LoadVersionConfig(versionPath);
-        return config.UseVersionIsolation;
+        return LoadVersionConfig(versionPath).UseVersionIsolation;
+    }
+
+    /// <summary>
+    /// 获取版本隔离模式字符串: "global" / "enabled" / "disabled"
+    /// </summary>
+    public static string GetIsolationMode(string versionPath) =>
+        VersionInitService.GetIsolationMode(versionPath);
+
+    /// <summary>
+    /// 设置版本隔离模式
+    /// </summary>
+    public static void SetIsolationMode(string versionPath, string mode) =>
+        VersionInitService.SetIsolationMode(versionPath, mode);
+
+    [Obsolete("使用 SetIsolationMode 代替")]
+    public static bool SetVersionIsolation(string versionPath, bool? useIsolation)
+    {
+        var mode = useIsolation switch
+        {
+            true => "enabled",
+            false => "disabled",
+            _ => "global"
+        };
+        VersionInitService.SetIsolationMode(versionPath, mode);
+        return true;
     }
 }

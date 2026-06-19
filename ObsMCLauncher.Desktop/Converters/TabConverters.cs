@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using System.IO;
+using Avalonia;
 using Avalonia.Data.Converters;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
@@ -149,6 +150,66 @@ public class GreaterThanOrEqualConverter : IValueConverter
             }
         }
         return false;
+    }
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+}
+
+/// <summary>
+/// bool 转 CSS class 名，用于导航按钮激活状态
+/// </summary>
+public class BoolToClassConverter : IValueConverter
+{
+    public static readonly BoolToClassConverter Active = new();
+
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        return value is true ? "nav-tab active" : "nav-tab";
+    }
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+}
+
+/// <summary>
+/// bool 转 Brush，用于导航按钮激活状态
+/// </summary>
+public class BoolToBrushConverter : IValueConverter
+{
+    public static readonly BoolToBrushConverter NavTab = new();
+
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (value is true)
+        {
+            Application.Current!.Resources.TryGetResource("PrimaryBrush", null, out var brush);
+            return brush;
+        }
+        Application.Current!.Resources.TryGetResource("TextSecondaryBrush", null, out var fallback);
+        return fallback;
+    }
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+}
+
+/// <summary>
+/// bool 转 FontWeight，用于导航按钮激活状态
+/// </summary>
+public class BoolToFontWeightConverter : IValueConverter
+{
+    public static readonly BoolToFontWeightConverter NavTab = new();
+
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        return value is true ? FontWeight.SemiBold : FontWeight.Normal;
     }
 
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)

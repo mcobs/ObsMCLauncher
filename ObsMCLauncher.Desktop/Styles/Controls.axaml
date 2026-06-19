@@ -205,6 +205,20 @@
     <Setter Property="CornerRadius" Value="3"/>
   </Style>
 
+  <!-- Slider 滑块（Thumb）样式，覆盖 FluentTheme 默认白色 -->
+  <Style Selector="Slider /template/ Thumb">
+    <Setter Property="Background" Value="{DynamicResource PrimaryBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
+  </Style>
+
+  <Style Selector="Slider /template/ Thumb:pressed">
+    <Setter Property="Background" Value="{DynamicResource PrimaryDarkBrush}"/>
+  </Style>
+
+  <Style Selector="Slider /template/ Thumb:pointerover">
+    <Setter Property="Background" Value="{DynamicResource PrimaryBrush}"/>
+  </Style>
+
   <Style Selector="TabControl">
     <Setter Property="Background" Value="Transparent"/>
     <Setter Property="BorderThickness" Value="0"/>
@@ -234,6 +248,40 @@
 
   <Style Selector="Button.version-gear:disabled">
     <Setter Property="Foreground" Value="{DynamicResource TextTertiaryBrush}" />
+  </Style>
+
+  <!-- 导航标签按钮 -->
+  <Style Selector="Button.nav-tab">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="16,10" />
+    <Setter Property="CornerRadius" Value="0" />
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+  </Style>
+
+  <Style Selector="Button.nav-tab:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
+  </Style>
+
+  <Style Selector="Button.nav-tab:pressed /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
+    <Setter Property="Opacity" Value="0.85" />
+  </Style>
+
+  <!-- 导航标签按钮 - 激活状态 -->
+  <Style Selector="Button.nav-tab.active">
+    <Setter Property="Foreground" Value="{DynamicResource PrimaryBrush}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+
+  <Style Selector="Button.nav-tab.active /template/ ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+
+  <Style Selector="Button.nav-tab.active:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
   </Style>
 
 </Styles>

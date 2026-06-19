@@ -266,6 +266,17 @@ namespace ObsMCLauncher.Core.Services.Minecraft
                     CurrentFileBytes = 100
                 });
 
+                // 生成默认描述并写入 init.json（仅原版信息，调用方如加载器安装可后续覆盖）
+                try
+                {
+                    var versionDir = Path.Combine(gameDirectory, "versions", installName);
+                    var desc = VersionInitService.GenerateDefaultDescription(
+                        versionInfo.Type ?? "release",
+                        versionId);
+                    VersionInitService.SetDescription(versionDir, desc);
+                }
+                catch { /* 描述写入失败不影响下载主流程 */ }
+
                 return true;
             }
             catch (OperationCanceledException)
@@ -634,6 +645,7 @@ namespace ObsMCLauncher.Core.Services.Minecraft
 
         private class VersionInfo
         {
+            public string? Type { get; set; }
             public DownloadsInfo? Downloads { get; set; }
             public List<Library>? Libraries { get; set; }
             public AssetIndex? AssetIndex { get; set; }

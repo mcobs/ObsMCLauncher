@@ -154,6 +154,14 @@
                                           </Border>
                                         </StackPanel>
                                         <TextBlock Text="{Binding DetailText}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,1,0,0"/>
+                                        <TextBlock Text="{Binding Description}"
+                                                   FontSize="10"
+                                                   Foreground="{DynamicResource TextTertiaryBrush}"
+                                                   Margin="0,3,0,0"
+                                                   MaxLines="2"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   TextWrapping="Wrap"
+                                                   IsVisible="{Binding HasDescription}"/>
                                       </StackPanel>
 
                                       <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">

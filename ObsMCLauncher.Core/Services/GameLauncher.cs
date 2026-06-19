@@ -388,8 +388,14 @@ public class GameLauncher
     {
         var args = new StringBuilder();
 
-        args.Append($"-Xms{config.MinMemory}M ");
-        args.Append($"-Xmx{config.MaxMemory}M ");
+        // 优先使用版本自定义内存，否则用全局配置
+        var versionDir = Path.Combine(config.GameDirectory, "versions", versionId);
+        var (customMax, customMin) = VersionInitService.GetMemory(versionDir);
+        var maxMem = customMax ?? config.MaxMemory;
+        var minMem = customMin ?? config.MinMemory;
+
+        args.Append($"-Xms{minMem}M ");
+        args.Append($"-Xmx{maxMem}M ");
 
         if (IsVeryOldForgeVersion(versionId))
         {
@@ -417,7 +423,6 @@ public class GameLauncher
 
         var gameDir = config.GetRunDirectory(versionId);
         var baseGameDir = config.GameDirectory;
-        var versionDir = Path.Combine(baseGameDir, "versions", versionId);
         var nativesDir = Path.Combine(versionDir, "natives");
         var librariesDir = Path.Combine(baseGameDir, "libraries");
         var assetsDir = Path.Combine(baseGameDir, "assets");

@@ -21,4 +21,24 @@ public class VersionInitData
     /// 备注
     /// </summary>
     public string Notes { get; set; } = "";
+
+    /// <summary>
+    /// 版本隔离模式: "global"=跟随全局, "enabled"=开启, "disabled"=关闭
+    /// </summary>
+    public string IsolationMode { get; set; } = "global";
+
+    /// <summary>
+    /// 自定义最大内存(MB)，null 表示使用全局设置
+    /// </summary>
+    public int? MaxMemory { get; set; } = null;
+
+    /// <summary>
+    /// 自定义最小内存(MB)，null 表示使用全局设置
+    /// </summary>
+    public int? MinMemory { get; set; } = null;
+
+    /// <summary>
+    /// 版本描述
+    /// </summary>
+    public string Description { get; set; } = "";
 }
