@@ -33,6 +33,11 @@ public partial class VersionDownloadViewModel : ViewModelBase
     [ObservableProperty]
     private ObservableCollection<MinecraftVersion> _filteredVersions = new();
 
+    private int _displayCount;
+    private const int VersionPageSize = 50;
+    private bool _isLoadingMore;
+    private List<MinecraftVersion> _fullFilteredVersions = new();
+
     [ObservableProperty]
     private ObservableCollection<Core.Services.Minecraft.InstalledVersion> _installedVersions = new();
 
@@ -572,7 +577,7 @@ public partial class VersionDownloadViewModel : ViewModelBase
     {
         if (AllVersions == null) return;
 
-        var filtered = AllVersions.Where(v =>
+        _fullFilteredVersions = AllVersions.Where(v =>
         {
             if (!string.IsNullOrEmpty(SearchText) && !v.Id.Contains(SearchText, StringComparison.OrdinalIgnoreCase))
                 return false;
@@ -584,9 +589,25 @@ public partial class VersionDownloadViewModel : ViewModelBase
                 3 => v.Type != "release" && v.Type != "snapshot",
                 _ => true
             };
-        }).Take(50).ToList();
+        }).ToList();
 
-        FilteredVersions = new ObservableCollection<MinecraftVersion>(filtered);
+        _displayCount = Math.Min(VersionPageSize, _fullFilteredVersions.Count);
+        FilteredVersions = new ObservableCollection<MinecraftVersion>(_fullFilteredVersions.Take(_displayCount));
+    }
+
+    [RelayCommand]
+    private void LoadMoreVersions()
+    {
+        if (_isLoadingMore || _displayCount >= _fullFilteredVersions.Count) return;
+        _isLoadingMore = true;
+
+        var newCount = Math.Min(_displayCount + VersionPageSize, _fullFilteredVersions.Count);
+        var newItems = _fullFilteredVersions.Skip(_displayCount).Take(newCount - _displayCount);
+        foreach (var item in newItems)
+            FilteredVersions.Add(item);
+        _displayCount = newCount;
+
+        _isLoadingMore = false;
     }
 
     [RelayCommand]

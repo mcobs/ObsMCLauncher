@@ -272,7 +272,7 @@
                     BorderBrush="{DynamicResource BorderBrush}">
               <Grid>
 
-                <ScrollViewer VerticalScrollBarVisibility="Auto" IsVisible="{Binding !IsLoading}">
+                <ScrollViewer x:Name="OnlineVersionScrollViewer" VerticalScrollBarVisibility="Auto" IsVisible="{Binding !IsLoading}" ScrollChanged="OnOnlineVersionScrollChanged">
                   <ItemsControl ItemsSource="{Binding FilteredVersions}" Margin="0,4">
                     <ItemsControl.ItemTemplate>
                       <DataTemplate x:DataType="mc:MinecraftVersion">

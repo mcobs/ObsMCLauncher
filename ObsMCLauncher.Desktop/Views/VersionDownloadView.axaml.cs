@@ -13,11 +13,27 @@ public partial class VersionDownloadView : UserControl
 {
     private TranslateTransform? _sidebarTransform;
     private bool _isAnimating;
+    private bool _isScrollLoading;
 
     public VersionDownloadView()
     {
         InitializeComponent();
         Loaded += OnLoaded;
+    }
+
+    private void OnOnlineVersionScrollChanged(object? sender, ScrollChangedEventArgs e)
+    {
+        var scrollViewer = sender as ScrollViewer;
+        if (scrollViewer == null || _isScrollLoading) return;
+
+        // 距底部不到 100px 时触发加载
+        if (scrollViewer.Offset.Y + scrollViewer.Viewport.Height >= scrollViewer.Extent.Height - 100)
+        {
+            _isScrollLoading = true;
+            var vm = DataContext as ViewModels.VersionDownloadViewModel;
+            vm?.LoadMoreVersionsCommand.Execute(null);
+            _isScrollLoading = false;
+        }
     }
 
     private void OnLoaded(object? sender, Avalonia.Interactivity.RoutedEventArgs e)

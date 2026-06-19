@@ -38,6 +38,13 @@ public partial class ResourcesViewModel : ViewModelBase
     private readonly SemaphoreSlim _debounceLock = new(1, 1);
     private CancellationTokenSource? _debounceCts;
 
+    // 分页状态
+    private int _curseForgePage;
+    private int _modrinthOffset;
+    private int _chineseMatchOffset;
+    private bool _isLoadingMore;
+    private const int ResourcePageSize = 20;
+
     // --- 状态定义 ---
     [ObservableProperty] private string _query = "";
     [ObservableProperty] private string _status = "输入关键词开始搜索";
@@ -290,6 +297,11 @@ public partial class ResourcesViewModel : ViewModelBase
             Status = "正在从云端获取资源...";
             Results.Clear();
 
+            // 重置分页
+            _curseForgePage = 0;
+            _modrinthOffset = 0;
+            _chineseMatchOffset = 0;
+
             string gameVersion = "";
             if (VersionFilter != "全部版本") gameVersion = VersionFilter;
             else if (!string.IsNullOrEmpty(SelectedVersionId)) gameVersion = ExtractGameVersion(SelectedVersionId);
@@ -364,6 +376,7 @@ public partial class ResourcesViewModel : ViewModelBase
             .Where(t => int.TryParse(t.CurseForgeId, out _))
             .Select(t => int.Parse(t.CurseForgeId))
             .Where(id => !existingIds.Contains(id.ToString()))
+            .Skip(_chineseMatchOffset)
             .Take(10)
             .ToList();
 
@@ -401,6 +414,7 @@ public partial class ResourcesViewModel : ViewModelBase
         var modrinthIds = matchedTranslations
             .SelectMany(t => t.ModIds)
             .Where(id => !string.IsNullOrWhiteSpace(id) && !existingIds.Contains(id))
+            .Skip(_chineseMatchOffset)
             .Take(10)
             .ToList();
 
@@ -439,6 +453,56 @@ public partial class ResourcesViewModel : ViewModelBase
             }
             catch (OperationCanceledException) { throw; }
             catch { }
+        }
+    }
+
+    [RelayCommand]
+    private async Task LoadMoreResources()
+    {
+        if (_isLoadingMore || IsLoading || string.IsNullOrWhiteSpace(Query)) return;
+        _isLoadingMore = true;
+
+        try
+        {
+            _searchCts?.Cancel();
+            _searchCts = new CancellationTokenSource();
+            var ct = _searchCts.Token;
+
+            string gameVersion = "";
+            if (VersionFilter != "全部版本") gameVersion = VersionFilter;
+            else if (!string.IsNullOrEmpty(SelectedVersionId)) gameVersion = ExtractGameVersion(SelectedVersionId);
+
+            var tasks = new List<Task>();
+
+            if (CurrentSource == ResourceSource.Both || CurrentSource == ResourceSource.CurseForge)
+            {
+                _curseForgePage++;
+                tasks.Add(SearchCurseForge(gameVersion, ct, _curseForgePage));
+            }
+
+            if (CurrentSource == ResourceSource.Both || CurrentSource == ResourceSource.Modrinth)
+            {
+                _modrinthOffset += ResourcePageSize;
+                tasks.Add(SearchModrinth(gameVersion, ct, _modrinthOffset));
+            }
+
+            // 中文翻译匹配也加载更多
+            _chineseMatchOffset += 10;
+            tasks.Add(SearchByChineseTranslation(gameVersion, ct));
+
+            await Task.WhenAll(tasks);
+
+            ApplyFuzzyFilter();
+            Status = Results.Count > 0 ? $"找到 {Results.Count} 个资源" : "未找到匹配资源";
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex)
+        {
+            Status = $"加载更多失败: {ex.Message}";
+        }
+        finally
+        {
+            _isLoadingMore = false;
         }
     }
 
@@ -494,7 +558,7 @@ public partial class ResourcesViewModel : ViewModelBase
         return match.Success ? match.Groups[1].Value : "";
     }
 
-    private async Task SearchCurseForge(string gameVersion, CancellationToken ct)
+    private async Task SearchCurseForge(string gameVersion, CancellationToken ct, int pageIndex = 0)
     {
         int classId = CurrentResourceType switch
         {
@@ -510,7 +574,9 @@ public partial class ResourcesViewModel : ViewModelBase
             searchFilter: Query,
             gameVersion: gameVersion,
             classId: classId,
-            sortField: _sortValue is int i ? i : 2
+            sortField: _sortValue is int i ? i : 2,
+            pageIndex: pageIndex,
+            pageSize: ResourcePageSize
         ).ConfigureAwait(false);
 
         if (response?.Data == null) return;
@@ -536,7 +602,7 @@ public partial class ResourcesViewModel : ViewModelBase
         });
     }
 
-    private async Task SearchModrinth(string gameVersion, CancellationToken ct)
+    private async Task SearchModrinth(string gameVersion, CancellationToken ct, int offset = 0)
     {
         string projectType = CurrentResourceType switch
         {
@@ -552,7 +618,9 @@ public partial class ResourcesViewModel : ViewModelBase
             searchQuery: Query,
             gameVersion: gameVersion,
             projectType: projectType,
-            sortBy: _sortValue is string s ? s : "relevance"
+            sortBy: _sortValue is string s ? s : "relevance",
+            offset: offset,
+            limit: ResourcePageSize
         ).ConfigureAwait(false);
 
         if (response?.Hits == null) return;
