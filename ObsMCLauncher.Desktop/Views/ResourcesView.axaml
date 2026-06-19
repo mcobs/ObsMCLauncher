@@ -137,13 +137,10 @@
                     </StackPanel>
 
                     <StackPanel Grid.Column="2" Grid.Row="0" Grid.RowSpan="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" Margin="8,0,0,0">
-                      <Button Content="详情" Classes="ghost" FontSize="12" Padding="10,4"
-                              Command="{Binding #Root.((vm:ResourcesViewModel)DataContext).OpenDetailCommand}"
-                              CommandParameter="{Binding}" />
-                      <Button Content="下载" Classes="accent" FontSize="12" Padding="10,4"
-                              Command="{Binding #Root.((vm:ResourcesViewModel)DataContext).DownloadCommand}"
-                              CommandParameter="{Binding}" />
-                    </StackPanel>
+<Button Content="详情" Classes="accent" FontSize="12" Padding="10,4"
+        Command="{Binding #Root.((vm:ResourcesViewModel)DataContext).OpenDetailCommand}"
+        CommandParameter="{Binding}" />
+</StackPanel>
 
                   </Grid>
                 </Border>
