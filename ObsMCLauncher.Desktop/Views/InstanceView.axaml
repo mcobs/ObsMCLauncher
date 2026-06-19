@@ -181,6 +181,44 @@
                 </Border>
               </StackPanel>
             </Border>
+
+            <!-- ===== 高级管理 ===== -->
+            <Border Background="{DynamicResource SurfaceBrush}"
+                    CornerRadius="10"
+                    Padding="16"
+                    BorderThickness="1"
+                    BorderBrush="{DynamicResource BorderBrush}">
+              <StackPanel Spacing="12">
+                <TextBlock Text="高级管理" FontSize="14" FontWeight="Medium"/>
+                <TextBlock Text="版本运维工具，请谨慎操作" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}"/>
+
+                <Grid ColumnDefinitions="*,*,*" ColumnSpacing="4" Margin="0,4,0,0">
+                  <Button Classes="ghost" Padding="8,10" Command="{Binding ExportLaunchScriptCommand}">
+                    <StackPanel Spacing="6" HorizontalAlignment="Center">
+                      <Path Data="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"
+                            Width="18" Height="18" Stretch="Uniform" Fill="{DynamicResource PrimaryBrush}"/>
+                      <TextBlock Text="导出启动脚本" FontSize="12"/>
+                    </StackPanel>
+                  </Button>
+
+                  <Button Grid.Column="1" Classes="ghost" Padding="8,10" Command="{Binding CompleteFilesCommand}">
+                    <StackPanel Spacing="6" HorizontalAlignment="Center">
+                      <Path Data="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"
+                            Width="18" Height="18" Stretch="Uniform" Fill="{DynamicResource PrimaryBrush}"/>
+                      <TextBlock Text="补全文件" FontSize="12"/>
+                    </StackPanel>
+                  </Button>
+
+                  <Button Grid.Column="2" Classes="danger" Padding="8,10" Command="{Binding DeleteVersionCommand}">
+                    <StackPanel Spacing="6" HorizontalAlignment="Center">
+                      <Path Data="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"
+                            Width="18" Height="18" Stretch="Uniform" Fill="Red"/>
+                      <TextBlock Text="删除版本" FontSize="12" Foreground="Red"/>
+                    </StackPanel>
+                  </Button>
+                </Grid>
+              </StackPanel>
+            </Border>
           </StackPanel>
 
           <!-- ===== 版本设置 Tab ===== -->

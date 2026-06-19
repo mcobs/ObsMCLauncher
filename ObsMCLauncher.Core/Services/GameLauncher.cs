@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.IO.Compression;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using ObsMCLauncher.Core.Models;
 using ObsMCLauncher.Core.Services.Accounts;
@@ -384,7 +385,7 @@ public class GameLauncher
         }
     }
 
-    private static string BuildLaunchArguments(string versionId, GameAccount account, LauncherConfig config, VersionInfo versionInfo, string? serverAddress = null, int serverPort = 25565)
+    public static string BuildLaunchArguments(string versionId, GameAccount account, LauncherConfig config, VersionInfo versionInfo, string? serverAddress = null, int serverPort = 25565)
     {
         var args = new StringBuilder();
 
@@ -957,6 +958,153 @@ public class GameLauncher
         return false;
     }
 
+    public static bool IsLibraryAllowedPublic(Library lib) => IsLibraryAllowed(lib);
+    public static string GetLibraryPathPublic(string librariesDir, Library lib) => GetLibraryPath(librariesDir, lib);
+
+    /// <summary>
+    /// 为导出脚本生成启动命令（供外部调用）
+    /// </summary>
+    public static string BuildLaunchScriptContent(string versionId, LauncherConfig config, GameAccount account)
+    {
+        var versionDir = Path.Combine(config.GameDirectory, "versions", versionId);
+        var versionJsonPath = Path.Combine(versionDir, $"{versionId}.json");
+
+        if (!File.Exists(versionJsonPath))
+            throw new FileNotFoundException($"未找到版本信息文件: {versionJsonPath}");
+
+        var versionJson = File.ReadAllText(versionJsonPath);
+        var versionInfo = JsonSerializer.Deserialize<VersionInfo>(versionJson, CachedJsonOptions)
+            ?? throw new InvalidOperationException("版本信息解析失败");
+
+        versionInfo = MergeInheritedVersion(config.GameDirectory, versionId, versionInfo);
+        return BuildLaunchArguments(versionId, account, config, versionInfo);
+    }
+
+    /// <summary>
+    /// 检查版本文件完整性，返回缺失的库文件数量和资源文件数量
+    /// </summary>
+    public static (int missingLibraries, int missingAssets) CheckVersionIntegrity(string gameDir, string versionId)
+    {
+        var versionDir = Path.Combine(gameDir, "versions", versionId);
+        var versionJsonPath = Path.Combine(versionDir, $"{versionId}.json");
+
+        if (!File.Exists(versionJsonPath))
+            return (-1, -1);
+
+        var versionJson = File.ReadAllText(versionJsonPath);
+        var versionInfo = JsonSerializer.Deserialize<VersionInfo>(versionJson, CachedJsonOptions);
+        if (versionInfo == null)
+            return (-1, -1);
+
+        versionInfo = MergeInheritedVersion(gameDir, versionId, versionInfo);
+
+        int missingLibs = 0;
+        var librariesDir = Path.Combine(gameDir, "libraries");
+
+        if (versionInfo.Libraries != null)
+        {
+            foreach (var lib in versionInfo.Libraries)
+            {
+                if (IsLibraryAllowed(lib))
+                {
+                    var libPath = GetLibraryPath(librariesDir, lib);
+                    if (!string.IsNullOrEmpty(libPath) && !File.Exists(libPath))
+                        missingLibs++;
+                }
+            }
+        }
+
+        int missingAssets = 0;
+        if (versionInfo.AssetIndex != null)
+        {
+            var assetsDir = Path.Combine(gameDir, "assets");
+            var indexPath = Path.Combine(assetsDir, "indexes", $"{versionInfo.AssetIndex.Id}.json");
+            if (File.Exists(indexPath))
+            {
+                try
+                {
+                    var indexJson = File.ReadAllText(indexPath);
+                    using var doc = JsonDocument.Parse(indexJson);
+                    if (doc.RootElement.TryGetProperty("objects", out var objects))
+                    {
+                        foreach (var obj in objects.EnumerateObject())
+                        {
+                            var hash = obj.Value.GetProperty("hash").GetString();
+                            if (!string.IsNullOrEmpty(hash))
+                            {
+                                var assetPath = Path.Combine(assetsDir, "objects", hash[..2], hash);
+                                if (!File.Exists(assetPath))
+                                    missingAssets++;
+                            }
+                        }
+                    }
+                }
+                catch { }
+            }
+            else
+            {
+                missingAssets = -1;
+            }
+        }
+
+        return (missingLibs, missingAssets);
+    }
+
+    /// <summary>
+    /// 自动补全版本缺失的库文件和资源文件
+    /// </summary>
+    public static async Task<(int libsDownloaded, int libsFailed, bool assetsOk)> CompleteVersionFilesAsync(
+        string gameDir, string versionId,
+        Action<string>? progressCallback = null,
+        CancellationToken cancellationToken = default)
+    {
+        var versionDir = Path.Combine(gameDir, "versions", versionId);
+        var versionJsonPath = Path.Combine(versionDir, $"{versionId}.json");
+
+        if (!File.Exists(versionJsonPath))
+            throw new FileNotFoundException($"未找到版本信息文件: {versionJsonPath}");
+
+        var versionJson = await File.ReadAllTextAsync(versionJsonPath, cancellationToken);
+        var versionInfo = JsonSerializer.Deserialize<VersionInfo>(versionJson, CachedJsonOptions)
+            ?? throw new InvalidOperationException("版本信息解析失败");
+
+        versionInfo = MergeInheritedVersion(gameDir, versionId, versionInfo);
+
+        int libsDownloaded = 0;
+        int libsFailed = 0;
+
+        // 下载缺失的库文件
+        var (missingRequired, missingOptional) = GetMissingLibraries(gameDir, versionInfo);
+        if (missingRequired.Count > 0)
+        {
+            progressCallback?.Invoke($"正在下载 {missingRequired.Count} 个缺失的库文件...");
+            (libsDownloaded, libsFailed) = await LibraryDownloader.DownloadMissingLibrariesAsync(
+                gameDir, versionId, missingRequired, null, cancellationToken);
+        }
+
+        if (missingOptional.Count > 0)
+        {
+            progressCallback?.Invoke($"正在下载 {missingOptional.Count} 个可选库文件...");
+            var (optOk, optFail) = await LibraryDownloader.DownloadMissingLibrariesAsync(
+                gameDir, versionId, missingOptional, null, cancellationToken);
+            libsDownloaded += optOk;
+            libsFailed += optFail;
+        }
+
+        // 下载缺失的资源文件
+        bool assetsOk = true;
+        progressCallback?.Invoke("正在检查资源文件...");
+        var assetsResult = await AssetsDownloadService.DownloadAndCheckAssetsAsync(
+            gameDir, versionId, (p, total, msg, speed) =>
+            {
+                progressCallback?.Invoke($"{msg} ({p}%)");
+            }, cancellationToken);
+
+        assetsOk = assetsResult.Success;
+
+        return (libsDownloaded, libsFailed, assetsOk);
+    }
+
     private static bool IsLibraryAllowed(Library lib)
     {
         if (lib.Rules == null || lib.Rules.Length == 0)
@@ -1115,7 +1263,7 @@ public class GameLauncher
         return "unknown";
     }
 
-    private class VersionInfo
+    public class VersionInfo
     {
         public string? MainClass { get; set; }
         public string? Assets { get; set; }
@@ -1127,18 +1275,18 @@ public class GameLauncher
         public string? VersionName { get; set; }
     }
 
-    private class GameArguments
+    public class GameArguments
     {
         public List<object>? Game { get; set; }
         public List<object>? Jvm { get; set; }
     }
 
-    private class AssetIndexInfo
+    public class AssetIndexInfo
     {
         public string? Id { get; set; }
     }
 
-    private class Library
+    public class Library
     {
         public string? Name { get; set; }
         public LibraryDownloads? Downloads { get; set; }
@@ -1146,26 +1294,26 @@ public class GameLauncher
         public Dictionary<string, string>? Natives { get; set; }
     }
 
-    private class LibraryDownloads
+    public class LibraryDownloads
     {
         public Artifact? Artifact { get; set; }
         public Dictionary<string, Artifact>? Classifiers { get; set; }
     }
 
-    private class Artifact
+    public class Artifact
     {
         public string? Path { get; set; }
         public string? Url { get; set; }
         public long Size { get; set; }
     }
 
-    private class Rule
+    public class Rule
     {
         public string? Action { get; set; }
         public OsInfo? Os { get; set; }
     }
 
-    private class OsInfo
+    public class OsInfo
     {
         public string? Name { get; set; }
     }

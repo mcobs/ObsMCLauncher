@@ -284,4 +284,20 @@
     <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
   </Style>
 
+  <!-- 危险操作按钮 -->
+  <Style Selector="Button.danger">
+    <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="6" />
+  </Style>
+
+  <Style Selector="Button.danger:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="#22FF0000" />
+  </Style>
+
+  <Style Selector="Button.danger:pressed /template/ ContentPresenter">
+    <Setter Property="Background" Value="#33FF0000" />
+  </Style>
+
 </Styles>

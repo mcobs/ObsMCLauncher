@@ -1,14 +1,19 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Threading.Tasks;
+using Avalonia.Controls;
+using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using ObsMCLauncher.Core.Models;
+using ObsMCLauncher.Core.Services;
+using ObsMCLauncher.Core.Services.Accounts;
 using ObsMCLauncher.Core.Services.Minecraft;
 using ObsMCLauncher.Desktop.ViewModels.Notifications;
 using ObsMCLauncher.Desktop.ViewModels.Dialogs;
@@ -685,6 +690,139 @@ public partial class InstanceViewModel : ViewModelBase
     {
         IsEditingDescription = false;
         EditingDescription = Description;
+    }
+
+    [RelayCommand]
+    private async Task ExportLaunchScript()
+    {
+        try
+        {
+            if (_version == null) return;
+
+            var config = LauncherConfig.Load();
+            var account = AccountService.Instance.GetDefaultAccount();
+            if (account == null)
+            {
+                _notificationService.Show("导出失败", "请先登录账号", NotificationType.Error);
+                return;
+            }
+
+            var arguments = GameLauncher.BuildLaunchScriptContent(_version.Id, config, account);
+
+            var storageProvider = (Avalonia.Application.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow?.StorageProvider;
+            if (storageProvider == null) return;
+
+            var defaultName = $"启动_{_version.Id}.bat";
+            var file = await storageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+            {
+                Title = "导出启动脚本",
+                DefaultExtension = ".bat",
+                SuggestedFileName = defaultName,
+                FileTypeChoices = new[]
+                {
+                    new FilePickerFileType("Windows 批处理") { Patterns = new[] { "*.bat" } },
+                    new FilePickerFileType("Shell 脚本") { Patterns = new[] { "*.sh" } }
+                }
+            });
+
+            if (file == null) return;
+
+            var isWindows = file.Name.EndsWith(".bat", StringComparison.OrdinalIgnoreCase);
+            var gameDir = config.GetRunDirectory(_version.Id);
+
+            var script = isWindows
+                ? $"@echo off{Environment.NewLine}cd /d \"{gameDir}\"{Environment.NewLine}java {arguments}{Environment.NewLine}pause"
+                : $"#!/bin/bash{Environment.NewLine}cd \"{gameDir}\"{Environment.NewLine}java {arguments}";
+
+            await File.WriteAllTextAsync(file.Path.LocalPath, script);
+            _notificationService.Show("导出成功", $"启动脚本已导出到 {file.Name}", NotificationType.Success, 3);
+        }
+        catch (Exception ex)
+        {
+            _notificationService.Show("导出失败", ex.Message, NotificationType.Error);
+        }
+    }
+
+    [RelayCommand]
+    private async Task CompleteFiles()
+    {
+        try
+        {
+            if (_version == null) return;
+
+            var config = LauncherConfig.Load();
+            var (missingLibs, missingAssets) = GameLauncher.CheckVersionIntegrity(config.GameDirectory, _version.Id);
+
+            if (missingLibs == -1)
+            {
+                _notificationService.Show("补全文件", "未找到版本信息文件，无法检测", NotificationType.Error);
+                return;
+            }
+
+            if (missingLibs == 0 && missingAssets == 0)
+            {
+                _notificationService.Show("补全文件", "所有文件已完整，无需补全", NotificationType.Success);
+                return;
+            }
+
+            var msg = new System.Text.StringBuilder();
+            if (missingLibs > 0) msg.AppendLine($"缺失 {missingLibs} 个库文件");
+            if (missingAssets > 0) msg.AppendLine($"缺失 {missingAssets} 个资源文件");
+            if (missingAssets == -1) msg.AppendLine("资源索引文件缺失，将重新下载");
+
+            var result = await _dialogService.ShowQuestion("补全文件", $"{msg}\n是否自动下载补全这些文件？");
+            if (result != DialogResult.Yes) return;
+
+            _notificationService.Show("补全文件", "正在下载缺失文件...", NotificationType.Info);
+
+            var (downloaded, failed, assetsOk) = await GameLauncher.CompleteVersionFilesAsync(
+                config.GameDirectory, _version.Id);
+
+            if (failed > 0)
+            {
+                _notificationService.Show("补全文件", $"库文件下载完成: {downloaded} 成功, {failed} 失败。请检查网络后重试", NotificationType.Warning);
+            }
+            else if (!assetsOk)
+            {
+                _notificationService.Show("补全文件", "库文件下载完成，资源文件下载失败，请检查网络后重试", NotificationType.Warning);
+            }
+            else
+            {
+                _notificationService.Show("补全文件", $"补全完成，已下载 {downloaded} 个文件", NotificationType.Success);
+            }
+        }
+        catch (Exception ex)
+        {
+            _notificationService.Show("补全失败", ex.Message, NotificationType.Error);
+        }
+    }
+
+    [RelayCommand]
+    private async Task DeleteVersion()
+    {
+        try
+        {
+            if (_version == null) return;
+
+            var result = await _dialogService.ShowQuestion("确认删除", $"确定要删除版本 {_version.Id} 吗？\n此操作将永久删除版本文件，不可恢复。");
+            if (result != DialogResult.Yes) return;
+
+            var config = LauncherConfig.Load();
+            var versionDir = Path.Combine(config.GameDirectory, "versions", _version.Id);
+
+            if (Directory.Exists(versionDir))
+            {
+                Directory.Delete(versionDir, true);
+            }
+
+            _notificationService.Show("删除成功", $"版本 {_version.Id} 已删除", NotificationType.Success);
+
+            OnCloseRequested?.Invoke();
+        }
+        catch (Exception ex)
+        {
+            _notificationService.Show("删除失败", ex.Message, NotificationType.Error);
+        }
     }
 
     private void LoadMods()
