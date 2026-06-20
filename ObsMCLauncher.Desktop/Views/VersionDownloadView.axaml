@@ -96,9 +96,8 @@
             </Border>
 
             <!-- 分组列表（下拉栏风格） -->
-            <Grid Grid.Row="1">
-              <ScrollViewer x:Name="InstalledVersionScrollViewer" VerticalScrollBarVisibility="Auto" ScrollChanged="OnInstalledVersionScrollChanged">
-                <StackPanel Spacing="6" Margin="0,0,0,80">
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+              <StackPanel Spacing="6" Margin="0,0,0,6">
                 <ItemsControl ItemsSource="{Binding GroupSections}">
                   <ItemsControl.ItemTemplate>
                     <DataTemplate>
@@ -220,26 +219,7 @@
                   </ItemsControl.ItemTemplate>
                 </ItemsControl>
               </StackPanel>
-              </ScrollViewer>
-              <Border x:Name="InstalledVersionGradientMask"
-                      VerticalAlignment="Bottom"
-                      Height="80"
-                      IsHitTestVisible="False"
-                      ZIndex="10"
-                      Background="{DynamicResource SystemControlBackgroundBaseHighBrush}">
-                <Border.Transitions>
-                  <Transitions>
-                    <DoubleTransition Property="Opacity" Duration="0:0:0.2" Easing="CircularEaseOut"/>
-                  </Transitions>
-                </Border.Transitions>
-                <Border.OpacityMask>
-                  <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
-                    <GradientStop Offset="0" Color="Transparent"/>
-                    <GradientStop Offset="1" Color="White"/>
-                  </LinearGradientBrush>
-                </Border.OpacityMask>
-              </Border>
-            </Grid>
+            </ScrollViewer>
 
           </Grid>
         </TabItem>
@@ -289,12 +269,11 @@
                     Background="{DynamicResource SurfaceBrush}"
                     CornerRadius="12"
                     BorderThickness="1"
-                    BorderBrush="{DynamicResource BorderBrush}"
-                    ClipToBounds="True">
+                    BorderBrush="{DynamicResource BorderBrush}">
               <Grid>
 
                 <ScrollViewer x:Name="OnlineVersionScrollViewer" VerticalScrollBarVisibility="Auto" IsVisible="{Binding !IsLoading}" ScrollChanged="OnOnlineVersionScrollChanged">
-                  <ItemsControl ItemsSource="{Binding FilteredVersions}" Margin="0,4,0,80">
+                  <ItemsControl ItemsSource="{Binding FilteredVersions}" Margin="0,4">
                     <ItemsControl.ItemTemplate>
                       <DataTemplate x:DataType="mc:MinecraftVersion">
                         <Button Command="{Binding #Root.((vm:VersionDownloadViewModel)DataContext).OpenDetailCommand}"
@@ -342,25 +321,6 @@
                     </ItemsControl.ItemTemplate>
                   </ItemsControl>
                 </ScrollViewer>
-
-                <Border x:Name="OnlineVersionGradientMask"
-                        VerticalAlignment="Bottom"
-                        Height="80"
-                        IsHitTestVisible="False"
-                        ZIndex="10"
-                        Background="{DynamicResource SurfaceBrush}">
-                  <Border.Transitions>
-                    <Transitions>
-                      <DoubleTransition Property="Opacity" Duration="0:0:0.2" Easing="CircularEaseOut"/>
-                    </Transitions>
-                  </Border.Transitions>
-                  <Border.OpacityMask>
-                    <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
-                      <GradientStop Offset="0" Color="Transparent"/>
-                      <GradientStop Offset="1" Color="White"/>
-                    </LinearGradientBrush>
-                  </Border.OpacityMask>
-                </Border>
 
                 <StackPanel IsVisible="{Binding IsLoading}" Margin="12,4">
                   <Border Background="{DynamicResource SurfaceElevatedBrush}" CornerRadius="6" Padding="10,8" Margin="0,0,0,4" Opacity="0.6"
