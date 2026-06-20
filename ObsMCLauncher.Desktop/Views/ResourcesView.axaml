@@ -84,7 +84,8 @@
     </Border>
 
     <Border Grid.Row="2" CornerRadius="10" Background="{DynamicResource SurfaceBrush}"
-            BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
+            BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}"
+            ClipToBounds="True">
       <Grid>
         <ContentControl Content="{Binding DetailViewModel}" IsVisible="{Binding DetailViewModel, Converter={x:Static converters:NotNullConverter.Instance}}" />
 
@@ -107,7 +108,7 @@
         </ItemsControl>
 
         <ScrollViewer x:Name="ResourceScrollViewer" IsVisible="{Binding IsListVisible}" ScrollChanged="OnResourceScrollChanged">
-          <ItemsControl ItemsSource="{Binding Results}" Margin="12">
+          <ItemsControl ItemsSource="{Binding Results}" Margin="12,12,12,80">
             <ItemsControl.ItemTemplate>
               <DataTemplate>
                 <Border CornerRadius="8" Padding="10" Margin="0,0,0,6"
@@ -148,6 +149,24 @@
             </ItemsControl.ItemTemplate>
           </ItemsControl>
         </ScrollViewer>
+        <Border x:Name="ResourceGradientMask"
+                VerticalAlignment="Bottom"
+                Height="80"
+                IsHitTestVisible="False"
+                ZIndex="10"
+                Background="{DynamicResource SurfaceBrush}">
+          <Border.Transitions>
+            <Transitions>
+              <DoubleTransition Property="Opacity" Duration="0:0:0.2" Easing="CircularEaseOut"/>
+            </Transitions>
+          </Border.Transitions>
+          <Border.OpacityMask>
+            <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+              <GradientStop Offset="0" Color="Transparent"/>
+              <GradientStop Offset="1" Color="White"/>
+            </LinearGradientBrush>
+          </Border.OpacityMask>
+        </Border>
       </Grid>
     </Border>
 

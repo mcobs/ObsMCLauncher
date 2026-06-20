@@ -21,10 +21,22 @@ public partial class VersionDownloadView : UserControl
         Loaded += OnLoaded;
     }
 
+    private void OnInstalledVersionScrollChanged(object? sender, ScrollChangedEventArgs e)
+    {
+        if (sender is ScrollViewer sv)
+            UpdateGradientMaskOpacity(sv, InstalledVersionGradientMask);
+    }
+
     private void OnOnlineVersionScrollChanged(object? sender, ScrollChangedEventArgs e)
     {
         var scrollViewer = sender as ScrollViewer;
-        if (scrollViewer == null || _isScrollLoading) return;
+        if (scrollViewer == null) return;
+
+        // 渐变遮罩淡出
+        UpdateGradientMaskOpacity(scrollViewer, OnlineVersionGradientMask);
+
+        // 无限滚动加载
+        if (_isScrollLoading) return;
 
         // 距底部不到 100px 时触发加载
         if (scrollViewer.Offset.Y + scrollViewer.Viewport.Height >= scrollViewer.Extent.Height - 100)
@@ -34,6 +46,25 @@ public partial class VersionDownloadView : UserControl
             vm?.LoadMoreVersionsCommand.Execute(null);
             _isScrollLoading = false;
         }
+    }
+
+    private void UpdateGradientMaskOpacity(ScrollViewer scrollViewer, Border mask)
+    {
+        if (scrollViewer.Extent.Height <= scrollViewer.Viewport.Height)
+        {
+            mask.Opacity = 0;
+            return;
+        }
+
+        double distanceFromBottom = scrollViewer.Extent.Height - scrollViewer.Offset.Y - scrollViewer.Viewport.Height;
+        double fadeRange = 80;
+
+        if (distanceFromBottom <= 0)
+            mask.Opacity = 0;
+        else if (distanceFromBottom >= fadeRange)
+            mask.Opacity = 1;
+        else
+            mask.Opacity = distanceFromBottom / fadeRange;
     }
 
     private void OnLoaded(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
@@ -58,6 +89,12 @@ public partial class VersionDownloadView : UserControl
                 vm.ToggleSidebarCommand.Execute(null);
             }
         };
+
+        // 初始化渐变遮罩：内容不足以滚动时隐藏
+        if (InstalledVersionScrollViewer != null && InstalledVersionScrollViewer.Extent.Height <= InstalledVersionScrollViewer.Viewport.Height)
+            InstalledVersionGradientMask.Opacity = 0;
+        if (OnlineVersionScrollViewer != null && OnlineVersionScrollViewer.Extent.Height <= OnlineVersionScrollViewer.Viewport.Height)
+            OnlineVersionGradientMask.Opacity = 0;
     }
 
     private async void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
