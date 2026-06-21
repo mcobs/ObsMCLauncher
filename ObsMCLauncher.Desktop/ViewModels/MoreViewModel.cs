@@ -186,10 +186,10 @@ public partial class MoreViewModel : ViewModelBase
             IsCheckingUpdate = true;
             _notificationService.Show("检查更新", "正在检查更新...", NotificationType.Info);
 
-            var newRelease = await UpdateService.CheckForUpdatesAsync();
-            if (newRelease != null)
+            var result = await UpdateService.CheckForUpdatesAsync();
+            if (result != null)
             {
-                _notificationService.Show("发现新版本", $"有新版本可用: {newRelease.TagName}", NotificationType.Success);
+                _notificationService.Show("发现新版本", $"有新版本可用: {result.Version}", NotificationType.Success);
             }
             else
             {
@@ -300,10 +300,10 @@ public partial class AboutViewModel : ViewModelBase
             IsCheckingUpdate = true;
             _notificationService.Show("检查更新", "正在检查更新...", NotificationType.Info);
 
-            var newRelease = await UpdateService.CheckForUpdatesAsync();
-            if (newRelease != null)
+            var result = await UpdateService.CheckForUpdatesAsync();
+            if (result != null)
             {
-                _notificationService.Show("发现新版本", $"有新版本可用: {newRelease.TagName}", NotificationType.Success);
+                _notificationService.Show("发现新版本", $"有新版本可用: {result.Version}", NotificationType.Success);
             }
             else
             {

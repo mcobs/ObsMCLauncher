@@ -1,4 +1,5 @@
 using System;
+using System.Reflection;
 
 namespace ObsMCLauncher.Core.Utils;
 
@@ -11,7 +12,12 @@ public enum VersionStatus
 
 public static class VersionInfo
 {
-    public static readonly string Version = "1.0.0-rc.5";
+    /// <summary>
+    /// 从程序集版本号读取，CI通过-p:Version=xxx注入
+    /// 开发时默认为0.0.0-dev
+    /// </summary>
+    public static readonly string Version = GetAssemblyVersion();
+    //public static readonly string Version = "1.0.0-rc.5";
 
     public static readonly string CodeName = "GrassBlock";
 
@@ -61,5 +67,23 @@ public static class VersionInfo
 版本代号: {CodeName}
 发布日期: {ReleaseDate:yyyy-MM-dd}
             ".Trim();
+    }
+
+    private static string GetAssemblyVersion()
+    {
+        try
+        {
+            var asm = Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly();
+            var ver = asm.GetName().Version;
+            if (ver != null && ver.Major != 0)
+            {
+                // 程序集版本格式为 major.minor.build.revision
+                // 对应 semver 的 major.minor.patch
+                return $"{ver.Major}.{ver.Minor}.{ver.Build}";
+            }
+        }
+        catch { }
+
+        return "0.0.0-dev";
     }
 }

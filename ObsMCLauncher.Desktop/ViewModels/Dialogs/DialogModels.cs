@@ -157,6 +157,24 @@ public sealed partial class UpdateDialogRequest : ObservableObject
 
     public TaskCompletionSource<bool> Completion { get; } = new();
 
+    /// <summary>
+    /// 是否正在下载更新
+    /// </summary>
+    [ObservableProperty]
+    private bool _isDownloading;
+
+    /// <summary>
+    /// 下载进度 0-100
+    /// </summary>
+    [ObservableProperty]
+    private int _downloadProgress;
+
+    /// <summary>
+    /// 下载状态文本
+    /// </summary>
+    [ObservableProperty]
+    private string _downloadStatusText = string.Empty;
+
     [ObservableProperty]
     private double _animationOpacity = 0;
 

@@ -143,7 +143,7 @@ public partial class DevConsoleViewModel : ObservableObject
             if (result)
             {
                 AppendOutput("[info] 用户点击了「立即更新」");
-                UpdateService.OpenReleasePage("https://github.com/mcobs/ObsMCLauncher/releases/latest");
+                UpdateService.OpenLatestReleasePage();
             }
             else
             {

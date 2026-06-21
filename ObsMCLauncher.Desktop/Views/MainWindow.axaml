@@ -585,7 +585,7 @@
                     <TranslateTransform Y="{Binding Dialogs.UpdateDialogCurrent.AnimationOffsetY, FallbackValue=-40}" />
                 </TransformGroup>
             </Border.RenderTransform>
-            <Grid RowDefinitions="Auto,*,Auto">
+            <Grid RowDefinitions="Auto,*,Auto,Auto">
                 <TextBlock Grid.Row="0" Text="{Binding Dialogs.UpdateDialogCurrent.Title, FallbackValue=''}" FontSize="22" FontWeight="Bold" Margin="0,0,0,20" />
 
                 <ScrollViewer Grid.Row="1" MaxHeight="400" Margin="0,0,0,25">
@@ -595,14 +595,28 @@
                                LineHeight="22" />
                 </ScrollViewer>
 
-                <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+                <!-- 下载进度区域 -->
+                <StackPanel Grid.Row="2" IsVisible="{Binding Dialogs.UpdateDialogCurrent.IsDownloading}" Margin="0,0,0,15" Spacing="8">
+                    <ProgressBar Value="{Binding Dialogs.UpdateDialogCurrent.DownloadProgress}"
+                                 Minimum="0" Maximum="100"
+                                 Height="6"
+                                 CornerRadius="3" />
+                    <TextBlock Text="{Binding Dialogs.UpdateDialogCurrent.DownloadStatusText, FallbackValue=''}"
+                               FontSize="12"
+                               HorizontalAlignment="Center"
+                               Opacity="0.7" />
+                </StackPanel>
+
+                <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
                     <Button Content="{Binding Dialogs.UpdateDialogCurrent.CancelText, FallbackValue='取消'}"
                             Width="100"
+                            IsEnabled="{Binding !Dialogs.UpdateDialogCurrent.IsDownloading}"
                             Command="{Binding Dialogs.CloseUpdateDialogCommand}"
                             CommandParameter="{x:False}" />
                     <Button Content="{Binding Dialogs.UpdateDialogCurrent.ConfirmText, FallbackValue='确定'}"
                             Width="120"
                             Classes="accent"
+                            IsEnabled="{Binding !Dialogs.UpdateDialogCurrent.IsDownloading}"
                             Command="{Binding Dialogs.CloseUpdateDialogCommand}"
                             CommandParameter="{x:True}" />
                 </StackPanel>

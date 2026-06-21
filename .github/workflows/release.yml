@@ -73,6 +73,9 @@ jobs:
       with:
         dotnet-version: 8.0.x
 
+    - name: Install Velopack CLI
+      run: dotnet tool install -g vpk
+
     - name: Cache NuGet packages
       uses: actions/cache@v4
       with:
@@ -110,29 +113,36 @@ jobs:
 
     - name: Publish ${{ matrix.rid }}
       run: |
-        dotnet publish ${{ env.Project_Path }} -c Release -r ${{ matrix.rid }} --self-contained false -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=none -p:DebugSymbols=false -p:Version=${{ steps.version.outputs.version_number }} -o ./publish/${{ matrix.rid }}
+        dotnet publish ${{ env.Project_Path }} -c Release -r ${{ matrix.rid }} --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=none -p:DebugSymbols=false -p:Version=${{ steps.version.outputs.version_number }} -o ./publish/${{ matrix.rid }}
 
-    - name: Set executable permission (Linux/macOS)
-      if: runner.os != 'Windows'
-      run: |
-        if [ -f "./publish/${{ matrix.rid }}/ObsMCLauncher.Desktop" ]; then
-          chmod +x "./publish/${{ matrix.rid }}/ObsMCLauncher.Desktop"
-        fi
-
-    - name: Create ZIP archive
+    - name: Download previous release for delta
       shell: bash
       run: |
-        if [ "${{ runner.os }}" = "Windows" ]; then
-          powershell -Command "Compress-Archive -Path './publish/${{ matrix.rid }}/*' -DestinationPath './ObsMCLauncher-${{ steps.version.outputs.version }}-${{ matrix.rid }}.zip'"
+        vpk download github --repoUrl https://github.com/mcobs/ObsMCLauncher --token ${{ secrets.RELEASE_TOKEN }} -o ./vpk-prev || echo "No previous release found, skipping delta"
+
+    - name: Pack with Velopack
+      shell: bash
+      run: |
+        vpk pack -u ObsMCLauncher -v ${{ steps.version.outputs.version_number }} -p ./publish/${{ matrix.rid }} -e ObsMCLauncher.Desktop --noInst -o ./vpk-output --delta BestSpeed
+
+    - name: Rename portable output
+      shell: bash
+      run: |
+        if [ "${{ runner.os }}" = "Linux" ]; then
+          if [ -f "./vpk-output/ObsMCLauncher.AppImage" ]; then
+            mv ./vpk-output/ObsMCLauncher.AppImage "./vpk-output/ObsMCLauncher-${{ steps.version.outputs.version }}-${{ matrix.rid }}.AppImage"
+          fi
         else
-          cd "./publish/${{ matrix.rid }}" && zip -r "../../ObsMCLauncher-${{ steps.version.outputs.version }}-${{ matrix.rid }}.zip" . && cd ../..
+          if [ -f "./vpk-output/ObsMCLauncher-Portable.zip" ]; then
+            mv ./vpk-output/ObsMCLauncher-Portable.zip "./vpk-output/ObsMCLauncher-${{ steps.version.outputs.version }}-${{ matrix.rid }}.zip"
+          fi
         fi
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
         name: ObsMCLauncher-${{ steps.version.outputs.version }}-${{ matrix.rid }}
-        path: ./ObsMCLauncher-${{ steps.version.outputs.version }}-${{ matrix.rid }}.zip
+        path: ./vpk-output/
         retention-days: 1
 
   release:
@@ -173,14 +183,14 @@ jobs:
     - name: List artifacts
       run: |
         echo "Artifacts 目录内容:"
-        find ./artifacts -type f | head -50
+        find ./artifacts -type f | head -100
 
     - name: Prepare release files
       run: |
         version="${{ steps.version.outputs.version }}"
         mkdir -p ./release
 
-        find ./artifacts -name "*.zip" -exec cp {} ./release/ \;
+        find ./artifacts -type f \( -name "*.zip" -o -name "*.AppImage" -o -name "*.nupkg" -o -name "releases.*.json" -o -name "RELEASES" \) -exec cp {} ./release/ \;
 
         echo "Release 目录内容:"
         ls -la ./release/
@@ -214,8 +224,8 @@ jobs:
           body += '| Windows | x86 (32位) | [ObsMCLauncher-' + version + '-win-x86.zip](https://github.com/${{ github.repository }}/releases/download/' + version + '/ObsMCLauncher-' + version + '-win-x86.zip) |\n';
           body += '| Windows | x64 (64位) | [ObsMCLauncher-' + version + '-win-x64.zip](https://github.com/${{ github.repository }}/releases/download/' + version + '/ObsMCLauncher-' + version + '-win-x64.zip) |\n';
           body += '| Windows | ARM64 | [ObsMCLauncher-' + version + '-win-arm64.zip](https://github.com/${{ github.repository }}/releases/download/' + version + '/ObsMCLauncher-' + version + '-win-arm64.zip) |\n';
-          body += '| Linux | x64 (64位) | [ObsMCLauncher-' + version + '-linux-x64.zip](https://github.com/${{ github.repository }}/releases/download/' + version + '/ObsMCLauncher-' + version + '-linux-x64.zip) |\n';
-          body += '| Linux | ARM64 | [ObsMCLauncher-' + version + '-linux-arm64.zip](https://github.com/${{ github.repository }}/releases/download/' + version + '/ObsMCLauncher-' + version + '-linux-arm64.zip) |\n';
+          body += '| Linux | x64 (64位) | [ObsMCLauncher-' + version + '-linux-x64.AppImage](https://github.com/${{ github.repository }}/releases/download/' + version + '/ObsMCLauncher-' + version + '-linux-x64.AppImage) |\n';
+          body += '| Linux | ARM64 | [ObsMCLauncher-' + version + '-linux-arm64.AppImage](https://github.com/${{ github.repository }}/releases/download/' + version + '/ObsMCLauncher-' + version + '-linux-arm64.AppImage) |\n';
           body += '| macOS | x64 (Intel) | [ObsMCLauncher-' + version + '-osx-x64.zip](https://github.com/${{ github.repository }}/releases/download/' + version + '/ObsMCLauncher-' + version + '-osx-x64.zip) |\n';
           body += '| macOS | ARM64 (Apple Silicon) | [ObsMCLauncher-' + version + '-osx-arm64.zip](https://github.com/${{ github.repository }}/releases/download/' + version + '/ObsMCLauncher-' + version + '-osx-arm64.zip) |\n\n';
 
@@ -255,20 +265,21 @@ jobs:
           const releaseFiles = fs.readdirSync('./release');
 
           for (const file of releaseFiles) {
-            if (file.endsWith('.zip')) {
-              const filePath = path.join('./release', file);
-              console.log('上传文件: ' + file);
+            const filePath = path.join('./release', file);
+            const stat = fs.statSync(filePath);
+            if (!stat.isFile()) continue;
 
-              await github.rest.repos.uploadReleaseAsset({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                release_id: release.data.id,
-                name: file,
-                data: fs.readFileSync(filePath)
-              });
+            console.log('上传文件: ' + file + ' (' + stat.size + ' bytes)');
 
-              console.log('文件 ' + file + ' 上传成功');
-            }
+            await github.rest.repos.uploadReleaseAsset({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: release.data.id,
+              name: file,
+              data: fs.readFileSync(filePath)
+            });
+
+            console.log('文件 ' + file + ' 上传成功');
           }
 
           console.log('所有文件上传完成');

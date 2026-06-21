@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using ObsMCLauncher.Core.Utils;
+using Velopack;
 
 namespace ObsMCLauncher.Core.Services;
 
@@ -44,12 +45,50 @@ public class GitHubAsset
     public long Size { get; set; }
 }
 
+/// <summary>
+/// 更新检查结果
+/// </summary>
+public class UpdateCheckResult
+{
+    /// <summary>
+    /// 是否有新版本
+    /// </summary>
+    public bool HasUpdate { get; init; }
+
+    /// <summary>
+    /// 新版本号
+    /// </summary>
+    public string Version { get; init; } = "";
+
+    /// <summary>
+    /// 更新说明
+    /// </summary>
+    public string ReleaseNotes { get; init; } = "";
+
+    /// <summary>
+    /// Velopack更新信息，不为null时可通过Velopack自动更新
+    /// </summary>
+    public UpdateInfo? VelopackUpdateInfo { get; init; }
+
+    /// <summary>
+    /// GitHub Release信息，Velopack不可用时用于打开下载页
+    /// </summary>
+    public GitHubRelease? GitHubRelease { get; init; }
+
+    /// <summary>
+    /// 是否可以通过Velopack自动更新
+    /// </summary>
+    public bool CanAutoUpdate => VelopackUpdateInfo != null;
+}
+
 public static class UpdateService
 {
     private static readonly HttpClient _httpClient;
+    private static UpdateManager? _updateManager;
 
     private const string GITHUB_OWNER = "mcobs";
     private const string GITHUB_REPO = "ObsMCLauncher";
+    private const string GITHUB_REPO_URL = "https://github.com/mcobs/ObsMCLauncher";
     private const string GITHUB_API = "https://api.github.com/repos/{0}/{1}/releases/latest";
 
     static UpdateService()
@@ -67,12 +106,112 @@ public static class UpdateService
         _httpClient.DefaultRequestHeaders.Add("User-Agent", Utils.VersionInfo.UserAgent);
     }
 
-    public static async Task<GitHubRelease?> CheckForUpdatesAsync(bool includePrerelease = false)
+    /// <summary>
+    /// 初始化Velopack UpdateManager（应在应用启动后调用一次）
+    /// </summary>
+    public static void Initialize()
     {
         try
         {
-            DebugLogger.Info("Update", "开始检查更新...");
+            var source = new GitHubProxyVelopackSource(GITHUB_REPO_URL, null, false);
+            _updateManager = new UpdateManager(source);
+            DebugLogger.Info("Update", "Velopack UpdateManager 初始化完成");
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Warn("Update", $"Velopack初始化失败，将使用降级更新方式: {ex.Message}");
+            _updateManager = null;
+        }
+    }
 
+    /// <summary>
+    /// 检查更新，优先使用Velopack，失败时降级到GitHub API
+    /// </summary>
+    public static async Task<UpdateCheckResult?> CheckForUpdatesAsync(bool includePrerelease = false)
+    {
+        DebugLogger.Info("Update", "开始检查更新...");
+
+        // 优先尝试Velopack
+        if (_updateManager != null)
+        {
+            try
+            {
+                var updateInfo = await _updateManager.CheckForUpdatesAsync();
+                if (updateInfo != null)
+                {
+                    var version = updateInfo.TargetFullRelease.Version.ToString();
+                    DebugLogger.Info("Update", $"Velopack发现新版本: {version}");
+
+                    return new UpdateCheckResult
+                    {
+                        HasUpdate = true,
+                        Version = version,
+                        ReleaseNotes = "",
+                        VelopackUpdateInfo = updateInfo,
+                        GitHubRelease = null
+                    };
+                }
+                else
+                {
+                    DebugLogger.Info("Update", "Velopack检查完成，当前已是最新版本");
+                    return null;
+                }
+            }
+            catch (Exception ex)
+            {
+                DebugLogger.Warn("Update", $"Velopack检查更新失败，降级到GitHub API: {ex.Message}");
+            }
+        }
+
+        // 降级到自研GitHub API检查
+        return await CheckForUpdatesViaGitHubApiAsync(includePrerelease);
+    }
+
+    /// <summary>
+    /// 通过Velopack下载并应用更新
+    /// </summary>
+    public static async Task DownloadAndApplyUpdateAsync(UpdateInfo updateInfo, Action<int>? progress = null)
+    {
+        if (_updateManager == null)
+            throw new InvalidOperationException("UpdateManager未初始化");
+
+        await _updateManager.DownloadUpdatesAsync(updateInfo, progress);
+        _updateManager.ApplyUpdatesAndRestart(updateInfo);
+    }
+
+    /// <summary>
+    /// 打开GitHub Release下载页面
+    /// </summary>
+    public static void OpenReleasePage(string url)
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = url,
+                UseShellExecute = true
+            });
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Error("Update", $"打开Release页面失败: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 打开默认的GitHub Releases页面
+    /// </summary>
+    public static void OpenLatestReleasePage()
+    {
+        OpenReleasePage("https://github.com/mcobs/ObsMCLauncher/releases/latest");
+    }
+
+    // ---- 以下为降级方案：自研GitHub API检查 ----
+
+    private static async Task<UpdateCheckResult?> CheckForUpdatesViaGitHubApiAsync(bool includePrerelease)
+    {
+        try
+        {
             string apiUrl = string.Format(GITHUB_API, GITHUB_OWNER, GITHUB_REPO);
 
             if (includePrerelease)
@@ -80,8 +219,7 @@ public static class UpdateService
                 apiUrl = $"https://api.github.com/repos/{GITHUB_OWNER}/{GITHUB_REPO}/releases";
             }
 
-            // 使用镜像代理
-            apiUrl = GitHubProxyHelper.WithProxy(apiUrl);
+            // API请求不使用代理
             DebugLogger.Info("Update", $"API URL: {apiUrl}");
 
             var response = await _httpClient.GetAsync(apiUrl);
@@ -106,12 +244,19 @@ public static class UpdateService
                 return null;
             }
 
-            DebugLogger.Info("Update", $"最新版本: {latestRelease.TagName}");
+            DebugLogger.Info("Update", $"GitHub API最新版本: {latestRelease.TagName}");
 
             if (IsNewerVersion(latestRelease.TagName, Utils.VersionInfo.ShortVersion))
             {
-                DebugLogger.Info("Update", "发现新版本！");
-                return latestRelease;
+                DebugLogger.Info("Update", "发现新版本（降级模式）");
+                return new UpdateCheckResult
+                {
+                    HasUpdate = true,
+                    Version = latestRelease.TagName,
+                    ReleaseNotes = latestRelease.Body ?? "",
+                    VelopackUpdateInfo = null,
+                    GitHubRelease = latestRelease
+                };
             }
             else
             {
@@ -131,15 +276,26 @@ public static class UpdateService
         }
     }
 
-    private static bool IsNewerVersion(string newVersion, string currentVersion)
+    internal static bool IsNewerVersion(string newVersion, string currentVersion)
     {
         try
         {
             newVersion = newVersion.TrimStart('v', 'V');
             currentVersion = currentVersion.TrimStart('v', 'V');
 
-            var newParts = newVersion.Split('.', 4);
-            var currentParts = currentVersion.Split('.', 4);
+            // 先提取预发布信息，再把版本号中的预发布后缀去掉
+            var newPreRelease = GetPreReleaseInfo(newVersion);
+            var currentPreRelease = GetPreReleaseInfo(currentVersion);
+
+            var newBase = newPreRelease != null
+                ? newVersion.Substring(0, newVersion.IndexOf('-'))
+                : newVersion;
+            var currentBase = currentPreRelease != null
+                ? currentVersion.Substring(0, currentVersion.IndexOf('-'))
+                : currentVersion;
+
+            var newParts = newBase.Split('.');
+            var currentParts = currentBase.Split('.');
 
             int maxLength = Math.Max(newParts.Length, currentParts.Length);
 
@@ -148,8 +304,8 @@ public static class UpdateService
                 var newPartStr = i < newParts.Length ? newParts[i] : "0";
                 var currentPartStr = i < currentParts.Length ? currentParts[i] : "0";
 
-                var newPart = ParseVersionPart(newPartStr);
-                var currentPart = ParseVersionPart(currentPartStr);
+                var newPart = int.TryParse(newPartStr, out int np) ? np : 0;
+                var currentPart = int.TryParse(currentPartStr, out int cp) ? cp : 0;
 
                 if (newPart > currentPart)
                     return true;
@@ -157,9 +313,7 @@ public static class UpdateService
                     return false;
             }
 
-            var newPreRelease = GetPreReleaseInfo(newVersion);
-            var currentPreRelease = GetPreReleaseInfo(currentVersion);
-
+            // 数字部分完全相等时，比较预发布标记
             if (newPreRelease == null && currentPreRelease != null)
                 return true;
             if (newPreRelease != null && currentPreRelease == null)
@@ -172,7 +326,7 @@ public static class UpdateService
                     var typeOrder = new[] { "alpha", "beta", "rc", "preview" };
                     var newTypeIndex = Array.IndexOf(typeOrder, newPreRelease.Value.Type);
                     var currentTypeIndex = Array.IndexOf(typeOrder, currentPreRelease.Value.Type);
-                    
+
                     if (newTypeIndex > currentTypeIndex)
                         return true;
                     if (newTypeIndex < currentTypeIndex)
@@ -193,7 +347,7 @@ public static class UpdateService
         }
     }
 
-    private static int ParseVersionPart(string part)
+    internal static int ParseVersionPart(string part)
     {
         var dashIndex = part.IndexOf('-');
         if (dashIndex >= 0)
@@ -203,100 +357,27 @@ public static class UpdateService
         return int.TryParse(part, out int result) ? result : 0;
     }
 
-    private static (string Type, int Number)? GetPreReleaseInfo(string version)
+    internal static (string Type, int Number)? GetPreReleaseInfo(string version)
     {
         var dashIndex = version.IndexOf('-');
         if (dashIndex < 0)
             return null;
-        
+
         var preRelease = version.Substring(dashIndex + 1).ToLowerInvariant();
-        
+
         var match = System.Text.RegularExpressions.Regex.Match(preRelease, @"(alpha|beta|rc|preview|pre|test)[.\-]?(\d+)?");
         if (match.Success)
         {
             var type = match.Groups[1].Value;
             if (type == "pre") type = "preview";
             if (type == "test") type = "alpha";
-            
+
             var numberStr = match.Groups[2].Value;
             var number = int.TryParse(numberStr, out int n) ? n : 0;
-            
+
             return (type, number);
         }
-        
+
         return (preRelease, 0);
-    }
-
-    /// <summary>
-    /// 获取适合当前系统的下载资产
-    /// </summary>
-    public static GitHubAsset? GetAssetForCurrentPlatform(GitHubRelease release)
-    {
-        if (release.Assets == null || release.Assets.Length == 0) return null;
-
-        var platform = GetPlatformIdentifier();
-        DebugLogger.Info("Update", $"当前平台: {platform}");
-
-        foreach (var asset in release.Assets)
-        {
-            var name = asset.Name.ToLowerInvariant();
-            
-            if (platform == "win")
-            {
-                if (name.Contains("win") || name.Contains("windows"))
-                {
-                    if (Environment.Is64BitOperatingSystem && name.Contains("x64"))
-                        return asset;
-                    if (!Environment.Is64BitOperatingSystem && name.Contains("x86"))
-                        return asset;
-                    if (!name.Contains("x86") && !name.Contains("x64") && !name.Contains("arm"))
-                        return asset;
-                }
-            }
-            else if (platform == "linux")
-            {
-                if (name.Contains("linux"))
-                    return asset;
-            }
-            else if (platform == "osx")
-            {
-                if (name.Contains("osx") || name.Contains("macos") || name.Contains("mac"))
-                    return asset;
-            }
-        }
-
-        return release.Assets[0];
-    }
-
-    private static string GetPlatformIdentifier()
-    {
-        if (OperatingSystem.IsWindows()) return "win";
-        if (OperatingSystem.IsLinux()) return "linux";
-        if (OperatingSystem.IsMacOS()) return "osx";
-        return "unknown";
-    }
-
-    /// <summary>
-    /// 获取镜像后的下载URL
-    /// </summary>
-    public static string GetDownloadUrl(GitHubAsset asset)
-    {
-        return GitHubProxyHelper.WithProxy(asset.BrowserDownloadUrl);
-    }
-
-    public static void OpenReleasePage(string url)
-    {
-        try
-        {
-            Process.Start(new ProcessStartInfo
-            {
-                FileName = url,
-                UseShellExecute = true
-            });
-        }
-        catch (Exception ex)
-        {
-            DebugLogger.Error("Update", $"打开Release页面失败: {ex.Message}");
-        }
     }
 }
