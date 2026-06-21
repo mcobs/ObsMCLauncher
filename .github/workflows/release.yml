@@ -222,15 +222,13 @@ jobs:
       id: changelog
       run: |
         changelog_path="./.github/changelogs/CHANGELOG.md"
-
         if [ -f "$changelog_path" ]; then
-          echo "changelog<<EOF" >> $GITHUB_OUTPUT
-          cat "$changelog_path" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          cp "$changelog_path" /tmp/changelog_content.md
+          echo "found=true" >> $GITHUB_OUTPUT
           echo "读取到 CHANGELOG 内容"
         else
+          echo "found=false" >> $GITHUB_OUTPUT
           echo "CHANGELOG.md 文件不存在"
-          echo "changelog=" >> $GITHUB_OUTPUT
         fi
 
     - name: Create Release
@@ -239,7 +237,12 @@ jobs:
         script: |
           const version = '${{ steps.version.outputs.version }}';
           const isPrerelease = '${{ steps.version.outputs.is_prerelease }}' === 'true';
-          const changelog = `${{ steps.changelog.outputs.changelog }}`;
+          const changelogFound = '${{ steps.changelog.outputs.found }}' === 'true';
+          const fs = require('fs');
+          let changelog = '';
+          if (changelogFound && fs.existsSync('/tmp/changelog_content.md')) {
+            changelog = fs.readFileSync('/tmp/changelog_content.md', 'utf8');
+          }
 
           let body = '## 下载\n\n';
           body += '| 平台 | 架构 | 文件 |\n';
