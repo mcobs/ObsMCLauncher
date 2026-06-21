@@ -280,6 +280,9 @@ jobs:
             }
           }
           body += '\n';
+          body += '> **其他文件说明**\n';
+          body += '> - `.nupkg` — Velopack 自动更新使用的更新包（full 为完整包，delta 为差异包），无需手动下载\n';
+          body += '> - `releases.*.json` — 更新索引文件，供启动器检查更新时读取，无需手动下载\n\n';
 
           if (isPrerelease) {
             body += '---\n\n';
