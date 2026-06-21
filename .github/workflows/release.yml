@@ -118,25 +118,21 @@ jobs:
     - name: Download previous release for delta
       shell: bash
       run: |
-        vpk download github --repoUrl https://github.com/mcobs/ObsMCLauncher --token ${{ secrets.RELEASE_TOKEN }} -o ./vpk-prev || echo "No previous release found, skipping delta"
+        rid="${{ matrix.rid }}"
+        vpk download github --repoUrl https://github.com/mcobs/ObsMCLauncher --token ${{ secrets.RELEASE_TOKEN }} -c "$rid" -o ./vpk-prev || echo "No previous release found, skipping delta"
 
     - name: Pack with Velopack
       shell: bash
       run: |
         rid="${{ matrix.rid }}"
         if [[ "$rid" == win-* ]]; then
-          channel="win"
           main_exe="ObsMCLauncher.Desktop.exe"
-        elif [[ "$rid" == linux-* ]]; then
-          channel="linux"
-          main_exe="ObsMCLauncher.Desktop"
-        elif [[ "$rid" == osx-* ]]; then
-          channel="osx"
+        else
           main_exe="ObsMCLauncher.Desktop"
         fi
 
-        # 构建vpk pack命令，-r需要完整RID格式
-        pack_args=(-u ObsMCLauncher -v "${{ steps.version.outputs.version_number }}" -p "./publish/${{ matrix.rid }}" -e "$main_exe" -o ./vpk-output --delta BestSpeed -c "$channel" -r "$rid")
+        # 每个RID用独立channel，避免不同架构的产物互相覆盖
+        pack_args=(-u ObsMCLauncher -v "${{ steps.version.outputs.version_number }}" -p "./publish/${{ matrix.rid }}" -e "$main_exe" -o ./vpk-output --delta BestSpeed -c "$rid" -r "$rid")
 
         # Windows才需要--noInst，Linux/macOS不生成安装程序
         if [[ "$rid" == win-* ]]; then
@@ -145,21 +141,27 @@ jobs:
 
         vpk pack "${pack_args[@]}"
 
-    - name: Rename portable output
+    - name: List vpk output and rename
       shell: bash
       run: |
         version="${{ steps.version.outputs.version }}"
         rid="${{ matrix.rid }}"
+        echo "=== vpk-output 目录内容 ==="
+        ls -la ./vpk-output/ || echo "目录不存在"
+
+        # 重命名便携包
         if [[ "$rid" == linux-* ]]; then
-          if [ -f "./vpk-output/ObsMCLauncher.AppImage" ]; then
-            mv ./vpk-output/ObsMCLauncher.AppImage "./vpk-output/ObsMCLauncher-${version}-${rid}.AppImage"
-          fi
+          for f in ./vpk-output/ObsMCLauncher*.AppImage; do
+            [ -f "$f" ] && mv "$f" "./vpk-output/ObsMCLauncher-${version}-${rid}.AppImage"
+          done
         else
-          # Windows和macOS都产出Portable.zip
-          if [ -f "./vpk-output/ObsMCLauncher-Portable.zip" ]; then
-            mv ./vpk-output/ObsMCLauncher-Portable.zip "./vpk-output/ObsMCLauncher-${version}-${rid}.zip"
-          fi
+          for f in ./vpk-output/ObsMCLauncher*Portable*.zip; do
+            [ -f "$f" ] && mv "$f" "./vpk-output/ObsMCLauncher-${version}-${rid}.zip"
+          done
         fi
+
+        echo "=== 重命名后 ==="
+        ls -la ./vpk-output/
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
