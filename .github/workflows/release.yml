@@ -100,7 +100,7 @@ jobs:
           version="${GITHUB_REF#refs/tags/}"
         fi
         version_number=$(echo "$version" | sed 's/^v//')
-        if echo "$version" | grep -qE '-(alpha|beta|rc|pre|test|preview)'; then
+        if echo "$version" | grep -qE -- '-(alpha|beta|rc|pre|test|preview)'; then
           is_prerelease="true"
         else
           is_prerelease="false"
@@ -188,7 +188,7 @@ jobs:
         else
           version="${GITHUB_REF#refs/tags/}"
         fi
-        if echo "$version" | grep -qE '-(alpha|beta|rc|pre|test|preview)'; then
+        if echo "$version" | grep -qE -- '-(alpha|beta|rc|pre|test|preview)'; then
           is_prerelease="true"
         else
           is_prerelease="false"
@@ -238,10 +238,9 @@ jobs:
           const version = '${{ steps.version.outputs.version }}';
           const isPrerelease = '${{ steps.version.outputs.is_prerelease }}' === 'true';
           const changelogFound = '${{ steps.changelog.outputs.found }}' === 'true';
-          const fs = require('fs');
           let changelog = '';
-          if (changelogFound && fs.existsSync('/tmp/changelog_content.md')) {
-            changelog = fs.readFileSync('/tmp/changelog_content.md', 'utf8');
+          if (changelogFound && require('fs').existsSync('/tmp/changelog_content.md')) {
+            changelog = require('fs').readFileSync('/tmp/changelog_content.md', 'utf8');
           }
 
           let body = '## 下载\n\n';
@@ -286,13 +285,13 @@ jobs:
 
           console.log('创建发布成功:', release.data.html_url);
 
-          const fs = require('fs');
+          const fsModule = require('fs');
           const path = require('path');
-          const releaseFiles = fs.readdirSync('./release');
+          const releaseFiles = fsModule.readdirSync('./release');
 
           for (const file of releaseFiles) {
             const filePath = path.join('./release', file);
-            const stat = fs.statSync(filePath);
+            const stat = fsModule.statSync(filePath);
             if (!stat.isFile()) continue;
 
             console.log('上传文件: ' + file + ' (' + stat.size + ' bytes)');
@@ -302,7 +301,7 @@ jobs:
               repo: context.repo.repo,
               release_id: release.data.id,
               name: file,
-              data: fs.readFileSync(filePath)
+              data: fsModule.readFileSync(filePath)
             });
 
             console.log('文件 ' + file + ' 上传成功');
