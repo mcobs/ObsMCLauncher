@@ -151,7 +151,7 @@ public sealed partial class UpdateDialogRequest : ObservableObject
 
     public string MarkdownContent { get; init; } = string.Empty;
 
-    public string ConfirmText { get; init; } = "确定";
+    public string ConfirmText { get; set; } = "确定";
 
     public string CancelText { get; init; } = "取消";
 

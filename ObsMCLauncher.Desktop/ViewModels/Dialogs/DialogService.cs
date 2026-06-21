@@ -257,6 +257,16 @@ public partial class DialogService : ObservableObject
         req.Completion.TrySetResult(confirmed);
     }
 
+    /// <summary>
+    /// 重新显示更新对话框（用于下载进度展示）
+    /// </summary>
+    public void ReopenUpdateDialog()
+    {
+        if (UpdateDialogCurrent == null) return;
+        OnPropertyChanged(nameof(IsUpdateDialogOpen));
+        OnPropertyChanged(nameof(IsAnyModalOpen));
+    }
+
     partial void OnCurrentChanged(DialogRequest? value)
     {
         OnPropertyChanged(nameof(IsOpen));

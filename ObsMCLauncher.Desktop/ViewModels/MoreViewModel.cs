@@ -8,6 +8,7 @@ using CommunityToolkit.Mvvm.Input;
 using ObsMCLauncher.Core.Plugins;
 using ObsMCLauncher.Core.Services;
 using ObsMCLauncher.Core.Utils;
+using ObsMCLauncher.Desktop.ViewModels.Dialogs;
 using ObsMCLauncher.Desktop.ViewModels.Notifications;
 using ObsMCLauncher.Desktop.Windows;
 
@@ -17,6 +18,7 @@ public partial class MoreViewModel : ViewModelBase
 {
     private readonly NotificationService _notificationService;
     private readonly PluginLoader _pluginLoader;
+    private readonly DialogService _dialogService;
     private ViewModelBase? _previousTabContent;
 
     [ObservableProperty]
@@ -35,12 +37,13 @@ public partial class MoreViewModel : ViewModelBase
     public ScreenshotsViewModel Screenshots { get; }
     public ServersViewModel Servers { get; }
 
-    public MoreViewModel(NotificationService notificationService, PluginLoader pluginLoader)
+    public MoreViewModel(NotificationService notificationService, PluginLoader pluginLoader, DialogService dialogService)
     {
         _notificationService = notificationService;
         _pluginLoader = pluginLoader;
+        _dialogService = dialogService;
 
-        About = new AboutViewModel(notificationService);
+        About = new AboutViewModel(notificationService, dialogService);
         About.RequestOpenDebugConsole = OpenDebugConsole;
         Plugins = new PluginsViewModel(_pluginLoader, notificationService);
         Screenshots = new ScreenshotsViewModel(notificationService);
@@ -189,7 +192,7 @@ public partial class MoreViewModel : ViewModelBase
             var result = await UpdateService.CheckForUpdatesAsync();
             if (result != null)
             {
-                _notificationService.Show("发现新版本", $"有新版本可用: {result.Version}", NotificationType.Success);
+                await HandleUpdateResultAsync(result);
             }
             else
             {
@@ -203,6 +206,69 @@ public partial class MoreViewModel : ViewModelBase
         finally
         {
             IsCheckingUpdate = false;
+        }
+    }
+
+    private async Task HandleUpdateResultAsync(UpdateCheckResult result)
+    {
+        if (result.CanAutoUpdate)
+        {
+            var notes = string.IsNullOrEmpty(result.ReleaseNotes) ? $"新版本 {result.Version} 已发布" : result.ReleaseNotes;
+            var confirmed = await _dialogService.ShowUpdateDialogAsync(
+                "发现新版本",
+                notes,
+                "下载并安装",
+                "稍后再说");
+
+            if (confirmed && result.VelopackUpdateInfo != null)
+            {
+                var dialog = _dialogService.UpdateDialogCurrent;
+                if (dialog != null)
+                {
+                    dialog.IsDownloading = true;
+                    dialog.DownloadStatusText = "正在下载更新...";
+                    dialog.ConfirmText = "下载中...";
+                    _dialogService.ReopenUpdateDialog();
+
+                    try
+                    {
+                        await UpdateService.DownloadAndApplyUpdateAsync(
+                            result.VelopackUpdateInfo,
+                            progress =>
+                            {
+                                Dispatcher.UIThread.Post(() =>
+                                {
+                                    dialog.DownloadProgress = progress;
+                                    dialog.DownloadStatusText = $"正在下载更新... {progress}%";
+                                });
+                            });
+                    }
+                    catch (Exception ex)
+                    {
+                        dialog.IsDownloading = false;
+                        dialog.ConfirmText = "下载并安装";
+                        _notificationService.Show("下载更新失败", ex.Message, NotificationType.Error);
+                        return;
+                    }
+                }
+                else
+                {
+                    try
+                    {
+                        await UpdateService.DownloadAndApplyUpdateAsync(result.VelopackUpdateInfo);
+                    }
+                    catch (Exception ex)
+                    {
+                        _notificationService.Show("下载更新失败", ex.Message, NotificationType.Error);
+                        return;
+                    }
+                }
+            }
+        }
+        else
+        {
+            _notificationService.Show("发现新版本", $"有新版本 {result.Version} 可用，正在打开下载页面...", NotificationType.Success);
+            UpdateService.OpenLatestReleasePage();
         }
     }
 }
@@ -222,6 +288,7 @@ public class TabItemViewModel
 public partial class AboutViewModel : ViewModelBase
 {
     private readonly NotificationService _notificationService;
+    private readonly DialogService _dialogService;
     private int _titleClickCount = 0;
     private DateTime _lastTitleClickTime = DateTime.MinValue;
     private const int ClickResetMs = 2000;
@@ -237,9 +304,10 @@ public partial class AboutViewModel : ViewModelBase
 
     public Action? RequestOpenDebugConsole { get; set; }
 
-    public AboutViewModel(NotificationService notificationService)
+    public AboutViewModel(NotificationService notificationService, DialogService dialogService)
     {
         _notificationService = notificationService;
+        _dialogService = dialogService;
     }
 
     public void OnTitleClick()
@@ -303,7 +371,7 @@ public partial class AboutViewModel : ViewModelBase
             var result = await UpdateService.CheckForUpdatesAsync();
             if (result != null)
             {
-                _notificationService.Show("发现新版本", $"有新版本可用: {result.Version}", NotificationType.Success);
+                await HandleUpdateResultAsync(result);
             }
             else
             {
@@ -317,6 +385,69 @@ public partial class AboutViewModel : ViewModelBase
         finally
         {
             IsCheckingUpdate = false;
+        }
+    }
+
+    private async Task HandleUpdateResultAsync(UpdateCheckResult result)
+    {
+        if (result.CanAutoUpdate)
+        {
+            var notes = string.IsNullOrEmpty(result.ReleaseNotes) ? $"新版本 {result.Version} 已发布" : result.ReleaseNotes;
+            var confirmed = await _dialogService.ShowUpdateDialogAsync(
+                "发现新版本",
+                notes,
+                "下载并安装",
+                "稍后再说");
+
+            if (confirmed && result.VelopackUpdateInfo != null)
+            {
+                var dialog = _dialogService.UpdateDialogCurrent;
+                if (dialog != null)
+                {
+                    dialog.IsDownloading = true;
+                    dialog.DownloadStatusText = "正在下载更新...";
+                    dialog.ConfirmText = "下载中...";
+                    _dialogService.ReopenUpdateDialog();
+
+                    try
+                    {
+                        await UpdateService.DownloadAndApplyUpdateAsync(
+                            result.VelopackUpdateInfo,
+                            progress =>
+                            {
+                                Dispatcher.UIThread.Post(() =>
+                                {
+                                    dialog.DownloadProgress = progress;
+                                    dialog.DownloadStatusText = $"正在下载更新... {progress}%";
+                                });
+                            });
+                    }
+                    catch (Exception ex)
+                    {
+                        dialog.IsDownloading = false;
+                        dialog.ConfirmText = "下载并安装";
+                        _notificationService.Show("下载更新失败", ex.Message, NotificationType.Error);
+                        return;
+                    }
+                }
+                else
+                {
+                    try
+                    {
+                        await UpdateService.DownloadAndApplyUpdateAsync(result.VelopackUpdateInfo);
+                    }
+                    catch (Exception ex)
+                    {
+                        _notificationService.Show("下载更新失败", ex.Message, NotificationType.Error);
+                        return;
+                    }
+                }
+            }
+        }
+        else
+        {
+            _notificationService.Show("发现新版本", $"有新版本 {result.Version} 可用，正在打开下载页面...", NotificationType.Success);
+            UpdateService.OpenLatestReleasePage();
         }
     }
 }

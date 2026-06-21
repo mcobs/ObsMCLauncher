@@ -120,7 +120,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         _homeViewModel = new HomeViewModel(dispatcher, Notifications);
 
         // 创建更多ViewModel
-        _moreViewModel = new MoreViewModel(Notifications, _pluginLoader);
+        _moreViewModel = new MoreViewModel(Notifications, _pluginLoader, Dialogs);
 
         // 初始化插件通知回调（必须在加载插件之前设置）
         InitializePluginCallbacks();
