@@ -123,18 +123,42 @@ jobs:
     - name: Pack with Velopack
       shell: bash
       run: |
-        vpk pack -u ObsMCLauncher -v ${{ steps.version.outputs.version_number }} -p ./publish/${{ matrix.rid }} -e ObsMCLauncher.Desktop --noInst -o ./vpk-output --delta BestSpeed
+        # 根据平台确定channel和runtime
+        rid="${{ matrix.rid }}"
+        if [[ "$rid" == win-* ]]; then
+          channel="win"
+          runtime="win"
+        elif [[ "$rid" == linux-* ]]; then
+          channel="linux"
+          runtime="linux"
+        elif [[ "$rid" == osx-* ]]; then
+          channel="osx"
+          runtime="osx"
+        fi
+
+        # 构建vpk pack命令
+        pack_args=(-u ObsMCLauncher -v "${{ steps.version.outputs.version_number }}" -p "./publish/${{ matrix.rid }}" -e ObsMCLauncher.Desktop -o ./vpk-output --delta BestSpeed -c "$channel" -r "$runtime")
+
+        # Windows才需要--noInst，Linux/macOS不生成安装程序
+        if [[ "$rid" == win-* ]]; then
+          pack_args+=(--noInst true)
+        fi
+
+        vpk pack "${pack_args[@]}"
 
     - name: Rename portable output
       shell: bash
       run: |
-        if [ "${{ runner.os }}" = "Linux" ]; then
+        version="${{ steps.version.outputs.version }}"
+        rid="${{ matrix.rid }}"
+        if [[ "$rid" == linux-* ]]; then
           if [ -f "./vpk-output/ObsMCLauncher.AppImage" ]; then
-            mv ./vpk-output/ObsMCLauncher.AppImage "./vpk-output/ObsMCLauncher-${{ steps.version.outputs.version }}-${{ matrix.rid }}.AppImage"
+            mv ./vpk-output/ObsMCLauncher.AppImage "./vpk-output/ObsMCLauncher-${version}-${rid}.AppImage"
           fi
         else
+          # Windows和macOS都产出Portable.zip
           if [ -f "./vpk-output/ObsMCLauncher-Portable.zip" ]; then
-            mv ./vpk-output/ObsMCLauncher-Portable.zip "./vpk-output/ObsMCLauncher-${{ steps.version.outputs.version }}-${{ matrix.rid }}.zip"
+            mv ./vpk-output/ObsMCLauncher-Portable.zip "./vpk-output/ObsMCLauncher-${version}-${rid}.zip"
           fi
         fi
 
