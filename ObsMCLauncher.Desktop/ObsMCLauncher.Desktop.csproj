@@ -6,6 +6,7 @@
     <Nullable>enable</Nullable>
     <ApplicationManifest Condition="'$(RuntimeIdentifier)' == '' or '$(RuntimeIdentifier)' == 'win-x86' or '$(RuntimeIdentifier)' == 'win-x64' or '$(RuntimeIdentifier)' == 'win-arm64'">app.manifest</ApplicationManifest>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <ApplicationIcon>Assets/app_icon.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
