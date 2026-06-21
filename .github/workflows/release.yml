@@ -245,16 +245,41 @@ jobs:
             changelog = require('fs').readFileSync('/tmp/changelog_content.md', 'utf8');
           }
 
+          const fsModule = require('fs');
+          const path = require('path');
+
+          // 从实际上传的文件动态生成下载表格
+          const releaseDir = './release';
+          const allFiles = fsModule.readdirSync(releaseDir).filter(f => fsModule.statSync(path.join(releaseDir, f)).isFile());
+
+          // 用户下载的文件（排除nupkg、releases.json、RELEASES等Velopack内部文件）
+          const userFiles = allFiles.filter(f => f.endsWith('.zip') || f.endsWith('.AppImage'));
+
+          const platformMap = {
+            'win-x86': { platform: 'Windows', arch: 'x86 (32位)' },
+            'win-x64': { platform: 'Windows', arch: 'x64 (64位)' },
+            'win-arm64': { platform: 'Windows', arch: 'ARM64' },
+            'linux-x64': { platform: 'Linux', arch: 'x64 (64位)' },
+            'linux-arm64': { platform: 'Linux', arch: 'ARM64' },
+            'osx-x64': { platform: 'macOS', arch: 'x64 (Intel)' },
+            'osx-arm64': { platform: 'macOS', arch: 'ARM64 (Apple Silicon)' },
+          };
+
           let body = '## 下载\n\n';
           body += '| 平台 | 架构 | 文件 |\n';
           body += '|:----:|:----:|:----:|\n';
-          body += '| Windows | x86 (32位) | [ObsMCLauncher-' + version + '-win-x86.zip](https://github.com/${{ github.repository }}/releases/download/' + version + '/ObsMCLauncher-' + version + '-win-x86.zip) |\n';
-          body += '| Windows | x64 (64位) | [ObsMCLauncher-' + version + '-win-x64.zip](https://github.com/${{ github.repository }}/releases/download/' + version + '/ObsMCLauncher-' + version + '-win-x64.zip) |\n';
-          body += '| Windows | ARM64 | [ObsMCLauncher-' + version + '-win-arm64.zip](https://github.com/${{ github.repository }}/releases/download/' + version + '/ObsMCLauncher-' + version + '-win-arm64.zip) |\n';
-          body += '| Linux | x64 (64位) | [ObsMCLauncher-' + version + '-linux-x64.AppImage](https://github.com/${{ github.repository }}/releases/download/' + version + '/ObsMCLauncher-' + version + '-linux-x64.AppImage) |\n';
-          body += '| Linux | ARM64 | [ObsMCLauncher-' + version + '-linux-arm64.AppImage](https://github.com/${{ github.repository }}/releases/download/' + version + '/ObsMCLauncher-' + version + '-linux-arm64.AppImage) |\n';
-          body += '| macOS | x64 (Intel) | [ObsMCLauncher-' + version + '-osx-x64.zip](https://github.com/${{ github.repository }}/releases/download/' + version + '/ObsMCLauncher-' + version + '-osx-x64.zip) |\n';
-          body += '| macOS | ARM64 (Apple Silicon) | [ObsMCLauncher-' + version + '-osx-arm64.zip](https://github.com/${{ github.repository }}/releases/download/' + version + '/ObsMCLauncher-' + version + '-osx-arm64.zip) |\n\n';
+
+          // 按平台顺序排列
+          const ridOrder = ['win-x86', 'win-x64', 'win-arm64', 'linux-x64', 'linux-arm64', 'osx-x64', 'osx-arm64'];
+          for (const rid of ridOrder) {
+            const matched = userFiles.find(f => f.includes(rid));
+            if (matched) {
+              const info = platformMap[rid];
+              const url = `https://github.com/${{ github.repository }}/releases/download/${version}/${matched}`;
+              body += `| ${info.platform} | ${info.arch} | [${matched}](${url}) |\n`;
+            }
+          }
+          body += '\n';
 
           if (isPrerelease) {
             body += '---\n\n';
@@ -287,8 +312,6 @@ jobs:
 
           console.log('创建发布成功:', release.data.html_url);
 
-          const fsModule = require('fs');
-          const path = require('path');
           const releaseFiles = fsModule.readdirSync('./release');
 
           for (const file of releaseFiles) {
