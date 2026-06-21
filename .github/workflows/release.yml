@@ -123,21 +123,17 @@ jobs:
     - name: Pack with Velopack
       shell: bash
       run: |
-        # 根据平台确定channel和runtime
         rid="${{ matrix.rid }}"
         if [[ "$rid" == win-* ]]; then
           channel="win"
-          runtime="win"
         elif [[ "$rid" == linux-* ]]; then
           channel="linux"
-          runtime="linux"
         elif [[ "$rid" == osx-* ]]; then
           channel="osx"
-          runtime="osx"
         fi
 
-        # 构建vpk pack命令
-        pack_args=(-u ObsMCLauncher -v "${{ steps.version.outputs.version_number }}" -p "./publish/${{ matrix.rid }}" -e ObsMCLauncher.Desktop -o ./vpk-output --delta BestSpeed -c "$channel" -r "$runtime")
+        # 构建vpk pack命令，-r需要完整RID格式
+        pack_args=(-u ObsMCLauncher -v "${{ steps.version.outputs.version_number }}" -p "./publish/${{ matrix.rid }}" -e ObsMCLauncher.Desktop -o ./vpk-output --delta BestSpeed -c "$channel" -r "$rid")
 
         # Windows才需要--noInst，Linux/macOS不生成安装程序
         if [[ "$rid" == win-* ]]; then
