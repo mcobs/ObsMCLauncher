@@ -295,7 +295,7 @@ public class ServerManager
             var base64 = iconData[prefix.Length..];
             var bytes = Convert.FromBase64String(base64);
 
-            var iconsDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "OMCL", "cache", "server_icons");
+            var iconsDir = Path.Combine(VersionInfo.GetAppBaseDirectory(), "OMCL", "cache", "server_icons");
             Directory.CreateDirectory(iconsDir);
 
             var filePath = Path.Combine(iconsDir, $"{serverId}.png");

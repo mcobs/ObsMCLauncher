@@ -12,7 +12,7 @@ namespace ObsMCLauncher.Core.Services;
 
 public class ResourceCacheService
 {
-    private static readonly string CacheBaseDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "OMCL", "cache");
+    private static readonly string CacheBaseDir = Path.Combine(VersionInfo.GetAppBaseDirectory(), "OMCL", "cache");
     private static readonly string ModrinthCacheDir = Path.Combine(CacheBaseDir, "modrinth");
     private static readonly string CurseForgeCacheDir = Path.Combine(CacheBaseDir, "curseforge");
     private const long MaxCacheSizeBytes = 200 * 1024 * 1024;

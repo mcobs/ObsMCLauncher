@@ -4,6 +4,7 @@ using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using ObsMCLauncher.Core.Services;
+using ObsMCLauncher.Core.Utils;
 
 namespace ObsMCLauncher.Core.Models;
 
@@ -98,7 +99,7 @@ public class LauncherConfig
         {
             DirectoryLocation.AppData => GetDefaultAppdataGameDirectory(),
             DirectoryLocation.RunningDirectory => Path.Combine(
-                AppDomain.CurrentDomain.BaseDirectory,
+                VersionInfo.GetAppBaseDirectory(),
                 ".minecraft"),
             DirectoryLocation.Custom => string.IsNullOrEmpty(CustomGameDirectory)
                 ? GetDefaultAppdataGameDirectory()
@@ -182,7 +183,7 @@ public class LauncherConfig
     public static string GetConfigFilePath()
     {
         return Path.Combine(
-            AppDomain.CurrentDomain.BaseDirectory,
+            VersionInfo.GetAppBaseDirectory(),
             "OMCL",
             "config",
             "config.json");
@@ -247,7 +248,7 @@ public class LauncherConfig
     public string GetAccountFilePath()
     {
         return Path.Combine(
-            AppDomain.CurrentDomain.BaseDirectory,
+            VersionInfo.GetAppBaseDirectory(),
             "OMCL",
             "config",
             "accounts.json");
@@ -256,13 +257,13 @@ public class LauncherConfig
     public string GetPluginDirectory()
     {
         return Path.Combine(
-            AppDomain.CurrentDomain.BaseDirectory,
+            VersionInfo.GetAppBaseDirectory(),
             "OMCL",
             "plugins");
     }
 
     public string GetDataDirectory()
     {
-        return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "OMCL");
+        return Path.Combine(VersionInfo.GetAppBaseDirectory(), "OMCL");
     }
 }

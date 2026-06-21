@@ -13,7 +13,7 @@ namespace ObsMCLauncher.Core.Services;
 public class ImageCacheService
 {
     private static readonly HttpClient _httpClient = new();
-    private static readonly string CacheDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "OMCL", "cache", "icons");
+    private static readonly string CacheDir = Path.Combine(VersionInfo.GetAppBaseDirectory(), "OMCL", "cache", "icons");
     private const long MaxCacheSizeBytes = 100 * 1024 * 1024;
 
     static ImageCacheService()

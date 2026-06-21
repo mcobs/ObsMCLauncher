@@ -35,7 +35,7 @@ public class PluginContext : IPluginContext
         _pluginId = pluginId;
 
         _pluginDataDir = Path.Combine(
-            AppDomain.CurrentDomain.BaseDirectory,
+            VersionInfo.GetAppBaseDirectory(),
             "OMCL",
             "plugins",
             pluginId

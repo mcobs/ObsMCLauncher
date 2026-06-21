@@ -31,7 +31,7 @@ public class ModTranslationService
         {
             string[]? lines = null;
 
-            var userTranslationPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "OMCL", "mod_translations.txt");
+            var userTranslationPath = Path.Combine(VersionInfo.GetAppBaseDirectory(), "OMCL", "mod_translations.txt");
             if (File.Exists(userTranslationPath))
             {
                 DebugLogger.Info("ModTranslation", $"从用户目录读取翻译: {userTranslationPath}");

@@ -13,6 +13,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using ObsMCLauncher.Core.Models;
 using ObsMCLauncher.Core.Services.Minecraft;
+using ObsMCLauncher.Core.Utils;
 using ObsMCLauncher.Core.Services.Installers;
 using ObsMCLauncher.Core.Services.Ui;
 using ObsMCLauncher.Desktop.ViewModels.Notifications;
@@ -237,7 +238,7 @@ public partial class VersionDownloadViewModel : ViewModelBase
                 }
 
                 string officialDir = LauncherConfig.GetDefaultAppdataGameDirectory();
-                string runningDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ".minecraft");
+                string runningDir = Path.Combine(VersionInfo.GetAppBaseDirectory(), ".minecraft");
 
                 if (string.Equals(path, officialDir, StringComparison.OrdinalIgnoreCase)
                     || string.Equals(path, runningDir, StringComparison.OrdinalIgnoreCase))
@@ -768,7 +769,7 @@ public partial class VersionDownloadViewModel : ViewModelBase
         var items = new ObservableCollection<GameDirectoryItem>();
 
         string officialDir = LauncherConfig.GetDefaultAppdataGameDirectory();
-        string runningDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ".minecraft");
+        string runningDir = Path.Combine(VersionInfo.GetAppBaseDirectory(), ".minecraft");
 
         // 默认目录一：官方目录（平台自适应）
         string officialDisplay;

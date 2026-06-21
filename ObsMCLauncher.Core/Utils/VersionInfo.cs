@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Reflection;
 
 namespace ObsMCLauncher.Core.Utils;
@@ -85,5 +86,30 @@ public static class VersionInfo
         catch { }
 
         return "0.0.0-dev";
+    }
+
+    /// <summary>
+    /// 获取应用基础目录，用于定位OMCL等数据目录。
+    /// Velopack安装模式下程序在current/子目录运行（junction/symlink），需要往上一层；
+    /// 便携模式和开发模式直接使用BaseDirectory。
+    /// </summary>
+    public static string GetAppBaseDirectory()
+    {
+        var baseDir = AppDomain.CurrentDomain.BaseDirectory
+            .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        var dirName = Path.GetFileName(baseDir);
+        var parentDir = Path.GetDirectoryName(baseDir);
+
+        if (dirName == "current" && parentDir != null)
+        {
+            // Velopack安装模式下current是junction/symlink
+            var dirInfo = new DirectoryInfo(baseDir);
+            if (dirInfo.ResolveLinkTarget(true) != null)
+            {
+                return parentDir + Path.DirectorySeparatorChar;
+            }
+        }
+
+        return baseDir + Path.DirectorySeparatorChar;
     }
 }

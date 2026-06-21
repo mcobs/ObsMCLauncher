@@ -15,7 +15,7 @@ public static class LauncherBootstrap
     {
         try
         {
-            var baseDir = AppDomain.CurrentDomain.BaseDirectory;
+            var baseDir = VersionInfo.GetAppBaseDirectory();
             var configDir = Path.Combine(baseDir, "OMCL", "config");
             var pluginsDir = Path.Combine(baseDir, "OMCL", "plugins");
             var cacheDir = Path.Combine(baseDir, "OMCL", "cache");
