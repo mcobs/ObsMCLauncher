@@ -21,6 +21,12 @@
     <Setter Property="MinWidth" Value="400"/>
     <Setter Property="MaxWidth" Value="600"/>
     <Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>
+    <Setter Property="Transitions">
+      <Transitions>
+        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.2" Easing="CircularEaseOut"/>
+        <DoubleTransition Property="Opacity" Duration="0:0:0.15" Easing="LinearEasing"/>
+      </Transitions>
+    </Setter>
   </Style>
 
   <!-- 对话框标题样式 -->

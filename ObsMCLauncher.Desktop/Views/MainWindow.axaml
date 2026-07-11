@@ -33,7 +33,7 @@
         </Style>
 
         <Style Selector="ListBox#NavListBox ListBoxItem:selected Border.nav-item">
-            <Setter Property="Background" Value="{DynamicResource PrimaryBrush}" />
+            <Setter Property="Background" Value="{DynamicResource NavItemSelectedBackgroundBrush}" />
         </Style>
 
         <Style Selector="ListBox#NavListBox ListBoxItem:selected TextBlock">
@@ -51,7 +51,7 @@
         </Style>
 
         <Style Selector="ListBox#BottomNavListBox ListBoxItem:selected Border.nav-item">
-            <Setter Property="Background" Value="{DynamicResource PrimaryBrush}" />
+            <Setter Property="Background" Value="{DynamicResource NavItemSelectedBackgroundBrush}" />
         </Style>
 
         <Style Selector="ListBox#BottomNavListBox ListBoxItem:selected TextBlock">
@@ -182,11 +182,18 @@
         </Style>
     </Window.Styles>
 
+    <Border x:Name="WindowRoot"
+            Background="{DynamicResource WindowBackgroundBrush}"
+            BoxShadow="{DynamicResource WindowShadow}"
+            CornerRadius="0"
+            ClipToBounds="True">
     <Grid x:Name="RootGrid" RowDefinitions="40,*">
 
         <Border Grid.Row="0"
-                Classes="chrome-surface"
-                BorderThickness="0,0,0,1">
+                Background="{DynamicResource TitleBarBackgroundBrush}"
+                BorderBrush="{DynamicResource TitleBarBorderBrush}"
+                BorderThickness="0,0,0,1"
+                BoxShadow="{DynamicResource ChromeShadow}">
             <Grid ColumnDefinitions="Auto,*,Auto" Height="40">
 
                 <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="16,0,0,0" VerticalAlignment="Center">
@@ -228,12 +235,15 @@
                    DisplayMode="CompactInline"
                    OpenPaneLength="200"
                    CompactPaneLength="48"
-                   PanePlacement="Left">
+                   PanePlacement="Left"
+                   PaneBackground="{DynamicResource NavBackgroundBrush}">
 
             <SplitView.Pane>
                 <Border x:Name="NavBorder"
-                        Classes="chrome-surface"
-                        BorderThickness="0,0,1,0">
+                        Background="{DynamicResource NavBackgroundBrush}"
+                        BorderBrush="{DynamicResource NavBorderBrush}"
+                        BorderThickness="0,0,1,0"
+                        BoxShadow="{DynamicResource NavShadow}">
                     <Grid RowDefinitions="Auto,*,Auto,Auto">
 
                         <Border Grid.Row="0" Padding="8,10" HorizontalAlignment="Left">
@@ -267,8 +277,15 @@
                                             Height="40"
                                             Padding="8,0"
                                             ToolTip.Tip="{Binding Title}">
-                                        <Grid ColumnDefinitions="24,*">
-                                            <Image Grid.Column="0"
+                                        <Grid ColumnDefinitions="3,24,*">
+                                            <Border Grid.Column="0"
+                                                    Width="3"
+                                                    CornerRadius="1.5"
+                                                    Background="{DynamicResource PrimaryBrush}"
+                                                    VerticalAlignment="Center"
+                                                    IsVisible="{Binding $parent[ListBoxItem].IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}"
+                                                    Height="16"/>
+                                            <Image Grid.Column="1"
                                                      Width="20"
                                                      Height="20"
                                                      VerticalAlignment="Center"
@@ -283,7 +300,7 @@
                                               </Image.Source>
                                             </Image>
 
-                                            <TextBlock Grid.Column="0"
+                                            <TextBlock Grid.Column="1"
                                                        Text="{Binding Icon}"
                                                        FontSize="18"
                                                        Width="24"
@@ -294,7 +311,7 @@
                                                        Foreground="{DynamicResource TextBrush}"
                                                        IsVisible="{Binding IconPath, Converter={x:Static converters:NullToBoolConverter.Instance}, ConverterParameter=Invert}" />
 
-                                            <TextBlock Grid.Column="1"
+                                            <TextBlock Grid.Column="2"
                                                        Text="{Binding Title}"
                                                        FontSize="13"
                                                        Margin="8,0,0,0"
@@ -321,8 +338,15 @@
                                             Height="40"
                                             Padding="8,0"
                                             ToolTip.Tip="{Binding Title}">
-                                        <Grid ColumnDefinitions="24,*">
-                                            <Image Grid.Column="0"
+                                        <Grid ColumnDefinitions="3,24,*">
+                                            <Border Grid.Column="0"
+                                                    Width="3"
+                                                    CornerRadius="1.5"
+                                                    Background="{DynamicResource PrimaryBrush}"
+                                                    VerticalAlignment="Center"
+                                                    IsVisible="{Binding $parent[ListBoxItem].IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}"
+                                                    Height="16"/>
+                                            <Image Grid.Column="1"
                                                      Width="20"
                                                      Height="20"
                                                      VerticalAlignment="Center"
@@ -337,7 +361,7 @@
                                               </Image.Source>
                                             </Image>
 
-                                            <TextBlock Grid.Column="0"
+                                            <TextBlock Grid.Column="1"
                                                        Text="{Binding Icon}"
                                                        FontSize="18"
                                                        Width="24"
@@ -348,7 +372,7 @@
                                                        Foreground="{DynamicResource TextBrush}"
                                                        IsVisible="{Binding IconPath, Converter={x:Static converters:NullToBoolConverter.Instance}, ConverterParameter=Invert}" />
 
-                                            <TextBlock Grid.Column="1"
+                                            <TextBlock Grid.Column="2"
                                                        Text="{Binding Title}"
                                                        FontSize="13"
                                                        Margin="8,0,0,0"
@@ -371,10 +395,10 @@
             </SplitView.Pane>
 
             <SplitView.Content>
-                <Border Background="{DynamicResource SystemControlBackgroundBaseHighBrush}">
-                    <TransitioningContentControl Content="{Binding CurrentPage}" Margin="20">
+                <Border Background="{DynamicResource NavBackgroundBrush}">
+                    <TransitioningContentControl Content="{Binding CurrentPage}" Margin="24">
                         <TransitioningContentControl.PageTransition>
-                            <CrossFade Duration="0:0:0.2" />
+                            <CrossFade Duration="0:0:0.25"/>
                         </TransitioningContentControl.PageTransition>
                     </TransitioningContentControl>
                 </Border>
@@ -959,5 +983,6 @@
         </ItemsControl>
 
     </Grid>
+    </Border>
 
 </Window>

@@ -19,5 +19,6 @@
         <StyleInclude Source="avares://ObsMCLauncher.Desktop/Styles/Theme.axaml" />
         <StyleInclude Source="avares://ObsMCLauncher.Desktop/Styles/Controls.axaml" />
         <StyleInclude Source="avares://ObsMCLauncher.Desktop/Styles/FluentDialogStyles.axaml" />
+        <StyleInclude Source="avares://ObsMCLauncher.Desktop/Styles/AcrylicStyle.axaml" />
     </Application.Styles>
 </Application>

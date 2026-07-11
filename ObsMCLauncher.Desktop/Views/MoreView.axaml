@@ -20,13 +20,12 @@
                   ItemsSource="{Binding Tabs}">
         <TabControl.ItemTemplate>
           <DataTemplate x:DataType="vm:TabItemViewModel">
-            <Border CornerRadius="8"
-                    Background="Transparent"
-                    Padding="16,6">
+            <StackPanel Spacing="4" HorizontalAlignment="Center">
               <TextBlock Text="{Binding Header}"
                          FontSize="14"
-                         FontWeight="SemiBold"/>
-            </Border>
+                         FontWeight="SemiBold"
+                         HorizontalAlignment="Center"/>
+            </StackPanel>
           </DataTemplate>
         </TabControl.ItemTemplate>
         <TabControl.ContentTemplate>
@@ -39,20 +38,20 @@
           <Style Selector="TabItem">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Padding" Value="16,8"/>
             <Setter Property="Margin" Value="0,0,6,0"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
           </Style>
 
-          <Style Selector="TabItem:selected /template/ Border">
-            <Setter Property="Background" Value="{DynamicResource PrimaryBrush}"/>
+          <Style Selector="TabItem:selected">
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
+            <Setter Property="BorderThickness" Value="0,0,0,2"/>
+            <Setter Property="CornerRadius" Value="0"/>
           </Style>
 
-          <Style Selector="TabItem:selected /template/ Border TextBlock">
-            <Setter Property="Foreground" Value="White"/>
-          </Style>
-
-          <Style Selector="TabItem:pointerover /template/ Border">
-            <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}"/>
+          <Style Selector="TabItem:pointerover">
+            <Setter Property="Background" Value="{DynamicResource NavItemSelectedBackgroundBrush}"/>
           </Style>
         </TabControl.Styles>
       </TabControl>
@@ -372,10 +371,11 @@
                   </ListBox>
                 </ScrollViewer>
 
-                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" IsVisible="{Binding IsMarketLoading}">
-                  <ProgressBar IsIndeterminate="True" Width="100"/>
-                  <TextBlock Text="加载中..." FontSize="13" Margin="0,8,0,0" 
-                             Foreground="{DynamicResource TextSecondaryBrush}"/>
+                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" IsVisible="{Binding IsMarketLoading}" Spacing="16" Margin="16">
+                  <Border Classes="shimmer" Width="260" Height="48" Margin="0,0,0,0"/>
+                  <Border Classes="shimmer" Width="220" Height="48" Margin="0,0,0,0"/>
+                  <Border Classes="shimmer" Width="240" Height="48" Margin="0,0,0,0"/>
+                  <Border Classes="shimmer" Width="200" Height="48" Margin="0,0,0,0"/>
                 </StackPanel>
 
                 <TextBlock Text="{Binding MarketError}" FontSize="13"
@@ -507,7 +507,7 @@
           </ItemsControl>
         </ScrollViewer>
 
-        <StackPanel Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center"
+        <StackPanel Grid.Row="1" Classes="empty-state"
                     IsVisible="{Binding IsEmpty}">
           <Path Data="M8.5 13.5L2.5 15.5L4.5 9.5L15.5 3.5L20.5 8.5L14.5 19.5L8.5 13.5ZM12 16L13.5 14.5L9.5 10.5L8 12L12 16ZM14.5 4.5L19.5 9.5L20.5 8.5L15.5 3.5L14.5 4.5Z" Width="64" Height="64" Stretch="Uniform" Fill="{DynamicResource TextTertiaryBrush}" HorizontalAlignment="Center" Margin="0,0,0,16"/>
           <TextBlock Text="暂无截图" FontSize="18" FontWeight="SemiBold"
@@ -691,7 +691,7 @@
           </StackPanel>
         </ScrollViewer>
 
-        <StackPanel Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center"
+        <StackPanel Grid.Row="1" Classes="empty-state"
                     IsVisible="{Binding IsEmpty}">
           <Path Data="M4 1C2.89 1 2 1.89 2 3V7C2 8.11 2.89 9 4 9H1V11H13V9H10C11.11 9 12 8.11 12 7V3C12 1.89 11.11 1 10 1H4M4 3H10V7H4V3M14 13C12.89 13 12 13.89 12 15V19C12 20.11 12.89 21 14 21H10V23H22V21H18C19.11 21 20 20.11 20 19V15C20 13.89 19.11 13 18 13H14M14 15H18V19H14V15Z"
                 Width="72" Height="72" Stretch="Uniform"

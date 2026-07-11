@@ -2,55 +2,117 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
   <Styles.Resources>
-    <SolidColorBrush x:Key="BrandBrush" Color="#10B981"/>
+
+    <!-- ===== 主色（绿色系） ===== -->
     <SolidColorBrush x:Key="PrimaryBrush" Color="#10B981"/>
     <SolidColorBrush x:Key="PrimaryDarkBrush" Color="#059669"/>
     <SolidColorBrush x:Key="PrimaryLightBrush" Color="#34D399"/>
+    <SolidColorBrush x:Key="BrandBrush" Color="#10B981"/>
     <SolidColorBrush x:Key="SecondaryBrush" Color="#6EE7B7"/>
     <SolidColorBrush x:Key="AccentBrush" Color="#10B981"/>
 
-    <CornerRadius x:Key="ControlCornerRadius">6</CornerRadius>
-    <CornerRadius x:Key="OverlayCornerRadius">10</CornerRadius>
-    <CornerRadius x:Key="CardCornerRadius">12</CornerRadius>
+    <SolidColorBrush x:Key="Primary600Brush" Color="#059669"/>
+    <SolidColorBrush x:Key="Primary500Brush" Color="#10B981"/>
+    <SolidColorBrush x:Key="Primary400Brush" Color="#34D399"/>
+    <SolidColorBrush x:Key="Primary300Brush" Color="#6EE7B7"/>
+    <SolidColorBrush x:Key="Primary100Brush" Color="#D1FAE5"/>
+    <SolidColorBrush x:Key="Primary50Brush"  Color="#ECFDF5"/>
 
-    <SolidColorBrush x:Key="BackgroundBrush" Color="#1A1A1A"/>
-    <SolidColorBrush x:Key="SurfaceBrush" Color="#252525"/>
-    <SolidColorBrush x:Key="SurfaceElevatedBrush" Color="#2D2D2D"/>
-    <SolidColorBrush x:Key="SurfaceHoverBrush" Color="#383838"/>
-    <SolidColorBrush x:Key="NavHoverBrush" Color="#383838"/>
+    <!-- ===== 深色模式中性色 ===== -->
+    <SolidColorBrush x:Key="BackgroundBrush" Color="#0B0D10"/>
+    <SolidColorBrush x:Key="SurfaceBrush" Color="#16181D"/>
+    <SolidColorBrush x:Key="SurfaceElevatedBrush" Color="#1E2128"/>
+    <SolidColorBrush x:Key="SurfaceHoverBrush" Color="#252830"/>
+    <SolidColorBrush x:Key="NavHoverBrush" Color="#252830"/>
 
-    <SolidColorBrush x:Key="TextBrush" Color="#F0F0F0"/>
-    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#A0A0A0"/>
-    <SolidColorBrush x:Key="TextTertiaryBrush" Color="#707070"/>
+    <SolidColorBrush x:Key="TextBrush" Color="#F1F5F9"/>
+    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#94A3B8"/>
+    <SolidColorBrush x:Key="TextTertiaryBrush" Color="#64748B"/>
 
-    <SolidColorBrush x:Key="BorderBrush" Color="#3A3A3A"/>
-    <SolidColorBrush x:Key="DividerBrush" Color="#2A2A2A"/>
+    <SolidColorBrush x:Key="BorderBrush" Color="#2A2E37"/>
+    <SolidColorBrush x:Key="DividerBrush" Color="#1E2128"/>
 
-    <SolidColorBrush x:Key="InputBackgroundBrush" Color="#252525"/>
-    <SolidColorBrush x:Key="InputForegroundBrush" Color="#F0F0F0"/>
+    <SolidColorBrush x:Key="InputBackgroundBrush" Color="#16181D"/>
+    <SolidColorBrush x:Key="InputForegroundBrush" Color="#F1F5F9"/>
 
-    <SolidColorBrush x:Key="GlassmorphismBackgroundBrush" Color="#252525" Opacity="0.88"/>
-    <SolidColorBrush x:Key="GlassmorphismBorderBrush" Color="#FFFFFF" Opacity="0.5"/>
+    <SolidColorBrush x:Key="GlassmorphismBackgroundBrush" Color="#16181D" Opacity="0.88"/>
+    <SolidColorBrush x:Key="GlassmorphismBorderBrush" Color="#FFFFFF" Opacity="0.08"/>
 
+    <!-- ===== 浅色模式中性色（默认隐藏，由代码动态切换） ===== -->
+    <SolidColorBrush x:Key="LightBackgroundBrush" Color="#F8FAFC"/>
+    <SolidColorBrush x:Key="LightSurfaceBrush" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="LightSurfaceElevatedBrush" Color="#F1F5F9"/>
+    <SolidColorBrush x:Key="LightSurfaceHoverBrush" Color="#E8ECF1"/>
+    <SolidColorBrush x:Key="LightNavHoverBrush" Color="#E8ECF1"/>
+
+    <SolidColorBrush x:Key="LightTextBrush" Color="#0F172A"/>
+    <SolidColorBrush x:Key="LightTextSecondaryBrush" Color="#475569"/>
+    <SolidColorBrush x:Key="LightTextTertiaryBrush" Color="#94A3B8"/>
+
+    <SolidColorBrush x:Key="LightBorderBrush" Color="#E2E8F0"/>
+    <SolidColorBrush x:Key="LightDividerBrush" Color="#F1F5F9"/>
+
+    <SolidColorBrush x:Key="LightInputBackgroundBrush" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="LightInputForegroundBrush" Color="#0F172A"/>
+
+    <SolidColorBrush x:Key="LightGlassmorphismBackgroundBrush" Color="#FFFFFF" Opacity="0.92"/>
+    <SolidColorBrush x:Key="LightGlassmorphismBorderBrush" Color="#000000" Opacity="0.06"/>
+
+    <SolidColorBrush x:Key="LightSystemControlBackgroundBaseHighBrush" Color="#F8FAFC"/>
+    <SolidColorBrush x:Key="LightSystemControlBackgroundAltHighBrush" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="LightSystemControlBackgroundBaseLowBrush" Color="#E8ECF1"/>
+    <SolidColorBrush x:Key="LightSystemControlBackgroundBaseMediumBrush" Color="#F1F5F9"/>
+    <SolidColorBrush x:Key="LightSystemControlForegroundBaseHighBrush" Color="#0F172A"/>
+    <SolidColorBrush x:Key="LightSystemControlForegroundBaseLowBrush" Color="#E2E8F0"/>
+
+    <!-- ===== 功能色 ===== -->
     <SolidColorBrush x:Key="DangerBrush" Color="#EF4444"/>
     <SolidColorBrush x:Key="DangerDarkBrush" Color="#DC2626"/>
     <SolidColorBrush x:Key="WarningBrush" Color="#F59E0B"/>
     <SolidColorBrush x:Key="InfoBrush" Color="#3B82F6"/>
+    <SolidColorBrush x:Key="SuccessBrush" Color="#10B981"/>
 
-    <SolidColorBrush x:Key="SystemControlBackgroundBaseHighBrush" Color="#1A1A1A"/>
-    <SolidColorBrush x:Key="SystemControlBackgroundAltHighBrush" Color="#252525"/>
-    <SolidColorBrush x:Key="SystemControlBackgroundBaseLowBrush" Color="#383838"/>
-    <SolidColorBrush x:Key="SystemControlBackgroundBaseMediumBrush" Color="#2D2D2D"/>
+    <!-- ===== 系统色（深色模式默认值） ===== -->
+    <SolidColorBrush x:Key="SystemControlBackgroundBaseHighBrush" Color="#0B0D10"/>
+    <SolidColorBrush x:Key="SystemControlBackgroundAltHighBrush" Color="#16181D"/>
+    <SolidColorBrush x:Key="SystemControlBackgroundBaseLowBrush" Color="#252830"/>
+    <SolidColorBrush x:Key="SystemControlBackgroundBaseMediumBrush" Color="#1E2128"/>
 
-    <SolidColorBrush x:Key="SystemControlForegroundBaseHighBrush" Color="#F0F0F0"/>
-    <SolidColorBrush x:Key="SystemControlForegroundBaseLowBrush" Color="#3A3A3A"/>
+    <SolidColorBrush x:Key="SystemControlForegroundBaseHighBrush" Color="#F1F5F9"/>
+    <SolidColorBrush x:Key="SystemControlForegroundBaseLowBrush" Color="#2A2E37"/>
 
     <Color x:Key="SystemAccentColor">#10B981</Color>
 
-    <Color x:Key="SystemAltHighColor">#1A1A1A</Color>
-    <Color x:Key="SystemAltLowColor">#1A1A1A</Color>
-    <Color x:Key="SystemBaseHighColor">#F0F0F0</Color>
-    <Color x:Key="SystemBaseMediumColor">#707070</Color>
+    <Color x:Key="SystemAltHighColor">#0B0D10</Color>
+    <Color x:Key="SystemAltLowColor">#0B0D10</Color>
+    <Color x:Key="SystemBaseHighColor">#F1F5F9</Color>
+    <Color x:Key="SystemBaseMediumColor">#64748B</Color>
+
+    <!-- ===== 圆角 ===== -->
+    <CornerRadius x:Key="ControlCornerRadius">8</CornerRadius>
+    <CornerRadius x:Key="OverlayCornerRadius">12</CornerRadius>
+    <CornerRadius x:Key="CardCornerRadius">12</CornerRadius>
+
+    <!-- ===== 输入框聚焦光晕色 ===== -->
+    <SolidColorBrush x:Key="InputFocusGlowBrush" Color="#10B981" Opacity="0.15"/>
+
+    <!-- ===== 选中项浅底色 ===== -->
+    <SolidColorBrush x:Key="NavItemSelectedBackgroundBrush" Color="#10B981" Opacity="0.08"/>
+    <SolidColorBrush x:Key="LightNavItemSelectedBackgroundBrush" Color="#10B981" Opacity="0.06"/>
+
+    <!-- 阴影资源（由质感风格动态覆盖） -->
+    <BoxShadows x:Key="CardShadow">0 4 12 0 #20000000</BoxShadows>
+    <BoxShadows x:Key="ChromeShadow">0 1 4 0 #18000000</BoxShadows>
+    <BoxShadows x:Key="NavShadow">2 0 8 0 #12000000</BoxShadows>
+    <BoxShadows x:Key="WindowShadow">0 0 0 0 transparent</BoxShadows>
+
+    <!-- 卡片资源（由质感风格动态覆盖） -->
+    <SolidColorBrush x:Key="CardBackgroundBrush" Color="#16181D"/>
+    <SolidColorBrush x:Key="CardBorderBrush" Color="#2A2E37"/>
+
+    <!-- 窗口背景资源（由质感风格动态覆盖） -->
+    <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#0B0D10"/>
+
   </Styles.Resources>
 
   <Style Selector="TextBlock">
@@ -110,7 +172,7 @@
   </Style>
 
   <Style Selector="Separator">
-    <Setter Property="Background" Value="{DynamicResource BorderBrush}"/>
+    <Setter Property="Background" Value="{DynamicResource DividerBrush}"/>
     <Setter Property="Height" Value="1"/>
     <Setter Property="Margin" Value="0,4"/>
   </Style>

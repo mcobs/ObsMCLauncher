@@ -2,18 +2,39 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:dg="using:Avalonia.Controls">
 
+  <!-- ===== 基础按钮 ===== -->
   <Style Selector="Button">
     <Setter Property="HorizontalContentAlignment" Value="Center" />
     <Setter Property="VerticalContentAlignment" Value="Center" />
     <Setter Property="Padding" Value="16,8" />
     <Setter Property="CornerRadius" Value="{DynamicResource ControlCornerRadius}" />
+    <Setter Property="RenderTransformOrigin" Value="0.5,0.5" />
     <Setter Property="Transitions">
       <Transitions>
-        <DoubleTransition Property="Opacity" Duration="0:0:0.15" Easing="LinearEasing" />
+        <DoubleTransition Property="Opacity" Duration="0:0:0.12" Easing="LinearEasing" />
+        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.08" Easing="LinearEasing" />
       </Transitions>
     </Setter>
   </Style>
 
+  <Style Selector="Button:pointerover">
+    <Setter Property="Opacity" Value="0.9" />
+  </Style>
+
+  <Style Selector="Button:pressed">
+    <Setter Property="RenderTransform" Value="scale(0.97)" />
+    <Setter Property="Opacity" Value="1" />
+  </Style>
+
+  <Style Selector="Button:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
+  </Style>
+
+  <Style Selector="Button:pressed /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
+  </Style>
+
+  <!-- ===== 主色按钮 primary ===== -->
   <Style Selector="Button.primary">
     <Setter Property="Background" Value="{DynamicResource PrimaryBrush}" />
     <Setter Property="Foreground" Value="White" />
@@ -27,9 +48,9 @@
 
   <Style Selector="Button.primary:pressed /template/ ContentPresenter">
     <Setter Property="Background" Value="{DynamicResource PrimaryDarkBrush}" />
-    <Setter Property="Opacity" Value="0.85" />
   </Style>
 
+  <!-- ===== 次级按钮 secondary ===== -->
   <Style Selector="Button.secondary">
     <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
     <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
@@ -43,9 +64,9 @@
 
   <Style Selector="Button.secondary:pressed /template/ ContentPresenter">
     <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
-    <Setter Property="Opacity" Value="0.85" />
   </Style>
 
+  <!-- ===== 强调按钮 accent ===== -->
   <Style Selector="Button.accent">
     <Setter Property="Background">
       <SolidColorBrush Color="{DynamicResource SystemAccentColor}" />
@@ -61,9 +82,9 @@
 
   <Style Selector="Button.accent:pressed /template/ ContentPresenter">
     <Setter Property="Background" Value="{DynamicResource PrimaryDarkBrush}" />
-    <Setter Property="Opacity" Value="0.85" />
   </Style>
 
+  <!-- ===== 危险按钮 danger ===== -->
   <Style Selector="Button.danger">
     <Setter Property="Background" Value="{DynamicResource DangerBrush}" />
     <Setter Property="Foreground" Value="White" />
@@ -77,9 +98,9 @@
 
   <Style Selector="Button.danger:pressed /template/ ContentPresenter">
     <Setter Property="Background" Value="{DynamicResource DangerDarkBrush}" />
-    <Setter Property="Opacity" Value="0.85" />
   </Style>
 
+  <!-- ===== 幽灵/文字按钮 ghost ===== -->
   <Style Selector="Button.ghost">
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
@@ -87,28 +108,20 @@
   </Style>
 
   <Style Selector="Button.ghost:pointerover /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
+    <Setter Property="Background" Value="{DynamicResource NavItemSelectedBackgroundBrush}" />
   </Style>
 
   <Style Selector="Button.ghost:pressed /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
-    <Setter Property="Opacity" Value="0.85" />
+    <Setter Property="Background" Value="{DynamicResource NavItemSelectedBackgroundBrush}" />
   </Style>
 
-  <Style Selector="Button:pointerover /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
-  </Style>
-
-  <Style Selector="Button:pressed /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
-    <Setter Property="Opacity" Value="0.85" />
-  </Style>
-
+  <!-- ===== chrome-surface（标题栏/导航栏背景） ===== -->
   <Style Selector="Border.chrome-surface">
     <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundAltHighBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseLowBrush}" />
   </Style>
 
+  <!-- ===== DataGrid ===== -->
   <Style Selector="dg|DataGrid">
     <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseHighBrush}" />
     <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
@@ -136,10 +149,11 @@
     <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseLowBrush}" />
   </Style>
 
+  <!-- ===== 对话框按钮 ===== -->
   <Style Selector="Button.dialog-button">
     <Setter Property="MinWidth" Value="80"/>
     <Setter Property="Padding" Value="16,8"/>
-    <Setter Property="CornerRadius" Value="6"/>
+    <Setter Property="CornerRadius" Value="8"/>
     <Setter Property="FontSize" Value="14"/>
     <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseLowBrush}"/>
   </Style>
@@ -149,87 +163,119 @@
     <Setter Property="Foreground" Value="White"/>
   </Style>
 
+  <!-- ===== TextBox ===== -->
+  <Style Selector="TextBox">
+    <Setter Property="CornerRadius" Value="8"/>
+    <Setter Property="Height" Value="40"/>
+    <Setter Property="Background" Value="{DynamicResource InputBackgroundBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource InputForegroundBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+    <Setter Property="Padding" Value="12,8"/>
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="BorderBrush" Duration="0:0:0.15" />
+      </Transitions>
+    </Setter>
+  </Style>
+
+  <Style Selector="TextBox:focus-within">
+    <Setter Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
+  </Style>
+
   <Style Selector="TextBox.fluent-input">
-    <Setter Property="CornerRadius" Value="6"/>
+    <Setter Property="CornerRadius" Value="8"/>
+    <Setter Property="Height" Value="40"/>
     <Setter Property="Padding" Value="12,8"/>
     <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseHighBrush}"/>
     <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseLowBrush}"/>
     <Setter Property="BorderThickness" Value="1"/>
   </Style>
 
-  <Style Selector="TextBox">
-    <Setter Property="CornerRadius" Value="6"/>
-    <Setter Property="Background" Value="{DynamicResource InputBackgroundBrush}"/>
-    <Setter Property="Foreground" Value="{DynamicResource InputForegroundBrush}"/>
-    <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
-    <Setter Property="Padding" Value="10,8"/>
-  </Style>
-
-  <Style Selector="TextBox:focus-within">
-    <Setter Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
-    <Setter Property="BorderThickness" Value="1"/>
-  </Style>
-
+  <!-- ===== ComboBox ===== -->
   <Style Selector="ComboBox">
-    <Setter Property="CornerRadius" Value="6"/>
+    <Setter Property="CornerRadius" Value="8"/>
+    <Setter Property="Height" Value="40"/>
     <Setter Property="Background" Value="{DynamicResource InputBackgroundBrush}"/>
     <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
     <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
-    <Setter Property="Padding" Value="10,6"/>
+    <Setter Property="Padding" Value="12,6"/>
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="BorderBrush" Duration="0:0:0.15" />
+      </Transitions>
+    </Setter>
   </Style>
 
+  <Style Selector="ComboBox:focus-within">
+    <Setter Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
+  </Style>
+
+  <!-- ===== CheckBox ===== -->
   <Style Selector="CheckBox">
     <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
   </Style>
 
+  <!-- ===== ToggleSwitch ===== -->
   <Style Selector="ToggleSwitch">
     <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
   </Style>
 
+  <!-- ===== Expander ===== -->
   <Style Selector="Expander">
     <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
     <Setter Property="Background" Value="Transparent"/>
     <Setter Property="BorderThickness" Value="0"/>
   </Style>
 
+  <!-- ===== RadioButton ===== -->
   <Style Selector="RadioButton">
     <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
   </Style>
 
+  <!-- ===== Slider ===== -->
   <Style Selector="Slider">
     <Setter Property="Foreground" Value="{DynamicResource PrimaryBrush}"/>
     <Setter Property="Background" Value="{DynamicResource SurfaceElevatedBrush}"/>
   </Style>
 
   <Style Selector="Slider /template/ Border#TrackBackground">
-    <Setter Property="CornerRadius" Value="3"/>
+    <Setter Property="CornerRadius" Value="2"/>
+    <Setter Property="Height" Value="4"/>
   </Style>
 
-  <!-- Slider 滑块（Thumb）样式，覆盖 FluentTheme 默认白色 -->
   <Style Selector="Slider /template/ Thumb">
     <Setter Property="Background" Value="{DynamicResource PrimaryBrush}"/>
     <Setter Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
+    <Setter Property="Transitions">
+      <Transitions>
+        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.1" />
+      </Transitions>
+    </Setter>
   </Style>
 
   <Style Selector="Slider /template/ Thumb:pressed">
     <Setter Property="Background" Value="{DynamicResource PrimaryDarkBrush}"/>
+    <Setter Property="RenderTransform" Value="scale(1.15)"/>
   </Style>
 
   <Style Selector="Slider /template/ Thumb:pointerover">
     <Setter Property="Background" Value="{DynamicResource PrimaryBrush}"/>
+    <Setter Property="RenderTransform" Value="scale(1.15)"/>
   </Style>
 
+  <!-- ===== TabControl ===== -->
   <Style Selector="TabControl">
     <Setter Property="Background" Value="Transparent"/>
     <Setter Property="BorderThickness" Value="0"/>
   </Style>
 
+  <!-- ===== 版本齿轮按钮 ===== -->
   <Style Selector="Button.version-gear">
     <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
     <Setter Property="Foreground" Value="{DynamicResource PrimaryBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
     <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="CornerRadius" Value="8" />
   </Style>
 
   <Style Selector="Button.version-gear:pointerover /template/ ContentPresenter">
@@ -238,7 +284,6 @@
 
   <Style Selector="Button.version-gear:pressed /template/ ContentPresenter">
     <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
-    <Setter Property="Opacity" Value="0.85" />
   </Style>
 
   <Style Selector="Button.version-gear:disabled /template/ ContentPresenter">
@@ -250,7 +295,7 @@
     <Setter Property="Foreground" Value="{DynamicResource TextTertiaryBrush}" />
   </Style>
 
-  <!-- 导航标签按钮 -->
+  <!-- ===== 导航标签按钮 ===== -->
   <Style Selector="Button.nav-tab">
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
@@ -262,12 +307,11 @@
   </Style>
 
   <Style Selector="Button.nav-tab:pointerover /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
+    <Setter Property="Background" Value="{DynamicResource NavItemSelectedBackgroundBrush}" />
   </Style>
 
   <Style Selector="Button.nav-tab:pressed /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
-    <Setter Property="Opacity" Value="0.85" />
+    <Setter Property="Background" Value="{DynamicResource NavItemSelectedBackgroundBrush}" />
   </Style>
 
   <!-- 导航标签按钮 - 激活状态 -->
@@ -281,23 +325,72 @@
   </Style>
 
   <Style Selector="Button.nav-tab.active:pointerover /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
+    <Setter Property="Background" Value="{DynamicResource NavItemSelectedBackgroundBrush}" />
   </Style>
 
-  <!-- 危险操作按钮 -->
-  <Style Selector="Button.danger">
-    <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+  <!-- ===== 卡片样式 ===== -->
+  <Style Selector="Border.card">
+    <Setter Property="Background" Value="{DynamicResource CardBackgroundBrush}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource CardCornerRadius}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}" />
     <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="Padding" Value="20" />
+    <Setter Property="BoxShadow" Value="{DynamicResource CardShadow}" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BoxShadowsTransition Property="BoxShadow" Duration="0:0:0.2" />
+        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.2" Easing="CircularEaseOut" />
+      </Transitions>
+    </Setter>
   </Style>
 
-  <Style Selector="Button.danger:pointerover /template/ ContentPresenter">
-    <Setter Property="Background" Value="#22FF0000" />
+  <Style Selector="Border.card:pointerover">
+    <Setter Property="BoxShadow" Value="0 6 16 0 #30000000" />
   </Style>
 
-  <Style Selector="Button.danger:pressed /template/ ContentPresenter">
-    <Setter Property="Background" Value="#33FF0000" />
+  <!-- 可交互卡片（悬停上浮） -->
+  <Style Selector="Border.card-interactive">
+    <Setter Property="Background" Value="{DynamicResource CardBackgroundBrush}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource CardCornerRadius}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Padding" Value="20" />
+    <Setter Property="RenderTransformOrigin" Value="0.5,0.5" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BoxShadowsTransition Property="BoxShadow" Duration="0:0:0.2" />
+        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.2" Easing="CircularEaseOut" />
+      </Transitions>
+    </Setter>
+  </Style>
+
+  <Style Selector="Border.card-interactive:pointerover">
+    <Setter Property="BoxShadow" Value="0 6 16 0 #30000000" />
+    <Setter Property="RenderTransform" Value="translateY(-2px)" />
+  </Style>
+
+  <!-- ===== 骨架屏（Shimmer） ===== -->
+  <Style Selector="Border.shimmer">
+    <Setter Property="Background" Value="{DynamicResource SurfaceElevatedBrush}"/>
+    <Setter Property="CornerRadius" Value="6"/>
+  </Style>
+
+  <Style Selector="Border.shimmer-line">
+    <Setter Property="Background" Value="{DynamicResource SurfaceElevatedBrush}"/>
+    <Setter Property="CornerRadius" Value="4"/>
+    <Setter Property="Height" Value="12"/>
+  </Style>
+
+  <Style Selector="Border.shimmer-circle">
+    <Setter Property="Background" Value="{DynamicResource SurfaceElevatedBrush}"/>
+    <Setter Property="CornerRadius" Value="99"/>
+  </Style>
+
+  <!-- ===== 空状态 ===== -->
+  <Style Selector="StackPanel.empty-state">
+    <Setter Property="HorizontalAlignment" Value="Center"/>
+    <Setter Property="VerticalAlignment" Value="Center"/>
+    <Setter Property="Spacing" Value="8"/>
   </Style>
 
 </Styles>
