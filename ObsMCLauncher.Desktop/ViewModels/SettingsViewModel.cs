@@ -66,6 +66,8 @@ public partial class SettingsViewModel : ViewModelBase
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(MaxDownloadThreads)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(DownloadAssetsWithGame)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(AutoCheckUpdate)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(SkipSslValidation)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(EnableFileHashVerification)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(CloseAfterLaunch)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(GameDirectoryLocation)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(CustomGameDirectory)));
@@ -420,6 +422,41 @@ public partial class SettingsViewModel : ViewModelBase
             {
                 _config.AutoCheckUpdate = value;
                 OnPropertyChanged(new PropertyChangedEventArgs(nameof(AutoCheckUpdate)));
+                AutoSave();
+            }
+        }
+    }
+
+    public bool SkipSslValidation
+    {
+        get => _config.SkipSslValidation;
+        set
+        {
+            if (_config.SkipSslValidation != value)
+            {
+                _config.SkipSslValidation = value;
+                OnPropertyChanged(new PropertyChangedEventArgs(nameof(SkipSslValidation)));
+                AutoSave();
+
+                if (value)
+                {
+                    _notificationService.Show("安全警告",
+                        "已禁用SSL证书验证，这会使你的网络请求面临中间人攻击风险。仅在信任的网络环境下使用此选项。",
+                        ViewModels.Notifications.NotificationType.Warning, 8);
+                }
+            }
+        }
+    }
+
+    public bool EnableFileHashVerification
+    {
+        get => _config.EnableFileHashVerification;
+        set
+        {
+            if (_config.EnableFileHashVerification != value)
+            {
+                _config.EnableFileHashVerification = value;
+                OnPropertyChanged(new PropertyChangedEventArgs(nameof(EnableFileHashVerification)));
                 AutoSave();
             }
         }
@@ -1056,6 +1093,8 @@ public partial class SettingsViewModel : ViewModelBase
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(MaxDownloadThreads)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(DownloadAssetsWithGame)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(AutoCheckUpdate)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(SkipSslValidation)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(EnableFileHashVerification)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(CloseAfterLaunch)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(GameDirectoryLocation)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(CustomGameDirectory)));

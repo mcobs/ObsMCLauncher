@@ -149,6 +149,10 @@ public class LauncherConfig
 
     public bool AutoCheckUpdate { get; set; } = true;
 
+    public bool SkipSslValidation { get; set; } = false;
+
+    public bool EnableFileHashVerification { get; set; } = true;
+
     public int ThemeMode { get; set; } = 0;
 
     public string? SelectedVersion { get; set; }

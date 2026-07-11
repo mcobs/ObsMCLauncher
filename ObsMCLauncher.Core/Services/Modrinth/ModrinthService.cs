@@ -24,14 +24,8 @@ public class ModrinthService
 
     static ModrinthService()
     {
-        var handler = new HttpClientHandler
-        {
-            ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
-        };
-
-        _httpClient = new HttpClient(handler);
+        _httpClient = HttpClientFactory.CreateClient(timeout: TimeSpan.FromMinutes(2));
         _httpClient.DefaultRequestHeaders.Add("User-Agent", VersionInfo.UserAgent);
-        _httpClient.Timeout = TimeSpan.FromMinutes(2);
     }
 
     private static bool ShouldUseMirror =>

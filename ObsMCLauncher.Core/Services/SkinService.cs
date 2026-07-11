@@ -22,13 +22,9 @@ namespace ObsMCLauncher.Core.Services
 
         private SkinService()
         {
-            var handler = new HttpClientHandler
-            {
-                AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate,
-                ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true
-            };
-            _httpClient = new HttpClient(handler);
-            _httpClient.Timeout = TimeSpan.FromSeconds(30);
+            _httpClient = HttpClientFactory.CreateClient(
+                timeout: TimeSpan.FromSeconds(30),
+                automaticDecompression: System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate);
             _httpClient.DefaultRequestHeaders.Add("User-Agent", VersionInfo.UserAgent);
 
             var config = LauncherConfig.Load();

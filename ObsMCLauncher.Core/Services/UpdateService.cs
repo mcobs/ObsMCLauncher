@@ -93,16 +93,7 @@ public static class UpdateService
 
     static UpdateService()
     {
-        var handler = new HttpClientHandler
-        {
-            ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
-        };
-
-        _httpClient = new HttpClient(handler)
-        {
-            Timeout = TimeSpan.FromSeconds(30)
-        };
-
+        _httpClient = HttpClientFactory.CreateClient(timeout: TimeSpan.FromSeconds(30));
         _httpClient.DefaultRequestHeaders.Add("User-Agent", Utils.VersionInfo.UserAgent);
     }
 

@@ -447,6 +447,30 @@
             </StackPanel>
           </Border>
 
+          <!-- 安全 -->
+          <Border Classes="card">
+            <StackPanel Spacing="14">
+              <TextBlock Text="安全" FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}"/>
+              <Grid ColumnDefinitions="*,Auto">
+                <StackPanel>
+                  <TextBlock Text="跳过SSL证书验证" FontSize="13" FontWeight="Medium"/>
+                  <TextBlock Text="启用后将不验证HTTPS证书，仅建议在网络环境异常时开启" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap"/>
+                </StackPanel>
+                <ToggleSwitch Grid.Column="1" IsChecked="{Binding SkipSslValidation}"/>
+              </Grid>
+
+              <Border Height="1" Background="{DynamicResource DividerBrush}"/>
+
+              <Grid ColumnDefinitions="*,Auto">
+                <StackPanel>
+                  <TextBlock Text="文件哈希校验" FontSize="13" FontWeight="Medium"/>
+                  <TextBlock Text="下载文件后验证SHA-1/SHA-256哈希，确保文件完整性" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap"/>
+                </StackPanel>
+                <ToggleSwitch Grid.Column="1" IsChecked="{Binding EnableFileHashVerification}"/>
+              </Grid>
+            </StackPanel>
+          </Border>
+
           <!-- 主页卡片 -->
           <Border Classes="card">
             <StackPanel Spacing="14">

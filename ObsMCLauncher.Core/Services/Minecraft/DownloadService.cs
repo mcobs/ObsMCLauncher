@@ -45,29 +45,15 @@ namespace ObsMCLauncher.Core.Services.Minecraft
 
         static DownloadService()
         {
-            var handler = new HttpClientHandler
-            {
-                AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate,
-                
-                SslProtocols = System.Security.Authentication.SslProtocols.Tls12 | System.Security.Authentication.SslProtocols.Tls13,
-                
-#if DEBUG
-                ServerCertificateCustomValidationCallback = (message, cert, chain, errors) =>
-                {
-                    if (errors != System.Net.Security.SslPolicyErrors.None)
-                    {
-                        DebugLogger.Warn("Download", $"SSL证书警告: {errors}");
-                    }
-                    return true;
-                },
-#endif
-                
-                MaxConnectionsPerServer = 10,
-                UseProxy = true,
-                UseCookies = false,
-                AllowAutoRedirect = true,
-                MaxAutomaticRedirections = 10
-            };
+            var handler = HttpClientFactory.CreateHandler(
+                automaticDecompression: System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate,
+                sslProtocols: System.Security.Authentication.SslProtocols.Tls12 | System.Security.Authentication.SslProtocols.Tls13,
+                maxConnectionsPerServer: 10,
+                allowAutoRedirect: true,
+                maxAutomaticRedirections: 10);
+
+            handler.UseProxy = true;
+            handler.UseCookies = false;
 
             _httpClient = new HttpClient(handler)
             {

@@ -26,14 +26,9 @@ public sealed class MicrosoftAuthService
 
     private static HttpClient CreateHttpClient()
     {
-        var handler = new HttpClientHandler
-        {
-            AllowAutoRedirect = true,
-            MaxAutomaticRedirections = 10,
-#if DEBUG
-            ServerCertificateCustomValidationCallback = (_, _, _, _) => true,
-#endif
-        };
+        var handler = HttpClientFactory.CreateHandler(
+            allowAutoRedirect: true,
+            maxAutomaticRedirections: 10);
 
         var client = new HttpClient(handler)
         {

@@ -181,13 +181,8 @@ namespace ObsMCLauncher.Core.Plugins
         
         static PluginMarketService()
         {
-            var handler = new HttpClientHandler
-            {
-                ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
-            };
-            _httpClient = new HttpClient(handler);
+            _httpClient = HttpClientFactory.CreateClient(timeout: TimeSpan.FromSeconds(30));
             _httpClient.DefaultRequestHeaders.Add("User-Agent", VersionInfo.UserAgent);
-            _httpClient.Timeout = TimeSpan.FromSeconds(30);
         }
         
         /// <summary>

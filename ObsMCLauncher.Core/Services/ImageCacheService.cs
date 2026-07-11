@@ -12,19 +12,14 @@ namespace ObsMCLauncher.Core.Services;
 
 public class ImageCacheService
 {
-    private static readonly HttpClient _httpClient = new();
+    private static readonly HttpClient _httpClient;
     private static readonly string CacheDir = Path.Combine(VersionInfo.GetAppBaseDirectory(), "OMCL", "cache", "icons");
     private const long MaxCacheSizeBytes = 100 * 1024 * 1024;
 
     static ImageCacheService()
     {
-        var handler = new HttpClientHandler
-        {
-            ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
-        };
-        _httpClient = new HttpClient(handler);
+        _httpClient = HttpClientFactory.CreateClient(timeout: TimeSpan.FromSeconds(30));
         _httpClient.DefaultRequestHeaders.Add("User-Agent", VersionInfo.UserAgent);
-        _httpClient.Timeout = TimeSpan.FromSeconds(30);
         if (!Directory.Exists(CacheDir))
         {
             Directory.CreateDirectory(CacheDir);

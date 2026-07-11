@@ -107,12 +107,9 @@ namespace ObsMCLauncher.Core.Services.Mirror
 
         static MirrorHealthChecker()
         {
-            var handler = new HttpClientHandler
-            {
-                AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate,
-                ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
-            };
-            _httpClient = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(8) };
+            _httpClient = HttpClientFactory.CreateClient(
+                timeout: TimeSpan.FromSeconds(8),
+                automaticDecompression: System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate);
             _httpClient.DefaultRequestHeaders.Add("User-Agent", VersionInfo.UserAgent);
         }
 
