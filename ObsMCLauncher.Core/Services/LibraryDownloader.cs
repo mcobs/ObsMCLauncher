@@ -79,12 +79,19 @@ public static class LibraryDownloader
                                 size = sizeElement.GetInt64();
                             }
 
+                            string? sha1 = null;
+                            if (artifact.TryGetProperty("sha1", out var sha1Element))
+                            {
+                                sha1 = sha1Element.GetString();
+                            }
+
                             libraryDownloadMap[libName] = new LibraryDownloadInfo
                             {
                                 Name = libName,
                                 Url = url,
                                 Path = path,
-                                Size = size
+                                Size = size,
+                                Sha1 = sha1
                             };
                         }
                     }
@@ -141,12 +148,19 @@ public static class LibraryDownloader
                                             size = sizeElement.GetInt64();
                                         }
 
+                                        string? sha1 = null;
+                                        if (artifact.TryGetProperty("sha1", out var sha1Element))
+                                        {
+                                            sha1 = sha1Element.GetString();
+                                        }
+
                                         libraryDownloadMap[libName] = new LibraryDownloadInfo
                                         {
                                             Name = libName,
                                             Url = url,
                                             Path = path,
-                                            Size = size
+                                            Size = size,
+                                            Sha1 = sha1
                                         };
                                     }
                                 }
@@ -188,7 +202,22 @@ public static class LibraryDownloader
                     var content = await response.Content.ReadAsByteArrayAsync(cancellationToken);
                     await File.WriteAllBytesAsync(destPath, content, cancellationToken);
 
-                    if (libInfo.Size > 0)
+                    bool hashOk = true;
+                    if (FileHashVerifier.IsEnabled && !string.IsNullOrEmpty(libInfo.Sha1))
+                    {
+                        hashOk = FileHashVerifier.VerifyFileHash(destPath, libInfo.Sha1, HashType.Sha1);
+                        if (!hashOk)
+                        {
+                            DebugLogger.Warn("LibraryDownloader", $"SHA-1校验失败: {libInfo.Name}");
+                            File.Delete(destPath);
+                        }
+                    }
+
+                    if (!hashOk)
+                    {
+                        failedCount++;
+                    }
+                    else if (libInfo.Size > 0)
                     {
                         var fileInfo = new FileInfo(destPath);
                         if (fileInfo.Length == libInfo.Size)
@@ -311,5 +340,6 @@ public static class LibraryDownloader
         public string Url { get; set; } = "";
         public string Path { get; set; } = "";
         public long Size { get; set; }
+        public string? Sha1 { get; set; }
     }
 }

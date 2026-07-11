@@ -207,9 +207,18 @@ public class AssetsDownloadService
                             resp.EnsureSuccessStatusCode();
                             
                             using var fs = new FileStream(assetPath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true);
-                            await resp.Content.CopyToAsync(fs, cts.Token).ConfigureAwait(false);
+	                            await resp.Content.CopyToAsync(fs, cts.Token).ConfigureAwait(false);
 
-                            success = true;
+	                            if (FileHashVerifier.IsEnabled)
+	                            {
+	                                if (!FileHashVerifier.VerifyFileHash(assetPath, hash, HashType.Sha1))
+	                                {
+	                                    File.Delete(assetPath);
+	                                    throw new Exception("SHA-1校验失败");
+	                                }
+	                            }
+
+	                            success = true;
                             break;
                         }
                         catch (Exception ex)

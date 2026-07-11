@@ -198,8 +198,18 @@ namespace ObsMCLauncher.Core.Services.Minecraft
                         cancellationToken);
                     
                     downloadState.CompletedFiles++;
-                    downloadState.TotalDownloadedBytes += clientSize;
-                    DebugLogger.Info("Download", $"客户端JAR已下载: {clientJarPath}");
+	                    downloadState.TotalDownloadedBytes += clientSize;
+
+	                    if (FileHashVerifier.IsEnabled && !string.IsNullOrEmpty(versionInfo.Downloads.Client.Sha1))
+	                    {
+	                        if (!FileHashVerifier.VerifyFileHash(clientJarPath, versionInfo.Downloads.Client.Sha1, HashType.Sha1))
+	                        {
+	                            DebugLogger.Warn("Download", $"客户端JAR SHA-1校验失败: {clientJarPath}");
+	                            try { File.Delete(clientJarPath); } catch { }
+	                        }
+	                    }
+
+	                    DebugLogger.Info("Download", $"客户端JAR已下载: {clientJarPath}");
                 }
                 else
                 {
@@ -540,18 +550,28 @@ namespace ObsMCLauncher.Core.Services.Minecraft
                 var libraryPath = Path.Combine(librariesPath, artifact.Path.Replace('/', Path.DirectorySeparatorChar));
                 
                 if (File.Exists(libraryPath))
-                {
-                    var fileInfo = new FileInfo(libraryPath);
-                    if (fileInfo.Length == artifact.Size)
-                    {
-                        lock (lockObject)
-                        {
-                            state.CompletedFiles++;
-                            state.TotalDownloadedBytes += artifact.Size;
-                        }
-                        continue;
-                    }
-                }
+	                {
+	                    var fileInfo = new FileInfo(libraryPath);
+	                    bool sizeOk = fileInfo.Length == artifact.Size;
+	                    bool hashOk = true;
+	                    if (sizeOk && FileHashVerifier.IsEnabled && !string.IsNullOrEmpty(artifact.Sha1))
+	                    {
+	                        hashOk = FileHashVerifier.VerifyFileHash(libraryPath, artifact.Sha1, HashType.Sha1);
+	                        if (!hashOk)
+	                        {
+	                            DebugLogger.Warn("Download", $"库文件SHA-1校验失败，重新下载: {artifact.Path}");
+	                        }
+	                    }
+	                    if (sizeOk && hashOk)
+	                    {
+	                        lock (lockObject)
+	                        {
+	                            state.CompletedFiles++;
+	                            state.TotalDownloadedBytes += artifact.Size;
+	                        }
+	                        continue;
+	                    }
+	                }
 
                 var downloadTask = Task.Run(async () =>
                 {
@@ -569,36 +589,45 @@ namespace ObsMCLauncher.Core.Services.Minecraft
                         var libSize = artifact.Size;
 
                         await DownloadFileWithProgressAsync(
-                            url, 
-                            libraryPath,
-                            (currentBytes, speed, actualTotalBytes) =>
-                            {
-                                var effectiveLibSize = libSize > 0 ? libSize : actualTotalBytes;
-                                
-                                long currentTotalDownloaded;
-                                int currentCompletedFiles;
-                                lock (lockObject)
-                                {
-                                    currentTotalDownloaded = state.TotalDownloadedBytes;
-                                    currentCompletedFiles = state.CompletedFiles;
-                                }
-                                
-                                progress?.Report(new DownloadProgress
-                                {
-                                    Status = $"正在下载库文件 ({currentCompletedFiles + 1}/{totalFiles})...",
-                                    CurrentFile = Path.GetFileName(libraryPath),
-                                    CurrentFileTotalBytes = effectiveLibSize,
-                                    CurrentFileBytes = currentBytes,
-                                    TotalBytes = totalBytes,
-                                    TotalDownloadedBytes = currentTotalDownloaded + currentBytes,
-                                    CompletedFiles = currentCompletedFiles,
-                                    TotalFiles = totalFiles,
-                                    DownloadSpeed = speed
-                                });
-                            },
-                            cancellationToken);
+	                            url, 
+	                            libraryPath,
+	                            (currentBytes, speed, actualTotalBytes) =>
+	                            {
+	                                var effectiveLibSize = libSize > 0 ? libSize : actualTotalBytes;
+	                                
+	                                long currentTotalDownloaded;
+	                                int currentCompletedFiles;
+	                                lock (lockObject)
+	                                {
+	                                    currentTotalDownloaded = state.TotalDownloadedBytes;
+	                                    currentCompletedFiles = state.CompletedFiles;
+	                                }
+	                                
+	                                progress?.Report(new DownloadProgress
+	                                {
+	                                    Status = $"正在下载库文件 ({currentCompletedFiles + 1}/{totalFiles})...",
+	                                    CurrentFile = Path.GetFileName(libraryPath),
+	                                    CurrentFileTotalBytes = effectiveLibSize,
+	                                    CurrentFileBytes = currentBytes,
+	                                    TotalBytes = totalBytes,
+	                                    TotalDownloadedBytes = currentTotalDownloaded + currentBytes,
+	                                    CompletedFiles = currentCompletedFiles,
+	                                    TotalFiles = totalFiles,
+	                                    DownloadSpeed = speed
+	                                });
+	                            },
+	                            cancellationToken);
 
-                        lock (lockObject)
+	                        if (FileHashVerifier.IsEnabled && !string.IsNullOrEmpty(artifact.Sha1))
+	                        {
+	                            if (!FileHashVerifier.VerifyFileHash(libraryPath, artifact.Sha1, HashType.Sha1))
+	                            {
+	                                DebugLogger.Warn("Download", $"下载后SHA-1校验失败: {artifact.Path}");
+	                                try { File.Delete(libraryPath); } catch { }
+	                            }
+	                        }
+
+	                        lock (lockObject)
                         {
                             state.CompletedFiles++;
                             state.TotalDownloadedBytes += libSize;
@@ -643,10 +672,11 @@ namespace ObsMCLauncher.Core.Services.Minecraft
         }
 
         private class DownloadItem
-        {
-            public string? Url { get; set; }
-            public long Size { get; set; }
-        }
+	        {
+	            public string? Url { get; set; }
+	            public long Size { get; set; }
+	            public string? Sha1 { get; set; }
+	        }
 
         private class Library
         {
@@ -660,11 +690,12 @@ namespace ObsMCLauncher.Core.Services.Minecraft
         }
 
         private class Artifact
-        {
-            public string? Path { get; set; }
-            public string? Url { get; set; }
-            public long Size { get; set; }
-        }
+	        {
+	            public string? Path { get; set; }
+	            public string? Url { get; set; }
+	            public long Size { get; set; }
+	            public string? Sha1 { get; set; }
+	        }
 
         private class Rule
         {
