@@ -489,8 +489,7 @@ public class ModpackInstallService
         {
             if (string.IsNullOrEmpty(entry.Name)) continue;
             var destPath = Path.Combine(versionDir, entry.FullName[(prefix.Length + 1)..]);
-            Directory.CreateDirectory(Path.GetDirectoryName(destPath)!);
-            entry.ExtractToFile(destPath, true);
+            SafeZipExtractor.ExtractEntryToFile(entry, destPath, versionDir);
             count++;
             progress?.Invoke($"正在解压文件... ({count}/{entries.Count})", 70 + (count * 25.0 / Math.Max(1, entries.Count)));
         }
@@ -503,8 +502,7 @@ public class ModpackInstallService
         {
             if (string.IsNullOrEmpty(entry.Name)) continue;
             var destPath = Path.Combine(versionDir, entry.FullName);
-            Directory.CreateDirectory(Path.GetDirectoryName(destPath)!);
-            entry.ExtractToFile(destPath, true);
+            SafeZipExtractor.ExtractEntryToFile(entry, destPath, versionDir);
             count++;
             progress?.Invoke($"正在解压手动整合包... ({count}/{archive.Entries.Count})", 30 + (count * 70.0 / Math.Max(1, archive.Entries.Count)));
         }

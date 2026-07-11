@@ -323,7 +323,7 @@ namespace ObsMCLauncher.Core.Services.Installers
                         }
 
                         var lwLibPath = Path.Combine(lwLibDir, $"launchwrapper-{launchWrapperVersion}.jar");
-                        launchWrapperEntry.ExtractToFile(lwLibPath, true);
+	                        SafeZipExtractor.ExtractEntryToFile(launchWrapperEntry, lwLibPath, librariesDir);
                         DebugLogger.Info("OptiFine", $"已提取 launchwrapper-{launchWrapperVersion}.jar");
                     }
                     else if (launchWrapperTxt != null)
@@ -346,7 +346,7 @@ namespace ObsMCLauncher.Core.Services.Installers
                             }
 
                             var lwLibPath = Path.Combine(lwLibDir, lwJarName);
-                            lwJarEntry.ExtractToFile(lwLibPath, true);
+	                        SafeZipExtractor.ExtractEntryToFile(lwJarEntry, lwLibPath, librariesDir);
                             DebugLogger.Info("OptiFineService", $"已提取 {lwJarName}");
                         }
                     }

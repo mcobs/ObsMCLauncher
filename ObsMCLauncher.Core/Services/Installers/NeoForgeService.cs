@@ -934,12 +934,11 @@ namespace ObsMCLauncher.Core.Services.Installers
                     var entry = archive.GetEntry(entryPath);
                     
                     if (entry != null)
-                    {
-                        Directory.CreateDirectory(Path.GetDirectoryName(destPath)!);
-                        entry.ExtractToFile(destPath, overwrite: true);
-                        copiedCount++;
-                        
-                        DebugLogger.Info("NeoForgeService", $"已复制: {Path.GetFileName(destPath)}");
+	                    {
+	                        SafeZipExtractor.ExtractEntryToFile(entry, destPath, librariesDir);
+	                        copiedCount++;
+	                        
+	                        DebugLogger.Info("NeoForgeService", $"已复制: {Path.GetFileName(destPath)}");
                 }
             }
             catch (Exception ex)
@@ -1290,12 +1289,12 @@ namespace ObsMCLauncher.Core.Services.Installers
                 var entry = archive.GetEntry(entryPath);
                 
                 if (entry != null)
-                {
-                    var fileName = Path.GetFileName(entryPath);
-                    var destPath = Path.Combine(tempDir, fileName);
-                    entry.ExtractToFile(destPath, overwrite: true);
-                    return destPath;
-                }
+	                {
+	                    var fileName = Path.GetFileName(entryPath);
+	                    var destPath = Path.Combine(tempDir, fileName);
+	                    SafeZipExtractor.ExtractEntryWithNameOnly(entry, tempDir);
+	                    return destPath;
+	                }
                 
                 throw new Exception($"安装器中未找到文件: {entryPath}");
             }

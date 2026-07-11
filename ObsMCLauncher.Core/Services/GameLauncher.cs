@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using ObsMCLauncher.Core.Models;
 using ObsMCLauncher.Core.Services.Accounts;
+using ObsMCLauncher.Core.Utils;
 
 namespace ObsMCLauncher.Core.Services;
 
@@ -1378,11 +1379,10 @@ public class GameLauncher
                     foreach (var entry in archive.Entries)
                     {
                         var ext = Path.GetExtension(entry.Name).ToLower();
-                        if (ext == ".dll" || ext == ".so" || ext == ".dylib")
-                        {
-                            var destPath = Path.Combine(nativesDir, entry.Name);
-                            entry.ExtractToFile(destPath, overwrite: true);
-                        }
+                            if (ext == ".dll" || ext == ".so" || ext == ".dylib")
+                            {
+                                SafeZipExtractor.ExtractEntryWithNameOnly(entry, nativesDir);
+                            }
                     }
                 }
                 catch

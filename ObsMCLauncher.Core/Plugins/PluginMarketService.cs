@@ -361,7 +361,7 @@ namespace ObsMCLauncher.Core.Plugins
                 
                 Directory.CreateDirectory(pluginTargetDir);
                 
-                ZipFile.ExtractToDirectory(tempZipPath, pluginTargetDir);
+                SafeZipExtractor.ExtractToDirectory(tempZipPath, pluginTargetDir);
                 
                 File.Delete(tempZipPath);
                 
