@@ -182,13 +182,23 @@ public class BoolToClassConverter : IValueConverter
 public class BoolToBrushConverter : IValueConverter
 {
     public static readonly BoolToBrushConverter NavTab = new();
+    public static readonly BoolToBrushConverter ConflictBorder = new();
 
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         if (value is true)
         {
+            if (this == ConflictBorder)
+            {
+                return new SolidColorBrush(Color.Parse("#FF5252"));
+            }
             Application.Current!.Resources.TryGetResource("PrimaryBrush", null, out var brush);
             return brush;
+        }
+        if (this == ConflictBorder)
+        {
+            Application.Current!.Resources.TryGetResource("BorderBrush", null, out var border);
+            return border;
         }
         Application.Current!.Resources.TryGetResource("TextSecondaryBrush", null, out var fallback);
         return fallback;

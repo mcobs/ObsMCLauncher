@@ -50,9 +50,10 @@ public static class SafeZipExtractor
 
     public static void ExtractEntryWithNameOnly(ZipArchiveEntry entry, string destinationDir)
     {
-        if (entry.Name.Contains('/') || entry.Name.Contains('\\'))
+        // FullName 包含路径，Name 仅返回文件名部分，所以用 FullName 检测路径分隔符
+        if (entry.FullName.Contains('/') || entry.FullName.Contains('\\'))
         {
-            throw new IOException($"ZIP条目文件名包含路径分隔符: {entry.Name}");
+            throw new IOException($"ZIP条目包含路径分隔符，预期仅为文件名: {entry.FullName}");
         }
 
         var destPath = Path.GetFullPath(Path.Combine(destinationDir, entry.Name));

@@ -16,6 +16,7 @@ using ObsMCLauncher.Core.Services.Minecraft;
 using ObsMCLauncher.Core.Services.Ui;
 using ObsMCLauncher.Core.Utils;
 using ObsMCLauncher.Desktop.ViewModels.Notifications;
+using ObsMCLauncher.Desktop.ViewModels.Dialogs;
 using ObsMCLauncher.Desktop.Views;
 
 namespace ObsMCLauncher.Desktop.ViewModels;
@@ -24,6 +25,7 @@ public partial class HomeViewModel : ViewModelBase
 {
     private readonly ObsMCLauncher.Core.Services.Ui.IDispatcher _dispatcher;
     private readonly NotificationService _notificationService;
+    private readonly DialogService _dialogService;
 
     public ObservableCollection<MinecraftVersion> Versions { get; } = new();
 
@@ -202,6 +204,7 @@ public partial class HomeViewModel : ViewModelBase
     {
         _dispatcher = dispatcher;
         _notificationService = notificationService;
+        _dialogService = new DialogService();
 
         InstanceViewModel = new InstanceViewModel(notificationService);
 
@@ -709,6 +712,23 @@ public partial class HomeViewModel : ViewModelBase
                 catch (Exception dlEx)
                 {
                     _notificationService.Show("依赖补全失败", dlEx.Message, NotificationType.Error);
+                    _notificationService.Remove(notifId);
+                    return;
+                }
+            }
+
+            // 1.5 模组冲突检测
+            var modsDir = Path.Combine(config.GetRunDirectory(versionId), "mods");
+            var conflicts = ObsMCLauncher.Core.Services.ModConflictDetector.DetectConflicts(modsDir);
+            var errors = conflicts.Where(c => c.Severity == ObsMCLauncher.Core.Services.ConflictSeverity.Error).ToList();
+            if (errors.Count > 0)
+            {
+                var conflictMsg = string.Join("\n", errors.Select(c => c.Description));
+                var result = await _dialogService.ShowQuestion(
+                    "检测到模组冲突",
+                    $"发现 {errors.Count} 个严重冲突，可能导致游戏崩溃：\n\n{conflictMsg}\n\n是否仍要启动游戏？");
+                if (result != DialogResult.Yes)
+                {
                     _notificationService.Remove(notifId);
                     return;
                 }

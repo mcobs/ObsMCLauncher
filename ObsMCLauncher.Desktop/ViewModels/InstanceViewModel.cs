@@ -610,6 +610,7 @@ public partial class InstanceViewModel : ViewModelBase
     private void RefreshMods()
     {
         LoadMods();
+        _notificationService.Show("已刷新", "模组列表已重新加载", NotificationType.Success, 2);
     }
 
     partial void OnIsolationModeChanged(int value)
@@ -625,6 +626,9 @@ public partial class InstanceViewModel : ViewModelBase
 
         Core.Services.VersionInitService.SetIsolationMode(_versionPath, mode);
         _notificationService.Show("已保存", "版本隔离设置已更新", NotificationType.Success, 2);
+
+        // 隔离模式变更后刷新模组列表
+        LoadMods();
     }
 
     partial void OnUseCustomMemoryChanged(bool value)
@@ -831,19 +835,28 @@ public partial class InstanceViewModel : ViewModelBase
         var modsDir = Path.Combine(gameDir, "mods");
         var list = new List<ModInfo>();
 
+        // 获取实例加载器类型用于判断
+        var instanceLoader = _version?.LoaderType?.ToLowerInvariant() ?? "";
+
         if (Directory.Exists(modsDir))
         {
             foreach (var file in Directory.GetFiles(modsDir, "*.jar"))
             {
                 try
                 {
+                    var meta = ObsMCLauncher.Core.Services.ModMetadataParser.ParseFromJar(file);
+                    var effectiveLoader = DetermineEffectiveLoader(meta?.Loader ?? "", instanceLoader);
                     list.Add(new ModInfo
                     {
-                        Name = Path.GetFileNameWithoutExtension(file),
+                        Name = meta?.Name ?? Path.GetFileNameWithoutExtension(file),
                         FileName = Path.GetFileName(file),
                         Path = file,
                         Size = new FileInfo(file).Length,
-                        IsEnabled = true
+                        IsEnabled = true,
+                        ModId = meta?.ModId ?? "",
+                        Version = meta?.Version ?? "",
+                        Loader = effectiveLoader,
+                        IconPath = ExtractModIconWithMeta(file, meta)
                     });
                 }
                 catch { }
@@ -854,20 +867,148 @@ public partial class InstanceViewModel : ViewModelBase
                 try
                 {
                     var fileName = Path.GetFileName(file);
+                    var meta = ObsMCLauncher.Core.Services.ModMetadataParser.ParseFromJar(file);
+                    var effectiveLoader = DetermineEffectiveLoader(meta?.Loader ?? "", instanceLoader);
                     list.Add(new ModInfo
                     {
-                        Name = fileName,
+                        Name = meta?.Name ?? fileName,
                         FileName = fileName,
                         Path = file,
                         Size = new FileInfo(file).Length,
-                        IsEnabled = false
+                        IsEnabled = false,
+                        ModId = meta?.ModId ?? "",
+                        Version = meta?.Version ?? "",
+                        Loader = effectiveLoader,
+                        IconPath = ExtractModIconWithMeta(file, meta)
                     });
                 }
                 catch { }
             }
         }
 
+        // 冲突检测
+        var conflicts = ObsMCLauncher.Core.Services.ModConflictDetector.DetectConflicts(modsDir);
+        if (conflicts.Count > 0)
+        {
+            var conflictModIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var conflict in conflicts)
+            {
+                if (!string.IsNullOrEmpty(conflict.ModId1)) conflictModIds.Add(conflict.ModId1);
+                if (!string.IsNullOrEmpty(conflict.ModId2)) conflictModIds.Add(conflict.ModId2);
+            }
+
+            foreach (var mod in list)
+            {
+                if (conflictModIds.Contains(mod.ModId))
+                {
+                    mod.HasConflict = true;
+                    var relatedConflicts = conflicts
+                        .Where(c => c.ModId1.Equals(mod.ModId, StringComparison.OrdinalIgnoreCase) ||
+                                    c.ModId2.Equals(mod.ModId, StringComparison.OrdinalIgnoreCase))
+                        .Select(c => c.Description)
+                        .ToList();
+                    mod.ConflictDescription = string.Join("\n", relatedConflicts);
+                }
+            }
+
+            var errorCount = conflicts.Count(c => c.Severity == ConflictSeverity.Error);
+            var warnCount = conflicts.Count(c => c.Severity == ConflictSeverity.Warning);
+            if (errorCount > 0)
+            {
+                _notificationService.Show("模组冲突",
+                    $"检测到 {errorCount} 个严重冲突和 {warnCount} 个警告，请查看模组列表中的标记",
+                    NotificationType.Warning, 8);
+            }
+        }
+
         ApplyMods(list);
+    }
+
+    private static string DetermineEffectiveLoader(string modLoader, string instanceLoader)
+    {
+        if (string.IsNullOrEmpty(modLoader)) return "";
+
+        // 某些模组（如Sodium等）同时支持 Fabric 和 Quilt，根据实例加载器显示
+        var loaders = modLoader;
+        if ((instanceLoader == "fabric" || instanceLoader == "quilt") &&
+            (loaders.Equals("Fabric", StringComparison.OrdinalIgnoreCase) ||
+             loaders.Equals("Quilt", StringComparison.OrdinalIgnoreCase)))
+        {
+            return char.ToUpper(instanceLoader[0]) + instanceLoader[1..];
+        }
+
+        return loaders;
+    }
+
+    private static string? ExtractModIconWithMeta(string jarPath, ModMetadata? meta)
+    {
+        try
+        {
+            using var archive = ZipFile.OpenRead(jarPath);
+            Directory.CreateDirectory(ModIconCacheDir);
+
+            // 优先从元数据声明的图标路径提取
+            if (meta?.IconPath != null)
+            {
+                var iconEntry = archive.GetEntry(meta.IconPath);
+                if (iconEntry != null)
+                {
+                    var cacheName = $"{Math.Abs(jarPath.GetHashCode()):x8}_{meta.ModId}.png";
+                    var tmpPath = Path.Combine(ModIconCacheDir, cacheName);
+                    if (!File.Exists(tmpPath) || new FileInfo(tmpPath).Length != iconEntry.Length)
+                        iconEntry.ExtractToFile(tmpPath, true);
+                    return tmpPath;
+                }
+            }
+
+            // 回退到常规图标路径
+            string[] candidates = ["pack.png", "logo.png", "icon.png"];
+            foreach (var candidate in candidates)
+            {
+                var entry = archive.GetEntry(candidate);
+                if (entry != null)
+                {
+                    var cacheName = $"{Math.Abs(jarPath.GetHashCode()):x8}_{candidate}";
+                    var tmpPath = Path.Combine(ModIconCacheDir, cacheName);
+                    if (!File.Exists(tmpPath) || new FileInfo(tmpPath).Length != entry.Length)
+                        entry.ExtractToFile(tmpPath, true);
+                    return tmpPath;
+                }
+            }
+
+            // 尝试 assets/<modid>/icon.png
+            var modId = meta?.ModId;
+            foreach (var entry in archive.Entries)
+            {
+                var name = entry.FullName;
+                if (!string.IsNullOrEmpty(modId) &&
+                    name.StartsWith($"assets/{modId}/", StringComparison.OrdinalIgnoreCase) &&
+                    name.EndsWith("/icon.png", StringComparison.OrdinalIgnoreCase))
+                {
+                    var cacheName = $"{Math.Abs(jarPath.GetHashCode()):x8}_{modId}.png";
+                    var tmpPath = Path.Combine(ModIconCacheDir, cacheName);
+                    if (!File.Exists(tmpPath) || new FileInfo(tmpPath).Length != entry.Length)
+                        entry.ExtractToFile(tmpPath, true);
+                    return tmpPath;
+                }
+            }
+
+            // 最后兜底
+            foreach (var entry in archive.Entries)
+            {
+                if (entry.FullName.StartsWith("assets/", StringComparison.OrdinalIgnoreCase) &&
+                    entry.FullName.EndsWith("/icon.png", StringComparison.OrdinalIgnoreCase))
+                {
+                    var cacheName = $"{Math.Abs(jarPath.GetHashCode()):x8}_asset.png";
+                    var tmpPath = Path.Combine(ModIconCacheDir, cacheName);
+                    if (!File.Exists(tmpPath) || new FileInfo(tmpPath).Length != entry.Length)
+                        entry.ExtractToFile(tmpPath, true);
+                    return tmpPath;
+                }
+            }
+        }
+        catch { }
+        return null;
     }
 
     private class LoadData
@@ -906,6 +1047,11 @@ public class ModInfo : ObservableObject
     private long _size;
     private bool _isEnabled;
     private string? _iconPath;
+    private string _modId = string.Empty;
+    private string _version = string.Empty;
+    private string _loader = string.Empty;
+    private bool _hasConflict;
+    private string _conflictDescription = string.Empty;
 
     public string Name
     {
@@ -949,6 +1095,36 @@ public class ModInfo : ObservableObject
     {
         get => _iconPath;
         set => SetProperty(ref _iconPath, value);
+    }
+
+    public string ModId
+    {
+        get => _modId;
+        set => SetProperty(ref _modId, value);
+    }
+
+    public string Version
+    {
+        get => _version;
+        set => SetProperty(ref _version, value);
+    }
+
+    public string Loader
+    {
+        get => _loader;
+        set => SetProperty(ref _loader, value);
+    }
+
+    public bool HasConflict
+    {
+        get => _hasConflict;
+        set => SetProperty(ref _hasConflict, value);
+    }
+
+    public string ConflictDescription
+    {
+        get => _conflictDescription;
+        set => SetProperty(ref _conflictDescription, value);
     }
 }
 
