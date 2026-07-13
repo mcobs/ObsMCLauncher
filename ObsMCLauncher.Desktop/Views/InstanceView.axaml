@@ -84,6 +84,17 @@
               <TextBlock Text="Mod" VerticalAlignment="Center"/>
             </StackPanel>
           </Button>
+
+          <Button Classes="nav-tab"
+                  Foreground="{Binding IsShaderTab, Converter={x:Static converters:BoolToBrushConverter.NavTab}}"
+                  FontWeight="{Binding IsShaderTab, Converter={x:Static converters:BoolToFontWeightConverter.NavTab}}"
+                  Command="{Binding SelectNavCommand}" CommandParameter="4">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <Path Data="M21 3H3C1.9 3 1 3.9 1 5V19C1 20.1 1.9 21 3 21H21C22.1 21 23 20.1 23 19V5C23 3.9 22.1 3 21 3M21 19H3V5H21V19M7.5 13.5L10 16.5L14 11.5L19 17H5L7.5 13.5Z"
+                    Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+              <TextBlock Text="Shader" VerticalAlignment="Center"/>
+            </StackPanel>
+          </Button>
         </StackPanel>
       </Border>
 
@@ -185,107 +196,41 @@
             <!-- 快捷操作 -->
             <Border Background="{DynamicResource SurfaceBrush}"
                     CornerRadius="10"
-                    Padding="16"
+                    Padding="12,10"
                     BorderThickness="1"
                     BorderBrush="{DynamicResource BorderBrush}">
-              <StackPanel Spacing="12">
-                <TextBlock Text="快捷操作" FontSize="14" FontWeight="Medium"/>
-                <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="6" Margin="0,4,0,0">
-                  <Button Classes="ghost" Padding="8,10" Command="{Binding OpenModsFolderCommand}">
-                    <StackPanel Spacing="6" HorizontalAlignment="Center">
-                      <Path Data="M20 6H12L10 4H4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V8C22 6.9 21.1 6 20 6M20 18H4V8H20V18Z"
-                            Width="18" Height="18" Stretch="Uniform" Fill="{DynamicResource PrimaryBrush}"/>
-                      <TextBlock Text="Mod" FontSize="12" HorizontalAlignment="Center"/>
-                    </StackPanel>
-                  </Button>
+              <StackPanel Orientation="Horizontal" Spacing="2" HorizontalAlignment="Center">
+                <Button Classes="ghost" Padding="10,6" Command="{Binding OpenModsFolderCommand}" ToolTip.Tip="打开Mod文件夹">
+                  <StackPanel Orientation="Horizontal" Spacing="4">
+                    <Path Data="M20 6H12L10 4H4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V8C22 6.9 21.1 6 20 6M20 18H4V8H20V18Z"
+                          Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource PrimaryBrush}" VerticalAlignment="Center"/>
+                    <TextBlock Text="Mod" FontSize="12" VerticalAlignment="Center"/>
+                  </StackPanel>
+                </Button>
 
-                  <Button Grid.Column="1" Classes="ghost" Padding="8,10" Command="{Binding OpenShaderPacksFolderCommand}">
-                    <StackPanel Spacing="6" HorizontalAlignment="Center">
-                      <Path Data="M21 3H3C1.9 3 1 3.9 1 5V19C1 20.1 1.9 21 3 21H21C22.1 21 23 20.1 23 19V5C23 3.9 22.1 3 21 3M21 19H3V5H21V19M7.5 13.5L10 16.5L14 11.5L19 17H5L7.5 13.5Z"
-                            Width="18" Height="18" Stretch="Uniform" Fill="{DynamicResource PrimaryBrush}"/>
-                      <TextBlock Text="Shader" FontSize="12" HorizontalAlignment="Center"/>
-                    </StackPanel>
-                  </Button>
+                <Button Classes="ghost" Padding="10,6" Command="{Binding OpenShaderPacksFolderCommand}" ToolTip.Tip="打开Shader文件夹">
+                  <StackPanel Orientation="Horizontal" Spacing="4">
+                    <Path Data="M21 3H3C1.9 3 1 3.9 1 5V19C1 20.1 1.9 21 3 21H21C22.1 21 23 20.1 23 19V5C23 3.9 22.1 3 21 3M21 19H3V5H21V19M7.5 13.5L10 16.5L14 11.5L19 17H5L7.5 13.5Z"
+                          Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource PrimaryBrush}" VerticalAlignment="Center"/>
+                    <TextBlock Text="Shader" FontSize="12" VerticalAlignment="Center"/>
+                  </StackPanel>
+                </Button>
 
-                  <Button Grid.Column="2" Classes="ghost" Padding="8,10" Command="{Binding OpenResourcePacksFolderCommand}">
-                    <StackPanel Spacing="6" HorizontalAlignment="Center">
-                      <Path Data="M11 21h2v-3h-2v3zM5 21h2v-3H5v3zM17 21h2v-3h-2v3zM5 17h2v-3H5v3zM17 17h2v-3h-2v3zM5 13h2v-3H5v3zM17 13h2v-3h-2v3zM11 17h2v-3h-2v3zM11 13h2v-3h-2v3zM11 9h2V6h2V4h-2V1h-2v3H9v2h2v3z"
-                            Width="18" Height="18" Stretch="Uniform" Fill="{DynamicResource PrimaryBrush}"/>
-                      <TextBlock Text="资源包" FontSize="12" HorizontalAlignment="Center"/>
-                    </StackPanel>
-                  </Button>
+                <Button Classes="ghost" Padding="10,6" Command="{Binding OpenResourcePacksFolderCommand}" ToolTip.Tip="打开资源包文件夹">
+                  <StackPanel Orientation="Horizontal" Spacing="4">
+                    <Path Data="M11 21h2v-3h-2v3zM5 21h2v-3H5v3zM17 21h2v-3h-2v3zM5 17h2v-3H5v3zM17 17h2v-3h-2v3zM5 13h2v-3H5v3zM17 13h2v-3h-2v3zM11 17h2v-3h-2v3zM11 13h2v-3h-2v3zM11 9h2V6h2V4h-2V1h-2v3H9v2h2v3z"
+                          Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource PrimaryBrush}" VerticalAlignment="Center"/>
+                    <TextBlock Text="资源包" FontSize="12" VerticalAlignment="Center"/>
+                  </StackPanel>
+                </Button>
 
-                  <Button Grid.Column="3" Classes="ghost" Padding="8,10" Command="{Binding OpenConfigFolderCommand}">
-                    <StackPanel Spacing="6" HorizontalAlignment="Center">
-                      <Path Data="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"
-                            Width="18" Height="18" Stretch="Uniform" Fill="{DynamicResource PrimaryBrush}"/>
-                      <TextBlock Text="配置" FontSize="12" HorizontalAlignment="Center"/>
-                    </StackPanel>
-                  </Button>
-                </Grid>
-              </StackPanel>
-            </Border>
-
-            <!-- Shader Pack 管理 -->
-            <Border Background="{DynamicResource SurfaceBrush}"
-                    CornerRadius="10"
-                    Padding="16"
-                    BorderThickness="1"
-                    BorderBrush="{DynamicResource BorderBrush}">
-              <StackPanel Spacing="12">
-                <Grid ColumnDefinitions="*,Auto">
-                  <TextBlock Text="Shader Pack" FontSize="14" FontWeight="Medium"/>
-                  <Button Grid.Column="1" Classes="ghost" FontSize="11" Padding="4,2"
-                          Command="{Binding OpenShaderPacksFolderCommand}">
-                    <StackPanel Orientation="Horizontal" Spacing="3">
-                      <Path Data="M20 6H12L10 4H4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V8C22 6.9 21.1 6 20 6M20 18H4V8H20V18Z" Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource TextBrush}" VerticalAlignment="Center"/>
-                      <TextBlock Text="打开文件夹" VerticalAlignment="Center"/>
-                    </StackPanel>
-                  </Button>
-                </Grid>
-
-                <ItemsControl ItemsSource="{Binding ShaderPacks}">
-                  <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                      <Border Background="{DynamicResource SurfaceElevatedBrush}"
-                              CornerRadius="6"
-                              Padding="10"
-                              Margin="0,0,0,6"
-                              BorderThickness="1"
-                              BorderBrush="{DynamicResource BorderBrush}">
-                        <Grid ColumnDefinitions="Auto,*,Auto,Auto">
-                          <Path Data="M21 3H3C1.9 3 1 3.9 1 5V19C1 20.1 1.9 21 3 21H21C22.1 21 23 20.1 23 19V5C23 3.9 22.1 3 21 3M21 19H3V5H21V19M7.5 13.5L10 16.5L14 11.5L19 17H5L7.5 13.5Z"
-                                Width="20" Height="20" Stretch="Uniform" Fill="{DynamicResource PrimaryBrush}"
-                                VerticalAlignment="Center" Margin="0,0,10,0" Opacity="0.6"/>
-
-                          <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                            <TextBlock Text="{Binding DisplayName}" FontSize="12" FontWeight="Medium" TextTrimming="CharacterEllipsis"/>
-                            <TextBlock Text="{Binding Size, StringFormat='{}{0:F0} KB'}" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}" Margin="0,1,0,0"/>
-                          </StackPanel>
-
-                          <Button Grid.Column="2" Classes="ghost" Padding="4,2" Margin="4,0,0,0"
-                                  Command="{Binding $parent[ItemsControl].((vm:InstanceViewModel)DataContext).DeleteShaderPackCommand}"
-                                  CommandParameter="{Binding}"
-                                  ToolTip.Tip="删除">
-                            <Path Data="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"
-                                  Width="14" Height="14" Stretch="Uniform" Fill="#FF5252" VerticalAlignment="Center"/>
-                          </Button>
-
-                          <ToggleSwitch Grid.Column="3"
-                                        IsChecked="{Binding IsEnabled}"
-                                        OnContent="" OffContent=""
-                                        Margin="8,0,0,0"/>
-                        </Grid>
-                      </Border>
-                    </DataTemplate>
-                  </ItemsControl.ItemTemplate>
-                </ItemsControl>
-
-                <TextBlock Text="暂无 Shader Pack"
-                           FontSize="12"
-                           Foreground="{DynamicResource TextTertiaryBrush}"
-                           HorizontalAlignment="Center"
-                           IsVisible="{Binding !HasShaderPacks}"/>
+                <Button Classes="ghost" Padding="10,6" Command="{Binding OpenConfigFolderCommand}" ToolTip.Tip="打开配置文件夹">
+                  <StackPanel Orientation="Horizontal" Spacing="4">
+                    <Path Data="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"
+                          Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource PrimaryBrush}" VerticalAlignment="Center"/>
+                    <TextBlock Text="配置" FontSize="12" VerticalAlignment="Center"/>
+                  </StackPanel>
+                </Button>
               </StackPanel>
             </Border>
 
@@ -560,6 +505,73 @@
                            Foreground="{DynamicResource TextTertiaryBrush}"
                            HorizontalAlignment="Center"
                            IsVisible="{Binding !HasMods}"/>
+              </StackPanel>
+            </Border>
+          </StackPanel>
+
+          <!-- ===== Shader Tab ===== -->
+          <StackPanel IsVisible="{Binding IsShaderTab}" Spacing="12">
+            <Border Background="{DynamicResource SurfaceBrush}"
+                    CornerRadius="10"
+                    Padding="16"
+                    BorderThickness="1"
+                    BorderBrush="{DynamicResource BorderBrush}">
+              <StackPanel Spacing="12">
+                <Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Text="Shader Pack 管理" FontSize="14" FontWeight="Medium"/>
+                  <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+                    <Button Classes="ghost" FontSize="11" Padding="4,2"
+                            Command="{Binding OpenShaderPacksFolderCommand}">
+                      <StackPanel Orientation="Horizontal" Spacing="3">
+                        <Path Data="M20 6H12L10 4H4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V8C22 6.9 21.1 6 20 6M20 18H4V8H20V18Z" Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource TextBrush}" VerticalAlignment="Center"/>
+                        <TextBlock Text="打开文件夹" VerticalAlignment="Center"/>
+                      </StackPanel>
+                    </Button>
+                  </StackPanel>
+                </Grid>
+
+                <ItemsControl ItemsSource="{Binding ShaderPacks}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <Border Background="{DynamicResource SurfaceElevatedBrush}"
+                              CornerRadius="6"
+                              Padding="10"
+                              Margin="0,0,0,6"
+                              BorderThickness="1"
+                              BorderBrush="{DynamicResource BorderBrush}">
+                        <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                          <Path Data="M21 3H3C1.9 3 1 3.9 1 5V19C1 20.1 1.9 21 3 21H21C22.1 21 23 20.1 23 19V5C23 3.9 22.1 3 21 3M21 19H3V5H21V19M7.5 13.5L10 16.5L14 11.5L19 17H5L7.5 13.5Z"
+                                Width="20" Height="20" Stretch="Uniform" Fill="{DynamicResource PrimaryBrush}"
+                                VerticalAlignment="Center" Margin="0,0,10,0" Opacity="0.6"/>
+
+                          <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding DisplayName}" FontSize="12" FontWeight="Medium" TextTrimming="CharacterEllipsis"/>
+                            <TextBlock Text="{Binding Size, StringFormat='{}{0:F0} KB'}" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}" Margin="0,1,0,0"/>
+                          </StackPanel>
+
+                          <Button Grid.Column="2" Classes="ghost" Padding="4,2" Margin="4,0,0,0"
+                                  Command="{Binding $parent[ItemsControl].((vm:InstanceViewModel)DataContext).DeleteShaderPackCommand}"
+                                  CommandParameter="{Binding}"
+                                  ToolTip.Tip="删除">
+                            <Path Data="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"
+                                  Width="14" Height="14" Stretch="Uniform" Fill="#FF5252" VerticalAlignment="Center"/>
+                          </Button>
+
+                          <ToggleSwitch Grid.Column="3"
+                                        IsChecked="{Binding IsEnabled}"
+                                        OnContent="" OffContent=""
+                                        Margin="8,0,0,0"/>
+                        </Grid>
+                      </Border>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <TextBlock Text="暂无 Shader Pack"
+                           FontSize="12"
+                           Foreground="{DynamicResource TextTertiaryBrush}"
+                           HorizontalAlignment="Center"
+                           IsVisible="{Binding !HasShaderPacks}"/>
               </StackPanel>
             </Border>
           </StackPanel>

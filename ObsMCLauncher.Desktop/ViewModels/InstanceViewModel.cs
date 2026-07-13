@@ -93,6 +93,7 @@ public partial class InstanceViewModel : ViewModelBase
     public bool IsSettingsTab => SelectedNavIndex == 1;
     public bool IsWorldsTab => SelectedNavIndex == 2;
     public bool IsModsTab => SelectedNavIndex == 3;
+    public bool IsShaderTab => SelectedNavIndex == 4;
 
     partial void OnSelectedNavIndexChanged(int value)
     {
@@ -100,6 +101,7 @@ public partial class InstanceViewModel : ViewModelBase
         OnPropertyChanged(nameof(IsSettingsTab));
         OnPropertyChanged(nameof(IsWorldsTab));
         OnPropertyChanged(nameof(IsModsTab));
+        OnPropertyChanged(nameof(IsShaderTab));
     }
 
     [RelayCommand]
@@ -585,27 +587,7 @@ public partial class InstanceViewModel : ViewModelBase
 
         try
         {
-            var currentPath = mod.Path;
-            string newPath;
-
-            if (mod.IsEnabled)
-            {
-                newPath = currentPath + ".disabled";
-            }
-            else
-            {
-                newPath = currentPath.Replace(".disabled", "");
-            }
-
-            if (File.Exists(currentPath))
-            {
-                File.Move(currentPath, newPath);
-                mod.Path = newPath;
-                mod.IsEnabled = !mod.IsEnabled;
-                mod.FileName = Path.GetFileName(newPath);
-                mod.Name = mod.IsEnabled ? Path.GetFileNameWithoutExtension(newPath) : Path.GetFileName(newPath);
-                OnPropertyChanged(nameof(Mods));
-            }
+            mod.IsEnabled = !mod.IsEnabled;
         }
         catch (Exception ex)
         {
@@ -670,30 +652,10 @@ public partial class InstanceViewModel : ViewModelBase
     [RelayCommand]
     private void ToggleShaderPack(ShaderPackInfo pack)
     {
+        if (pack == null) return;
         try
         {
-            if (pack.IsEnabled)
-            {
-                // 禁用: 重命名为 .zip.disabled
-                var newPath = pack.Path + ".disabled";
-                if (!pack.Path.EndsWith(".disabled"))
-                {
-                    File.Move(pack.Path, newPath);
-                    pack.Path = newPath;
-                    pack.IsEnabled = false;
-                }
-            }
-            else
-            {
-                // 启用: 去掉 .disabled 后缀
-                if (pack.Path.EndsWith(".disabled"))
-                {
-                    var newPath = pack.Path[..^".disabled".Length];
-                    File.Move(pack.Path, newPath);
-                    pack.Path = newPath;
-                    pack.IsEnabled = true;
-                }
-            }
+            pack.IsEnabled = !pack.IsEnabled;
         }
         catch (Exception ex)
         {
@@ -1203,6 +1165,7 @@ public class ModInfo : ObservableObject
     private string _path = string.Empty;
     private long _size;
     private bool _isEnabled;
+    private bool _isToggling;
     private string? _iconPath;
     private string _modId = string.Empty;
     private string _version = string.Empty;
@@ -1239,14 +1202,58 @@ public class ModInfo : ObservableObject
         get => _isEnabled;
         set
         {
-            if (SetProperty(ref _isEnabled, value))
+            if (_isToggling) return;
+            if (_isEnabled == value) return;
+
+            _isToggling = true;
+            try
             {
+                if (value)
+                {
+                    // 启用: 去掉 .disabled 后缀
+                    if (_path.EndsWith(".disabled"))
+                    {
+                        var newPath = _path[..^".disabled".Length];
+                        System.IO.File.Move(_path, newPath);
+                        _path = newPath;
+                        _isEnabled = true;
+                        _fileName = System.IO.Path.GetFileName(newPath);
+                        _name = System.IO.Path.GetFileNameWithoutExtension(newPath);
+                    }
+                }
+                else
+                {
+                    // 禁用: 追加 .disabled 后缀
+                    if (!_path.EndsWith(".disabled"))
+                    {
+                        var newPath = _path + ".disabled";
+                        System.IO.File.Move(_path, newPath);
+                        _path = newPath;
+                        _isEnabled = false;
+                        _fileName = System.IO.Path.GetFileName(newPath);
+                        _name = System.IO.Path.GetFileName(newPath);
+                    }
+                }
+
+                OnPropertyChanged(nameof(IsEnabled));
                 OnPropertyChanged(nameof(DisplayName));
+                OnPropertyChanged(nameof(Name));
+                OnPropertyChanged(nameof(FileName));
+                OnPropertyChanged(nameof(Path));
+            }
+            catch
+            {
+                // 文件操作失败，回滚UI状态
+                OnPropertyChanged(nameof(IsEnabled));
+            }
+            finally
+            {
+                _isToggling = false;
             }
         }
     }
 
-    public string DisplayName => IsEnabled ? Name : Name.Replace(".disabled", "");
+    public string DisplayName => IsEnabled ? Name : Name.Replace(".jar.disabled", "").Replace(".disabled", "");
 
     public string? IconPath
     {
@@ -1292,6 +1299,7 @@ public class ShaderPackInfo : ObservableObject
     private string _path = string.Empty;
     private long _size;
     private bool _isEnabled;
+    private bool _isToggling;
 
     public string Name
     {
@@ -1322,12 +1330,58 @@ public class ShaderPackInfo : ObservableObject
         get => _isEnabled;
         set
         {
-            if (SetProperty(ref _isEnabled, value))
+            if (_isToggling) return;
+            if (_isEnabled == value) return;
+
+            _isToggling = true;
+            try
+            {
+                if (value)
+                {
+                    // 启用: 去掉 .disabled 后缀
+                    if (_path.EndsWith(".disabled"))
+                    {
+                        var newPath = _path[..^".disabled".Length];
+                        System.IO.File.Move(_path, newPath);
+                        _path = newPath;
+                        _isEnabled = true;
+                        _fileName = System.IO.Path.GetFileName(newPath);
+                        _name = System.IO.Path.GetFileNameWithoutExtension(newPath);
+                    }
+                }
+                else
+                {
+                    // 禁用: 追加 .disabled 后缀
+                    if (!_path.EndsWith(".disabled"))
+                    {
+                        var newPath = _path + ".disabled";
+                        System.IO.File.Move(_path, newPath);
+                        _path = newPath;
+                        _isEnabled = false;
+                        _fileName = System.IO.Path.GetFileName(newPath);
+                        _name = System.IO.Path.GetFileName(newPath);
+                    }
+                }
+
+                OnPropertyChanged(nameof(IsEnabled));
                 OnPropertyChanged(nameof(DisplayName));
+                OnPropertyChanged(nameof(Name));
+                OnPropertyChanged(nameof(FileName));
+                OnPropertyChanged(nameof(Path));
+            }
+            catch
+            {
+                // 文件操作失败，回滚UI状态
+                OnPropertyChanged(nameof(IsEnabled));
+            }
+            finally
+            {
+                _isToggling = false;
+            }
         }
     }
 
-    public string DisplayName => IsEnabled ? Name : Name.Replace(".disabled", "");
+    public string DisplayName => IsEnabled ? Name : Name.Replace(".zip.disabled", "").Replace(".disabled", "");
 }
 
 /// <summary>
