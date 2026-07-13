@@ -62,6 +62,12 @@ public partial class InstanceViewModel : ViewModelBase
     private bool _hasMods;
 
     [ObservableProperty]
+    private ObservableCollection<ShaderPackInfo> _shaderPacks = new();
+
+    [ObservableProperty]
+    private bool _hasShaderPacks;
+
+    [ObservableProperty]
     private bool _isVisible;
 
     [ObservableProperty]
@@ -159,6 +165,7 @@ public partial class InstanceViewModel : ViewModelBase
                 ApplyVersionData(data);
                 ApplyWorlds(data.Worlds);
                 ApplyMods(data.Mods);
+                LoadShaderPacks();
                 IsLoading = false;
             });
         }
@@ -611,6 +618,156 @@ public partial class InstanceViewModel : ViewModelBase
     {
         LoadMods();
         _notificationService.Show("已刷新", "模组列表已重新加载", NotificationType.Success, 2);
+    }
+
+    private void LoadShaderPacks()
+    {
+        var gameDir = GetGameDirectory();
+        var shaderDir = Path.Combine(gameDir, "shaderpacks");
+        var list = new List<ShaderPackInfo>();
+
+        if (Directory.Exists(shaderDir))
+        {
+            foreach (var file in Directory.GetFiles(shaderDir, "*.zip"))
+            {
+                try
+                {
+                    list.Add(new ShaderPackInfo
+                    {
+                        Name = Path.GetFileNameWithoutExtension(file),
+                        FileName = Path.GetFileName(file),
+                        Path = file,
+                        Size = new FileInfo(file).Length,
+                        IsEnabled = true
+                    });
+                }
+                catch { }
+            }
+
+            foreach (var file in Directory.GetFiles(shaderDir, "*.zip.disabled"))
+            {
+                try
+                {
+                    var fileName = Path.GetFileName(file);
+                    list.Add(new ShaderPackInfo
+                    {
+                        Name = fileName,
+                        FileName = fileName,
+                        Path = file,
+                        Size = new FileInfo(file).Length,
+                        IsEnabled = false
+                    });
+                }
+                catch { }
+            }
+        }
+
+        ShaderPacks.Clear();
+        foreach (var p in list) ShaderPacks.Add(p);
+        HasShaderPacks = ShaderPacks.Count > 0;
+    }
+
+    [RelayCommand]
+    private void ToggleShaderPack(ShaderPackInfo pack)
+    {
+        try
+        {
+            if (pack.IsEnabled)
+            {
+                // 禁用: 重命名为 .zip.disabled
+                var newPath = pack.Path + ".disabled";
+                if (!pack.Path.EndsWith(".disabled"))
+                {
+                    File.Move(pack.Path, newPath);
+                    pack.Path = newPath;
+                    pack.IsEnabled = false;
+                }
+            }
+            else
+            {
+                // 启用: 去掉 .disabled 后缀
+                if (pack.Path.EndsWith(".disabled"))
+                {
+                    var newPath = pack.Path[..^".disabled".Length];
+                    File.Move(pack.Path, newPath);
+                    pack.Path = newPath;
+                    pack.IsEnabled = true;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _notificationService.Show("操作失败", ex.Message, NotificationType.Error);
+        }
+    }
+
+    [RelayCommand]
+    private void DeleteShaderPack(ShaderPackInfo pack)
+    {
+        try
+        {
+            if (File.Exists(pack.Path))
+            {
+                File.Delete(pack.Path);
+                ShaderPacks.Remove(pack);
+                HasShaderPacks = ShaderPacks.Count > 0;
+            }
+        }
+        catch (Exception ex)
+        {
+            _notificationService.Show("删除失败", ex.Message, NotificationType.Error);
+        }
+    }
+
+    [RelayCommand]
+    private void OpenShaderPacksFolder()
+    {
+        var gameDir = GetGameDirectory();
+        var shaderDir = Path.Combine(gameDir, "shaderpacks");
+        if (!Directory.Exists(shaderDir)) Directory.CreateDirectory(shaderDir);
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = shaderDir,
+                UseShellExecute = true
+            });
+        }
+        catch { }
+    }
+
+    [RelayCommand]
+    private void OpenResourcePacksFolder()
+    {
+        var gameDir = GetGameDirectory();
+        var dir = Path.Combine(gameDir, "resourcepacks");
+        if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = dir,
+                UseShellExecute = true
+            });
+        }
+        catch { }
+    }
+
+    [RelayCommand]
+    private void OpenConfigFolder()
+    {
+        var gameDir = GetGameDirectory();
+        var dir = Path.Combine(gameDir, "config");
+        if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = dir,
+                UseShellExecute = true
+            });
+        }
+        catch { }
     }
 
     partial void OnIsolationModeChanged(int value)
@@ -1126,6 +1283,51 @@ public class ModInfo : ObservableObject
         get => _conflictDescription;
         set => SetProperty(ref _conflictDescription, value);
     }
+}
+
+public class ShaderPackInfo : ObservableObject
+{
+    private string _name = string.Empty;
+    private string _fileName = string.Empty;
+    private string _path = string.Empty;
+    private long _size;
+    private bool _isEnabled;
+
+    public string Name
+    {
+        get => _name;
+        set => SetProperty(ref _name, value);
+    }
+
+    public string FileName
+    {
+        get => _fileName;
+        set => SetProperty(ref _fileName, value);
+    }
+
+    public string Path
+    {
+        get => _path;
+        set => SetProperty(ref _path, value);
+    }
+
+    public long Size
+    {
+        get => _size;
+        set => SetProperty(ref _size, value);
+    }
+
+    public bool IsEnabled
+    {
+        get => _isEnabled;
+        set
+        {
+            if (SetProperty(ref _isEnabled, value))
+                OnPropertyChanged(nameof(DisplayName));
+        }
+    }
+
+    public string DisplayName => IsEnabled ? Name : Name.Replace(".disabled", "");
 }
 
 /// <summary>
