@@ -664,8 +664,13 @@ public partial class InstanceViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void DeleteShaderPack(ShaderPackInfo pack)
+    private async Task DeleteShaderPackAsync(ShaderPackInfo pack)
     {
+        if (pack == null) return;
+
+        var result = await _dialogService.ShowQuestion("确认删除", $"确定要删除 Shader Pack \"{pack.DisplayName}\" 吗？");
+        if (result != DialogResult.Yes) return;
+
         try
         {
             if (File.Exists(pack.Path))
