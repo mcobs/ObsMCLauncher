@@ -131,8 +131,15 @@ jobs:
           main_exe="ObsMCLauncher.Desktop"
         fi
 
+        # 根据RID选择图标格式（使用项目目录中的源图标）
+        if [[ "$rid" == osx-* ]]; then
+          icon_path="./ObsMCLauncher.Desktop/Assets/app_icon.icns"
+        else
+          icon_path="./ObsMCLauncher.Desktop/Assets/app_icon.ico"
+        fi
+
         # 每个RID用独立channel，避免不同架构的产物互相覆盖
-        pack_args=(-u ObsMCLauncher -v "${{ steps.version.outputs.version_number }}" -p "./publish/${{ matrix.rid }}" -e "$main_exe" -o ./vpk-output --delta BestSpeed -c "$rid" -r "$rid" -i "./publish/${{ matrix.rid }}/Assets/app_icon.ico")
+        pack_args=(-u ObsMCLauncher -v "${{ steps.version.outputs.version_number }}" -p "./publish/${{ matrix.rid }}" -e "$main_exe" -o ./vpk-output --delta BestSpeed -c "$rid" -r "$rid" -i "$icon_path")
 
         # Windows才需要--noInst，Linux/macOS不生成安装程序
         if [[ "$rid" == win-* ]]; then
