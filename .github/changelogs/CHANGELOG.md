@@ -7,6 +7,8 @@
 - 存档管理优化：展示存档图标、游戏版本、世界大小、创建/修改时间；实现轻量级NBT解析器从level.dat提取版本信息
 - SSL证书验证开关和文件哈希校验开关（设置-通用-安全）
 - 统一HttpClient工厂，所有网络请求遵循SSL验证配置
+- 插件系统扩展API：新增 LogMessage/GetInstalledVersions/GetCurrentAccount/RegisterGameLaunchHook/RequestDownload 5个API方法，支持插件日志写入、版本列表查询、账户信息获取、启动生命周期钩子、下载请求提交
+- 插件系统测试套件：新增 PluginExtendedApiTests/PluginCardFlowTests/PluginPageFlowTests 共91个测试用例，覆盖扩展API单元/边界/集成测试与自建卡片、自定义页面全流程验证
 
 ### 优化
 - Shader Pack/材质包管理页面新增刷新按钮，与Mod管理页面一致
@@ -15,6 +17,8 @@
 - 主窗口侧边栏底色与内容区统一：亚克力/磨砂玻璃模式下NavBackgroundBrush透明度与WindowBackgroundBrush保持一致；ListBox设置Transparent背景避免覆盖导航栏底色；Theme.axaml补充默认资源定义避免启动时透明
 - NBT解析器从Desktop项目迁移至Core项目，提升可测试性；增加GZip魔数检测与EndOfStream异常恢复，解析失败时返回空字符串而非抛出异常
 - 弃用API清理：ModpackInstallService中SetVersionIsolation调用全部替换为SetIsolationMode，消除CS0618警告
+- README全面更新：补充5项特色功能描述（含原理/应用场景/使用方法）、更新项目架构图与设计原则、新增插件API文档
+- 插件开发指南（Plugin-Development.md）全面更新：补充5个扩展API的完整接口定义、参数说明、返回值规范、安全约束、示例代码；新增启动钩子插件、版本备份插件两个综合示例；扩展常见问题章节
 
 ### 修复
 - 修复MOD/Shader Pack开关状态无法正确显示的问题：移除_isToggling重入标志，文件操作失败时不再修改字段，确保双向绑定能自动回滚UI

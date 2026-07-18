@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace ObsMCLauncher.Core.Plugins;
 
@@ -142,4 +143,44 @@ public interface IPluginContext
     /// </summary>
     /// <param name="commandId">命令ID</param>
     void UnregisterCommand(string commandId);
+
+    /// <summary>
+    /// 写入启动器统一日志（与启动器自身日志同源，便于排查插件问题）
+    /// </summary>
+    /// <param name="level">日志级别</param>
+    /// <param name="message">日志消息</param>
+    void LogMessage(PluginLogLevel level, string message);
+
+    /// <summary>
+    /// 获取启动器中已安装的 Minecraft 版本列表（只读快照）
+    /// </summary>
+    /// <returns>版本信息只读列表；无任何版本时返回空列表</returns>
+    IReadOnlyList<PluginVersionInfo> GetInstalledVersions();
+
+    /// <summary>
+    /// 获取当前默认/选中的账户信息（不含任何令牌字段）
+    /// </summary>
+    /// <returns>账户精简信息；未选中账户时返回 null</returns>
+    PluginAccountInfo? GetCurrentAccount();
+
+    /// <summary>
+    /// 注册游戏启动生命周期钩子，在指定阶段被回调
+    /// </summary>
+    /// <param name="hookId">钩子唯一标识（插件内唯一）</param>
+    /// <param name="phase">触发阶段</param>
+    /// <param name="handler">回调；BeforeLaunch 阶段可通过 ctx.CancelLaunch 中止启动</param>
+    void RegisterGameLaunchHook(string hookId, GameLaunchPhase phase, Action<GameLaunchHookContext> handler);
+
+    /// <summary>
+    /// 注销启动生命周期钩子
+    /// </summary>
+    /// <param name="hookId">钩子唯一标识</param>
+    void UnregisterGameLaunchHook(string hookId);
+
+    /// <summary>
+    /// 提交下载请求给启动器下载管理器统一调度
+    /// </summary>
+    /// <param name="request">下载请求（URL/目标目录/文件名/SHA-1 可选）</param>
+    /// <returns>任务 ID；URL/目录非法或被拒绝时返回空字符串</returns>
+    string RequestDownload(PluginDownloadRequest request);
 }

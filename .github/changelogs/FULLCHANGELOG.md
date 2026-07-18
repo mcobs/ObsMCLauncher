@@ -12,6 +12,12 @@
 - SSL证书验证开关：设置-通用-安全中添加"跳过SSL证书验证"选项，默认关闭（验证证书），开启时显示安全警告
 - 文件哈希校验开关：设置-通用-安全中添加"文件哈希校验"选项，默认开启
 - 统一HttpClient工厂：所有网络请求通过HttpClientFactory创建，统一遵循SSL验证配置
+- 单元测试套件：新增 ModVersionRangeTests/NbtReaderTests/ModConflictDetectorTests 三个测试类，覆盖版本范围解析、NBT解析、冲突检测共218个测试用例
+- 性能基准测试：新增 PerformanceBenchmarkTests，覆盖 100/500 Mod 冲突检测、100 个 level.dat 解析、1000 次版本范围解析场景
+- 插件系统扩展API：IPluginContext 新增 5 个方法：LogMessage 写入统一日志；GetInstalledVersions 返回已安装版本只读列表；GetCurrentAccount 返回当前账户精简信息（不含令牌）；RegisterGameLaunchHook 注册启动生命周期钩子（BeforeLaunch/AfterLaunch/OnExited/OnCrash，BeforeLaunch 阶段可 CancelLaunch 中止启动并追加 JVM/游戏参数）；RequestDownload 提交下载请求（强制 http/https、文件名禁含路径分隔符）。新增 PluginApiModels.cs 包含所有扩展 API 模型与枚举
+- 插件系统测试套件：新增 PluginExtendedApiTests（41个用例，覆盖5个新API的正向/异常/边界/集成测试）、PluginCardFlowTests（17个用例，验证自建卡片创建/编辑/删除/交互/批量清理全流程）、PluginPageFlowTests（17个用例，验证自定义页面创建/布局/权限隔离/跨平台/编辑/删除全流程），共新增91个测试用例，测试总数达313个
+- README全面更新：补充5项特色功能描述（四套窗口质感实时切换、Maven风格版本范围依赖校验、JAR元数据驱动模组冲突检测、每版本OMCL/init.json统一配置存储、Velopack增量自动更新+GitHub代理降级），每项含原理/应用场景/使用方法；更新项目架构图反映 Core/Desktop/Tests 三层结构与新增文件；新增架构设计原则与插件系统API文档
+- 插件开发指南（Plugin-Development.md）全面更新：目录补充5个扩展API锚点；IPluginContext 接口代码示例新增 LogMessage/GetInstalledVersions/GetCurrentAccount/RegisterGameLaunchHook/UnregisterGameLaunchHook/RequestDownload 6个方法签名；API参考章节新增 8-12 五个小节，每个API包含方法签名、参数表、返回值规范、字段说明表、安全约束、异常处理、完整示例代码（含异常处理与多种调用场景）；新增 GameLaunchPhase/GameLaunchHookContext/PluginVersionInfo/PluginAccountInfo/PluginDownloadRequest 5个类型的字段表；新增"启动钩子插件"和"版本备份插件"两个综合示例展示扩展API的实际应用；扩展常见问题章节，新增"插件可以拦截游戏启动吗"/"插件可以获取用户的微软访问令牌吗"/"插件下载文件会被沙箱限制吗"/"插件钩子触发顺序是怎样的"4个FAQ
 
  ### 优化
 - Shader Pack/材质包管理页面新增刷新按钮：RefreshShaderPacks/RefreshResourcePacks命令调用LoadShaderPacks/LoadResourcePacks重新加载列表，与Mod管理页面的刷新按钮一致
