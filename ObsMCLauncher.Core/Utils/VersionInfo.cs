@@ -28,7 +28,7 @@ public static class VersionInfo
 
     public static readonly string FullProductName = "黑曜石MC启动器";
 
-    public static readonly DateTime ReleaseDate = new DateTime(2026, 06, 07);
+    public static readonly DateTime ReleaseDate = new DateTime(2026, 07, 18);
 
     public static string ShortVersion => Version;
 
