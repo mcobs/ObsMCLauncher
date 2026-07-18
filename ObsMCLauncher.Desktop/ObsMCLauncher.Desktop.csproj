@@ -7,7 +7,7 @@
     <ApplicationManifest Condition="'$(RuntimeIdentifier)' == '' or '$(RuntimeIdentifier)' == 'win-x86' or '$(RuntimeIdentifier)' == 'win-x64' or '$(RuntimeIdentifier)' == 'win-arm64'">app.manifest</ApplicationManifest>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <ApplicationIcon Condition="'$(RuntimeIdentifier)' == '' or $(RuntimeIdentifier.StartsWith('win'))">Assets/app_icon.ico</ApplicationIcon>
-    <ApplicationIcon Condition="$(RuntimeIdentifier.StartsWith('osx'))">Assets/app_icon.icns</ApplicationIcon>
+    <BundleIcon Condition="$(RuntimeIdentifier.StartsWith('osx'))">Assets/app_icon.icns</BundleIcon>
   </PropertyGroup>
 
   <ItemGroup>
