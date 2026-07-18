@@ -6,6 +6,7 @@
 
  ### 新增
 - 依赖模组版本兼容性校验：实现 ModVersion/ModVersionRange 解析Maven风格版本范围（[1.0.0,2.0.0)等），按主版本号差距自动分配Error/Warning级别，并在UI中展示冲突描述与解决建议
+- Shader Pack图标显示：LoadShaderPacks时从光影包zip根目录提取pack.png/logo.png/icon.png到临时缓存目录，ShaderPackInfo新增IconPath属性，InstanceView的Shader标签页用32x32 Border承载图标（无图标时回退到默认图形）
 - SSL证书验证开关：设置-通用-安全中添加"跳过SSL证书验证"选项，默认关闭（验证证书），开启时显示安全警告
 - 文件哈希校验开关：设置-通用-安全中添加"文件哈希校验"选项，默认开启
 - 统一HttpClient工厂：所有网络请求通过HttpClientFactory创建，统一遵循SSL验证配置

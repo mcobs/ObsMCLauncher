@@ -541,9 +541,21 @@
                               BorderThickness="1"
                               BorderBrush="{DynamicResource BorderBrush}">
                         <Grid ColumnDefinitions="Auto,*,Auto,Auto">
-                          <Path Data="M21 3H3C1.9 3 1 3.9 1 5V19C1 20.1 1.9 21 3 21H21C22.1 21 23 20.1 23 19V5C23 3.9 22.1 3 21 3M21 19H3V5H21V19M7.5 13.5L10 16.5L14 11.5L19 17H5L7.5 13.5Z"
-                                Width="20" Height="20" Stretch="Uniform" Fill="{DynamicResource PrimaryBrush}"
-                                VerticalAlignment="Center" Margin="0,0,10,0" Opacity="0.6"/>
+                          <!-- 光影包图标，无图标时回退到默认图形 -->
+                          <Border Width="32" Height="32" CornerRadius="4" Margin="0,0,10,0"
+                                  Background="{DynamicResource SurfaceBrush}"
+                                  BorderThickness="1"
+                                  BorderBrush="{DynamicResource BorderBrush}"
+                                  ClipToBounds="True">
+                            <Panel>
+                              <Path Data="M21 3H3C1.9 3 1 3.9 1 5V19C1 20.1 1.9 21 3 21H21C22.1 21 23 20.1 23 19V5C23 3.9 22.1 3 21 3M21 19H3V5H21V19M7.5 13.5L10 16.5L14 11.5L19 17H5L7.5 13.5Z"
+                                    Width="20" Height="20" Stretch="Uniform" Fill="{DynamicResource PrimaryBrush}"
+                                    HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.6"/>
+                              <Image Source="{Binding IconPath, Converter={x:Static converters:FilePathToBitmapConverter.Instance}}"
+                                     Stretch="Uniform"
+                                     Margin="3"/>
+                            </Panel>
+                          </Border>
 
                           <StackPanel Grid.Column="1" VerticalAlignment="Center">
                             <TextBlock Text="{Binding DisplayName}" FontSize="12" FontWeight="Medium" TextTrimming="CharacterEllipsis"/>

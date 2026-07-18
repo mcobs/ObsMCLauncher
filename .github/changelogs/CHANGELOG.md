@@ -2,6 +2,7 @@
 
 ### 新增
 - 依赖模组版本兼容性校验：解析Maven风格版本范围，按Error/Warning分级报告不兼容依赖，并提供解决建议
+- Shader Pack图标显示：从光影包zip中提取pack.png/logo.png/icon.png并缓存显示，无图标时回退默认图形
 - SSL证书验证开关和文件哈希校验开关（设置-通用-安全）
 - 统一HttpClient工厂，所有网络请求遵循SSL验证配置
 

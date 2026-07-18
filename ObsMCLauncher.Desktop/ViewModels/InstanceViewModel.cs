@@ -620,7 +620,8 @@ public partial class InstanceViewModel : ViewModelBase
                         FileName = Path.GetFileName(file),
                         Path = file,
                         Size = new FileInfo(file).Length,
-                        IsEnabled = true
+                        IsEnabled = true,
+                        IconPath = ExtractShaderPackIcon(file)
                     });
                 }
                 catch { }
@@ -637,7 +638,8 @@ public partial class InstanceViewModel : ViewModelBase
                         FileName = fileName,
                         Path = file,
                         Size = new FileInfo(file).Length,
-                        IsEnabled = false
+                        IsEnabled = false,
+                        IconPath = ExtractShaderPackIcon(file)
                     });
                 }
                 catch { }
@@ -647,6 +649,43 @@ public partial class InstanceViewModel : ViewModelBase
         ShaderPacks.Clear();
         foreach (var p in list) ShaderPacks.Add(p);
         HasShaderPacks = ShaderPacks.Count > 0;
+    }
+
+    private static readonly string ShaderIconCacheDir = Path.Combine(AppContext.BaseDirectory, "OMCL", "cache", "shader_icons");
+
+    /// <summary>
+    /// 从光影包 zip 中提取图标，返回缓存文件路径，未找到则返回 null。
+    /// 光影包图标没有强制路径规范，按以下顺序查找：
+    ///   根目录 → shaders/ → textures/ → gui/
+    /// 文件名候选：pack.png → logo.png → icon.png
+    /// </summary>
+    private static string? ExtractShaderPackIcon(string zipPath)
+    {
+        try
+        {
+            using var archive = ZipFile.OpenRead(zipPath);
+            string[] dirs = ["", "shaders/", "textures/", "gui/"];
+            string[] names = ["pack.png", "logo.png", "icon.png"];
+
+            foreach (var dir in dirs)
+            {
+                foreach (var name in names)
+                {
+                    var entry = archive.GetEntry(dir + name);
+                    if (entry != null)
+                    {
+                        Directory.CreateDirectory(ShaderIconCacheDir);
+                        var hash = Math.Abs(zipPath.GetHashCode()).ToString("x8");
+                        var tmpPath = Path.Combine(ShaderIconCacheDir, $"{hash}.png");
+                        if (!File.Exists(tmpPath) || new FileInfo(tmpPath).Length != entry.Length)
+                            entry.ExtractToFile(tmpPath, true);
+                        return tmpPath;
+                    }
+                }
+            }
+        }
+        catch { }
+        return null;
     }
 
     [RelayCommand]
@@ -1304,6 +1343,7 @@ public class ShaderPackInfo : ObservableObject
     private string _path = string.Empty;
     private long _size;
     private bool _isEnabled;
+    private string? _iconPath;
 
     public string Name
     {
@@ -1327,6 +1367,12 @@ public class ShaderPackInfo : ObservableObject
     {
         get => _size;
         set => SetProperty(ref _size, value);
+    }
+
+    public string? IconPath
+    {
+        get => _iconPath;
+        set => SetProperty(ref _iconPath, value);
     }
 
     /// <summary>
