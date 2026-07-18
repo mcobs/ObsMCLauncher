@@ -13,10 +13,13 @@
 - Shader Pack/Mod图标缓存位置统一到运行目录\OMCL\cache下
 - Shader Pack图标查找路径扩展：除根目录外增加shaders/textures/gui子目录查找
 - 主窗口侧边栏底色与内容区统一：亚克力/磨砂玻璃模式下NavBackgroundBrush透明度与WindowBackgroundBrush保持一致；ListBox设置Transparent背景避免覆盖导航栏底色；Theme.axaml补充默认资源定义避免启动时透明
+- NBT解析器从Desktop项目迁移至Core项目，提升可测试性；增加GZip魔数检测与EndOfStream异常恢复，解析失败时返回空字符串而非抛出异常
+- 弃用API清理：ModpackInstallService中SetVersionIsolation调用全部替换为SetIsolationMode，消除CS0618警告
 
 ### 修复
 - 修复MOD/Shader Pack开关状态无法正确显示的问题：移除_isToggling重入标志，文件操作失败时不再修改字段，确保双向绑定能自动回滚UI
 - 修复ZIP解压路径遍历漏洞（Zip Slip），所有解压操作增加路径验证
+- 修复跨平台打开文件夹失效问题：版本详情页6处"打开文件夹"入口统一改用OpenFolderInExplorer辅助方法，按系统选择explorer.exe/open/xdg-open
 
 ### 新增
 - 文件哈希校验功能，下载后自动验证SHA-1，设置中可开关

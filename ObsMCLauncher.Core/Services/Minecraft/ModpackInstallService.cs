@@ -45,7 +45,7 @@ public class ModpackInstallService
             Directory.CreateDirectory(tempVersionDir);
 
             // .temp 阶段也开启版本隔离（写入 temp 目录，最终迁移）
-            VersionConfigService.SetVersionIsolation(tempVersionDir, true);
+            VersionConfigService.SetIsolationMode(tempVersionDir, "enabled");
 
             progressCallback?.Invoke("正在解析整合包格式...", 10);
 
@@ -579,7 +579,7 @@ public class ModpackInstallService
             }
 
             // 同步写入最终目录的版本隔离配置
-            VersionConfigService.SetVersionIsolation(tempVersionDir, true);
+            VersionConfigService.SetIsolationMode(tempVersionDir, "enabled");
         });
     }
 

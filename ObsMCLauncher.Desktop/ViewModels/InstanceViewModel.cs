@@ -329,7 +329,7 @@ public partial class InstanceViewModel : ViewModelBase
                             Path = dir,
                             CreationTime = Directory.GetCreationTime(dir),
                             LastModified = Directory.GetLastWriteTime(dir),
-                            GameVersion = ReadWorldVersionFromLevelDat(levelDat),
+                            GameVersion = Core.Services.NbtReader.ReadWorldVersionFromLevelDat(levelDat),
                             WorldSizeBytes = CalculateDirectorySize(dir)
                         };
 
@@ -362,147 +362,6 @@ public partial class InstanceViewModel : ViewModelBase
         }
         catch { }
         return size;
-    }
-
-    /// <summary>
-    /// 从 level.dat 中读取游戏版本。level.dat 是 GZip 压缩的 NBT 格式，
-    /// 版本信息位于 Data.Version.Id (TAG_String)。
-    /// </summary>
-    private static string ReadWorldVersionFromLevelDat(string levelDatPath)
-    {
-        try
-        {
-            using var fileStream = File.OpenRead(levelDatPath);
-            using var gzip = new System.IO.Compression.GZipStream(fileStream, System.IO.Compression.CompressionMode.Decompress);
-            using var reader = new BinaryReader(gzip);
-
-            // 根标签类型必须是 TAG_Compound(10)
-            if (reader.ReadByte() != 10) return "";
-            ReadNbtString(reader); // 根标签名
-
-            // 在根 compound 中查找 Data.Version.Id
-            return FindVersionInCompound(reader);
-        }
-        catch { return ""; }
-    }
-
-    private static string FindVersionInCompound(BinaryReader reader)
-    {
-        while (true)
-        {
-            var type = reader.ReadByte();
-            if (type == 0) return ""; // TAG_End
-
-            var name = ReadNbtString(reader);
-
-            if (type == 10 && name == "Version")
-            {
-                // 进入 Version compound 内部查找 Id
-                // FindStringByKey 会读取到 TAG_End 或找到目标字符串
-                var versionId = FindStringByKey(reader, "Id");
-                if (!string.IsNullOrEmpty(versionId)) return versionId;
-                // 没找到则继续读 Version compound 之后的标签
-            }
-            else
-            {
-                SkipNbtPayload(reader, type);
-            }
-        }
-    }
-
-    /// <summary>
-    /// 在当前 compound 流位置读取所有子标签，查找指定名称的 TAG_String
-    /// </summary>
-    private static string FindStringByKey(BinaryReader reader, string key)
-    {
-        while (true)
-        {
-            var type = reader.ReadByte();
-            if (type == 0) return ""; // TAG_End
-
-            var name = ReadNbtString(reader);
-            if (type == 8 && name == key)
-                return ReadNbtString(reader);
-            else
-                SkipNbtPayload(reader, type);
-        }
-    }
-
-    private static string ReadNbtString(BinaryReader reader)
-    {
-        var lenBytes = reader.ReadBytes(2);
-        var len = (ushort)((lenBytes[0] << 8) | lenBytes[1]);
-        return len > 0 ? Encoding.UTF8.GetString(reader.ReadBytes(len)) : "";
-    }
-
-    private static int ReadNbtInt(BinaryReader reader)
-    {
-        var b = reader.ReadBytes(4);
-        return (b[0] << 24) | (b[1] << 16) | (b[2] << 8) | b[3];
-    }
-
-    /// <summary>
-    /// 读取 NBT payload 并返回字符串表示（仅对 compound 返回标记，其余跳过）
-    /// </summary>
-    private static object? ReadNbtPayload(BinaryReader reader, byte type)
-    {
-        switch (type)
-        {
-            case 1: reader.ReadByte(); return null;
-            case 2: reader.ReadBytes(2); return null;
-            case 3: reader.ReadBytes(4); return null;
-            case 4: reader.ReadBytes(8); return null;
-            case 5: reader.ReadBytes(4); return null;
-            case 6: reader.ReadBytes(8); return null;
-            case 7: var baLen = ReadNbtInt(reader); reader.ReadBytes(baLen); return null;
-            case 8: return ReadNbtString(reader);
-            case 9:
-                var listType = reader.ReadByte();
-                var listLen = ReadNbtInt(reader);
-                for (int i = 0; i < listLen; i++) SkipNbtPayload(reader, listType);
-                return null;
-            case 10:
-                // compound 需要完整读取到 TAG_End 才能继续
-                SkipCompound(reader);
-                return null;
-            case 11: var iaLen = ReadNbtInt(reader); reader.ReadBytes(iaLen * 4); return null;
-            case 12: var laLen = ReadNbtInt(reader); reader.ReadBytes(laLen * 8); return null;
-            default: return null;
-        }
-    }
-
-    private static void SkipNbtPayload(BinaryReader reader, byte type)
-    {
-        switch (type)
-        {
-            case 1: reader.ReadByte(); break;
-            case 2: reader.ReadBytes(2); break;
-            case 3: reader.ReadBytes(4); break;
-            case 4: reader.ReadBytes(8); break;
-            case 5: reader.ReadBytes(4); break;
-            case 6: reader.ReadBytes(8); break;
-            case 7: var baLen = ReadNbtInt(reader); reader.ReadBytes(baLen); break;
-            case 8: ReadNbtString(reader); break;
-            case 9:
-                var listType = reader.ReadByte();
-                var listLen = ReadNbtInt(reader);
-                for (int i = 0; i < listLen; i++) SkipNbtPayload(reader, listType);
-                break;
-            case 10: SkipCompound(reader); break;
-            case 11: var iaLen = ReadNbtInt(reader); reader.ReadBytes(iaLen * 4); break;
-            case 12: var laLen = ReadNbtInt(reader); reader.ReadBytes(laLen * 8); break;
-        }
-    }
-
-    private static void SkipCompound(BinaryReader reader)
-    {
-        while (true)
-        {
-            var type = reader.ReadByte();
-            if (type == 0) break;
-            ReadNbtString(reader);
-            SkipNbtPayload(reader, type);
-        }
     }
 
     private void ApplyWorlds(List<WorldInfo> worlds)
@@ -713,16 +572,7 @@ public partial class InstanceViewModel : ViewModelBase
     [RelayCommand]
     private void OpenFolder()
     {
-        if (string.IsNullOrEmpty(StoragePath) || !Directory.Exists(StoragePath)) return;
-        try
-        {
-            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-            {
-                FileName = StoragePath,
-                UseShellExecute = true
-            });
-        }
-        catch { }
+        OpenFolderInExplorer(StoragePath);
     }
 
     [RelayCommand]
@@ -731,15 +581,7 @@ public partial class InstanceViewModel : ViewModelBase
         var gameDir = GetGameDirectory();
         var savesDir = Path.Combine(gameDir, "saves");
         if (!Directory.Exists(savesDir)) Directory.CreateDirectory(savesDir);
-        try
-        {
-            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-            {
-                FileName = savesDir,
-                UseShellExecute = true
-            });
-        }
-        catch { }
+        OpenFolderInExplorer(savesDir);
     }
 
     [RelayCommand]
@@ -748,15 +590,7 @@ public partial class InstanceViewModel : ViewModelBase
         var gameDir = GetGameDirectory();
         var modsDir = Path.Combine(gameDir, "mods");
         if (!Directory.Exists(modsDir)) Directory.CreateDirectory(modsDir);
-        try
-        {
-            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-            {
-                FileName = modsDir,
-                UseShellExecute = true
-            });
-        }
-        catch { }
+        OpenFolderInExplorer(modsDir);
     }
 
     [RelayCommand]
@@ -924,15 +758,7 @@ public partial class InstanceViewModel : ViewModelBase
         var gameDir = GetGameDirectory();
         var shaderDir = Path.Combine(gameDir, "shaderpacks");
         if (!Directory.Exists(shaderDir)) Directory.CreateDirectory(shaderDir);
-        try
-        {
-            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-            {
-                FileName = shaderDir,
-                UseShellExecute = true
-            });
-        }
-        catch { }
+        OpenFolderInExplorer(shaderDir);
     }
 
     private void LoadResourcePacks()
@@ -1057,15 +883,7 @@ public partial class InstanceViewModel : ViewModelBase
         var gameDir = GetGameDirectory();
         var dir = Path.Combine(gameDir, "resourcepacks");
         if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
-        try
-        {
-            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-            {
-                FileName = dir,
-                UseShellExecute = true
-            });
-        }
-        catch { }
+        OpenFolderInExplorer(dir);
     }
 
     [RelayCommand]
@@ -1074,15 +892,7 @@ public partial class InstanceViewModel : ViewModelBase
         var gameDir = GetGameDirectory();
         var dir = Path.Combine(gameDir, "config");
         if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
-        try
-        {
-            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-            {
-                FileName = dir,
-                UseShellExecute = true
-            });
-        }
-        catch { }
+        OpenFolderInExplorer(dir);
     }
 
     partial void OnIsolationModeChanged(int value)
@@ -1504,6 +1314,27 @@ public partial class InstanceViewModel : ViewModelBase
         public int CustomMinMemory { get; set; }
         public int GlobalMaxMemory { get; set; }
         public string Description { get; set; } = "";
+    }
+
+    /// <summary>
+    /// 跨平台打开文件夹。Windows 用 explorer.exe，macOS 用 open，Linux 用 xdg-open。
+    /// </summary>
+    private static void OpenFolderInExplorer(string path)
+    {
+        if (string.IsNullOrEmpty(path) || !Directory.Exists(path)) return;
+        try
+        {
+            var psi = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = OperatingSystem.IsWindows() ? "explorer.exe"
+                         : OperatingSystem.IsMacOS() ? "open"
+                         : "xdg-open",
+                Arguments = path,
+                UseShellExecute = true
+            };
+            System.Diagnostics.Process.Start(psi);
+        }
+        catch { }
     }
 }
 
