@@ -68,6 +68,12 @@ public partial class InstanceViewModel : ViewModelBase
     private bool _hasShaderPacks;
 
     [ObservableProperty]
+    private ObservableCollection<ResourcePackInfo> _resourcePacks = new();
+
+    [ObservableProperty]
+    private bool _hasResourcePacks;
+
+    [ObservableProperty]
     private bool _isVisible;
 
     [ObservableProperty]
@@ -94,6 +100,7 @@ public partial class InstanceViewModel : ViewModelBase
     public bool IsWorldsTab => SelectedNavIndex == 2;
     public bool IsModsTab => SelectedNavIndex == 3;
     public bool IsShaderTab => SelectedNavIndex == 4;
+    public bool IsResourcePacksTab => SelectedNavIndex == 5;
 
     partial void OnSelectedNavIndexChanged(int value)
     {
@@ -102,6 +109,7 @@ public partial class InstanceViewModel : ViewModelBase
         OnPropertyChanged(nameof(IsWorldsTab));
         OnPropertyChanged(nameof(IsModsTab));
         OnPropertyChanged(nameof(IsShaderTab));
+        OnPropertyChanged(nameof(IsResourcePacksTab));
     }
 
     [RelayCommand]
@@ -168,6 +176,7 @@ public partial class InstanceViewModel : ViewModelBase
                 ApplyWorlds(data.Worlds);
                 ApplyMods(data.Mods);
                 LoadShaderPacks();
+                LoadResourcePacks();
                 IsLoading = false;
             });
         }
@@ -375,7 +384,7 @@ public partial class InstanceViewModel : ViewModelBase
         }
     }
 
-    private static readonly string ModIconCacheDir = Path.Combine(Path.GetTempPath(), "OMCL", "mod_icons");
+    private static readonly string ModIconCacheDir = Path.Combine(AppContext.BaseDirectory, "OMCL", "cache", "mod_icons");
 
     /// <summary>
     /// 从 JAR 中提取 Mod 图标，返回缓存文件路径，未找到则返回 null
@@ -740,6 +749,122 @@ public partial class InstanceViewModel : ViewModelBase
             });
         }
         catch { }
+    }
+
+    private void LoadResourcePacks()
+    {
+        var gameDir = GetGameDirectory();
+        var dir = Path.Combine(gameDir, "resourcepacks");
+        var list = new List<ResourcePackInfo>();
+
+        if (Directory.Exists(dir))
+        {
+            foreach (var file in Directory.GetFiles(dir, "*.zip"))
+            {
+                try
+                {
+                    list.Add(new ResourcePackInfo
+                    {
+                        Name = Path.GetFileNameWithoutExtension(file),
+                        FileName = Path.GetFileName(file),
+                        Path = file,
+                        Size = new FileInfo(file).Length,
+                        IsEnabled = true,
+                        IconPath = ExtractResourcePackIcon(file)
+                    });
+                }
+                catch { }
+            }
+
+            foreach (var file in Directory.GetFiles(dir, "*.zip.disabled"))
+            {
+                try
+                {
+                    var fileName = Path.GetFileName(file);
+                    list.Add(new ResourcePackInfo
+                    {
+                        Name = fileName,
+                        FileName = fileName,
+                        Path = file,
+                        Size = new FileInfo(file).Length,
+                        IsEnabled = false,
+                        IconPath = ExtractResourcePackIcon(file)
+                    });
+                }
+                catch { }
+            }
+        }
+
+        ResourcePacks.Clear();
+        foreach (var p in list) ResourcePacks.Add(p);
+        HasResourcePacks = ResourcePacks.Count > 0;
+    }
+
+    private static readonly string ResourcePackIconCacheDir = Path.Combine(AppContext.BaseDirectory, "OMCL", "cache", "resourcepack_icons");
+
+    /// <summary>
+    /// 从材质包 zip 中提取图标，返回缓存文件路径，未找到则返回 null。
+    /// 材质包遵循资源包规范，图标通常位于根目录 pack.png。
+    /// </summary>
+    private static string? ExtractResourcePackIcon(string zipPath)
+    {
+        try
+        {
+            using var archive = ZipFile.OpenRead(zipPath);
+            string[] names = ["pack.png", "logo.png", "icon.png"];
+            foreach (var name in names)
+            {
+                var entry = archive.GetEntry(name);
+                if (entry != null)
+                {
+                    Directory.CreateDirectory(ResourcePackIconCacheDir);
+                    var hash = Math.Abs(zipPath.GetHashCode()).ToString("x8");
+                    var tmpPath = Path.Combine(ResourcePackIconCacheDir, $"{hash}.png");
+                    if (!File.Exists(tmpPath) || new FileInfo(tmpPath).Length != entry.Length)
+                        entry.ExtractToFile(tmpPath, true);
+                    return tmpPath;
+                }
+            }
+        }
+        catch { }
+        return null;
+    }
+
+    [RelayCommand]
+    private void ToggleResourcePack(ResourcePackInfo pack)
+    {
+        if (pack == null) return;
+        try
+        {
+            pack.IsEnabled = !pack.IsEnabled;
+        }
+        catch (Exception ex)
+        {
+            _notificationService.Show("操作失败", ex.Message, NotificationType.Error);
+        }
+    }
+
+    [RelayCommand]
+    private async Task DeleteResourcePackAsync(ResourcePackInfo pack)
+    {
+        if (pack == null) return;
+
+        var result = await _dialogService.ShowQuestion("确认删除", $"确定要删除材质包 \"{pack.DisplayName}\" 吗？");
+        if (result != DialogResult.Yes) return;
+
+        try
+        {
+            if (File.Exists(pack.Path))
+            {
+                File.Delete(pack.Path);
+                ResourcePacks.Remove(pack);
+                HasResourcePacks = ResourcePacks.Count > 0;
+            }
+        }
+        catch (Exception ex)
+        {
+            _notificationService.Show("删除失败", ex.Message, NotificationType.Error);
+        }
     }
 
     [RelayCommand]
@@ -1337,6 +1462,95 @@ public class ModInfo : ObservableObject
 }
 
 public class ShaderPackInfo : ObservableObject
+{
+    private string _name = string.Empty;
+    private string _fileName = string.Empty;
+    private string _path = string.Empty;
+    private long _size;
+    private bool _isEnabled;
+    private string? _iconPath;
+
+    public string Name
+    {
+        get => _name;
+        set => SetProperty(ref _name, value);
+    }
+
+    public string FileName
+    {
+        get => _fileName;
+        set => SetProperty(ref _fileName, value);
+    }
+
+    public string Path
+    {
+        get => _path;
+        set => SetProperty(ref _path, value);
+    }
+
+    public long Size
+    {
+        get => _size;
+        set => SetProperty(ref _size, value);
+    }
+
+    public string? IconPath
+    {
+        get => _iconPath;
+        set => SetProperty(ref _iconPath, value);
+    }
+
+    /// <summary>
+    /// 是否启用。setter 会同步重命名文件（追加/移除 .disabled 后缀）。
+    /// 文件操作失败时抛出异常，由调用方处理；此时字段不更新，双向绑定会自动回滚 UI。
+    /// </summary>
+    public bool IsEnabled
+    {
+        get => _isEnabled;
+        set
+        {
+            if (_isEnabled == value) return;
+
+            bool fileAlreadyAtTarget = value
+                ? !_path.EndsWith(".disabled")
+                : _path.EndsWith(".disabled");
+
+            if (fileAlreadyAtTarget)
+            {
+                _isEnabled = value;
+                OnPropertyChanged(nameof(IsEnabled));
+                OnPropertyChanged(nameof(DisplayName));
+                return;
+            }
+
+            string newPath = value
+                ? _path[..^".disabled".Length]
+                : _path + ".disabled";
+
+            System.IO.File.Move(_path, newPath);
+
+            _path = newPath;
+            _isEnabled = value;
+            _fileName = System.IO.Path.GetFileName(newPath);
+            _name = value
+                ? System.IO.Path.GetFileNameWithoutExtension(newPath)
+                : System.IO.Path.GetFileName(newPath);
+
+            OnPropertyChanged(nameof(IsEnabled));
+            OnPropertyChanged(nameof(DisplayName));
+            OnPropertyChanged(nameof(Name));
+            OnPropertyChanged(nameof(FileName));
+            OnPropertyChanged(nameof(Path));
+        }
+    }
+
+    public string DisplayName => IsEnabled ? Name : Name.Replace(".zip.disabled", "").Replace(".disabled", "");
+}
+
+/// <summary>
+/// 材质包信息。启用/禁用通过追加/移除 .disabled 后缀实现。
+/// </summary>
+public class ResourcePackInfo : ObservableObject
 {
     private string _name = string.Empty;
     private string _fileName = string.Empty;

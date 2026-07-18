@@ -3,12 +3,14 @@
 ### 新增
 - 依赖模组版本兼容性校验：解析Maven风格版本范围，按Error/Warning分级报告不兼容依赖，并提供解决建议
 - Shader Pack图标显示：从光影包zip中提取pack.png/logo.png/icon.png并缓存显示，无图标时回退默认图形
+- 材质包管理页面：版本详情页导航栏新增"材质包"标签，支持启用/禁用/删除材质包，从zip中提取pack.png作为图标
 - SSL证书验证开关和文件哈希校验开关（设置-通用-安全）
 - 统一HttpClient工厂，所有网络请求遵循SSL验证配置
 
 ### 优化
-- Shader Pack图标查找路径扩展：除根目录外增加shaders/textures/gui子目录查找；图标缓存位置改到运行目录\OMCL\cache
-- 主窗口侧边栏底色与内容区统一：亚克力/磨砂玻璃模式下NavBackgroundBrush透明度与WindowBackgroundBrush保持一致，Theme.axaml补充NavBackgroundBrush等资源的默认值定义避免启动时透明
+- Shader Pack/Mod图标缓存位置统一到运行目录\OMCL\cache下
+- Shader Pack图标查找路径扩展：除根目录外增加shaders/textures/gui子目录查找
+- 主窗口侧边栏底色与内容区统一：亚克力/磨砂玻璃模式下NavBackgroundBrush透明度与WindowBackgroundBrush保持一致；ListBox设置Transparent背景避免覆盖导航栏底色；Theme.axaml补充默认资源定义避免启动时透明
 
 ### 修复
 - 修复MOD/Shader Pack开关状态无法正确显示的问题：移除_isToggling重入标志，文件操作失败时不再修改字段，确保双向绑定能自动回滚UI

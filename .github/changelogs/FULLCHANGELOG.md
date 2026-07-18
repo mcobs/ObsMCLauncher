@@ -7,13 +7,15 @@
  ### 新增
 - 依赖模组版本兼容性校验：实现 ModVersion/ModVersionRange 解析Maven风格版本范围（[1.0.0,2.0.0)等），按主版本号差距自动分配Error/Warning级别，并在UI中展示冲突描述与解决建议
 - Shader Pack图标显示：LoadShaderPacks时从光影包zip根目录提取pack.png/logo.png/icon.png到临时缓存目录，ShaderPackInfo新增IconPath属性，InstanceView的Shader标签页用32x32 Border承载图标（无图标时回退到默认图形）
+- 材质包管理页面：InstanceViewModel新增ResourcePackInfo模型和ResourcePacks集合，LoadResourcePacks扫描resourcepacks目录下的.zip和.zip.disabled文件；ToggleResourcePack命令通过重命名文件追加/移除.disabled后缀实现启用/禁用；DeleteResourcePackAsync带确认对话框；ExtractResourcePackIcon从zip根目录提取pack.png/logo.png/icon.png到运行目录\OMCL\cache\resourcepack_icons；InstanceView导航栏新增"材质包"标签（第6个），内容区展示图标、名称、大小、删除按钮和开关
 - SSL证书验证开关：设置-通用-安全中添加"跳过SSL证书验证"选项，默认关闭（验证证书），开启时显示安全警告
 - 文件哈希校验开关：设置-通用-安全中添加"文件哈希校验"选项，默认开启
 - 统一HttpClient工厂：所有网络请求通过HttpClientFactory创建，统一遵循SSL验证配置
 
  ### 优化
-- Shader Pack图标查找路径扩展：除根目录外增加 shaders/textures/gui 子目录查找，适配不同作者的打包习惯；图标缓存位置从临时目录改到运行目录\OMCL\cache\shader_icons
-- 主窗口侧边栏底色统一：ApplyWindowStyleThemeOverride 中亚克力模式 NavBackgroundBrush 透明度由 0.82 改为 1.0、磨砂玻璃模式由 0.6 改为 0.95，与 WindowBackgroundBrush 保持一致；Theme.axaml 补充 NavBackgroundBrush/NavBorderBrush/TitleBarBackgroundBrush/TitleBarBorderBrush 的默认值定义，避免启动初期资源未就绪时侧边栏透明
+- 图标缓存位置统一：Shader Pack/Mod/材质包图标缓存都改到运行目录\OMCL\cache下对应子目录
+- Shader Pack图标查找路径扩展：除根目录外增加 shaders/textures/gui 子目录查找，适配不同作者的打包习惯
+- 主窗口侧边栏底色统一：ApplyWindowStyleThemeOverride 中亚克力模式 NavBackgroundBrush 透明度由 0.82 改为 1.0、磨砂玻璃模式由 0.6 改为 0.95，与 WindowBackgroundBrush 保持一致；MainWindow 中 NavListBox/BottomNavListBox 设置 Transparent 背景避免ListBox默认背景色覆盖导航栏底色；Theme.axaml 补充 NavBackgroundBrush/NavBorderBrush/TitleBarBackgroundBrush/TitleBarBorderBrush 的默认值定义，避免启动初期资源未就绪时侧边栏透明
 - 版本详情页标签栏底色统一：InstanceView 标签栏底色由 SurfaceBrush 改为 BackgroundBrush，与内容区主题背景色保持一致，通过底部边框区分层级
 
  ### 修复
