@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Platform.Storage;
@@ -322,16 +323,185 @@ public partial class InstanceViewModel : ViewModelBase
                     var levelDat = Path.Combine(dir, "level.dat");
                     if (File.Exists(levelDat))
                     {
-                        data.Worlds.Add(new WorldInfo
+                        var info = new WorldInfo
                         {
                             Name = Path.GetFileName(dir),
                             Path = dir,
-                            LastModified = File.GetLastWriteTime(dir)
-                        });
+                            CreationTime = Directory.GetCreationTime(dir),
+                            LastModified = Directory.GetLastWriteTime(dir),
+                            GameVersion = ReadWorldVersionFromLevelDat(levelDat),
+                            WorldSizeBytes = CalculateDirectorySize(dir)
+                        };
+
+                        // 存档图标
+                        var iconFile = Path.Combine(dir, "icon.png");
+                        if (File.Exists(iconFile))
+                            info.IconPath = iconFile;
+
+                        data.Worlds.Add(info);
                     }
                 }
                 catch { }
             }
+        }
+    }
+
+    /// <summary>
+    /// 递归计算目录大小
+    /// </summary>
+    private static long CalculateDirectorySize(string dirPath)
+    {
+        long size = 0;
+        try
+        {
+            foreach (var file in Directory.EnumerateFiles(dirPath, "*", SearchOption.AllDirectories))
+            {
+                try { size += new FileInfo(file).Length; }
+                catch { }
+            }
+        }
+        catch { }
+        return size;
+    }
+
+    /// <summary>
+    /// 从 level.dat 中读取游戏版本。level.dat 是 GZip 压缩的 NBT 格式，
+    /// 版本信息位于 Data.Version.Id (TAG_String)。
+    /// </summary>
+    private static string ReadWorldVersionFromLevelDat(string levelDatPath)
+    {
+        try
+        {
+            using var fileStream = File.OpenRead(levelDatPath);
+            using var gzip = new System.IO.Compression.GZipStream(fileStream, System.IO.Compression.CompressionMode.Decompress);
+            using var reader = new BinaryReader(gzip);
+
+            // 根标签类型必须是 TAG_Compound(10)
+            if (reader.ReadByte() != 10) return "";
+            ReadNbtString(reader); // 根标签名
+
+            // 在根 compound 中查找 Data.Version.Id
+            return FindVersionInCompound(reader);
+        }
+        catch { return ""; }
+    }
+
+    private static string FindVersionInCompound(BinaryReader reader)
+    {
+        while (true)
+        {
+            var type = reader.ReadByte();
+            if (type == 0) return ""; // TAG_End
+
+            var name = ReadNbtString(reader);
+
+            if (type == 10 && name == "Version")
+            {
+                // 进入 Version compound 内部查找 Id
+                // FindStringByKey 会读取到 TAG_End 或找到目标字符串
+                var versionId = FindStringByKey(reader, "Id");
+                if (!string.IsNullOrEmpty(versionId)) return versionId;
+                // 没找到则继续读 Version compound 之后的标签
+            }
+            else
+            {
+                SkipNbtPayload(reader, type);
+            }
+        }
+    }
+
+    /// <summary>
+    /// 在当前 compound 流位置读取所有子标签，查找指定名称的 TAG_String
+    /// </summary>
+    private static string FindStringByKey(BinaryReader reader, string key)
+    {
+        while (true)
+        {
+            var type = reader.ReadByte();
+            if (type == 0) return ""; // TAG_End
+
+            var name = ReadNbtString(reader);
+            if (type == 8 && name == key)
+                return ReadNbtString(reader);
+            else
+                SkipNbtPayload(reader, type);
+        }
+    }
+
+    private static string ReadNbtString(BinaryReader reader)
+    {
+        var lenBytes = reader.ReadBytes(2);
+        var len = (ushort)((lenBytes[0] << 8) | lenBytes[1]);
+        return len > 0 ? Encoding.UTF8.GetString(reader.ReadBytes(len)) : "";
+    }
+
+    private static int ReadNbtInt(BinaryReader reader)
+    {
+        var b = reader.ReadBytes(4);
+        return (b[0] << 24) | (b[1] << 16) | (b[2] << 8) | b[3];
+    }
+
+    /// <summary>
+    /// 读取 NBT payload 并返回字符串表示（仅对 compound 返回标记，其余跳过）
+    /// </summary>
+    private static object? ReadNbtPayload(BinaryReader reader, byte type)
+    {
+        switch (type)
+        {
+            case 1: reader.ReadByte(); return null;
+            case 2: reader.ReadBytes(2); return null;
+            case 3: reader.ReadBytes(4); return null;
+            case 4: reader.ReadBytes(8); return null;
+            case 5: reader.ReadBytes(4); return null;
+            case 6: reader.ReadBytes(8); return null;
+            case 7: var baLen = ReadNbtInt(reader); reader.ReadBytes(baLen); return null;
+            case 8: return ReadNbtString(reader);
+            case 9:
+                var listType = reader.ReadByte();
+                var listLen = ReadNbtInt(reader);
+                for (int i = 0; i < listLen; i++) SkipNbtPayload(reader, listType);
+                return null;
+            case 10:
+                // compound 需要完整读取到 TAG_End 才能继续
+                SkipCompound(reader);
+                return null;
+            case 11: var iaLen = ReadNbtInt(reader); reader.ReadBytes(iaLen * 4); return null;
+            case 12: var laLen = ReadNbtInt(reader); reader.ReadBytes(laLen * 8); return null;
+            default: return null;
+        }
+    }
+
+    private static void SkipNbtPayload(BinaryReader reader, byte type)
+    {
+        switch (type)
+        {
+            case 1: reader.ReadByte(); break;
+            case 2: reader.ReadBytes(2); break;
+            case 3: reader.ReadBytes(4); break;
+            case 4: reader.ReadBytes(8); break;
+            case 5: reader.ReadBytes(4); break;
+            case 6: reader.ReadBytes(8); break;
+            case 7: var baLen = ReadNbtInt(reader); reader.ReadBytes(baLen); break;
+            case 8: ReadNbtString(reader); break;
+            case 9:
+                var listType = reader.ReadByte();
+                var listLen = ReadNbtInt(reader);
+                for (int i = 0; i < listLen; i++) SkipNbtPayload(reader, listType);
+                break;
+            case 10: SkipCompound(reader); break;
+            case 11: var iaLen = ReadNbtInt(reader); reader.ReadBytes(iaLen * 4); break;
+            case 12: var laLen = ReadNbtInt(reader); reader.ReadBytes(laLen * 8); break;
+        }
+    }
+
+    private static void SkipCompound(BinaryReader reader)
+    {
+        while (true)
+        {
+            var type = reader.ReadByte();
+            if (type == 0) break;
+            ReadNbtString(reader);
+            SkipNbtPayload(reader, type);
         }
     }
 
@@ -609,6 +779,20 @@ public partial class InstanceViewModel : ViewModelBase
     {
         LoadMods();
         _notificationService.Show("已刷新", "模组列表已重新加载", NotificationType.Success, 2);
+    }
+
+    [RelayCommand]
+    private void RefreshShaderPacks()
+    {
+        LoadShaderPacks();
+        _notificationService.Show("已刷新", "Shader Pack 列表已重新加载", NotificationType.Success, 2);
+    }
+
+    [RelayCommand]
+    private void RefreshResourcePacks()
+    {
+        LoadResourcePacks();
+        _notificationService.Show("已刷新", "材质包列表已重新加载", NotificationType.Success, 2);
     }
 
     private void LoadShaderPacks()
@@ -1327,7 +1511,19 @@ public class WorldInfo
 {
     public string Name { get; set; } = string.Empty;
     public string Path { get; set; } = string.Empty;
+    public DateTime CreationTime { get; set; }
     public DateTime LastModified { get; set; }
+    public string GameVersion { get; set; } = "";
+    public long WorldSizeBytes { get; set; }
+    public string? IconPath { get; set; }
+
+    public string WorldSizeDisplay => WorldSizeBytes switch
+    {
+        < 1024 => $"{WorldSizeBytes} B",
+        < 1024 * 1024 => $"{WorldSizeBytes / 1024.0:F1} KB",
+        < 1024 * 1024 * 1024 => $"{WorldSizeBytes / (1024.0 * 1024):F1} MB",
+        _ => $"{WorldSizeBytes / (1024.0 * 1024 * 1024):F2} GB"
+    };
 }
 
 public class ModInfo : ObservableObject
