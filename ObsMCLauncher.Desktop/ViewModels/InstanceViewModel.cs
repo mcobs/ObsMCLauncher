@@ -1173,7 +1173,6 @@ public class ModInfo : ObservableObject
     private string _path = string.Empty;
     private long _size;
     private bool _isEnabled;
-    private bool _isToggling;
     private string? _iconPath;
     private string _modId = string.Empty;
     private string _version = string.Empty;
@@ -1206,59 +1205,50 @@ public class ModInfo : ObservableObject
         set => SetProperty(ref _size, value);
     }
 
+    /// <summary>
+    /// 是否启用。setter 会同步重命名文件（追加/移除 .disabled 后缀）。
+    /// 文件操作失败时抛出异常，由调用方处理；此时字段不更新，双向绑定会自动回滚 UI。
+    /// </summary>
     public bool IsEnabled
     {
         get => _isEnabled;
         set
         {
-            if (_isToggling) return;
             if (_isEnabled == value) return;
 
-            _isToggling = true;
-            try
-            {
-                if (value)
-                {
-                    // 启用: 去掉 .disabled 后缀
-                    if (_path.EndsWith(".disabled"))
-                    {
-                        var newPath = _path[..^".disabled".Length];
-                        System.IO.File.Move(_path, newPath);
-                        _path = newPath;
-                        _isEnabled = true;
-                        _fileName = System.IO.Path.GetFileName(newPath);
-                        _name = System.IO.Path.GetFileNameWithoutExtension(newPath);
-                    }
-                }
-                else
-                {
-                    // 禁用: 追加 .disabled 后缀
-                    if (!_path.EndsWith(".disabled"))
-                    {
-                        var newPath = _path + ".disabled";
-                        System.IO.File.Move(_path, newPath);
-                        _path = newPath;
-                        _isEnabled = false;
-                        _fileName = System.IO.Path.GetFileName(newPath);
-                        _name = System.IO.Path.GetFileName(newPath);
-                    }
-                }
+            // 判断文件当前状态是否已与目标状态一致（初始化场景：加载时直接设置字段）
+            bool fileAlreadyAtTarget = value
+                ? !_path.EndsWith(".disabled")
+                : _path.EndsWith(".disabled");
 
+            if (fileAlreadyAtTarget)
+            {
+                // 文件已是目标状态，仅同步字段（如加载时设置已启用的 .jar 模组）
+                _isEnabled = value;
                 OnPropertyChanged(nameof(IsEnabled));
                 OnPropertyChanged(nameof(DisplayName));
-                OnPropertyChanged(nameof(Name));
-                OnPropertyChanged(nameof(FileName));
-                OnPropertyChanged(nameof(Path));
+                return;
             }
-            catch
-            {
-                // 文件操作失败，回滚UI状态
-                OnPropertyChanged(nameof(IsEnabled));
-            }
-            finally
-            {
-                _isToggling = false;
-            }
+
+            // 需要重命名文件
+            string newPath = value
+                ? _path[..^".disabled".Length]
+                : _path + ".disabled";
+
+            System.IO.File.Move(_path, newPath);
+
+            _path = newPath;
+            _isEnabled = value;
+            _fileName = System.IO.Path.GetFileName(newPath);
+            _name = value
+                ? System.IO.Path.GetFileNameWithoutExtension(newPath)
+                : System.IO.Path.GetFileName(newPath);
+
+            OnPropertyChanged(nameof(IsEnabled));
+            OnPropertyChanged(nameof(DisplayName));
+            OnPropertyChanged(nameof(Name));
+            OnPropertyChanged(nameof(FileName));
+            OnPropertyChanged(nameof(Path));
         }
     }
 
@@ -1314,7 +1304,6 @@ public class ShaderPackInfo : ObservableObject
     private string _path = string.Empty;
     private long _size;
     private bool _isEnabled;
-    private bool _isToggling;
 
     public string Name
     {
@@ -1340,59 +1329,47 @@ public class ShaderPackInfo : ObservableObject
         set => SetProperty(ref _size, value);
     }
 
+    /// <summary>
+    /// 是否启用。setter 会同步重命名文件（追加/移除 .disabled 后缀）。
+    /// 文件操作失败时抛出异常，由调用方处理；此时字段不更新，双向绑定会自动回滚 UI。
+    /// </summary>
     public bool IsEnabled
     {
         get => _isEnabled;
         set
         {
-            if (_isToggling) return;
             if (_isEnabled == value) return;
 
-            _isToggling = true;
-            try
-            {
-                if (value)
-                {
-                    // 启用: 去掉 .disabled 后缀
-                    if (_path.EndsWith(".disabled"))
-                    {
-                        var newPath = _path[..^".disabled".Length];
-                        System.IO.File.Move(_path, newPath);
-                        _path = newPath;
-                        _isEnabled = true;
-                        _fileName = System.IO.Path.GetFileName(newPath);
-                        _name = System.IO.Path.GetFileNameWithoutExtension(newPath);
-                    }
-                }
-                else
-                {
-                    // 禁用: 追加 .disabled 后缀
-                    if (!_path.EndsWith(".disabled"))
-                    {
-                        var newPath = _path + ".disabled";
-                        System.IO.File.Move(_path, newPath);
-                        _path = newPath;
-                        _isEnabled = false;
-                        _fileName = System.IO.Path.GetFileName(newPath);
-                        _name = System.IO.Path.GetFileName(newPath);
-                    }
-                }
+            bool fileAlreadyAtTarget = value
+                ? !_path.EndsWith(".disabled")
+                : _path.EndsWith(".disabled");
 
+            if (fileAlreadyAtTarget)
+            {
+                _isEnabled = value;
                 OnPropertyChanged(nameof(IsEnabled));
                 OnPropertyChanged(nameof(DisplayName));
-                OnPropertyChanged(nameof(Name));
-                OnPropertyChanged(nameof(FileName));
-                OnPropertyChanged(nameof(Path));
+                return;
             }
-            catch
-            {
-                // 文件操作失败，回滚UI状态
-                OnPropertyChanged(nameof(IsEnabled));
-            }
-            finally
-            {
-                _isToggling = false;
-            }
+
+            string newPath = value
+                ? _path[..^".disabled".Length]
+                : _path + ".disabled";
+
+            System.IO.File.Move(_path, newPath);
+
+            _path = newPath;
+            _isEnabled = value;
+            _fileName = System.IO.Path.GetFileName(newPath);
+            _name = value
+                ? System.IO.Path.GetFileNameWithoutExtension(newPath)
+                : System.IO.Path.GetFileName(newPath);
+
+            OnPropertyChanged(nameof(IsEnabled));
+            OnPropertyChanged(nameof(DisplayName));
+            OnPropertyChanged(nameof(Name));
+            OnPropertyChanged(nameof(FileName));
+            OnPropertyChanged(nameof(Path));
         }
     }
 

@@ -11,6 +11,7 @@
 - 统一HttpClient工厂：所有网络请求通过HttpClientFactory创建，统一遵循SSL验证配置
 
  ### 修复
+- MOD/Shader Pack开关状态显示问题：移除IsEnabled setter中的_isToggling重入标志，改为先执行文件操作再更新字段，文件操作失败时字段保持不变，双向绑定自动回滚ToggleSwitch状态
 - ZIP解压路径遍历漏洞（Zip Slip）：所有ZIP解压操作通过SafeZipExtractor进行路径验证，防止恶意ZIP写入目标目录之外的文件
 - 文件哈希校验功能：下载资产/库文件/客户端JAR后自动验证SHA-1哈希，校验失败删除文件并记录日志
 - 模组冲突检测：加载模组时解析JAR内元数据（fabric.mod.json/mods.toml/quilt.mod.json），检测重复ID、缺失依赖、加载器不兼容等冲突，冲突模组红色标记并显示详细描述
