@@ -1029,9 +1029,12 @@ public partial class InstanceViewModel : ViewModelBase
                     var relatedConflicts = conflicts
                         .Where(c => c.ModId1.Equals(mod.ModId, StringComparison.OrdinalIgnoreCase) ||
                                     c.ModId2.Equals(mod.ModId, StringComparison.OrdinalIgnoreCase))
-                        .Select(c => c.Description)
                         .ToList();
-                    mod.ConflictDescription = string.Join("\n", relatedConflicts);
+                    mod.ConflictDescription = string.Join("\n", relatedConflicts.Select(c => c.Description));
+                    mod.ConflictSuggestion = string.Join("\n",
+                        relatedConflicts
+                            .Where(c => !string.IsNullOrEmpty(c.Suggestion))
+                            .Select(c => c.Suggestion));
                 }
             }
 
@@ -1177,6 +1180,7 @@ public class ModInfo : ObservableObject
     private string _loader = string.Empty;
     private bool _hasConflict;
     private string _conflictDescription = string.Empty;
+    private string _conflictSuggestion = string.Empty;
 
     public string Name
     {
@@ -1294,6 +1298,12 @@ public class ModInfo : ObservableObject
     {
         get => _conflictDescription;
         set => SetProperty(ref _conflictDescription, value);
+    }
+
+    public string ConflictSuggestion
+    {
+        get => _conflictSuggestion;
+        set => SetProperty(ref _conflictSuggestion, value);
     }
 }
 

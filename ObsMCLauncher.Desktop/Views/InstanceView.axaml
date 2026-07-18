@@ -489,6 +489,7 @@
                               <TextBlock Text="{Binding Loader}" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}" IsVisible="{Binding Loader, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                             </StackPanel>
                             <TextBlock Text="{Binding ConflictDescription}" FontSize="10" Foreground="#FF5252" TextWrapping="Wrap" IsVisible="{Binding HasConflict}" Margin="0,2,0,0"/>
+                            <TextBlock Text="{Binding ConflictSuggestion}" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}" TextWrapping="Wrap" IsVisible="{Binding ConflictSuggestion, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Margin="0,2,0,0"/>
                           </StackPanel>
 
                           <ToggleSwitch Grid.Column="2"
