@@ -11,6 +11,11 @@
 - 文件哈希校验开关：设置-通用-安全中添加"文件哈希校验"选项，默认开启
 - 统一HttpClient工厂：所有网络请求通过HttpClientFactory创建，统一遵循SSL验证配置
 
+ ### 优化
+- Shader Pack图标查找路径扩展：除根目录外增加 shaders/textures/gui 子目录查找，适配不同作者的打包习惯；图标缓存位置从临时目录改到运行目录\OMCL\cache\shader_icons
+- 主窗口侧边栏底色统一：ApplyWindowStyleThemeOverride 中亚克力模式 NavBackgroundBrush 透明度由 0.82 改为 1.0、磨砂玻璃模式由 0.6 改为 0.95，与 WindowBackgroundBrush 保持一致；Theme.axaml 补充 NavBackgroundBrush/NavBorderBrush/TitleBarBackgroundBrush/TitleBarBorderBrush 的默认值定义，避免启动初期资源未就绪时侧边栏透明
+- 版本详情页标签栏底色统一：InstanceView 标签栏底色由 SurfaceBrush 改为 BackgroundBrush，与内容区主题背景色保持一致，通过底部边框区分层级
+
  ### 修复
 - MOD/Shader Pack开关状态显示问题：移除IsEnabled setter中的_isToggling重入标志，改为先执行文件操作再更新字段，文件操作失败时字段保持不变，双向绑定自动回滚ToggleSwitch状态
 - ZIP解压路径遍历漏洞（Zip Slip）：所有ZIP解压操作通过SafeZipExtractor进行路径验证，防止恶意ZIP写入目标目录之外的文件

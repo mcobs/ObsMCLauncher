@@ -113,6 +113,12 @@
     <!-- 窗口背景资源（由质感风格动态覆盖） -->
     <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#0B0D10"/>
 
+    <!-- 导航栏背景资源（由质感风格动态覆盖），默认与窗口背景一致 -->
+    <SolidColorBrush x:Key="NavBackgroundBrush" Color="#0B0D10"/>
+    <SolidColorBrush x:Key="NavBorderBrush" Color="#1E2128"/>
+    <SolidColorBrush x:Key="TitleBarBackgroundBrush" Color="#0B0D10"/>
+    <SolidColorBrush x:Key="TitleBarBorderBrush" Color="#1E2128"/>
+
   </Styles.Resources>
 
   <Style Selector="TextBlock">

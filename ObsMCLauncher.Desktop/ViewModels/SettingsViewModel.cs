@@ -1246,7 +1246,8 @@ public partial class SettingsViewModel : ViewModelBase
             case 0: // 亚克力：半透明+轻微背景模糊，卡片带柔和阴影
                 resources["TitleBarBackgroundBrush"] = new SolidColorBrush(Color.Parse(bg)) { Opacity = 0.82 };
                 resources["TitleBarBorderBrush"] = new SolidColorBrush(Color.Parse(isLight ? "#000000" : "#FFFFFF")) { Opacity = isLight ? 0.06 : 0.10 };
-                resources["NavBackgroundBrush"] = new SolidColorBrush(Color.Parse(bg)) { Opacity = 0.82 };
+                // 导航栏与内容区使用相同背景色和透明度，仅通过边框区分层级
+                resources["NavBackgroundBrush"] = new SolidColorBrush(Color.Parse(bg));
                 resources["NavBorderBrush"] = new SolidColorBrush(Color.Parse(isLight ? "#000000" : "#FFFFFF")) { Opacity = isLight ? 0.06 : 0.10 };
                 resources["CardBackgroundBrush"] = new SolidColorBrush(Color.Parse(cardSurface));
                 resources["CardBorderBrush"] = new SolidColorBrush(Color.Parse(cardBorder));
@@ -1259,7 +1260,8 @@ public partial class SettingsViewModel : ViewModelBase
             case 1: // 磨砂玻璃：更强半透明模糊，边框更细，阴影更淡
                 resources["TitleBarBackgroundBrush"] = new SolidColorBrush(Color.Parse(bg)) { Opacity = 0.6 };
                 resources["TitleBarBorderBrush"] = new SolidColorBrush(Color.Parse(isLight ? "#000000" : "#FFFFFF")) { Opacity = isLight ? 0.03 : 0.06 };
-                resources["NavBackgroundBrush"] = new SolidColorBrush(Color.Parse(bg)) { Opacity = 0.6 };
+                // 导航栏与内容区使用相同背景色和透明度，仅通过边框区分层级
+                resources["NavBackgroundBrush"] = new SolidColorBrush(Color.Parse(bg)) { Opacity = 0.95 };
                 resources["NavBorderBrush"] = new SolidColorBrush(Color.Parse(isLight ? "#000000" : "#FFFFFF")) { Opacity = isLight ? 0.03 : 0.06 };
                 resources["CardBackgroundBrush"] = new SolidColorBrush(Color.Parse(cardSurface)) { Opacity = 0.85 };
                 resources["CardBorderBrush"] = new SolidColorBrush(Color.Parse(isLight ? "#000000" : "#FFFFFF")) { Opacity = isLight ? 0.03 : 0.06 };

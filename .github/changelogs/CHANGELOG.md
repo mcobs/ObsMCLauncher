@@ -6,6 +6,10 @@
 - SSL证书验证开关和文件哈希校验开关（设置-通用-安全）
 - 统一HttpClient工厂，所有网络请求遵循SSL验证配置
 
+### 优化
+- Shader Pack图标查找路径扩展：除根目录外增加shaders/textures/gui子目录查找；图标缓存位置改到运行目录\OMCL\cache
+- 主窗口侧边栏底色与内容区统一：亚克力/磨砂玻璃模式下NavBackgroundBrush透明度与WindowBackgroundBrush保持一致，Theme.axaml补充NavBackgroundBrush等资源的默认值定义避免启动时透明
+
 ### 修复
 - 修复MOD/Shader Pack开关状态无法正确显示的问题：移除_isToggling重入标志，文件操作失败时不再修改字段，确保双向绑定能自动回滚UI
 - 修复ZIP解压路径遍历漏洞（Zip Slip），所有解压操作增加路径验证

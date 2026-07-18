@@ -267,6 +267,7 @@
                         <ListBox x:Name="NavListBox"
                                  Grid.Row="1"
                                  Margin="4,0"
+                                 Background="Transparent"
                                  ItemsSource="{Binding NavItems}"
                                  SelectedItem="{Binding SelectedNavItem}"
                                  HorizontalAlignment="Stretch">
@@ -328,6 +329,7 @@
                         <ListBox x:Name="BottomNavListBox"
                                  Grid.Row="2"
                                  Margin="4,0"
+                                 Background="Transparent"
                                  ItemsSource="{Binding BottomNavItems}"
                                  SelectedItem="{Binding SelectedBottomNavItem}"
                                  HorizontalAlignment="Stretch">
