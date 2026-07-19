@@ -26,33 +26,38 @@ namespace ObsMCLauncher.Core.Services.Installers
         public string Version { get; set; } = "";
 
         public string DisplayName => Version;
-        
+
         /// <summary>
         /// Minecraft版本（从NeoForge版本号推断）
-        /// 格式: {MC主版本}.{MC次版本}.{NeoForge构建号}
+        /// 标准格式: {MC主版本}.{MC次版本}.{NeoForge构建号}
+        /// 例如 21.1.240 对应 MC 1.21.1
         /// </summary>
         public string MinecraftVersion
         {
             get
             {
                 if (string.IsNullOrEmpty(Version)) return "";
-                
-                // 处理 neoforge-21.1.219 或 21.1.219 这种新版本号
+
+                // 去掉 beta/rc 等后缀
                 var versionWithoutSuffix = Version.Split('-')[0];
                 var parts = versionWithoutSuffix.Split('.');
-                
-                if (parts.Length >= 2 && 
-                    int.TryParse(parts[0], out int neoMajor) && 
-                    int.TryParse(parts[1], out int neoMinor))
+
+                // 标准NeoForge版本号应为3段: {MC主版本}.{MC次版本}.{构建号}
+                // 例如 21.1.240 -> MC 1.21.1
+                // 拒绝非标准格式（如4段的 26.2.0.25）
+                if (parts.Length != 3)
+                    return "";
+
+                if (!int.TryParse(parts[0], out int neoMajor) ||
+                    !int.TryParse(parts[1], out int neoMinor))
+                    return "";
+
+                // NeoForge 20.x.x - 99.x.x 对应 MC 1.20.x - 1.99.x
+                if (neoMajor >= 20 && neoMajor < 100)
                 {
-                    // NeoForge 21.x.x 对应 MC 1.21.x
-                    // NeoForge 20.x.x 对应 MC 1.20.x
-                    if (neoMajor >= 20 && neoMajor < 100)
-                    {
                     return $"1.{neoMajor}.{neoMinor}";
-                    }
                 }
-                
+
                 return "";
             }
         }
@@ -434,10 +439,13 @@ namespace ObsMCLauncher.Core.Services.Installers
                 
                 var neoForgeVersionObj = new NeoForgeVersion { Version = neoforgeVersion };
                 var mcVersion = neoForgeVersionObj.MinecraftVersion;
-                
+
                 if (string.IsNullOrEmpty(mcVersion))
                 {
-                    throw new Exception($"无法从NeoForge版本 {neoforgeVersion} 推断Minecraft版本");
+                    throw new Exception(
+                        $"无法从NeoForge版本号 '{neoforgeVersion}' 推断Minecraft版本。\n" +
+                        $"标准NeoForge版本号格式为三段式: {{MC主版本}}.{{MC次版本}}.{{构建号}}（例如 21.1.240 对应 MC 1.21.1）。\n" +
+                        $"请检查版本号是否正确，或前往 https://projects.neoforged.net/neoforge/ 查看有效版本。");
                 }
                 
                 // 确定最终使用的版本名称

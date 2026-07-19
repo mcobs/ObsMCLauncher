@@ -418,7 +418,15 @@ public class GameLauncher
 
         if (!string.IsNullOrWhiteSpace(config.JvmArguments))
         {
-            args.Append($"{config.JvmArguments} ");
+            // 对用户自定义JVM参数同样进行过滤，避免不兼容参数导致启动失败
+            var userJvmArgs = config.JvmArguments.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            foreach (var userArg in userJvmArgs)
+            {
+                if (!ShouldSkipJvmArg(userArg))
+                {
+                    args.Append($"{userArg} ");
+                }
+            }
         }
 
         bool isModularNeoForge = versionInfo.MainClass?.Contains("bootstraplauncher", StringComparison.OrdinalIgnoreCase) == true;
@@ -889,6 +897,11 @@ public class GameLauncher
             return true;
 
         if (arg.Equals("-p") || arg.Equals("--module-path"))
+            return true;
+
+        // 过滤掉高版本 JDK 实验性参数，避免在低版本 Java 上启动失败
+        // UseCompactObjectHeaders 是 JDK 24+ 引入的实验性特性
+        if (arg.Contains("UseCompactObjectHeaders", StringComparison.OrdinalIgnoreCase))
             return true;
 
         return false;

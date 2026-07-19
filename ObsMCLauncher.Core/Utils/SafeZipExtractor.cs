@@ -50,20 +50,28 @@ public static class SafeZipExtractor
 
     public static void ExtractEntryWithNameOnly(ZipArchiveEntry entry, string destinationDir)
     {
-        // FullName 包含路径，Name 仅返回文件名部分，所以用 FullName 检测路径分隔符
-        if (entry.FullName.Contains('/') || entry.FullName.Contains('\\'))
+        // ZIP 条目本身的 FullName 可能包含路径（例如 NeoForge 安装器中的 "data/client.lzma"）
+        // 这是正常的，我们只使用 entry.Name（文件名部分）作为输出文件名，
+        // 保证输出路径不会逃逸出 destinationDir。
+        // 真正的安全检查是验证最终的输出路径是否在 destinationDir 内。
+
+        var fileName = entry.Name;
+        if (string.IsNullOrEmpty(fileName))
         {
-            throw new IOException($"ZIP条目包含路径分隔符，预期仅为文件名: {entry.FullName}");
+            // entry.Name 为空说明条目本身是目录或异常条目，跳过
+            throw new IOException($"ZIP条目没有有效的文件名: {entry.FullName}");
         }
 
-        var destPath = Path.GetFullPath(Path.Combine(destinationDir, entry.Name));
+        var destPath = Path.GetFullPath(Path.Combine(destinationDir, fileName));
         var fullBaseDir = Path.GetFullPath(destinationDir);
 
-        if (!destPath.StartsWith(fullBaseDir, StringComparison.OrdinalIgnoreCase))
+        if (!destPath.StartsWith(fullBaseDir + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) &&
+            !destPath.Equals(fullBaseDir, StringComparison.OrdinalIgnoreCase))
         {
-            throw new IOException($"ZIP条目路径遍历攻击被阻止: {entry.Name}");
+            throw new IOException($"ZIP条目路径遍历攻击被阻止: {entry.FullName}");
         }
 
+        Directory.CreateDirectory(fullBaseDir);
         entry.ExtractToFile(destPath, overwrite: true);
     }
 }

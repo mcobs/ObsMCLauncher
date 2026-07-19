@@ -4,6 +4,13 @@
 
  ## [v1.0.0] - 2026-07-18
 
+### 修复
+- JVM参数兼容性：在 GameLauncher.ShouldSkipJvmArg 中过滤高版本JDK实验性参数 UseCompactObjectHeaders（JDK 24+引入），避免在Java 21等低版本上启动时报 "Unrecognized VM option" 错误；同时将 config.JvmArguments 的拼接逻辑改为逐参数过滤，确保用户自定义JVM参数也应用相同的兼容性过滤
+- NeoForge版本号解析：NeoForgeVersion.MinecraftVersion 严格校验三段式版本号格式（{MC主版本}.{MC次版本}.{构建号}），拒绝非标准格式（如4段的26.2.0.25-beta会被识别为MC 1.26.2的错误情况）；当无法解析时提供包含格式说明和官方版本列表链接的详细错误消息
+- SafeZipExtractor ZIP条目提取：ExtractEntryWithNameOnly 方法原本错误地拒绝任何 FullName 含路径分隔符的ZIP条目，导致NeoForge安装器中的 data/client.lzma 条目无法提取；修正为允许ZIP条目本身含路径（正常情况），只使用 entry.Name（文件名部分）作为输出路径，保证输出不会逃逸出 destinationDir；同时加强路径遍历防护，使用 fullBaseDir + Path.DirectorySeparatorChar 严格前缀匹配；更新相关测试用例验证新行为
+- 资源文件下载文件占用错误：AssetsDownloadService 中 FileStream 原本使用 FileShare.None 独占模式打开文件，当杀毒软件（如 Windows Defender）或 Windows 搜索索引服务扫描新建文件时会短暂锁定文件，导致并行下载多个资源时出现 "The process cannot access the file ... because it is being used by another process" 错误；修复为使用 FileShare.Read 允许其他进程读取，并新增文件访问冲突的专用重试机制（最多5次，每次递增200ms等待），在重试范围内自动恢复，避免直接失败
+- 资源下载性能优化：HttpClientHandler 替换为 SocketsHttpHandler，MaxConnectionsPerServer 从 32 提升到 64，启用 HTTP/2 多路复用（EnableMultipleHttp2Connections=true，DefaultRequestVersion=Version20），对 BMCLAPI 等同一源的大量小文件下载可显著减少 TCP 连接建立开销；worker 模型从原本的"每 worker 串行 await 单个下载"改为"每 worker 用 SemaphoreSlim 控制并发数为 4"（总并发量 = maxThreads × 4 = 32），充分利用 await 期间的 CPU 空闲；FileStream 缓冲区从 8KB 提升到 64KB，减少小文件 I/O 系统调用次数；将单资源下载逻辑抽取为 DownloadOneAssetAsync 方法，统计与进度上报抽取为 OnAssetDone 方法，代码更清晰
+
  ### 新增
 - 依赖模组版本兼容性校验：实现 ModVersion/ModVersionRange 解析Maven风格版本范围（[1.0.0,2.0.0)等），按主版本号差距自动分配Error/Warning级别，并在UI中展示冲突描述与解决建议
 - Shader Pack图标显示：LoadShaderPacks时从光影包zip根目录提取pack.png/logo.png/icon.png到临时缓存目录，ShaderPackInfo新增IconPath属性，InstanceView的Shader标签页用32x32 Border承载图标（无图标时回退到默认图形）

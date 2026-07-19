@@ -1,5 +1,12 @@
  ## [v1.0.0] - 2026-07-18
 
+### 修复
+- JVM参数兼容性：过滤高版本JDK实验性参数 UseCompactObjectHeaders（JDK 24+），避免在低版本Java上启动失败；同时对用户自定义JVM参数应用相同过滤逻辑
+- NeoForge版本号解析：严格校验三段式版本号格式（{MC主版本}.{MC次版本}.{构建号}），拒绝非标准格式（如4段的26.2.0.25），提供更清晰的错误提示
+- SafeZipExtractor ZIP条目提取：允许ZIP条目本身含路径（如 data/client.lzma），仅使用文件名部分作为输出路径，修复NeoForge安装时提取 client.lzma 失败的问题；同时加强路径遍历防护
+- 资源文件下载文件占用错误：FileStream 从 FileShare.None 改为 FileShare.Read，避免杀毒软件/索引服务扫描新建文件时短暂锁定导致写入失败；新增文件访问冲突的短重试机制（最多5次，每次递增等待）
+- 资源下载性能优化：HttpClient 改用 SocketsHttpHandler，启用 HTTP/2 多路复用与 64 连接池；worker 模型从串行 await 改为每 worker 4 个并发下载（总并发 = maxThreads × 4），提升 await 期间的 CPU 利用率；FileStream 缓冲区从 8KB 提升到 64KB
+
 ### 新增
 - 依赖模组版本兼容性校验：解析Maven风格版本范围，按Error/Warning分级报告不兼容依赖，并提供解决建议
 - Shader Pack图标显示：从光影包zip中提取pack.png/logo.png/icon.png并缓存显示，无图标时回退默认图形
