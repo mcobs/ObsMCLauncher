@@ -14,6 +14,7 @@ public class PluginContext : IPluginContext
     private static readonly Dictionary<string, List<Action<object?>>> _eventHandlers = new();
 
     private static readonly Dictionary<string, Action<object?>> _pluginCommands = new();
+    private static readonly object _pluginCommandsLock = new();
 
     /// <summary>启动钩子表：key = $"{pluginId}.{hookId}"，value = (phase, handler)</summary>
     private static readonly Dictionary<string, (GameLaunchPhase phase, Action<GameLaunchHookContext> handler)> _launchHooks = new();
@@ -141,13 +142,19 @@ public class PluginContext : IPluginContext
     public void RegisterCommand(string commandId, Action<object?> handler)
     {
         var fullCommandId = $"{_pluginId}.{commandId}";
-        _pluginCommands[fullCommandId] = handler;
+        lock (_pluginCommandsLock)
+        {
+            _pluginCommands[fullCommandId] = handler;
+        }
     }
 
     public void UnregisterCommand(string commandId)
     {
         var fullCommandId = $"{_pluginId}.{commandId}";
-        _pluginCommands.Remove(fullCommandId);
+        lock (_pluginCommandsLock)
+        {
+            _pluginCommands.Remove(fullCommandId);
+        }
     }
 
     public void LogMessage(PluginLogLevel level, string message)
@@ -242,7 +249,16 @@ public class PluginContext : IPluginContext
     /// <returns>是否找到并执行了命令</returns>
     public static bool ExecuteCommand(string fullCommandId, object? payload)
     {
-        if (_pluginCommands.TryGetValue(fullCommandId, out var handler))
+        Action<object?>? handler = null;
+        lock (_pluginCommandsLock)
+        {
+            if (_pluginCommands.TryGetValue(fullCommandId, out var h))
+            {
+                handler = h;
+            }
+        }
+
+        if (handler != null)
         {
             try
             {
@@ -265,14 +281,17 @@ public class PluginContext : IPluginContext
     {
         var prefix = $"{pluginId}.";
         var keysToRemove = new List<string>();
-        foreach (var key in _pluginCommands.Keys)
+        lock (_pluginCommandsLock)
         {
-            if (key.StartsWith(prefix))
-                keysToRemove.Add(key);
-        }
-        foreach (var key in keysToRemove)
-        {
-            _pluginCommands.Remove(key);
+            foreach (var key in _pluginCommands.Keys)
+            {
+                if (key.StartsWith(prefix))
+                    keysToRemove.Add(key);
+            }
+            foreach (var key in keysToRemove)
+            {
+                _pluginCommands.Remove(key);
+            }
         }
     }
 
