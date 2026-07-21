@@ -27,6 +27,16 @@ public partial class MoreViewModel : ViewModelBase
     [ObservableProperty]
     private string _versionText = $"版本 {VersionInfo.DisplayVersion}";
 
+    public string UpdateChannelText => $"更新通道: {UpdateService.GetChannelDisplayName(UpdateService.CurrentChannel)}";
+
+    /// <summary>
+    /// 刷新版本和通道显示信息（在导航到"更多"页面时调用）
+    /// </summary>
+    public void RefreshChannelInfo()
+    {
+        OnPropertyChanged(nameof(UpdateChannelText));
+    }
+
     [ObservableProperty]
     private bool _isCheckingUpdate;
 
@@ -295,6 +305,16 @@ public partial class AboutViewModel : ViewModelBase
 
     [ObservableProperty]
     private string _versionText = $"版本 {VersionInfo.DisplayVersion}";
+
+    public string UpdateChannelText => $"更新通道: {UpdateService.GetChannelDisplayName(UpdateService.CurrentChannel)}";
+
+    /// <summary>
+    /// 刷新版本和通道显示信息（在导航到"更多"页面时调用）
+    /// </summary>
+    public void RefreshChannelInfo()
+    {
+        OnPropertyChanged(nameof(UpdateChannelText));
+    }
 
     [ObservableProperty]
     private bool _isCheckingUpdate;

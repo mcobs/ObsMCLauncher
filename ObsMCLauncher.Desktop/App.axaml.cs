@@ -32,7 +32,9 @@ public partial class App : Application
             desktop.ShutdownMode = Avalonia.Controls.ShutdownMode.OnExplicitShutdown;
 
             ObsMCLauncher.Core.Bootstrap.LauncherBootstrap.Initialize();
-            ObsMCLauncher.Core.Services.UpdateService.Initialize();
+
+            var config = ObsMCLauncher.Core.Models.LauncherConfig.Load();
+            ObsMCLauncher.Core.Services.UpdateService.Initialize(config.UpdateChannel);
 
             desktop.MainWindow = new MainWindow
             {

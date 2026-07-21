@@ -13,6 +13,7 @@
 - 材质包管理页面：版本详情页导航栏新增"材质包"标签，支持启用/禁用/删除材质包，从zip中提取pack.png作为图标
 - 存档管理优化：展示存档图标、游戏版本、世界大小、创建/修改时间；实现轻量级NBT解析器从level.dat提取版本信息
 - SSL证书验证开关和文件哈希校验开关（设置-通用-安全）
+- Velopack更新通道切换：支持正式版/测试版/预发布版/预览版四个通道，在设置中切换并在"更多"页面显示
 - 统一HttpClient工厂，所有网络请求遵循SSL验证配置
 - 插件系统扩展API：新增 LogMessage/GetInstalledVersions/GetCurrentAccount/RegisterGameLaunchHook/RequestDownload 5个API方法，支持插件日志写入、版本列表查询、账户信息获取、启动生命周期钩子、下载请求提交
 - 插件系统测试套件：新增 PluginExtendedApiTests/PluginCardFlowTests/PluginPageFlowTests 共91个测试用例，覆盖扩展API单元/边界/集成测试与自建卡片、自定义页面全流程验证

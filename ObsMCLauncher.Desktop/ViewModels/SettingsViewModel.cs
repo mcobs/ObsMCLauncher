@@ -21,6 +21,7 @@ using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using ObsMCLauncher.Core.Models;
+using ObsMCLauncher.Core.Services;
 using ObsMCLauncher.Core.Services.Mirror;
 using ObsMCLauncher.Core.Utils;
 using ObsMCLauncher.Desktop.ViewModels.Notifications;
@@ -66,6 +67,8 @@ public partial class SettingsViewModel : ViewModelBase
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(MaxDownloadThreads)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(DownloadAssetsWithGame)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(AutoCheckUpdate)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(SelectedUpdateChannel)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(UpdateChannelDisplayName)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(SkipSslValidation)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(EnableFileHashVerification)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(CloseAfterLaunch)));
@@ -104,6 +107,7 @@ public partial class SettingsViewModel : ViewModelBase
         GameDirectoryLocationOptions = new ObservableCollection<DirectoryLocation>((DirectoryLocation[])Enum.GetValues(typeof(DirectoryLocation)));
         GameDirectoryTypeOptions = new ObservableCollection<GameDirectoryType>((GameDirectoryType[])Enum.GetValues(typeof(GameDirectoryType)));
         MaxDownloadThreadsOptions = new ObservableCollection<int> { 4, 8, 16, 32, 64 };
+        UpdateChannelOptions = new ObservableCollection<UpdateChannel>((UpdateChannel[])Enum.GetValues(typeof(UpdateChannel)));
         JavaOptions = new ObservableCollection<JavaOption>();
         HomeCards = new ObservableCollection<HomeCardInfo>();
 
@@ -186,6 +190,8 @@ public partial class SettingsViewModel : ViewModelBase
     public ObservableCollection<GameDirectoryType> GameDirectoryTypeOptions { get; }
 
     public ObservableCollection<int> MaxDownloadThreadsOptions { get; }
+
+    public ObservableCollection<UpdateChannel> UpdateChannelOptions { get; }
 
     public ObservableCollection<JavaOption> JavaOptions { get; }
 
@@ -426,6 +432,24 @@ public partial class SettingsViewModel : ViewModelBase
             }
         }
     }
+
+    public UpdateChannel SelectedUpdateChannel
+    {
+        get => _config.UpdateChannel;
+        set
+        {
+            if (_config.UpdateChannel != value)
+            {
+                _config.UpdateChannel = value;
+                UpdateService.SetChannel(value);
+                OnPropertyChanged(new PropertyChangedEventArgs(nameof(SelectedUpdateChannel)));
+                OnPropertyChanged(new PropertyChangedEventArgs(nameof(UpdateChannelDisplayName)));
+                AutoSave();
+            }
+        }
+    }
+
+    public string UpdateChannelDisplayName => UpdateService.GetChannelDisplayName(SelectedUpdateChannel);
 
     public bool SkipSslValidation
     {
@@ -1093,6 +1117,8 @@ public partial class SettingsViewModel : ViewModelBase
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(MaxDownloadThreads)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(DownloadAssetsWithGame)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(AutoCheckUpdate)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(SelectedUpdateChannel)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(UpdateChannelDisplayName)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(SkipSslValidation)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(EnableFileHashVerification)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(CloseAfterLaunch)));

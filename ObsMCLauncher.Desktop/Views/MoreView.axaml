@@ -87,7 +87,12 @@
 
               <TextBlock Text="{Binding VersionText}"
                          FontSize="13" Foreground="{DynamicResource TextTertiaryBrush}"
-                         HorizontalAlignment="Center" Margin="0,0,0,16"/>
+                         HorizontalAlignment="Center" Margin="0,0,0,4"/>
+
+              <TextBlock Text="{Binding UpdateChannelText}"
+                         FontSize="12" Foreground="{DynamicResource PrimaryBrush}"
+                         FontWeight="Medium"
+                         HorizontalAlignment="Center" Margin="0,0,0,14"/>
 
               <Button Command="{Binding CheckUpdateCommand}"
                       IsEnabled="{Binding !IsCheckingUpdate}"

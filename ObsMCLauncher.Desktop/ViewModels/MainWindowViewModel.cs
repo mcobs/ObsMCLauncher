@@ -320,6 +320,12 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         }
         
         OnPropertyChanged(nameof(CurrentPage));
+
+        // 切换到"更多"页面时刷新更新通道显示
+        if (value?.Title == "更多")
+        {
+            _moreViewModel?.RefreshChannelInfo();
+        }
     }
 
     [RelayCommand]

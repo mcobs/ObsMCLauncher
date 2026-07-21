@@ -444,6 +444,23 @@
                 </StackPanel>
                 <ToggleSwitch Grid.Column="1" IsChecked="{Binding AutoCheckUpdate}"/>
               </Grid>
+
+              <Border Height="1" Background="{DynamicResource DividerBrush}"/>
+
+              <Grid ColumnDefinitions="*,Auto">
+                <StackPanel>
+                  <TextBlock Text="更新通道" FontSize="13" FontWeight="Medium"/>
+                  <TextBlock Text="选择要接收的更新类型，切换后立即生效" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                </StackPanel>
+                <ComboBox Grid.Column="1" Width="120" SelectedItem="{Binding SelectedUpdateChannel}"
+                          ItemsSource="{Binding UpdateChannelOptions}">
+                  <ComboBox.ItemTemplate>
+                    <DataTemplate>
+                      <TextBlock Text="{Binding Converter={x:Static converters:EnumToChineseTextConverter.Instance}}"/>
+                    </DataTemplate>
+                  </ComboBox.ItemTemplate>
+                </ComboBox>
+              </Grid>
             </StackPanel>
           </Border>
 

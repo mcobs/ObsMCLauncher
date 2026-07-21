@@ -18,6 +18,7 @@
 - 存档管理优化：WorldInfo模型扩展CreationTime/GameVersion/WorldSizeBytes/IconPath字段和WorldSizeDisplay计算属性；CollectWorlds读取目录创建时间、递归计算世界大小、读取icon.png作为存档图标；实现轻量级NBT解析器从GZip压缩的level.dat中提取Data.Version.Id版本信息；InstanceView存档Tab改用40x40图标Border+多行详细信息布局（版本/大小/创建时间/修改时间）
 - SSL证书验证开关：设置-通用-安全中添加"跳过SSL证书验证"选项，默认关闭（验证证书），开启时显示安全警告
 - 文件哈希校验开关：设置-通用-安全中添加"文件哈希校验"选项，默认开启
+- Velopack更新通道切换：设置-通用-启动器中新增"更新通道"选项，支持正式版/测试版(Beta)/预发布版(RC)/预览版(Preview)四个通道，切换后立即重新初始化UpdateManager（带AllowVersionDowngrade），"更多"页面版本号下方显示当前通道
 - 统一HttpClient工厂：所有网络请求通过HttpClientFactory创建，统一遵循SSL验证配置
 - 单元测试套件：新增 ModVersionRangeTests/NbtReaderTests/ModConflictDetectorTests 三个测试类，覆盖版本范围解析、NBT解析、冲突检测共218个测试用例
 - 性能基准测试：新增 PerformanceBenchmarkTests，覆盖 100/500 Mod 冲突检测、100 个 level.dat 解析、1000 次版本范围解析场景

@@ -78,6 +78,18 @@ public class EnumToChineseTextConverter : IValueConverter, IMultiValueConverter
             };
         }
 
+        if (value is UpdateChannel uc)
+        {
+            return uc switch
+            {
+                UpdateChannel.Stable => "正式版",
+                UpdateChannel.Beta => "测试版",
+                UpdateChannel.RC => "预发布版",
+                UpdateChannel.Preview => "预览版",
+                _ => uc.ToString()
+            };
+        }
+
         return value?.ToString();
     }
 

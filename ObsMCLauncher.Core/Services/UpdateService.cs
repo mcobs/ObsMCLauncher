@@ -4,6 +4,7 @@ using System.Net.Http;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
+using ObsMCLauncher.Core.Models;
 using ObsMCLauncher.Core.Utils;
 using Velopack;
 
@@ -85,11 +86,41 @@ public static class UpdateService
 {
     private static readonly HttpClient _httpClient;
     private static UpdateManager? _updateManager;
+    private static UpdateChannel _currentChannel = UpdateChannel.Stable;
 
     private const string GITHUB_OWNER = "mcobs";
     private const string GITHUB_REPO = "ObsMCLauncher";
     private const string GITHUB_REPO_URL = "https://github.com/mcobs/ObsMCLauncher";
     private const string GITHUB_API = "https://api.github.com/repos/{0}/{1}/releases/latest";
+
+    /// <summary>
+    /// 当前使用的更新通道
+    /// </summary>
+    public static UpdateChannel CurrentChannel => _currentChannel;
+
+    /// <summary>
+    /// 获取更新通道的显示名称
+    /// </summary>
+    public static string GetChannelDisplayName(UpdateChannel channel) => channel switch
+    {
+        UpdateChannel.Stable => "正式版",
+        UpdateChannel.Beta => "测试版",
+        UpdateChannel.RC => "预发布版",
+        UpdateChannel.Preview => "预览版",
+        _ => "未知"
+    };
+
+    /// <summary>
+    /// 获取Velopack使用的通道名称
+    /// </summary>
+    private static string? GetVelopackChannelName(UpdateChannel channel) => channel switch
+    {
+        UpdateChannel.Stable => null,
+        UpdateChannel.Beta => "beta",
+        UpdateChannel.RC => "rc",
+        UpdateChannel.Preview => "pre",
+        _ => null
+    };
 
     static UpdateService()
     {
@@ -98,15 +129,42 @@ public static class UpdateService
     }
 
     /// <summary>
-    /// 初始化Velopack UpdateManager（应在应用启动后调用一次）
+    /// 初始化Velopack UpdateManager
     /// </summary>
-    public static void Initialize()
+    /// <param name="channel">要使用的更新通道</param>
+    public static void Initialize(UpdateChannel channel = UpdateChannel.Stable)
+    {
+        _currentChannel = channel;
+        CreateUpdateManager(channel);
+    }
+
+    /// <summary>
+    /// 切换更新通道，重新初始化UpdateManager
+    /// </summary>
+    public static void SetChannel(UpdateChannel channel)
+    {
+        if (_currentChannel == channel) return;
+
+        _currentChannel = channel;
+        DebugLogger.Info("Update", $"切换更新通道: {GetChannelDisplayName(channel)}");
+        CreateUpdateManager(channel);
+    }
+
+    private static void CreateUpdateManager(UpdateChannel channel)
     {
         try
         {
+            var channelName = GetVelopackChannelName(channel);
             var source = new GitHubProxyVelopackSource(GITHUB_REPO_URL, null, false);
-            _updateManager = new UpdateManager(source);
-            DebugLogger.Info("Update", "Velopack UpdateManager 初始化完成");
+
+            var options = new UpdateOptions
+            {
+                ExplicitChannel = channelName,
+                AllowVersionDowngrade = channel != UpdateChannel.Stable
+            };
+
+            _updateManager = new UpdateManager(source, options);
+            DebugLogger.Info("Update", $"Velopack UpdateManager 初始化完成 (通道: {GetChannelDisplayName(channel)})");
         }
         catch (Exception ex)
         {
@@ -120,7 +178,7 @@ public static class UpdateService
     /// </summary>
     public static async Task<UpdateCheckResult?> CheckForUpdatesAsync(bool includePrerelease = false)
     {
-        DebugLogger.Info("Update", "开始检查更新...");
+        DebugLogger.Info("Update", $"开始检查更新... (通道: {GetChannelDisplayName(_currentChannel)})");
 
         // 优先尝试Velopack
         if (_updateManager != null)

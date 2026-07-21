@@ -14,6 +14,21 @@ public enum NotificationPosition
     BottomRight
 }
 
+/// <summary>
+/// Velopack自动更新通道
+/// </summary>
+public enum UpdateChannel
+{
+    /// <summary>正式版</summary>
+    Stable,
+    /// <summary>测试版</summary>
+    Beta,
+    /// <summary>预发布版</summary>
+    RC,
+    /// <summary>预览版</summary>
+    Preview
+}
+
 public class LauncherConfig
 {
     public string GetActualJavaPath(string? minecraftVersion = null)
@@ -148,6 +163,9 @@ public class LauncherConfig
     public bool ShowGameLogOnLaunch { get; set; } = false;
 
     public bool AutoCheckUpdate { get; set; } = true;
+
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public UpdateChannel UpdateChannel { get; set; } = UpdateChannel.Stable;
 
     public bool SkipSslValidation { get; set; } = false;
 
