@@ -130,7 +130,7 @@ public class UpdateServiceTests
     public void GitHubRelease_Deserialize()
     {
         var json = @"{
-            ""tag_name"": ""v1.0.0"",
+            ""tag_name"": ""v1.0.1"",
             ""name"": ""First Release"",
             ""body"": ""Hello World"",
             ""html_url"": ""https://github.com/test/release"",
@@ -147,7 +147,7 @@ public class UpdateServiceTests
 
         var release = System.Text.Json.JsonSerializer.Deserialize<GitHubRelease>(json);
         Assert.NotNull(release);
-        Assert.Equal("v1.0.0", release.TagName);
+        Assert.Equal("v1.0.1", release.TagName);
         Assert.Equal("First Release", release.Name);
         Assert.Equal("Hello World", release.Body);
         Assert.True(release.Prerelease);

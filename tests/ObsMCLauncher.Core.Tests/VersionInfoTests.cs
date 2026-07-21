@@ -64,7 +64,8 @@ public class VersionInfoTests
 
     [Theory]
     [InlineData(VersionStatus.Testing, "测试版")]
-    [InlineData(VersionStatus.PreRelease, "预发布版本")]
+    [InlineData(VersionStatus.Preview, "预览版")]
+    [InlineData(VersionStatus.PreRelease, "预发布版")]
     [InlineData(VersionStatus.Release, "正式版")]
     public void VersionStatusText_Mapping(VersionStatus status, string expected)
     {
@@ -72,7 +73,8 @@ public class VersionInfoTests
         var text = status switch
         {
             VersionStatus.Testing => "测试版",
-            VersionStatus.PreRelease => "预发布版本",
+            VersionStatus.Preview => "预览版",
+            VersionStatus.PreRelease => "预发布版",
             VersionStatus.Release => "正式版",
             _ => "未知"
         };

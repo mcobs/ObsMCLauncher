@@ -7,6 +7,7 @@ namespace ObsMCLauncher.Core.Utils;
 public enum VersionStatus
 {
     Testing,
+    Preview,
     PreRelease,
     Release
 }
@@ -22,7 +23,7 @@ public static class VersionInfo
 
     public static readonly string CodeName = "GrassBlock";
 
-    public static readonly VersionStatus Status = VersionStatus.Release;
+    public static readonly VersionStatus Status = VersionStatus.Preview;
 
     public static readonly string ProductName = "ObsMCLauncher";
 
@@ -41,7 +42,8 @@ public static class VersionInfo
             var statusText = Status switch
             {
                 VersionStatus.Testing => "测试版",
-                VersionStatus.PreRelease => "预发布版本",
+                VersionStatus.Preview => "预览版",
+                VersionStatus.PreRelease => "预发布版",
                 VersionStatus.Release => "正式版",
                 _ => "未知"
             };
@@ -52,7 +54,8 @@ public static class VersionInfo
     public static string VersionStatusText => Status switch
     {
         VersionStatus.Testing => "测试版",
-        VersionStatus.PreRelease => "预发布版本",
+        VersionStatus.Preview => "预览版",
+        VersionStatus.PreRelease => "预发布版",
         VersionStatus.Release => "正式版",
         _ => "未知"
     };

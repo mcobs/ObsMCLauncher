@@ -59,7 +59,7 @@ public class PluginContext : IPluginContext
         );
     }
 
-    public string LauncherVersion => "1.0.0";
+    public string LauncherVersion => "1.0.1";
 
     public string PluginDataDirectory => _pluginDataDir;
 
