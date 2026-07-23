@@ -10,6 +10,22 @@ on:
         description: 'Release tag (e.g., v1.0.0)'
         required: true
         type: string
+      warning:
+        description: '警告内容 (GitHub Markdown, 如 "> [!WARNING] ...")'
+        required: false
+        type: string
+      known_issues:
+        description: '已知问题 (GitHub Markdown, 如 "> [!NOTE] ...")'
+        required: false
+        type: string
+      extra_notes:
+        description: '额外说明 (GitHub Markdown)'
+        required: false
+        type: string
+      skip_changelog:
+        description: '跳过 CHANGELOG 内容'
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -227,39 +243,81 @@ jobs:
         echo "Release 目录内容:"
         ls -la ./release/
 
-    - name: Read CHANGELOG
-      id: changelog
+    - name: Read release content
+      id: content
       run: |
+        # 读取 CHANGELOG
         changelog_path="./.github/changelogs/CHANGELOG.md"
         if [ -f "$changelog_path" ]; then
           cp "$changelog_path" /tmp/changelog_content.md
-          echo "found=true" >> $GITHUB_OUTPUT
+          echo "changelog_found=true" >> $GITHUB_OUTPUT
           echo "读取到 CHANGELOG 内容"
         else
-          echo "found=false" >> $GITHUB_OUTPUT
+          echo "changelog_found=false" >> $GITHUB_OUTPUT
           echo "CHANGELOG.md 文件不存在"
         fi
+
+        # 读取 RELEASE_NOTES
+        notes_path="./.github/RELEASE_NOTES.md"
+        if [ -f "$notes_path" ]; then
+          cp "$notes_path" /tmp/release_notes.md
+          echo "notes_found=true" >> $GITHUB_OUTPUT
+          echo "读取到 RELEASE_NOTES 内容"
+        else
+          echo "notes_found=false" >> $GITHUB_OUTPUT
+          echo "RELEASE_NOTES.md 文件不存在"
+        fi
+
+        # 处理 workflow_dispatch 的额外输入（写入文件避免 JS 注入风险）
+        echo "${{ github.event.inputs.warning || '' }}" > /tmp/manual_warning.md
+        echo "${{ github.event.inputs.known_issues || '' }}" > /tmp/manual_known_issues.md
+        echo "${{ github.event.inputs.extra_notes || '' }}" > /tmp/manual_extra_notes.md
+
+        skip_value="${{ github.event.inputs.skip_changelog || 'false' }}"
+        echo "skip_changelog=$skip_value" >> $GITHUB_OUTPUT
+        echo "has_manual=${{ github.event.inputs.warning || github.event.inputs.known_issues || github.event.inputs.extra_notes }}" >> $GITHUB_OUTPUT
+
+        echo "=== 内容来源 ==="
+        echo "CHANGELOG: $(if [ -f "$changelog_path" ]; then echo '已找到'; else echo '未找到'; fi)"
+        echo "RELEASE_NOTES: $(if [ -f "$notes_path" ]; then echo '已找到'; else echo '未找到'; fi)"
+        echo "手动输入: $(if [ -n '${{ github.event.inputs.warning || github.event.inputs.known_issues || github.event.inputs.extra_notes }}' ]; then echo '有'; else echo '无'; fi)"
 
     - name: Create Release
       uses: actions/github-script@v7
       with:
         script: |
-          const version = '${{ steps.version.outputs.version }}';
-          const isPrerelease = '${{ steps.version.outputs.is_prerelease }}' === 'true';
-          const changelogFound = '${{ steps.changelog.outputs.found }}' === 'true';
-          let changelog = '';
-          if (changelogFound && require('fs').existsSync('/tmp/changelog_content.md')) {
-            changelog = require('fs').readFileSync('/tmp/changelog_content.md', 'utf8');
-          }
-
-          const fsModule = require('fs');
+          const fs = require('fs');
           const path = require('path');
 
-          // 从实际上传的文件动态生成下载表格
-          const releaseDir = './release';
-          const allFiles = fsModule.readdirSync(releaseDir).filter(f => fsModule.statSync(path.join(releaseDir, f)).isFile());
+          const version = '${{ steps.version.outputs.version }}';
+          const isPrerelease = '${{ steps.version.outputs.is_prerelease }}' === 'true';
 
-          // 用户下载的文件（排除nupkg、releases.json、RELEASES等Velopack内部文件）
+          // ---- 读取内容源 ----
+          const changelogFound = '${{ steps.content.outputs.changelog_found }}' === 'true';
+          const notesFound = '${{ steps.content.outputs.notes_found }}' === 'true';
+          const skipChangelog = '${{ steps.content.outputs.skip_changelog }}' === 'true';
+
+          let changelog = '';
+          if (changelogFound && !skipChangelog && fs.existsSync('/tmp/changelog_content.md')) {
+            changelog = fs.readFileSync('/tmp/changelog_content.md', 'utf8').trim();
+          }
+
+          let releaseNotes = '';
+          if (notesFound && fs.existsSync('/tmp/release_notes.md')) {
+            releaseNotes = fs.readFileSync('/tmp/release_notes.md', 'utf8').trim();
+          }
+
+          const manualWarning = fs.existsSync('/tmp/manual_warning.md')
+            ? fs.readFileSync('/tmp/manual_warning.md', 'utf8').trim() : '';
+          const manualKnownIssues = fs.existsSync('/tmp/manual_known_issues.md')
+            ? fs.readFileSync('/tmp/manual_known_issues.md', 'utf8').trim() : '';
+          const manualExtraNotes = fs.existsSync('/tmp/manual_extra_notes.md')
+            ? fs.readFileSync('/tmp/manual_extra_notes.md', 'utf8').trim() : '';
+          const hasManualInput = manualWarning || manualKnownIssues || manualExtraNotes;
+
+          // ---- 构建下载表格 ----
+          const releaseDir = './release';
+          const allFiles = fs.readdirSync(releaseDir).filter(f => fs.statSync(path.join(releaseDir, f)).isFile());
           const userFiles = allFiles.filter(f => f.endsWith('.zip') || f.endsWith('.AppImage'));
 
           const platformMap = {
@@ -276,7 +334,6 @@ jobs:
           body += '| 平台 | 架构 | 文件 |\n';
           body += '|:----:|:----:|:----:|\n';
 
-          // 按平台顺序排列
           const ridOrder = ['win-x86', 'win-x64', 'win-arm64', 'linux-x64', 'linux-arm64', 'osx-x64', 'osx-arm64'];
           for (const rid of ridOrder) {
             const matched = userFiles.find(f => f.includes(rid));
@@ -291,6 +348,7 @@ jobs:
           body += '> - `.nupkg` — Velopack 自动更新使用的更新包（full 为完整包，delta 为差异包），无需手动下载\n';
           body += '> - `releases.*.json` — 更新索引文件，供启动器检查更新时读取，无需手动下载\n\n';
 
+          // ---- 预发布警告 ----
           if (isPrerelease) {
             body += '---\n\n';
             body += '> [!WARNING]\n';
@@ -302,14 +360,38 @@ jobs:
             body += '> 不建议在生产环境或日常使用中使用此版本。如发现问题请在 [Issues](https://github.com/${{ github.repository }}/issues) 反馈。\n\n';
           }
 
-          if (changelog && changelog.trim()) {
-            body += '\n---\n\n';
-            body += changelog;
-            body += '\n';
-          } else {
-            body += '\n---\n\n## 更新内容\n\n暂无更新内容描述。\n';
+          // ---- 更新公告 ----
+          let announcement = '';
+          if (hasManualInput) {
+            // 优先使用手动输入
+            announcement += '\n---\n\n## 更新公告\n\n';
+            if (manualWarning) announcement += manualWarning + '\n\n';
+            if (manualKnownIssues) announcement += manualKnownIssues + '\n\n';
+            if (manualExtraNotes) announcement += manualExtraNotes + '\n\n';
+          } else if (releaseNotes) {
+            // 降级到 RELEASE_NOTES.md
+            announcement += '\n---\n\n' + releaseNotes + '\n\n';
           }
 
+          if (announcement.trim()) {
+            body += announcement;
+            body += '\n> [!TIP]\n';
+            body += '> 在启动器的 **设置 -> 通用 -> 更新通道** 中可切换接收预览版更新。\n\n';
+          }
+
+          // ---- 更新内容 ----
+          body += '---\n\n';
+          if (changelog && changelog.trim()) {
+            body += '<details>\n<summary><b>更新内容</b> (点击展开)</summary>\n\n';
+            body += changelog + '\n';
+            body += '</details>\n';
+          } else if (skipChangelog) {
+            body += '## 更新内容\n\n更新内容已省略（手动跳过）。\n';
+          } else {
+            body += '## 更新内容\n\n暂无更新内容描述。\n';
+          }
+
+          // ---- 创建 Release ----
           const release = await github.rest.repos.createRelease({
             owner: context.repo.owner,
             repo: context.repo.repo,
@@ -319,29 +401,25 @@ jobs:
             draft: false,
             prerelease: isPrerelease
           });
-
           console.log('创建发布成功:', release.data.html_url);
 
-          const releaseFiles = fsModule.readdirSync('./release');
-
+          // ---- 上传文件 ----
+          const releaseFiles = fs.readdirSync('./release');
           for (const file of releaseFiles) {
             const filePath = path.join('./release', file);
-            const stat = fsModule.statSync(filePath);
+            const stat = fs.statSync(filePath);
             if (!stat.isFile()) continue;
 
             console.log('上传文件: ' + file + ' (' + stat.size + ' bytes)');
-
             await github.rest.repos.uploadReleaseAsset({
               owner: context.repo.owner,
               repo: context.repo.repo,
               release_id: release.data.id,
               name: file,
-              data: fsModule.readFileSync(filePath)
+              data: fs.readFileSync(filePath)
             });
-
             console.log('文件 ' + file + ' 上传成功');
           }
-
           console.log('所有文件上传完成');
       env:
         GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
