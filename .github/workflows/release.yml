@@ -396,7 +396,7 @@ jobs:
             owner: context.repo.owner,
             repo: context.repo.repo,
             tag_name: version,
-            name: 'ObsMCLauncher ' + version,
+            name: version,
             body: body,
             draft: false,
             prerelease: isPrerelease
