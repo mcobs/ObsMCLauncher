@@ -31,6 +31,11 @@
             <Setter Property="BorderThickness" Value="0" />
         </Style>
 
+        <!-- 导航栏 ListBox 内 ScrollViewer 禁止横向滚动，内容拉伸 -->
+        <Style Selector="ListBox#NavListBox ScrollViewer, ListBox#BottomNavListBox ScrollViewer">
+            <Setter Property="HorizontalScrollBarVisibility" Value="Disabled" />
+        </Style>
+
         <Style Selector="ListBox#NavListBox ListBoxItem">
             <Setter Property="Padding" Value="0" />
             <Setter Property="Margin" Value="0,1" />
