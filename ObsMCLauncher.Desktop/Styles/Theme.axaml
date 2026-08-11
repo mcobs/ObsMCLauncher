@@ -3,25 +3,41 @@
 
   <Styles.Resources>
 
-    <!-- ===== 主色（绿色系） ===== -->
+    <!-- ============================================================
+         三级表面色阶（新规范）
+         通过固定明度差表达层级，不依赖透明度
+         LayerFillColorDefault  : 窗口最底层背景
+         LayerFillColorAlt      : 标题栏 / 导航栏 / 内容区
+         LayerFillColorPrimary  : 卡片 / 浮层面板
+         LayerFillColorSecondary: 悬浮态 / 二级卡片
+         ============================================================ -->
+    <SolidColorBrush x:Key="LayerFillColorDefaultBrush" Color="#0B0D10"/>
+    <SolidColorBrush x:Key="LayerFillColorAltBrush" Color="#141619"/>
+    <SolidColorBrush x:Key="LayerFillColorPrimaryBrush" Color="#1C1F26"/>
+    <SolidColorBrush x:Key="LayerFillColorSecondaryBrush" Color="#252830"/>
+
+    <!-- ===== 主色：单一 AccentBrush，旧别名全部指向同一色值 ===== -->
+    <Color x:Key="AccentColor">#10B981</Color>
+    <SolidColorBrush x:Key="AccentBrush" Color="#10B981"/>
+    <SolidColorBrush x:Key="AccentSecondaryBrush" Color="#34D399"/>
+
+    <!-- 旧主色别名，全部收敛到 #10B981 / #34D399，保证向后兼容 -->
     <SolidColorBrush x:Key="PrimaryBrush" Color="#10B981"/>
-    <SolidColorBrush x:Key="PrimaryDarkBrush" Color="#059669"/>
+    <SolidColorBrush x:Key="PrimaryDarkBrush" Color="#10B981"/>
     <SolidColorBrush x:Key="PrimaryLightBrush" Color="#34D399"/>
     <SolidColorBrush x:Key="BrandBrush" Color="#10B981"/>
-    <SolidColorBrush x:Key="SecondaryBrush" Color="#6EE7B7"/>
-    <SolidColorBrush x:Key="AccentBrush" Color="#10B981"/>
-
-    <SolidColorBrush x:Key="Primary600Brush" Color="#059669"/>
+    <SolidColorBrush x:Key="SecondaryBrush" Color="#34D399"/>
+    <SolidColorBrush x:Key="Primary600Brush" Color="#10B981"/>
     <SolidColorBrush x:Key="Primary500Brush" Color="#10B981"/>
     <SolidColorBrush x:Key="Primary400Brush" Color="#34D399"/>
-    <SolidColorBrush x:Key="Primary300Brush" Color="#6EE7B7"/>
-    <SolidColorBrush x:Key="Primary100Brush" Color="#D1FAE5"/>
-    <SolidColorBrush x:Key="Primary50Brush"  Color="#ECFDF5"/>
+    <SolidColorBrush x:Key="Primary300Brush" Color="#34D399"/>
+    <SolidColorBrush x:Key="Primary100Brush" Color="#10B981"/>
+    <SolidColorBrush x:Key="Primary50Brush"  Color="#10B981"/>
 
-    <!-- ===== 深色模式中性色 ===== -->
+    <!-- ===== 深色模式中性色（与三级表面对齐） ===== -->
     <SolidColorBrush x:Key="BackgroundBrush" Color="#0B0D10"/>
-    <SolidColorBrush x:Key="SurfaceBrush" Color="#16181D"/>
-    <SolidColorBrush x:Key="SurfaceElevatedBrush" Color="#1E2128"/>
+    <SolidColorBrush x:Key="SurfaceBrush" Color="#141619"/>
+    <SolidColorBrush x:Key="SurfaceElevatedBrush" Color="#1C1F26"/>
     <SolidColorBrush x:Key="SurfaceHoverBrush" Color="#252830"/>
     <SolidColorBrush x:Key="NavHoverBrush" Color="#252830"/>
 
@@ -32,10 +48,10 @@
     <SolidColorBrush x:Key="BorderBrush" Color="#2A2E37"/>
     <SolidColorBrush x:Key="DividerBrush" Color="#1E2128"/>
 
-    <SolidColorBrush x:Key="InputBackgroundBrush" Color="#16181D"/>
+    <SolidColorBrush x:Key="InputBackgroundBrush" Color="#141619"/>
     <SolidColorBrush x:Key="InputForegroundBrush" Color="#F1F5F9"/>
 
-    <SolidColorBrush x:Key="GlassmorphismBackgroundBrush" Color="#16181D" Opacity="0.88"/>
+    <SolidColorBrush x:Key="GlassmorphismBackgroundBrush" Color="#141619" Opacity="0.88"/>
     <SolidColorBrush x:Key="GlassmorphismBorderBrush" Color="#FFFFFF" Opacity="0.08"/>
 
     <!-- ===== 浅色模式中性色（默认隐藏，由代码动态切换） ===== -->
@@ -74,9 +90,9 @@
 
     <!-- ===== 系统色（深色模式默认值） ===== -->
     <SolidColorBrush x:Key="SystemControlBackgroundBaseHighBrush" Color="#0B0D10"/>
-    <SolidColorBrush x:Key="SystemControlBackgroundAltHighBrush" Color="#16181D"/>
+    <SolidColorBrush x:Key="SystemControlBackgroundAltHighBrush" Color="#141619"/>
     <SolidColorBrush x:Key="SystemControlBackgroundBaseLowBrush" Color="#252830"/>
-    <SolidColorBrush x:Key="SystemControlBackgroundBaseMediumBrush" Color="#1E2128"/>
+    <SolidColorBrush x:Key="SystemControlBackgroundBaseMediumBrush" Color="#1C1F26"/>
 
     <SolidColorBrush x:Key="SystemControlForegroundBaseHighBrush" Color="#F1F5F9"/>
     <SolidColorBrush x:Key="SystemControlForegroundBaseLowBrush" Color="#2A2E37"/>
@@ -107,16 +123,16 @@
     <BoxShadows x:Key="WindowShadow">0 0 0 0 transparent</BoxShadows>
 
     <!-- 卡片资源（由质感风格动态覆盖） -->
-    <SolidColorBrush x:Key="CardBackgroundBrush" Color="#16181D"/>
+    <SolidColorBrush x:Key="CardBackgroundBrush" Color="#1C1F26"/>
     <SolidColorBrush x:Key="CardBorderBrush" Color="#2A2E37"/>
 
     <!-- 窗口背景资源（由质感风格动态覆盖） -->
     <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#0B0D10"/>
 
     <!-- 导航栏背景资源（由质感风格动态覆盖），默认与窗口背景一致 -->
-    <SolidColorBrush x:Key="NavBackgroundBrush" Color="#0B0D10"/>
+    <SolidColorBrush x:Key="NavBackgroundBrush" Color="#141619"/>
     <SolidColorBrush x:Key="NavBorderBrush" Color="#1E2128"/>
-    <SolidColorBrush x:Key="TitleBarBackgroundBrush" Color="#0B0D10"/>
+    <SolidColorBrush x:Key="TitleBarBackgroundBrush" Color="#141619"/>
     <SolidColorBrush x:Key="TitleBarBorderBrush" Color="#1E2128"/>
 
   </Styles.Resources>
@@ -167,7 +183,7 @@
   </Style>
 
   <Style Selector="ProgressBar">
-    <Setter Property="Foreground" Value="{DynamicResource PrimaryBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
     <Setter Property="Background" Value="{DynamicResource SurfaceElevatedBrush}"/>
     <Setter Property="CornerRadius" Value="3"/>
     <Setter Property="Height" Value="6"/>

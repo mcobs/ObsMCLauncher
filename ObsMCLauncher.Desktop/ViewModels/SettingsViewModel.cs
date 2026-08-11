@@ -1199,7 +1199,13 @@ public partial class SettingsViewModel : ViewModelBase
 
     private void ApplyLightTheme(IResourceDictionary resources)
     {
-        // 按文档 4.2 节浅色模式色彩规范
+        // 三级表面色阶：浅色模式明度递增（灰 -> 浅灰 -> 纯白），层级清晰
+        resources["LayerFillColorDefaultBrush"] = new SolidColorBrush(Color.Parse("#F1F5F9"));
+        resources["LayerFillColorAltBrush"] = new SolidColorBrush(Color.Parse("#F8FAFC"));
+        resources["LayerFillColorPrimaryBrush"] = new SolidColorBrush(Color.Parse("#FFFFFF"));
+        resources["LayerFillColorSecondaryBrush"] = new SolidColorBrush(Color.Parse("#E8ECF1"));
+
+        // 兼容旧 key，全部对齐到三级表面色阶
         resources["BackgroundBrush"] = new SolidColorBrush(Color.Parse("#F8FAFC"));
         resources["SurfaceBrush"] = new SolidColorBrush(Color.Parse("#FFFFFF"));
         resources["SurfaceElevatedBrush"] = new SolidColorBrush(Color.Parse("#F1F5F9"));
@@ -1220,7 +1226,7 @@ public partial class SettingsViewModel : ViewModelBase
         resources["SystemControlBackgroundBaseMediumBrush"] = new SolidColorBrush(Color.Parse("#F1F5F9"));
         resources["SystemControlForegroundBaseHighBrush"] = new SolidColorBrush(Color.Parse("#0F172A"));
         resources["SystemControlForegroundBaseLowBrush"] = new SolidColorBrush(Color.Parse("#E2E8F0"));
-        resources["NavItemSelectedBackgroundBrush"] = new SolidColorBrush(Color.Parse("#10B981")) { Opacity = 0.06 };
+        resources["NavItemSelectedBackgroundBrush"] = new SolidColorBrush(Color.Parse("#10B981")) { Opacity = 0.10 };
 
         // 浅色模式下的质感资源覆盖
         ApplyWindowStyleThemeOverride(resources, isLight: true);
@@ -1228,10 +1234,16 @@ public partial class SettingsViewModel : ViewModelBase
 
     private void ApplyDarkTheme(IResourceDictionary resources)
     {
-        // 按文档 4.3 节深色模式色彩规范
+        // 三级表面色阶：深色模式每级约 +5% 亮度
+        resources["LayerFillColorDefaultBrush"] = new SolidColorBrush(Color.Parse("#0B0D10"));
+        resources["LayerFillColorAltBrush"] = new SolidColorBrush(Color.Parse("#141619"));
+        resources["LayerFillColorPrimaryBrush"] = new SolidColorBrush(Color.Parse("#1C1F26"));
+        resources["LayerFillColorSecondaryBrush"] = new SolidColorBrush(Color.Parse("#252830"));
+
+        // 兼容旧 key，全部对齐到三级表面色阶
         resources["BackgroundBrush"] = new SolidColorBrush(Color.Parse("#0B0D10"));
-        resources["SurfaceBrush"] = new SolidColorBrush(Color.Parse("#16181D"));
-        resources["SurfaceElevatedBrush"] = new SolidColorBrush(Color.Parse("#1E2128"));
+        resources["SurfaceBrush"] = new SolidColorBrush(Color.Parse("#141619"));
+        resources["SurfaceElevatedBrush"] = new SolidColorBrush(Color.Parse("#1C1F26"));
         resources["SurfaceHoverBrush"] = new SolidColorBrush(Color.Parse("#252830"));
         resources["NavHoverBrush"] = new SolidColorBrush(Color.Parse("#252830"));
         resources["TextBrush"] = new SolidColorBrush(Color.Parse("#F1F5F9"));
@@ -1239,14 +1251,14 @@ public partial class SettingsViewModel : ViewModelBase
         resources["TextTertiaryBrush"] = new SolidColorBrush(Color.Parse("#64748B"));
         resources["BorderBrush"] = new SolidColorBrush(Color.Parse("#2A2E37"));
         resources["DividerBrush"] = new SolidColorBrush(Color.Parse("#1E2128"));
-        resources["InputBackgroundBrush"] = new SolidColorBrush(Color.Parse("#16181D"));
+        resources["InputBackgroundBrush"] = new SolidColorBrush(Color.Parse("#141619"));
         resources["InputForegroundBrush"] = new SolidColorBrush(Color.Parse("#F1F5F9"));
-        resources["GlassmorphismBackgroundBrush"] = new SolidColorBrush(Color.Parse("#16181D")) { Opacity = 0.88 };
+        resources["GlassmorphismBackgroundBrush"] = new SolidColorBrush(Color.Parse("#141619")) { Opacity = 0.88 };
         resources["GlassmorphismBorderBrush"] = new SolidColorBrush(Color.Parse("#FFFFFF")) { Opacity = 0.08 };
         resources["SystemControlBackgroundBaseHighBrush"] = new SolidColorBrush(Color.Parse("#0B0D10"));
-        resources["SystemControlBackgroundAltHighBrush"] = new SolidColorBrush(Color.Parse("#16181D"));
+        resources["SystemControlBackgroundAltHighBrush"] = new SolidColorBrush(Color.Parse("#141619"));
         resources["SystemControlBackgroundBaseLowBrush"] = new SolidColorBrush(Color.Parse("#252830"));
-        resources["SystemControlBackgroundBaseMediumBrush"] = new SolidColorBrush(Color.Parse("#1E2128"));
+        resources["SystemControlBackgroundBaseMediumBrush"] = new SolidColorBrush(Color.Parse("#1C1F26"));
         resources["SystemControlForegroundBaseHighBrush"] = new SolidColorBrush(Color.Parse("#F1F5F9"));
         resources["SystemControlForegroundBaseLowBrush"] = new SolidColorBrush(Color.Parse("#2A2E37"));
         resources["NavItemSelectedBackgroundBrush"] = new SolidColorBrush(Color.Parse("#10B981")) { Opacity = 0.08 };
@@ -1256,51 +1268,61 @@ public partial class SettingsViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// 根据当前质感风格和主题模式，覆盖质感相关的画刷资源
+    /// 质感风格覆盖：原 4 case 收敛为 2 case
+    /// case 0 Mica（默认）：窗体透明透出系统 Mica 模糊，标题栏/导航栏半透明，卡片纯色+阴影
+    /// case 1 Flat：纯色无阴影
+    /// 旧 _windowStyleIndex 值通过 MapWindowStyleIndex 兼容映射
     /// </summary>
     private void ApplyWindowStyleThemeOverride(IResourceDictionary resources, bool isLight)
     {
-        // 导航栏/标题栏直接使用与内容区一致的背景色，仅通过边框和阴影区分层级
-        var bg = isLight ? "#F8FAFC" : "#0B0D10";
+        // 三级表面色阶已由 ApplyLightTheme/ApplyDarkTheme 写入
+        // Mica 模式下窗体背景透明，标题栏/导航栏半透明透出系统模糊
+        // Flat 模式下全部纯色不透明
+        var navBg = isLight ? "#F1F5F9" : "#0B0D10";
+        var contentBg = isLight ? "#F8FAFC" : "#141619";
+        var cardSurface = isLight ? "#FFFFFF" : "#1C1F26";
+        var cardBorder = isLight ? "#E2E8F0" : "#2A2E37";
         var chromeBorder = isLight ? "#E2E8F0" : "#1E2128";
-        // 深色模式下卡片使用更亮的表面色，增强与背景的对比
-        var cardSurface = isLight ? "#FFFFFF" : "#1A1D24";
-        var cardBorder = isLight ? "#E2E8F0" : "#30343D";
 
-        switch (_windowStyleIndex)
+        // Windows 11 22000+ 才支持 Mica，其他平台回退为纯色
+        var micaSupported = OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000);
+
+        var mappedIndex = MapWindowStyleIndex(_windowStyleIndex);
+
+        switch (mappedIndex)
         {
-            case 0: // 亚克力：半透明+轻微背景模糊，卡片带柔和阴影
-                resources["TitleBarBackgroundBrush"] = new SolidColorBrush(Color.Parse(bg)) { Opacity = 0.82 };
+            case 0: // Mica：窗体透明 + 标题栏/导航栏半透明 + 卡片阴影
+                if (micaSupported)
+                {
+                    // 窗体背景透明，让系统 Mica 模糊透出
+                    resources["WindowBackgroundBrush"] = new SolidColorBrush(Colors.Transparent);
+                    // 标题栏/导航栏半透明，透出 Mica 质感
+                    resources["TitleBarBackgroundBrush"] = new SolidColorBrush(Color.Parse(navBg)) { Opacity = 0.72 };
+                    resources["NavBackgroundBrush"] = new SolidColorBrush(Color.Parse(navBg)) { Opacity = 0.82 };
+                    // 内容区也半透明，让 Mica 透出，整个窗体都有质感
+                    resources["LayerFillColorAltBrush"] = new SolidColorBrush(Color.Parse(contentBg)) { Opacity = 0.88 };
+                }
+                else
+                {
+                    // 非 Windows 11：纯色回退，用明度差表达层级
+                    resources["WindowBackgroundBrush"] = new SolidColorBrush(Color.Parse(contentBg));
+                    resources["TitleBarBackgroundBrush"] = new SolidColorBrush(Color.Parse(navBg));
+                    resources["NavBackgroundBrush"] = new SolidColorBrush(Color.Parse(navBg));
+                    resources["LayerFillColorAltBrush"] = new SolidColorBrush(Color.Parse(contentBg));
+                }
                 resources["TitleBarBorderBrush"] = new SolidColorBrush(Color.Parse(isLight ? "#000000" : "#FFFFFF")) { Opacity = isLight ? 0.06 : 0.10 };
-                // 导航栏与内容区使用相同背景色和透明度，仅通过边框区分层级
-                resources["NavBackgroundBrush"] = new SolidColorBrush(Color.Parse(bg));
                 resources["NavBorderBrush"] = new SolidColorBrush(Color.Parse(isLight ? "#000000" : "#FFFFFF")) { Opacity = isLight ? 0.06 : 0.10 };
                 resources["CardBackgroundBrush"] = new SolidColorBrush(Color.Parse(cardSurface));
                 resources["CardBorderBrush"] = new SolidColorBrush(Color.Parse(cardBorder));
-                resources["CardShadow"] = BoxShadows.Parse(isLight ? "0 4 12 0 #20000000" : "0 4 14 0 #50000000");
-                resources["ChromeShadow"] = BoxShadows.Parse(isLight ? "0 2 6 0 #20000000" : "0 2 6 0 #40000000");
+                resources["CardShadow"] = BoxShadows.Parse(isLight ? "0 4 12 0 #20000000" : "0 6 18 0 #60000000");
+                resources["ChromeShadow"] = BoxShadows.Parse(isLight ? "0 2 6 0 #18000000" : "0 2 6 0 #50000000");
                 resources["NavShadow"] = BoxShadows.Parse("0 0 0 0 transparent");
-                resources["WindowShadow"] = BoxShadows.Parse(isLight ? "0 8 32 0 #20000000" : "0 8 32 0 #60000000");
-                resources["WindowBackgroundBrush"] = new SolidColorBrush(Color.Parse(bg));
+                resources["WindowShadow"] = BoxShadows.Parse(isLight ? "0 8 32 0 #20000000" : "0 8 32 0 #70000000");
                 break;
-            case 1: // 磨砂玻璃：更强半透明模糊，边框更细，阴影更淡
-                resources["TitleBarBackgroundBrush"] = new SolidColorBrush(Color.Parse(bg)) { Opacity = 0.6 };
-                resources["TitleBarBorderBrush"] = new SolidColorBrush(Color.Parse(isLight ? "#000000" : "#FFFFFF")) { Opacity = isLight ? 0.03 : 0.06 };
-                // 导航栏与内容区使用相同背景色和透明度，仅通过边框区分层级
-                resources["NavBackgroundBrush"] = new SolidColorBrush(Color.Parse(bg)) { Opacity = 0.95 };
-                resources["NavBorderBrush"] = new SolidColorBrush(Color.Parse(isLight ? "#000000" : "#FFFFFF")) { Opacity = isLight ? 0.03 : 0.06 };
-                resources["CardBackgroundBrush"] = new SolidColorBrush(Color.Parse(cardSurface)) { Opacity = 0.85 };
-                resources["CardBorderBrush"] = new SolidColorBrush(Color.Parse(isLight ? "#000000" : "#FFFFFF")) { Opacity = isLight ? 0.03 : 0.06 };
-                resources["CardShadow"] = BoxShadows.Parse(isLight ? "0 2 8 0 #14000000" : "0 2 10 0 #40000000");
-                resources["ChromeShadow"] = BoxShadows.Parse(isLight ? "0 1 4 0 #10000000" : "0 1 4 0 #30000000");
-                resources["NavShadow"] = BoxShadows.Parse("0 0 0 0 transparent");
-                resources["WindowShadow"] = BoxShadows.Parse(isLight ? "0 12 40 0 #30000000" : "0 12 40 0 #70000000");
-                resources["WindowBackgroundBrush"] = new SolidColorBrush(Color.Parse(bg)) { Opacity = 0.95 };
-                break;
-            case 2: // 纯色扁平：无透明、无模糊，纯色表面，无阴影
-                resources["TitleBarBackgroundBrush"] = new SolidColorBrush(Color.Parse(bg));
+            case 1: // Flat：无透明、无阴影，纯色表面
+                resources["TitleBarBackgroundBrush"] = new SolidColorBrush(Color.Parse(navBg));
                 resources["TitleBarBorderBrush"] = new SolidColorBrush(Color.Parse(chromeBorder));
-                resources["NavBackgroundBrush"] = new SolidColorBrush(Color.Parse(bg));
+                resources["NavBackgroundBrush"] = new SolidColorBrush(Color.Parse(navBg));
                 resources["NavBorderBrush"] = new SolidColorBrush(Color.Parse(chromeBorder));
                 resources["CardBackgroundBrush"] = new SolidColorBrush(Color.Parse(cardSurface));
                 resources["CardBorderBrush"] = new SolidColorBrush(Color.Parse(cardBorder));
@@ -1308,23 +1330,20 @@ public partial class SettingsViewModel : ViewModelBase
                 resources["ChromeShadow"] = BoxShadows.Parse("0 0 0 0 transparent");
                 resources["NavShadow"] = BoxShadows.Parse("0 0 0 0 transparent");
                 resources["WindowShadow"] = BoxShadows.Parse(isLight ? "0 0 0 1 #20000000" : "0 0 0 1 #40000000");
-                resources["WindowBackgroundBrush"] = new SolidColorBrush(Color.Parse(bg));
-                break;
-            case 3: // 悬浮卡片：卡片带明显阴影与轻微上浮感，标题栏/侧边栏保持纯色
-                resources["TitleBarBackgroundBrush"] = new SolidColorBrush(Color.Parse(bg));
-                resources["TitleBarBorderBrush"] = new SolidColorBrush(Color.Parse(chromeBorder));
-                resources["NavBackgroundBrush"] = new SolidColorBrush(Color.Parse(bg));
-                resources["NavBorderBrush"] = new SolidColorBrush(Color.Parse(chromeBorder));
-                resources["CardBackgroundBrush"] = new SolidColorBrush(Color.Parse(cardSurface));
-                resources["CardBorderBrush"] = new SolidColorBrush(Color.Parse(cardBorder));
-                resources["CardShadow"] = BoxShadows.Parse(isLight ? "0 8 24 0 #40000000" : "0 8 28 0 #70000000");
-                resources["ChromeShadow"] = BoxShadows.Parse("0 0 0 0 transparent");
-                resources["NavShadow"] = BoxShadows.Parse("0 0 0 0 transparent");
-                resources["WindowShadow"] = BoxShadows.Parse(isLight ? "0 4 16 0 #30000000" : "0 4 16 0 #50000000");
-                resources["WindowBackgroundBrush"] = new SolidColorBrush(Color.Parse(bg));
+                resources["WindowBackgroundBrush"] = new SolidColorBrush(Color.Parse(contentBg));
                 break;
         }
     }
+
+    /// <summary>
+    /// 把历史 _windowStyleIndex（0亚克力/1磨砂/2扁平/3悬浮）映射到新 2 case
+    /// 0,1,3 -> 0(Mica)  2 -> 1(Flat)
+    /// </summary>
+    private static int MapWindowStyleIndex(int raw) => raw switch
+    {
+        2 => 1,
+        _ => 0
+    };
 
     private void OnSystemThemeChanged(object? sender, EventArgs e)
     {

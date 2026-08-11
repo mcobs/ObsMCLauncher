@@ -3,6 +3,7 @@
              x:Class="ObsMCLauncher.Desktop.App"
              xmlns:local="using:ObsMCLauncher.Desktop"
              xmlns:converters="using:ObsMCLauncher.Desktop.Converters"
+             xmlns:fa="using:FluentAvalonia.Styling"
              RequestedThemeVariant="Default">
              <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
 
@@ -16,6 +17,7 @@
   
     <Application.Styles>
         <FluentTheme />
+        <fa:FluentAvaloniaTheme />
         <StyleInclude Source="avares://ObsMCLauncher.Desktop/Styles/Theme.axaml" />
         <StyleInclude Source="avares://ObsMCLauncher.Desktop/Styles/Controls.axaml" />
         <StyleInclude Source="avares://ObsMCLauncher.Desktop/Styles/FluentDialogStyles.axaml" />

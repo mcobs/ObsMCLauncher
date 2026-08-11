@@ -13,11 +13,7 @@
       <TextBlock Text="下载 MOD、材质包、光影、数据包和整合包" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,10" />
     </StackPanel>
 
-    <Border Grid.Row="1" Margin="0,0,0,10" CornerRadius="10"
-            Background="{DynamicResource SurfaceBrush}" Padding="12"
-            BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}"
-            IsVisible="{Binding IsListVisible}">
-      <StackPanel Spacing="8">
+    <StackPanel Grid.Row="1" Margin="0,0,0,16" Spacing="8" IsVisible="{Binding IsListVisible}">
 
         <Grid ColumnDefinitions="Auto,*,Auto">
           <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="2" Margin="0,0,12,0">
@@ -80,76 +76,68 @@
           </StackPanel>
         </Grid>
 
-      </StackPanel>
-    </Border>
+        <Separator Margin="0,8,0,0" Background="{DynamicResource DividerBrush}"/>
+    </StackPanel>
 
-    <Border Grid.Row="2" CornerRadius="10" Background="{DynamicResource SurfaceBrush}"
-            BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
-      <Grid>
-        <ContentControl Content="{Binding DetailViewModel}" IsVisible="{Binding DetailViewModel, Converter={x:Static converters:NotNullConverter.Instance}}" />
+    <Grid Grid.Row="2">
+      <ContentControl Content="{Binding DetailViewModel}" IsVisible="{Binding DetailViewModel, Converter={x:Static converters:NotNullConverter.Instance}}" />
 
-        <ItemsControl IsVisible="{Binding IsLoading}" Margin="16">
+      <ItemsControl IsVisible="{Binding IsLoading}" Margin="0">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate>
+            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" Margin="0,0,0,6">
+              <Border Width="40" Height="40" CornerRadius="6" Background="{DynamicResource SurfaceHoverBrush}" Margin="0,0,10,0"/>
+              <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
+                <Border Height="12" Width="160" Background="{DynamicResource SurfaceHoverBrush}" CornerRadius="3" />
+                <Border Height="10" Width="280" Background="{DynamicResource SurfaceHoverBrush}" CornerRadius="3" />
+              </StackPanel>
+            </Grid>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+
+      <ScrollViewer x:Name="ResourceScrollViewer" IsVisible="{Binding IsListVisible}" ScrollChanged="OnResourceScrollChanged" Padding="0,0,12,0">
+        <ItemsControl ItemsSource="{Binding Results}">
           <ItemsControl.ItemTemplate>
             <DataTemplate>
-              <Border CornerRadius="6" Padding="10" Margin="0,0,0,6"
-                      Background="{DynamicResource SurfaceElevatedBrush}"
-                      BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}" Opacity="0.5">
-                <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto">
-                  <Border Width="40" Height="40" CornerRadius="6" Background="{DynamicResource SurfaceHoverBrush}" Margin="0,0,10,0"/>
-                  <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
-                    <Border Height="12" Width="160" Background="{DynamicResource SurfaceHoverBrush}" CornerRadius="3" />
-                    <Border Height="10" Width="280" Background="{DynamicResource SurfaceHoverBrush}" CornerRadius="3" />
+              <StackPanel Margin="0,0,0,0">
+                <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto" Margin="0,8">
+
+                  <Border Grid.RowSpan="2" Width="40" Height="40" CornerRadius="8"
+                          Background="{DynamicResource SurfaceHoverBrush}" VerticalAlignment="Center">
+                    <Image Source="{Binding Icon}" Width="40" Height="40" />
+                  </Border>
+
+                  <TextBlock Grid.Column="1" Grid.Row="0" Text="{Binding DisplayName}" FontSize="13" FontWeight="Medium"
+                             TextTrimming="CharacterEllipsis" Margin="10,0,0,2" />
+
+                  <StackPanel Grid.Column="1" Grid.Row="1" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center" Margin="10,0,0,0">
+                    <TextBlock Text="{Binding Description}" Foreground="{DynamicResource TextSecondaryBrush}"
+                               TextTrimming="CharacterEllipsis" FontSize="11" MaxWidth="300"/>
+                    <StackPanel Orientation="Horizontal" Spacing="3">
+                      <TextBlock Text="{Binding Author}" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="3">
+                      <Path Data="M5 20H19V18H5M19 9H15V3H9V9H5L12 16L19 9Z" Width="10" Height="10" Stretch="Uniform" Fill="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center"/>
+                      <TextBlock Text="{Binding Downloads}" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}" />
+                    </StackPanel>
+                    <TextBlock Text="{Binding VersionDisplay, StringFormat=v{0}}" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}" />
                   </StackPanel>
+
+                  <StackPanel Grid.Column="2" Grid.Row="0" Grid.RowSpan="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" Margin="8,0,0,0">
+                    <Button Content="详情" Classes="accent" FontSize="12" Padding="10,4"
+                            Command="{Binding #Root.((vm:ResourcesViewModel)DataContext).OpenDetailCommand}"
+                            CommandParameter="{Binding}" />
+                  </StackPanel>
+
                 </Grid>
-              </Border>
+                <Separator Background="{DynamicResource DividerBrush}" Opacity="0.5"/>
+              </StackPanel>
             </DataTemplate>
           </ItemsControl.ItemTemplate>
         </ItemsControl>
-
-        <ScrollViewer x:Name="ResourceScrollViewer" IsVisible="{Binding IsListVisible}" ScrollChanged="OnResourceScrollChanged">
-          <ItemsControl ItemsSource="{Binding Results}" Margin="12">
-            <ItemsControl.ItemTemplate>
-              <DataTemplate>
-                <Border CornerRadius="8" Padding="10" Margin="0,0,0,6"
-                        Background="{DynamicResource SurfaceElevatedBrush}"
-                        BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
-                  <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
-
-                    <Border Grid.RowSpan="2" Width="40" Height="40" CornerRadius="8"
-                            Background="{DynamicResource SurfaceHoverBrush}" VerticalAlignment="Center">
-                      <Image Source="{Binding Icon}" Width="40" Height="40" />
-                    </Border>
-
-                    <TextBlock Grid.Column="1" Grid.Row="0" Text="{Binding DisplayName}" FontSize="13" FontWeight="Medium"
-                               TextTrimming="CharacterEllipsis" Margin="10,0,0,2" />
-
-                    <StackPanel Grid.Column="1" Grid.Row="1" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center" Margin="10,0,0,0">
-                      <TextBlock Text="{Binding Description}" Foreground="{DynamicResource TextSecondaryBrush}"
-                                 TextTrimming="CharacterEllipsis" FontSize="11" MaxWidth="300"/>
-                      <StackPanel Orientation="Horizontal" Spacing="3">
-                        <TextBlock Text="{Binding Author}" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}" />
-                      </StackPanel>
-                      <StackPanel Orientation="Horizontal" Spacing="3">
-                        <Path Data="M5 20H19V18H5M19 9H15V3H9V9H5L12 16L19 9Z" Width="10" Height="10" Stretch="Uniform" Fill="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center"/>
-                        <TextBlock Text="{Binding Downloads}" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}" />
-                      </StackPanel>
-                      <TextBlock Text="{Binding VersionDisplay, StringFormat=v{0}}" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}" />
-                    </StackPanel>
-
-                    <StackPanel Grid.Column="2" Grid.Row="0" Grid.RowSpan="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" Margin="8,0,0,0">
-<Button Content="详情" Classes="accent" FontSize="12" Padding="10,4"
-        Command="{Binding #Root.((vm:ResourcesViewModel)DataContext).OpenDetailCommand}"
-        CommandParameter="{Binding}" />
-</StackPanel>
-
-                  </Grid>
-                </Border>
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
-        </ScrollViewer>
-      </Grid>
-    </Border>
+      </ScrollViewer>
+    </Grid>
 
   </Grid>
 </UserControl>

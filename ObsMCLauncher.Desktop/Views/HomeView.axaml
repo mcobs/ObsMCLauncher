@@ -34,80 +34,41 @@
           <Panel Grid.Row="0" Margin="0,0,0,20"
                  IsVisible="{Binding IsWelcomeCardEnabled}">
             <Border Classes="home-card"
-                    CornerRadius="14"
-                    MinHeight="140"
+                    CornerRadius="{DynamicResource CardCornerRadius}"
+                    MinHeight="120"
                     ClipToBounds="True"
-                    BoxShadow="0 4 20 0 #3010B981"
+                    BorderThickness="0"
                     PointerPressed="Card_PointerPressed"
                     Cursor="Hand">
               <Border.Background>
                 <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
-                  <GradientStop Color="#0f2b46" Offset="0"/>
-                  <GradientStop Color="#065f46" Offset="0.5"/>
-                  <GradientStop Color="#059669" Offset="1"/>
+                  <GradientStop Color="#059669" Offset="0"/>
+                  <GradientStop Color="#10B981" Offset="1"/>
                 </LinearGradientBrush>
               </Border.Background>
-              
-              <Panel>
-                <Canvas HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
-                  <Ellipse Width="260" Height="260" 
-                           Canvas.Right="-80" Canvas.Top="-80"
-                           Fill="White" Opacity="0.04"/>
-                  <Ellipse Width="180" Height="180" 
-                           Canvas.Left="-40" Canvas.Bottom="-40"
-                           Fill="White" Opacity="0.06"/>
-                  <Ellipse Width="100" Height="100" 
-                           Canvas.Right="180" Canvas.Bottom="-20"
-                           Fill="White" Opacity="0.04"/>
-                  <Rectangle Width="50" Height="50" 
-                            Canvas.Right="140" Canvas.Top="50"
-                            Fill="White" Opacity="0.08"
-                            RadiusX="6" RadiusY="6">
-                    <Rectangle.RenderTransform>
-                      <RotateTransform Angle="15"/>
-                    </Rectangle.RenderTransform>
-                  </Rectangle>
-                  <Rectangle Width="35" Height="35" 
-                            Canvas.Left="100" Canvas.Bottom="60"
-                            Fill="White" Opacity="0.1"
-                            RadiusX="4" RadiusY="4">
-                    <Rectangle.RenderTransform>
-                      <RotateTransform Angle="-20"/>
-                    </Rectangle.RenderTransform>
-                  </Rectangle>
-                  <Rectangle Width="28" Height="28" 
-                            Canvas.Right="240" Canvas.Bottom="100"
-                            Fill="White" Opacity="0.07"
-                            RadiusX="3" RadiusY="3">
-                    <Rectangle.RenderTransform>
-                      <RotateTransform Angle="45"/>
-                    </Rectangle.RenderTransform>
-                  </Rectangle>
-                </Canvas>
 
                 <Grid DataContext="{Binding WelcomeCard}" HorizontalAlignment="Stretch">
                   <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
                   </Grid.ColumnDefinitions>
-                  
-                  <Border Grid.Column="0" Width="72" Height="72" CornerRadius="16"
+
+                  <Border Grid.Column="0" Width="64" Height="64" CornerRadius="14"
                           Background="#20FFFFFF" Margin="28,0,20,0"
                           VerticalAlignment="Center">
-                    <Image Source="{Binding Source='avares://ObsMCLauncher.Desktop/Assets/logo.png', Converter={StaticResource BitmapConverter}}" 
-                           Width="48" Height="48"
+                    <Image Source="{Binding Source='avares://ObsMCLauncher.Desktop/Assets/logo.png', Converter={StaticResource BitmapConverter}}"
+                           Width="40" Height="40"
                            VerticalAlignment="Center" HorizontalAlignment="Center"/>
                   </Border>
-                  
+
                   <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="6">
-                    <TextBlock Text="{Binding Title}" 
-                               FontSize="26" FontWeight="SemiBold"
+                    <TextBlock Text="{Binding Title}"
+                               FontSize="24" FontWeight="SemiBold"
                                Foreground="White"/>
-                    <TextBlock Text="{Binding Description}" 
-                               FontSize="14" Foreground="#CCFFFFFF"/>
+                    <TextBlock Text="{Binding Description}"
+                               FontSize="13" Foreground="#CCFFFFFF"/>
                   </StackPanel>
                 </Grid>
-              </Panel>
             </Border>
           </Panel>
 
@@ -120,22 +81,21 @@
             <ItemsControl.ItemTemplate>
               <DataTemplate>
                 <Border Classes="home-card"
-                        Background="{DynamicResource SurfaceBrush}"
-                        CornerRadius="12"
-                        Padding="20"
-                        Margin="0,0,12,12"
-                        MinWidth="200"
-                        MinHeight="100"
+                        Background="{DynamicResource LayerFillColorPrimaryBrush}"
+                        CornerRadius="8"
+                        Padding="16"
+                        Margin="0,0,10,10"
+                        MinWidth="180"
+                        MinHeight="84"
                         BorderThickness="1"
-                        BorderBrush="{DynamicResource BorderBrush}"
-                        BoxShadow="0 2 8 0 #14000000"
+                        BorderBrush="{DynamicResource CardBorderBrush}"
                         Cursor="{Binding CommandId, Converter={x:Static converters:NullToCursorConverter.Instance}}"
                         PointerPressed="Card_PointerPressed"
                         IsVisible="{Binding IsEnabled}">
-                  <StackPanel Spacing="8">
-                    <TextBlock Text="{Binding Icon}" FontSize="24" Foreground="{DynamicResource TextBrush}"/>
-                    <TextBlock Text="{Binding Title}" FontSize="14" FontWeight="Medium" TextWrapping="Wrap" Foreground="{DynamicResource TextBrush}"/>
-                    <TextBlock Text="{Binding Description}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" MaxLines="2"/>
+                  <StackPanel Spacing="6">
+                    <TextBlock Text="{Binding Icon}" FontSize="22" Foreground="{DynamicResource AccentBrush}"/>
+                    <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="Medium" TextWrapping="Wrap" Foreground="{DynamicResource TextBrush}"/>
+                    <TextBlock Text="{Binding Description}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" MaxLines="2"/>
                   </StackPanel>
                 </Border>
               </DataTemplate>
@@ -143,12 +103,8 @@
           </ItemsControl>
         </Grid>
 
-        <Border Grid.Row="1"
-                Background="{DynamicResource SurfaceBrush}"
-                CornerRadius="12"
-                Padding="24"
-                BorderThickness="1"
-                BorderBrush="{DynamicResource BorderBrush}">
+        <StackPanel Grid.Row="1" Margin="0,8,0,0">
+          <Separator Margin="0,0,0,16" Background="{DynamicResource DividerBrush}"/>
           <Grid RowDefinitions="Auto,Auto">
             
             <Grid Grid.Row="0" ColumnDefinitions="*,16,*,20,Auto">
@@ -269,7 +225,7 @@
                         FontSize="12"/>
             </StackPanel>
           </Grid>
-        </Border>
+        </StackPanel>
 
       </Grid>
     </ScrollViewer>

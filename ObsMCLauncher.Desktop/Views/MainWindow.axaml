@@ -25,11 +25,19 @@
     </Design.DataContext>
 
     <Window.Styles>
+        <!-- 覆盖 FluentAvalonia ListBox 默认 Padding/Border -->
+        <Style Selector="ListBox#NavListBox, ListBox#BottomNavListBox">
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+
         <Style Selector="ListBox#NavListBox ListBoxItem">
             <Setter Property="Padding" Value="0" />
             <Setter Property="Margin" Value="0,1" />
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="BorderThickness" Value="0" />
         </Style>
 
         <Style Selector="ListBox#NavListBox ListBoxItem:selected Border.nav-item">
@@ -37,7 +45,7 @@
         </Style>
 
         <Style Selector="ListBox#NavListBox ListBoxItem:selected TextBlock">
-            <Setter Property="Foreground" Value="White" />
+            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
             <Setter Property="FontWeight" Value="Medium" />
         </Style>
 
@@ -48,6 +56,8 @@
             <Setter Property="Margin" Value="0,1" />
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="BorderThickness" Value="0" />
         </Style>
 
         <Style Selector="ListBox#BottomNavListBox ListBoxItem:selected Border.nav-item">
@@ -55,17 +65,15 @@
         </Style>
 
         <Style Selector="ListBox#BottomNavListBox ListBoxItem:selected TextBlock">
-            <Setter Property="Foreground" Value="White" />
+            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
             <Setter Property="FontWeight" Value="Medium" />
         </Style>
 
         <!-- nav-item 基础过渡 -->
         <Style Selector="Border.nav-item">
-            <Setter Property="RenderTransformOrigin" Value="0.5,0.5" />
             <Setter Property="Transitions">
                 <Transitions>
-                    <BrushTransition Property="Background" Duration="0:0:0.3" />
-                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.35" Easing="CircularEaseOut" />
+                    <BrushTransition Property="Background" Duration="0:0:0.15" />
                 </Transitions>
             </Setter>
         </Style>
@@ -73,8 +81,6 @@
         <!-- hover-intent 触发的悬浮样式 -->
         <Style Selector="Border.nav-item-hovered">
             <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
-            <Setter Property="RenderTransform" Value="scale(1.03)" />
-            <Setter Property="BoxShadow" Value="0 2 8 0 #30000000" />
         </Style>
 
         <Style Selector="Border.notification-card">
@@ -241,14 +247,14 @@
             <SplitView.Pane>
                 <Border x:Name="NavBorder"
                         Background="{DynamicResource NavBackgroundBrush}"
-                        BorderBrush="{DynamicResource NavBorderBrush}"
-                        BorderThickness="0,0,1,0"
+                        BorderThickness="0"
                         BoxShadow="{DynamicResource NavShadow}">
                     <Grid RowDefinitions="Auto,*,Auto,Auto">
 
-                        <Border Grid.Row="0" Padding="8,10" HorizontalAlignment="Left">
+                        <Border Grid.Row="0" Padding="6,10">
                             <Button Width="36"
                                     Height="36"
+                                    HorizontalAlignment="Left"
                                     Command="{Binding ToggleNavCommand}"
                                     ToolTip.Tip="折叠/展开"
                                     Background="Transparent"
@@ -266,8 +272,11 @@
 
                         <ListBox x:Name="NavListBox"
                                  Grid.Row="1"
-                                 Margin="4,0"
+                                 Margin="0"
+                                 Padding="0"
+                                 BorderThickness="0"
                                  Background="Transparent"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                                  ItemsSource="{Binding NavItems}"
                                  SelectedItem="{Binding SelectedNavItem}"
                                  HorizontalAlignment="Stretch">
@@ -276,50 +285,70 @@
                                     <Border Classes="nav-item"
                                             CornerRadius="8"
                                             Height="40"
-                                            Padding="8,0"
+                                            Padding="0"
+                                            HorizontalAlignment="Stretch"
                                             ToolTip.Tip="{Binding Title}">
-                                        <Grid ColumnDefinitions="3,24,*">
-                                            <Border Grid.Column="0"
-                                                    Width="3"
-                                                    CornerRadius="1.5"
-                                                    Background="{DynamicResource PrimaryBrush}"
-                                                    VerticalAlignment="Center"
-                                                    IsVisible="{Binding $parent[ListBoxItem].IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}"
-                                                    Height="16"/>
-                                            <Image Grid.Column="1"
-                                                     Width="20"
-                                                     Height="20"
-                                                     VerticalAlignment="Center"
-                                                     HorizontalAlignment="Center"
-                                                     Stretch="Uniform"
-                                                     IsVisible="{Binding IconPath, Converter={x:Static converters:NotNullConverter.Instance}}">
-                                              <Image.Source>
-                                                <MultiBinding Converter="{x:Static converters:BitmapAssetValueConverter.Instance}">
-                                                  <Binding Path="IconPath" />
-                                                  <Binding Path="ActualThemeVariant" RelativeSource="{RelativeSource AncestorType=Window}" />
-                                                </MultiBinding>
-                                              </Image.Source>
-                                            </Image>
-
-                                            <TextBlock Grid.Column="1"
-                                                       Text="{Binding Icon}"
-                                                       FontSize="18"
-                                                       Width="24"
-                                                       Height="24"
-                                                       VerticalAlignment="Center"
+                                        <Grid>
+                                            <!-- 折叠状态：图标在整个按钮内居中 -->
+                                            <Grid IsVisible="{Binding !$parent[Window].DataContext.IsPaneOpen}">
+                                                <Image Width="20"
+                                                       Height="20"
                                                        HorizontalAlignment="Center"
-                                                       TextAlignment="Center"
-                                                       Foreground="{DynamicResource TextBrush}"
-                                                       IsVisible="{Binding IconPath, Converter={x:Static converters:NullToBoolConverter.Instance}, ConverterParameter=Invert}" />
-
-                                            <TextBlock Grid.Column="2"
-                                                       Text="{Binding Title}"
-                                                       FontSize="13"
-                                                       Margin="8,0,0,0"
                                                        VerticalAlignment="Center"
-                                                       HorizontalAlignment="Left"
-                                                       Foreground="{DynamicResource TextBrush}"
-                                                       IsVisible="{Binding $parent[Window].DataContext.IsPaneOpen}" />
+                                                       Stretch="Uniform"
+                                                       IsVisible="{Binding IconPath, Converter={x:Static converters:NotNullConverter.Instance}}">
+                                                    <Image.Source>
+                                                        <MultiBinding Converter="{x:Static converters:BitmapAssetValueConverter.Instance}">
+                                                            <Binding Path="IconPath" />
+                                                            <Binding Path="ActualThemeVariant" RelativeSource="{RelativeSource AncestorType=Window}" />
+                                                        </MultiBinding>
+                                                    </Image.Source>
+                                                </Image>
+                                                <TextBlock Text="{Binding Icon}"
+                                                           FontSize="18"
+                                                           Width="24"
+                                                           Height="24"
+                                                           HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center"
+                                                           TextAlignment="Center"
+                                                           Foreground="{DynamicResource TextBrush}"
+                                                           IsVisible="{Binding IconPath, Converter={x:Static converters:NullToBoolConverter.Instance}, ConverterParameter=Invert}" />
+                                            </Grid>
+                                            <!-- 展开状态：图标在左侧48px区域 + 文字 -->
+                                            <Grid IsVisible="{Binding $parent[Window].DataContext.IsPaneOpen}"
+                                                  ColumnDefinitions="48,*">
+                                                <Image Grid.Column="0"
+                                                       Width="20"
+                                                       Height="20"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center"
+                                                       Stretch="Uniform"
+                                                       IsVisible="{Binding IconPath, Converter={x:Static converters:NotNullConverter.Instance}}">
+                                                    <Image.Source>
+                                                        <MultiBinding Converter="{x:Static converters:BitmapAssetValueConverter.Instance}">
+                                                            <Binding Path="IconPath" />
+                                                            <Binding Path="ActualThemeVariant" RelativeSource="{RelativeSource AncestorType=Window}" />
+                                                        </MultiBinding>
+                                                    </Image.Source>
+                                                </Image>
+                                                <TextBlock Grid.Column="0"
+                                                           Text="{Binding Icon}"
+                                                           FontSize="18"
+                                                           Width="24"
+                                                           Height="24"
+                                                           HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center"
+                                                           TextAlignment="Center"
+                                                           Foreground="{DynamicResource TextBrush}"
+                                                           IsVisible="{Binding IconPath, Converter={x:Static converters:NullToBoolConverter.Instance}, ConverterParameter=Invert}" />
+                                                <TextBlock Grid.Column="1"
+                                                           Text="{Binding Title}"
+                                                           FontSize="13"
+                                                           Margin="0,0,12,0"
+                                                           VerticalAlignment="Center"
+                                                           HorizontalAlignment="Left"
+                                                           Foreground="{DynamicResource TextBrush}" />
+                                            </Grid>
                                         </Grid>
                                     </Border>
                                 </DataTemplate>
@@ -328,8 +357,11 @@
 
                         <ListBox x:Name="BottomNavListBox"
                                  Grid.Row="2"
-                                 Margin="4,0"
+                                 Margin="0"
+                                 Padding="0"
+                                 BorderThickness="0"
                                  Background="Transparent"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                                  ItemsSource="{Binding BottomNavItems}"
                                  SelectedItem="{Binding SelectedBottomNavItem}"
                                  HorizontalAlignment="Stretch">
@@ -338,50 +370,70 @@
                                     <Border Classes="nav-item"
                                             CornerRadius="8"
                                             Height="40"
-                                            Padding="8,0"
+                                            Padding="0"
+                                            HorizontalAlignment="Stretch"
                                             ToolTip.Tip="{Binding Title}">
-                                        <Grid ColumnDefinitions="3,24,*">
-                                            <Border Grid.Column="0"
-                                                    Width="3"
-                                                    CornerRadius="1.5"
-                                                    Background="{DynamicResource PrimaryBrush}"
-                                                    VerticalAlignment="Center"
-                                                    IsVisible="{Binding $parent[ListBoxItem].IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}"
-                                                    Height="16"/>
-                                            <Image Grid.Column="1"
-                                                     Width="20"
-                                                     Height="20"
-                                                     VerticalAlignment="Center"
-                                                     HorizontalAlignment="Center"
-                                                     Stretch="Uniform"
-                                                     IsVisible="{Binding IconPath, Converter={x:Static converters:NotNullConverter.Instance}}">
-                                              <Image.Source>
-                                                <MultiBinding Converter="{x:Static converters:BitmapAssetValueConverter.Instance}">
-                                                  <Binding Path="IconPath" />
-                                                  <Binding Path="ActualThemeVariant" RelativeSource="{RelativeSource AncestorType=Window}" />
-                                                </MultiBinding>
-                                              </Image.Source>
-                                            </Image>
-
-                                            <TextBlock Grid.Column="1"
-                                                       Text="{Binding Icon}"
-                                                       FontSize="18"
-                                                       Width="24"
-                                                       Height="24"
-                                                       VerticalAlignment="Center"
+                                        <Grid>
+                                            <!-- 折叠状态：图标在整个按钮内居中 -->
+                                            <Grid IsVisible="{Binding !$parent[Window].DataContext.IsPaneOpen}">
+                                                <Image Width="20"
+                                                       Height="20"
                                                        HorizontalAlignment="Center"
-                                                       TextAlignment="Center"
-                                                       Foreground="{DynamicResource TextBrush}"
-                                                       IsVisible="{Binding IconPath, Converter={x:Static converters:NullToBoolConverter.Instance}, ConverterParameter=Invert}" />
-
-                                            <TextBlock Grid.Column="2"
-                                                       Text="{Binding Title}"
-                                                       FontSize="13"
-                                                       Margin="8,0,0,0"
                                                        VerticalAlignment="Center"
-                                                       HorizontalAlignment="Left"
-                                                       Foreground="{DynamicResource TextBrush}"
-                                                       IsVisible="{Binding $parent[Window].DataContext.IsPaneOpen}" />
+                                                       Stretch="Uniform"
+                                                       IsVisible="{Binding IconPath, Converter={x:Static converters:NotNullConverter.Instance}}">
+                                                    <Image.Source>
+                                                        <MultiBinding Converter="{x:Static converters:BitmapAssetValueConverter.Instance}">
+                                                            <Binding Path="IconPath" />
+                                                            <Binding Path="ActualThemeVariant" RelativeSource="{RelativeSource AncestorType=Window}" />
+                                                        </MultiBinding>
+                                                    </Image.Source>
+                                                </Image>
+                                                <TextBlock Text="{Binding Icon}"
+                                                           FontSize="18"
+                                                           Width="24"
+                                                           Height="24"
+                                                           HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center"
+                                                           TextAlignment="Center"
+                                                           Foreground="{DynamicResource TextBrush}"
+                                                           IsVisible="{Binding IconPath, Converter={x:Static converters:NullToBoolConverter.Instance}, ConverterParameter=Invert}" />
+                                            </Grid>
+                                            <!-- 展开状态：图标在左侧48px区域 + 文字 -->
+                                            <Grid IsVisible="{Binding $parent[Window].DataContext.IsPaneOpen}"
+                                                  ColumnDefinitions="48,*">
+                                                <Image Grid.Column="0"
+                                                       Width="20"
+                                                       Height="20"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center"
+                                                       Stretch="Uniform"
+                                                       IsVisible="{Binding IconPath, Converter={x:Static converters:NotNullConverter.Instance}}">
+                                                    <Image.Source>
+                                                        <MultiBinding Converter="{x:Static converters:BitmapAssetValueConverter.Instance}">
+                                                            <Binding Path="IconPath" />
+                                                            <Binding Path="ActualThemeVariant" RelativeSource="{RelativeSource AncestorType=Window}" />
+                                                        </MultiBinding>
+                                                    </Image.Source>
+                                                </Image>
+                                                <TextBlock Grid.Column="0"
+                                                           Text="{Binding Icon}"
+                                                           FontSize="18"
+                                                           Width="24"
+                                                           Height="24"
+                                                           HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center"
+                                                           TextAlignment="Center"
+                                                           Foreground="{DynamicResource TextBrush}"
+                                                           IsVisible="{Binding IconPath, Converter={x:Static converters:NullToBoolConverter.Instance}, ConverterParameter=Invert}" />
+                                                <TextBlock Grid.Column="1"
+                                                           Text="{Binding Title}"
+                                                           FontSize="13"
+                                                           Margin="0,0,12,0"
+                                                           VerticalAlignment="Center"
+                                                           HorizontalAlignment="Left"
+                                                           Foreground="{DynamicResource TextBrush}" />
+                                            </Grid>
                                         </Grid>
                                     </Border>
                                 </DataTemplate>
@@ -397,7 +449,9 @@
             </SplitView.Pane>
 
             <SplitView.Content>
-                <Border Background="{DynamicResource NavBackgroundBrush}">
+                <Border Background="{DynamicResource NavBackgroundBrush}"
+                        BorderBrush="{DynamicResource NavBorderBrush}"
+                        BorderThickness="1,0,0,0">
                     <TransitioningContentControl Content="{Binding CurrentPage}" Margin="24">
                         <TransitioningContentControl.PageTransition>
                             <CrossFade Duration="0:0:0.25"/>

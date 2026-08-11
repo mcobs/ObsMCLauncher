@@ -1,11 +1,13 @@
 using System;
 using System.Threading.Tasks;
+using System.Linq;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Data.Core;
 using Avalonia.Data.Core.Plugins;
-using System.Linq;
 using Avalonia.Markup.Xaml;
+using Avalonia.Media;
+using FluentAvalonia.Styling;
 using ObsMCLauncher.Desktop.ViewModels;
 using ObsMCLauncher.Desktop.Views;
 using ObsMCLauncher.Desktop.Windows;
@@ -27,6 +29,13 @@ public partial class App : Application
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             DisableAvaloniaDataAnnotationValidation();
+
+            // 强制 FluentAvalonia 使用绿色强调色，避免回退到系统蓝
+            var faTheme = Styles.OfType<FluentAvaloniaTheme>().FirstOrDefault();
+            if (faTheme != null)
+            {
+                faTheme.CustomAccentColor = Color.Parse("#10B981");
+            }
 
             // 设置为显式关闭模式，防止异常时应用自动退出
             desktop.ShutdownMode = Avalonia.Controls.ShutdownMode.OnExplicitShutdown;

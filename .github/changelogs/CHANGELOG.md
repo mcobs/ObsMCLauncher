@@ -1,5 +1,24 @@
  ## [v1.0.1-preview.1] - 2026-07-xx
 
+### 优化
+- UI 简约化重构：引入 FluentAvalonia 主题，新增三级表面色阶（LayerFillColor*）通过固定明度差表达层级，解决浅色模式层次感丢失
+- 主色系收敛：12 个绿色变体别名统一指向单一 AccentBrush，质感风格从 4 种合并为 Mica / Flat 两种
+- HomeView 欢迎卡片去除装饰几何元素，对话框圆角统一到 OverlayCornerRadius
+- 导航栏去除选中项左侧绿色竖条避免与图标重复，折叠态布局修复
+- FluentAvalonia 强调色强制锁定为绿色，内容区改用中层表面色与导航栏形成明度差
+- 质感风格改用纯色明度差表达层级，Mica 模式加强卡片阴影
+- 窗体启用 Mica 透明背景，标题栏/导航栏/内容区半透明透出系统模糊，整个窗体具备质感
+- HomeView 去卡片化：OtherCards 去除阴影扁平化，底部启动栏改用分隔线区分，减少审美疲劳
+- 导航栏折叠按钮居中修复：改用固定 48px 图标列，避免 NavBorder 边框干扰对齐
+- VersionDetailView 去卡片化：版本信息和加载器选择去除 Border 卡片，改用分隔线+标题分区
+- ResourcesView 去卡片化：搜索栏和结果列表去除 Border 卡片，结果项改用分隔线分隔的扁平列表
+- 导航栏折叠按钮居中修复：改用 48px 固定图标列，移除绿色竖条避免重叠
+- 按钮闪烁修复：删除全局 Button hover Opacity/scale，nav-item-hovered 去处 scale 缩放和 BoxShadow
+- InstanceView 已安装版本去卡片化：基本信息/描述/存储/快捷操作/高级管理/版本设置均去除外层卡片
+- ResourcesView 滚动条右移 Padding 避免与详情按钮重叠
+- ModDetailView 去卡片化：信息密度提升，版本列表去除 Expander，改用紧凑卡片+分隔线布局
+- 导航栏折叠图标居中修复：将 NavBorder 右边框移至内容区左边框，使导航内容区与面板宽度一致
+
 ### 新增
 - Velopack更新通道切换：支持正式版/测试版/预发布版/预览版四个通道，在设置中切换并在"更多"页面显示
 

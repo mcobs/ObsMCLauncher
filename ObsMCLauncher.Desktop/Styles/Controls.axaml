@@ -8,46 +8,38 @@
     <Setter Property="VerticalContentAlignment" Value="Center" />
     <Setter Property="Padding" Value="16,8" />
     <Setter Property="CornerRadius" Value="{DynamicResource ControlCornerRadius}" />
-    <Setter Property="RenderTransformOrigin" Value="0.5,0.5" />
     <Setter Property="Transitions">
       <Transitions>
         <DoubleTransition Property="Opacity" Duration="0:0:0.12" Easing="LinearEasing" />
-        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.08" Easing="LinearEasing" />
       </Transitions>
     </Setter>
   </Style>
 
-  <Style Selector="Button:pointerover">
-    <Setter Property="Opacity" Value="0.9" />
-  </Style>
-
-  <Style Selector="Button:pressed">
-    <Setter Property="RenderTransform" Value="scale(0.97)" />
-    <Setter Property="Opacity" Value="1" />
-  </Style>
-
+  <!-- 通用按钮悬停/按下：仅通过背景色变化，不用 Opacity/scale 避免闪烁 -->
   <Style Selector="Button:pointerover /template/ ContentPresenter">
     <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
   </Style>
 
   <Style Selector="Button:pressed /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
+    <Setter Property="Background" Value="{DynamicResource SurfaceElevatedBrush}" />
   </Style>
 
-  <!-- ===== 主色按钮 primary ===== -->
-  <Style Selector="Button.primary">
-    <Setter Property="Background" Value="{DynamicResource PrimaryBrush}" />
+  <!-- ===== 主色/强调按钮 primary & accent（共用样式） ===== -->
+  <Style Selector="Button.primary, Button.accent">
+    <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
     <Setter Property="Foreground" Value="White" />
     <Setter Property="BorderThickness" Value="0" />
     <Setter Property="FontWeight" Value="Medium" />
   </Style>
 
-  <Style Selector="Button.primary:pointerover /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource PrimaryDarkBrush}" />
+  <Style Selector="Button.primary:pointerover /template/ ContentPresenter,
+                   Button.accent:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource AccentSecondaryBrush}" />
   </Style>
 
-  <Style Selector="Button.primary:pressed /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource PrimaryDarkBrush}" />
+  <Style Selector="Button.primary:pressed /template/ ContentPresenter,
+                   Button.accent:pressed /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource AccentSecondaryBrush}" />
   </Style>
 
   <!-- ===== 次级按钮 secondary ===== -->
@@ -58,30 +50,9 @@
     <Setter Property="BorderThickness" Value="1" />
   </Style>
 
-  <Style Selector="Button.secondary:pointerover /template/ ContentPresenter">
+  <Style Selector="Button.secondary:pointerover /template/ ContentPresenter,
+                   Button.secondary:pressed /template/ ContentPresenter">
     <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
-  </Style>
-
-  <Style Selector="Button.secondary:pressed /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
-  </Style>
-
-  <!-- ===== 强调按钮 accent ===== -->
-  <Style Selector="Button.accent">
-    <Setter Property="Background">
-      <SolidColorBrush Color="{DynamicResource SystemAccentColor}" />
-    </Setter>
-    <Setter Property="Foreground" Value="White" />
-    <Setter Property="BorderThickness" Value="0" />
-    <Setter Property="FontWeight" Value="Medium" />
-  </Style>
-
-  <Style Selector="Button.accent:pointerover /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource PrimaryDarkBrush}" />
-  </Style>
-
-  <Style Selector="Button.accent:pressed /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource PrimaryDarkBrush}" />
   </Style>
 
   <!-- ===== 危险按钮 danger ===== -->
@@ -179,7 +150,7 @@
   </Style>
 
   <Style Selector="TextBox:focus-within">
-    <Setter Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
   </Style>
 
   <Style Selector="TextBox.fluent-input">
@@ -207,7 +178,7 @@
   </Style>
 
   <Style Selector="ComboBox:focus-within">
-    <Setter Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
   </Style>
 
   <!-- ===== CheckBox ===== -->
@@ -234,7 +205,7 @@
 
   <!-- ===== Slider ===== -->
   <Style Selector="Slider">
-    <Setter Property="Foreground" Value="{DynamicResource PrimaryBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
     <Setter Property="Background" Value="{DynamicResource SurfaceElevatedBrush}"/>
   </Style>
 
@@ -244,8 +215,8 @@
   </Style>
 
   <Style Selector="Slider /template/ Thumb">
-    <Setter Property="Background" Value="{DynamicResource PrimaryBrush}"/>
-    <Setter Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
+    <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
     <Setter Property="Transitions">
       <Transitions>
         <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.1" />
@@ -254,12 +225,12 @@
   </Style>
 
   <Style Selector="Slider /template/ Thumb:pressed">
-    <Setter Property="Background" Value="{DynamicResource PrimaryDarkBrush}"/>
+    <Setter Property="Background" Value="{DynamicResource AccentSecondaryBrush}"/>
     <Setter Property="RenderTransform" Value="scale(1.15)"/>
   </Style>
 
   <Style Selector="Slider /template/ Thumb:pointerover">
-    <Setter Property="Background" Value="{DynamicResource PrimaryBrush}"/>
+    <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
     <Setter Property="RenderTransform" Value="scale(1.15)"/>
   </Style>
 
@@ -272,7 +243,7 @@
   <!-- ===== 版本齿轮按钮 ===== -->
   <Style Selector="Button.version-gear">
     <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
-    <Setter Property="Foreground" Value="{DynamicResource PrimaryBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="CornerRadius" Value="8" />
@@ -316,7 +287,7 @@
 
   <!-- 导航标签按钮 - 激活状态 -->
   <Style Selector="Button.nav-tab.active">
-    <Setter Property="Foreground" Value="{DynamicResource PrimaryBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
     <Setter Property="FontWeight" Value="SemiBold" />
   </Style>
 
