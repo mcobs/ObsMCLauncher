@@ -121,11 +121,29 @@ jobs:
         else
           is_prerelease="false"
         fi
+        # 推导更新通道：从 tag 预发布段前缀映射到 Velopack 通道名
+        # v1.0.1-preview.1 / v1.0.1-pre.1 -> pre
+        # v1.0.1-rc.1 -> rc
+        # v1.0.1-beta.1 -> beta
+        # v1.0.1 (无预发布段) -> stable
+        prerelease_part="${version_number#*-}"
+        if [ "$prerelease_part" != "$version_number" ]; then
+          case "$prerelease_part" in
+            rc*) channel="rc" ;;
+            beta*) channel="beta" ;;
+            pre*) channel="pre" ;;
+            *) channel="pre" ;;
+          esac
+        else
+          channel="stable"
+        fi
         echo "version=$version" >> $GITHUB_OUTPUT
         echo "version_number=$version_number" >> $GITHUB_OUTPUT
         echo "is_prerelease=$is_prerelease" >> $GITHUB_OUTPUT
+        echo "channel=$channel" >> $GITHUB_OUTPUT
         echo "当前版本: $version"
         echo "是否预发布: $is_prerelease"
+        echo "更新通道: $channel"
 
     - name: Publish ${{ matrix.rid }}
       run: |
@@ -135,12 +153,14 @@ jobs:
       shell: bash
       run: |
         rid="${{ matrix.rid }}"
-        vpk download github --repoUrl https://github.com/mcobs/ObsMCLauncher --token ${{ secrets.RELEASE_TOKEN }} -c "$rid" -o ./vpk-prev || echo "No previous release found, skipping delta"
+        channel="${{ steps.version.outputs.channel }}"
+        vpk download github --repoUrl https://github.com/mcobs/ObsMCLauncher --token ${{ secrets.RELEASE_TOKEN }} -c "${rid}-${channel}" -o ./vpk-prev || echo "No previous release found, skipping delta"
 
     - name: Pack with Velopack
       shell: bash
       run: |
         rid="${{ matrix.rid }}"
+        channel="${{ steps.version.outputs.channel }}"
         if [[ "$rid" == win-* ]]; then
           main_exe="ObsMCLauncher.Desktop.exe"
         else
@@ -154,8 +174,9 @@ jobs:
           icon_path="./ObsMCLauncher.Desktop/Assets/app_icon.ico"
         fi
 
-        # 每个RID用独立channel，避免不同架构的产物互相覆盖
-        pack_args=(-u ObsMCLauncher -v "${{ steps.version.outputs.version_number }}" -p "./publish/${{ matrix.rid }}" -e "$main_exe" -o ./vpk-output --delta BestSpeed -c "$rid" -r "$rid" -i "$icon_path")
+        # 通道 = RID + 更新通道（如 win-x64-stable / win-x64-pre），
+        # 既隔离不同架构产物，又让客户端 ExplicitChannel 能定位对应通道的版本树
+        pack_args=(-u ObsMCLauncher -v "${{ steps.version.outputs.version_number }}" -p "./publish/${{ matrix.rid }}" -e "$main_exe" -o ./vpk-output --delta BestSpeed -c "${rid}-${channel}" -r "$rid" -i "$icon_path")
 
         # Windows才需要--noInst，Linux/macOS不生成安装程序
         if [[ "$rid" == win-* ]]; then
@@ -169,6 +190,7 @@ jobs:
       run: |
         version="${{ steps.version.outputs.version }}"
         rid="${{ matrix.rid }}"
+        channel="${{ steps.version.outputs.channel }}"
         echo "=== vpk-output 目录内容 ==="
         ls -la ./vpk-output/ || echo "目录不存在"
 
@@ -180,6 +202,14 @@ jobs:
         else
           for f in ./vpk-output/ObsMCLauncher*Portable*.zip; do
             [ -f "$f" ] && mv "$f" "./vpk-output/ObsMCLauncher-${version}-${rid}.zip"
+          done
+        fi
+
+        # 兼容旧版客户端：历史版本以纯 RID 为通道（releases.win-x64.json），
+        # stable 发布时同步生成旧名 feed，使未升级客户端能找到本次更新（升级后自动迁移到 rid-stable 通道）
+        if [[ "$channel" == "stable" ]]; then
+          for f in ./vpk-output/releases.*-stable.json; do
+            [ -f "$f" ] && cp "$f" "./vpk-output/releases.${rid}.json"
           done
         fi
 

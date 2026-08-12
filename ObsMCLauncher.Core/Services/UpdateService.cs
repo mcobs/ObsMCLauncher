@@ -114,15 +114,16 @@ public static class UpdateService
     };
 
     /// <summary>
-    /// 获取Velopack使用的通道名称
+    /// 获取Velopack使用的通道名称（与发布流程 tag 推导的通道一致：
+    /// stable/beta/rc/pre，发布端再拼接 RID 形成完整通道名，如 win-x64-pre）
     /// </summary>
-    private static string? GetVelopackChannelName(UpdateChannel channel) => channel switch
+    private static string GetVelopackChannelName(UpdateChannel channel) => channel switch
     {
-        UpdateChannel.Stable => null,
+        UpdateChannel.Stable => "stable",
         UpdateChannel.Beta => "beta",
         UpdateChannel.RC => "rc",
         UpdateChannel.Preview => "pre",
-        _ => null
+        _ => "stable"
     };
 
     static UpdateService()
