@@ -614,7 +614,15 @@ public partial class VersionDownloadViewModel : ViewModelBase
 
         _displayCount = Math.Min(VersionPageSize, _fullFilteredVersions.Count);
         FilteredVersions = new ObservableCollection<MinecraftVersion>(_fullFilteredVersions.Take(_displayCount));
+        OnPropertyChanged(nameof(ShowFilteredEmpty));
     }
+
+    /// <summary>
+    /// 在线版本列表空状态（非加载中且无匹配结果）
+    /// </summary>
+    public bool ShowFilteredEmpty => !IsLoading && _fullFilteredVersions.Count == 0;
+
+    partial void OnIsLoadingChanged(bool value) => OnPropertyChanged(nameof(ShowFilteredEmpty));
 
     [RelayCommand]
     private void LoadMoreVersions()
