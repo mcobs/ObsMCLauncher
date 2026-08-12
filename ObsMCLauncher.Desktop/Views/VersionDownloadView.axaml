@@ -153,7 +153,7 @@
       <TabControl Grid.Row="1">
 
         <TabItem Header="已安装版本">
-          <Grid Margin="0,8,0,0" RowDefinitions="Auto,*">
+          <Grid Margin="0,8,0,0" RowDefinitions="Auto,Auto,*">
 
             <!-- 信息栏 -->
             <Grid Grid.Row="0" Margin="0,0,0,8" ColumnDefinitions="*,Auto">
@@ -190,10 +190,10 @@
               </Button>
             </Grid>
 
-            <Separator Grid.Row="0" Margin="0,36,0,0" Background="{DynamicResource DividerBrush}"/>
+            <Separator Grid.Row="1" Margin="0,0,0,8" Background="{DynamicResource DividerBrush}"/>
 
             <!-- 分组列表 -->
-            <ListBox Grid.Row="1"
+            <ListBox Grid.Row="2"
                      ScrollViewer.VerticalScrollBarVisibility="Auto"
                      ItemsSource="{Binding FlatGroupItems}"
                      ItemTemplate="{StaticResource GroupItemTemplateSelector}"
@@ -205,7 +205,7 @@
         </TabItem>
 
         <TabItem Header="下载新版本">
-          <Grid Margin="0,8,0,0" RowDefinitions="Auto,*">
+          <Grid Margin="0,8,0,0" RowDefinitions="Auto,Auto,*">
 
             <Grid Grid.Row="0" Margin="0,0,0,8" ColumnDefinitions="*,Auto,Auto">
               <TextBox Grid.Column="0" Watermark="搜索版本号..." FontSize="13"
@@ -225,9 +225,9 @@
               </Button>
             </Grid>
 
-            <Separator Grid.Row="0" Margin="0,38,0,0" Background="{DynamicResource DividerBrush}"/>
+            <Separator Grid.Row="1" Margin="0,0,0,8" Background="{DynamicResource DividerBrush}"/>
 
-            <Grid Grid.Row="1">
+            <Grid Grid.Row="2">
               <ListBox x:Name="OnlineVersionListBox"
                        ScrollViewer.VerticalScrollBarVisibility="Auto"
                        ScrollViewer.ScrollChanged="OnOnlineVersionScrollChanged"
