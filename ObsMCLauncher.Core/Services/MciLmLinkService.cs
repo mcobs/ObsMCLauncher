@@ -59,10 +59,12 @@ public class MciLmLinkService : IDisposable
 
     public async Task<bool> DownloadAndInstallAsync(IProgress<string> progress)
     {
+        var tempPath = "";
         try
         {
             progress.Report("正在获取下载信息...");
-            var response = await _httpClient.GetStringAsync(ApiUrl);
+            using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            var response = await _httpClient.GetStringAsync(ApiUrl, timeoutCts.Token);
             var result = JsonSerializer.Deserialize<MciLmLinkResponse>(response);
 
             if (result?.Success != true || result.Data == null)
@@ -108,13 +110,14 @@ public class MciLmLinkService : IDisposable
             progress.Report("正在下载 MciLm-link...");
 
             var exePath = GetExecutablePath();
-            var tempPath = exePath + ".download";
+            tempPath = exePath + ".download";
 
+            using var downloadCts = new CancellationTokenSource(TimeSpan.FromMinutes(5));
             await using (var fileStream = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None))
-            using (var httpResponse = await _httpClient.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead))
+            using (var httpResponse = await _httpClient.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead, downloadCts.Token))
             {
                 httpResponse.EnsureSuccessStatusCode();
-                await httpResponse.Content.CopyToAsync(fileStream);
+                await httpResponse.Content.CopyToAsync(fileStream, downloadCts.Token);
                 await fileStream.FlushAsync();
             }
 
@@ -140,87 +143,45 @@ public class MciLmLinkService : IDisposable
             progress.Report($"下载失败: {ex.Message}");
             return false;
         }
+        finally
+        {
+            // 清理失败中断留下的临时文件
+            if (!string.IsNullOrEmpty(tempPath))
+            {
+                try
+                {
+                    if (File.Exists(tempPath)) File.Delete(tempPath);
+                }
+                catch
+                {
+                }
+            }
+        }
     }
 
     public bool StartServer(int port, Action<string>? outputCallback = null)
     {
-        if (_currentProcess != null && !_currentProcess.HasExited)
+        return StartProcess(args =>
         {
-            outputCallback?.Invoke("已有 MciLm-link 进程在运行");
-            return false;
-        }
-
-        var exePath = GetExecutablePath();
-        if (!File.Exists(exePath))
-        {
-            outputCallback?.Invoke("未找到 MciLm-link 可执行文件");
-            return false;
-        }
-
-        try
-        {
-            _cancellationTokenSource = new CancellationTokenSource();
-            while (_outputQueue.TryDequeue(out _)) { }
-
-            _currentProcess = new Process
-            {
-                StartInfo = new ProcessStartInfo
-                {
-                    FileName = exePath,
-                    Arguments = $"-s {port} --parent {Process.GetCurrentProcess().Id}",
-                    UseShellExecute = false,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    CreateNoWindow = true,
-                    StandardOutputEncoding = System.Text.Encoding.UTF8,
-                    StandardErrorEncoding = System.Text.Encoding.UTF8
-                },
-                EnableRaisingEvents = true
-            };
-
-            _currentProcess.OutputDataReceived += (_, e) =>
-            {
-                if (!string.IsNullOrEmpty(e.Data))
-                    _outputQueue.Enqueue(e.Data);
-            };
-
-            _currentProcess.ErrorDataReceived += (_, e) =>
-            {
-                if (!string.IsNullOrEmpty(e.Data))
-                    _outputQueue.Enqueue($"[ERROR] {e.Data}");
-            };
-
-            _currentProcess.Start();
-            _currentProcess.BeginOutputReadLine();
-            _currentProcess.BeginErrorReadLine();
-
-            _outputReaderTask = Task.Run(async () =>
-            {
-                while (!_cancellationTokenSource.Token.IsCancellationRequested)
-                {
-                    while (_outputQueue.TryDequeue(out var line))
-                        outputCallback?.Invoke(line);
-
-                    await Task.Delay(100, _cancellationTokenSource.Token);
-                }
-            }, _cancellationTokenSource.Token);
-
-            _currentProcess.Exited += (_, __) =>
-            {
-                try { ProcessExited?.Invoke(this, _currentProcess.ExitCode); }
-                catch { }
-            };
-
-            return true;
-        }
-        catch (Exception ex)
-        {
-            outputCallback?.Invoke($"启动 MciLm-link 失败: {ex.Message}");
-            return false;
-        }
+            args.Add("-s");
+            args.Add(port.ToString());
+            args.Add("--parent");
+            args.Add(Process.GetCurrentProcess().Id.ToString());
+        }, outputCallback);
     }
 
     public bool JoinServer(string code, Action<string>? outputCallback = null)
+    {
+        return StartProcess(args =>
+        {
+            args.Add("-c");
+            args.Add(code);
+            args.Add("--parent");
+            args.Add(Process.GetCurrentProcess().Id.ToString());
+        }, outputCallback);
+    }
+
+    private bool StartProcess(Action<System.Collections.ObjectModel.Collection<string>> fillArguments, Action<string>? outputCallback)
     {
         if (_currentProcess != null && !_currentProcess.HasExited)
         {
@@ -240,12 +201,11 @@ public class MciLmLinkService : IDisposable
             _cancellationTokenSource = new CancellationTokenSource();
             while (_outputQueue.TryDequeue(out _)) { }
 
-            _currentProcess = new Process
+            var process = new Process
             {
                 StartInfo = new ProcessStartInfo
                 {
                     FileName = exePath,
-                    Arguments = $"-c {code} --parent {Process.GetCurrentProcess().Id}",
                     UseShellExecute = false,
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
@@ -256,21 +216,26 @@ public class MciLmLinkService : IDisposable
                 EnableRaisingEvents = true
             };
 
-            _currentProcess.OutputDataReceived += (_, e) =>
+            // ArgumentList 自动处理参数转义，防止 code 等用户输入破坏命令行结构
+            fillArguments(process.StartInfo.ArgumentList);
+
+            process.OutputDataReceived += (_, e) =>
             {
                 if (!string.IsNullOrEmpty(e.Data))
                     _outputQueue.Enqueue(e.Data);
             };
 
-            _currentProcess.ErrorDataReceived += (_, e) =>
+            process.ErrorDataReceived += (_, e) =>
             {
                 if (!string.IsNullOrEmpty(e.Data))
                     _outputQueue.Enqueue($"[ERROR] {e.Data}");
             };
 
-            _currentProcess.Start();
-            _currentProcess.BeginOutputReadLine();
-            _currentProcess.BeginErrorReadLine();
+            process.Start();
+            process.BeginOutputReadLine();
+            process.BeginErrorReadLine();
+
+            _currentProcess = process;
 
             _outputReaderTask = Task.Run(async () =>
             {
@@ -283,9 +248,11 @@ public class MciLmLinkService : IDisposable
                 }
             }, _cancellationTokenSource.Token);
 
-            _currentProcess.Exited += (_, __) =>
+            // 捕获局部引用，避免字段在退出回调前被新进程替换时读到错误数据
+            var capturedProcess = process;
+            process.Exited += (_, __) =>
             {
-                try { ProcessExited?.Invoke(this, _currentProcess.ExitCode); }
+                try { ProcessExited?.Invoke(this, capturedProcess.ExitCode); }
                 catch { }
             };
 

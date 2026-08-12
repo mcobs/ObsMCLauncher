@@ -1113,26 +1113,6 @@ SelectedLoaderFilter = string.IsNullOrEmpty(previousSelection)
         }
     }
 
-    private static async Task<string?> ShowModpackInstallDialogAsync(string defaultName)
-    {
-        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
-        {
-            var viewModel = new ModpackInstallDialogViewModel(defaultName);
-            var dialog = new Views.ModpackInstallDialog { DataContext = viewModel };
-
-            var tcs = new TaskCompletionSource<string?>();
-            viewModel.CloseRequested = name =>
-            {
-                dialog.Close();
-                tcs.TrySetResult(name);
-            };
-
-            await dialog.ShowDialog(desktop.MainWindow!);
-            return await tcs.Task;
-        }
-        return null;
-    }
-
     private string GetTargetDirectory(LauncherConfig config)
     {
         var version = SelectedVersionId ?? "";

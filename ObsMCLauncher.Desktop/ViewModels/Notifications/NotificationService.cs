@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -194,7 +195,7 @@ public partial class NotificationService : ObservableObject, IDisposable
         }
     }
 
-    public async void Remove(string id)
+    public void Remove(string id)
     {
         var item = Items.FirstOrDefault(x => x.Id == id);
         if (item != null)
@@ -218,9 +219,15 @@ public partial class NotificationService : ObservableObject, IDisposable
             }
 
             item.StartExitAnimation();
-            await System.Threading.Tasks.Task.Delay(350);
-            Items.Remove(item);
+            _ = RemoveAfterExitAsync(item);
         }
+    }
+
+    private async Task RemoveAfterExitAsync(NotificationItemViewModel item)
+    {
+        await System.Threading.Tasks.Task.Delay(350);
+        if (_disposed) return;
+        Items.Remove(item);
     }
 
     [RelayCommand]

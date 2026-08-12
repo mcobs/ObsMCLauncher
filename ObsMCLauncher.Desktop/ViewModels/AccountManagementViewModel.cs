@@ -124,7 +124,7 @@ public partial class AccountManagementViewModel : ViewModelBase
     public IRelayCommand CancelAddOfflineCommand { get; }
     public IRelayCommand AddOfflineCommand { get; }
 
-    public IRelayCommand<GameAccount> DeleteSelectedCommand { get; }
+    public IAsyncRelayCommand<GameAccount> DeleteSelectedCommand { get; }
 
     public IRelayCommand<GameAccount> SetDefaultSelectedCommand { get; }
 
@@ -183,7 +183,7 @@ public partial class AccountManagementViewModel : ViewModelBase
             }
         }, () => !string.IsNullOrWhiteSpace(UsernameInput));
 
-        DeleteSelectedCommand = new RelayCommand<GameAccount>(async acc =>
+        DeleteSelectedCommand = new AsyncRelayCommand<GameAccount>(async acc =>
         {
             if (acc == null) return;
 

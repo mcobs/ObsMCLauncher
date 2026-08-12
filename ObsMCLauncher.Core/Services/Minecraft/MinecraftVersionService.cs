@@ -93,6 +93,12 @@ namespace ObsMCLauncher.Core.Services.Minecraft
     public class MinecraftVersionService
     {
         private static readonly HttpClient _httpClient;
+        private static readonly JsonSerializerOptions CachedJsonOptions = new() { PropertyNameCaseInsensitive = true };
+
+        private static readonly object _cacheLock = new();
+        private static VersionManifest? _cachedManifest;
+        private static DateTime _cachedAt;
+        private static readonly TimeSpan ManifestCacheTtl = TimeSpan.FromMinutes(10);
 
         static MinecraftVersionService()
         {
@@ -111,6 +117,14 @@ namespace ObsMCLauncher.Core.Services.Minecraft
 
         public static async Task<VersionManifest?> GetVersionListAsync()
         {
+            lock (_cacheLock)
+            {
+                if (_cachedManifest != null && (DateTime.UtcNow - _cachedAt) < ManifestCacheTtl)
+                {
+                    return _cachedManifest;
+                }
+            }
+
             try
             {
                 var downloadService = DownloadSourceManager.Instance.CurrentService;
@@ -118,7 +132,7 @@ namespace ObsMCLauncher.Core.Services.Minecraft
 
                 DebugLogger.Info("MCVersion", $"正在请求版本列表: {url}");
 
-                var response = await _httpClient.GetAsync(url);
+                using var response = await _httpClient.GetAsync(url);
                 if (!response.IsSuccessStatusCode)
                 {
                     var error = $"获取版本列表失败: HTTP {response.StatusCode} - {response.ReasonPhrase}";
@@ -129,15 +143,17 @@ namespace ObsMCLauncher.Core.Services.Minecraft
                 var json = await response.Content.ReadAsStringAsync();
                 DebugLogger.Info("MCVersion", $"成功获取版本清单，JSON长度: {json.Length} 字符");
 
-                var options = new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true
-                };
-                var manifest = JsonSerializer.Deserialize<VersionManifest>(json, options);
+                var manifest = JsonSerializer.Deserialize<VersionManifest>(json, CachedJsonOptions);
                 
                 if (manifest == null)
                 {
                     throw new Exception("JSON 反序列化失败，返回 null");
+                }
+
+                lock (_cacheLock)
+                {
+                    _cachedManifest = manifest;
+                    _cachedAt = DateTime.UtcNow;
                 }
 
                 DebugLogger.Info("MCVersion", $"成功解析版本清单，版本数量: {manifest.Versions.Count}");
@@ -169,7 +185,7 @@ namespace ObsMCLauncher.Core.Services.Minecraft
                 var downloadService = DownloadSourceManager.Instance.CurrentService;
                 var url = downloadService.GetVersionJsonUrl(versionId);
 
-                var response = await _httpClient.GetAsync(url);
+                using var response = await _httpClient.GetAsync(url);
                 if (!response.IsSuccessStatusCode)
                 {
                     DebugLogger.Warn("MCVersion", $"获取版本详情失败: HTTP {response.StatusCode}");

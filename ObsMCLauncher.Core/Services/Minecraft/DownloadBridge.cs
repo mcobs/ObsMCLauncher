@@ -13,7 +13,13 @@ namespace ObsMCLauncher.Core.Services.Minecraft;
 /// </summary>
 public sealed class DownloadBridge
 {
-    private static readonly ConcurrentDictionary<string, string> _taskIdMap = new();
+    private sealed class MirrorEntry
+    {
+        public string TargetId = "";
+        public PropertyChangedEventHandler Handler = null!;
+    }
+
+    private static readonly ConcurrentDictionary<string, MirrorEntry> _taskIdMap = new();
 
     public static void Initialize()
     {
@@ -28,20 +34,34 @@ public sealed class DownloadBridge
 
         foreach (var src in sourceTasks)
         {
+            // 已结束的任务：同步终态（若镜像仍在）并清理镜像与事件订阅
+            if (src.Status is Minecraft.DownloadTaskStatus.Completed
+                or Minecraft.DownloadTaskStatus.Failed
+                or Minecraft.DownloadTaskStatus.Cancelled)
+            {
+                if (_taskIdMap.TryGetValue(src.Id, out _))
+                {
+                    UpdateTarget(src);
+                    CleanupMirror(src);
+                }
+                continue;
+            }
+
             if (!_taskIdMap.ContainsKey(src.Id))
             {
                 // 创建镜像任务
                 var targetTask = targetManager.AddTask(src.Name, MapType(src.Type), src.CancellationTokenSource);
-                _taskIdMap[src.Id] = targetTask.Id;
 
-                // 监听进度变化
-                src.PropertyChanged += (s, e) =>
+                var entry = new MirrorEntry { TargetId = targetTask.Id };
+                entry.Handler = (s, e) =>
                 {
                     if (s is Minecraft.DownloadTask updatedSrc)
                     {
                         UpdateTarget(updatedSrc);
                     }
                 };
+                src.PropertyChanged += entry.Handler;
+                _taskIdMap[src.Id] = entry;
             }
             else
             {
@@ -50,28 +70,39 @@ public sealed class DownloadBridge
         }
     }
 
+    private static void CleanupMirror(Minecraft.DownloadTask src)
+    {
+        if (_taskIdMap.TryRemove(src.Id, out var entry))
+        {
+            src.PropertyChanged -= entry.Handler;
+        }
+    }
+
     private static void UpdateTarget(Minecraft.DownloadTask src)
     {
-        if (_taskIdMap.TryGetValue(src.Id, out var targetId))
-        {
-            var targetManager = Download.DownloadTaskManager.Instance;
-            
-            // 同步状态和进度
-            targetManager.UpdateTaskProgress(
-                targetId, 
-                src.Progress, 
-                src.StatusMessage, 
-                src.DownloadSpeed);
+        if (!_taskIdMap.TryGetValue(src.Id, out var entry)) return;
 
-            // 如果源任务结束，同步结束状态
-            if (src.Status == Minecraft.DownloadTaskStatus.Completed)
-            {
-                targetManager.CompleteTask(targetId);
-            }
-            else if (src.Status == Minecraft.DownloadTaskStatus.Failed)
-            {
-                targetManager.FailTask(targetId, src.StatusMessage);
-            }
+        var targetManager = Download.DownloadTaskManager.Instance;
+
+        // 同步状态和进度
+        targetManager.UpdateTaskProgress(
+            entry.TargetId,
+            src.Progress,
+            src.StatusMessage,
+            src.DownloadSpeed);
+
+        // 如果源任务结束，同步结束状态
+        if (src.Status == Minecraft.DownloadTaskStatus.Completed)
+        {
+            targetManager.CompleteTask(entry.TargetId);
+        }
+        else if (src.Status == Minecraft.DownloadTaskStatus.Failed)
+        {
+            targetManager.FailTask(entry.TargetId, src.StatusMessage);
+        }
+        else if (src.Status == Minecraft.DownloadTaskStatus.Cancelled)
+        {
+            targetManager.CancelTask(entry.TargetId);
         }
     }
 

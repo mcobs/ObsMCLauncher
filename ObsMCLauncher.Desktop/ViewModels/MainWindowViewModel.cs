@@ -2,6 +2,8 @@ using System;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -39,27 +41,39 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         private set => SetProperty(ref _navRotationAngle, value);
     }
 
+    private CancellationTokenSource? _navAnimationCts;
+
     partial void OnIsNavCollapsedChanged(bool value)
     {
-        AnimateNavRotation(value ? 90 : 0);
+        _navAnimationCts?.Cancel();
+        _navAnimationCts?.Dispose();
+        _navAnimationCts = new CancellationTokenSource();
+        _ = AnimateNavRotationAsync(value ? 90 : 0, _navAnimationCts.Token);
     }
 
-    private async void AnimateNavRotation(double targetAngle)
+    private async Task AnimateNavRotationAsync(double targetAngle, CancellationToken token)
     {
-        const int steps = 15;
-        const int delay = 12;
-        var startAngle = NavRotationAngle;
-        var diff = targetAngle - startAngle;
-
-        for (int i = 1; i <= steps; i++)
+        try
         {
-            var progress = (double)i / steps;
-            var easedProgress = 1 - Math.Pow(1 - progress, 3);
-            NavRotationAngle = startAngle + diff * easedProgress;
-            await System.Threading.Tasks.Task.Delay(delay);
-        }
+            const int steps = 15;
+            const int delay = 12;
+            var startAngle = NavRotationAngle;
+            var diff = targetAngle - startAngle;
 
-        NavRotationAngle = targetAngle;
+            for (int i = 1; i <= steps; i++)
+            {
+                token.ThrowIfCancellationRequested();
+                var progress = (double)i / steps;
+                var easedProgress = 1 - Math.Pow(1 - progress, 3);
+                NavRotationAngle = startAngle + diff * easedProgress;
+                await System.Threading.Tasks.Task.Delay(delay, token);
+            }
+
+            NavRotationAngle = targetAngle;
+        }
+        catch (OperationCanceledException)
+        {
+        }
     }
 
     public ViewModelBase? CurrentPage => SelectedNavItem?.Page ?? SelectedBottomNavItem?.Page;
@@ -373,6 +387,8 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         {
             if (disposing)
             {
+                _navAnimationCts?.Cancel();
+                _navAnimationCts?.Dispose();
                 Notifications?.Dispose();
                 DownloadManager?.Dispose();
                 foreach (var item in NavItems)

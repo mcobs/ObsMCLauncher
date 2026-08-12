@@ -97,7 +97,7 @@ public class ServerManager
                 await stream.FlushAsync();
                 DebugLogger.Info("ServerManager", $"已发送握手包({handshake.Length}字节)和状态请求包(2字节)");
 
-                var length = ReadVarInt(stream);
+                var length = await ReadVarIntAsync(stream, cts.Token);
                 if (length <= 0) 
                 {
                     DebugLogger.Warn("ServerManager", $"无效的响应长度: {length}");
@@ -105,7 +105,7 @@ public class ServerManager
                 }
                 DebugLogger.Info("ServerManager", $"响应包总长度: {length}");
 
-                var packetId = ReadVarInt(stream);
+                var packetId = await ReadVarIntAsync(stream, cts.Token);
                 if (packetId != 0x00) 
                 {
                     DebugLogger.Warn("ServerManager", $"无效的包ID: {packetId}，期望 0x00");
@@ -113,7 +113,7 @@ public class ServerManager
                 }
                 DebugLogger.Info("ServerManager", $"包ID验证通过: 0x{packetId:X2}");
 
-                var jsonLength = ReadVarInt(stream);
+                var jsonLength = await ReadVarIntAsync(stream, cts.Token);
                 if (jsonLength <= 0 || jsonLength > 65536) 
                 {
                     DebugLogger.Warn("ServerManager", $"无效的JSON长度: {jsonLength}");
@@ -125,14 +125,13 @@ public class ServerManager
                 var totalRead = 0;
                 while (totalRead < jsonLength)
                 {
-                    var r = await stream.ReadAsync(jsonBytes.AsMemory(totalRead, jsonLength - totalRead));
+                    var r = await stream.ReadAsync(jsonBytes.AsMemory(totalRead, jsonLength - totalRead), cts.Token);
                     if (r == 0) 
                     {
                         DebugLogger.Warn("ServerManager", $"读取JSON数据时连接中断，已读取 {totalRead}/{jsonLength}");
                         break;
                     }
                     totalRead += r;
-                    DebugLogger.Info("ServerManager", $"正在读取JSON数据: {totalRead}/{jsonLength}");
                 }
 
                 tcpClient.Close();
@@ -389,14 +388,16 @@ public class ServerManager
         } while (v != 0);
     }
 
-    private static int ReadVarInt(NetworkStream stream)
+    private static async Task<int> ReadVarIntAsync(NetworkStream stream, System.Threading.CancellationToken cancellationToken)
     {
         var value = 0;
         var shift = 0;
+        var buf = new byte[1];
         for (var i = 0; i < 5; i++)
         {
-            var b = stream.ReadByte();
-            if (b == -1) return -1;
+            var n = await stream.ReadAsync(buf.AsMemory(), cancellationToken);
+            if (n == 0) return -1;
+            var b = buf[0];
             value |= (b & 0x7F) << shift;
             if ((b & 0x80) == 0) return value;
             shift += 7;

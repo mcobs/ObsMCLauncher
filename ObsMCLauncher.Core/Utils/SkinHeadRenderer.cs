@@ -28,8 +28,9 @@ public static class SkinHeadRenderer
             int skinWidth = (int)skinBitmap.Size.Width;
             int skinHeight = (int)skinBitmap.Size.Height;
 
-            // 创建输出的 WriteableBitmap
-            var result = new WriteableBitmap(new PixelSize(size, size), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Premul);
+            // 输出使用直通 alpha（Unpremul），与 BlendPixels 的直通混合结果一致，
+            // 避免半透明边缘像素在预乘缓冲区中渲染出错误颜色
+            var result = new WriteableBitmap(new PixelSize(size, size), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Unpremul);
 
             using (var lockedSkin = skinBitmap.Lock())
             using (var lockedResult = result.Lock())

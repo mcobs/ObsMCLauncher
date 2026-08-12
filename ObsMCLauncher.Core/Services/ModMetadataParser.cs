@@ -174,46 +174,55 @@ public static class ModMetadataParser
         {
             var meta = new ModMetadata { Loader = "Forge" };
 
-            var idMatch = Regex.Match(tomlContent, @"modId\s*=\s*""([^""]+)""");
+            var idMatch = ForgeModIdRegex.Match(tomlContent);
             if (idMatch.Success) meta.ModId = idMatch.Groups[1].Value;
 
-            var verMatch = Regex.Match(tomlContent, @"version\s*=\s*""([^""]+)""");
+            var verMatch = ForgeVersionRegex.Match(tomlContent);
             if (verMatch.Success) meta.Version = verMatch.Groups[1].Value;
 
-            var nameMatch = Regex.Match(tomlContent, @"displayName\s*=\s*""([^""]+)""");
+            var nameMatch = ForgeDisplayNameRegex.Match(tomlContent);
             if (nameMatch.Success) meta.Name = nameMatch.Groups[1].Value;
 
-            var descMatch = Regex.Match(tomlContent, @"description\s*=\s*""([^""]+)""");
+            var descMatch = ForgeDescriptionRegex.Match(tomlContent);
             if (descMatch.Success) meta.Description = descMatch.Groups[1].Value;
 
             // 依赖解析
-            var depSection = Regex.Match(tomlContent, @"\[\[dependencies\.\w+\]\]([\s\S]*?)(?=\[\[|\z)");
-            foreach (Match depMatch in Regex.Matches(tomlContent, @"\[\[dependencies\.(\w+)\]\]([\s\S]*?)(?=\[\[|\z)"))
+            foreach (Match depMatch in ForgeDependenciesRegex.Matches(tomlContent))
             {
                 var depBlock = depMatch.Groups[2].Value;
                 var depInfo = new ModDependency { ModId = depMatch.Groups[1].Value };
 
-                var depModId = Regex.Match(depBlock, @"modId\s*=\s*""([^""]+)""");
+                var depModId = ForgeModIdRegex.Match(depBlock);
                 if (depModId.Success) depInfo.ModId = depModId.Groups[1].Value;
 
-                var reqMatch = Regex.Match(depBlock, @"mandatory\s*=\s*(true|false)");
+                var reqMatch = ForgeMandatoryRegex.Match(depBlock);
                 if (reqMatch.Success) depInfo.IsRequired = reqMatch.Groups[1].Value == "true";
 
-                var depVerMatch = Regex.Match(depBlock, @"versionRange\s*=\s*""([^""]+)""");
+                var depVerMatch = ForgeVersionRangeRegex.Match(depBlock);
                 if (depVerMatch.Success) depInfo.VersionRange = depVerMatch.Groups[1].Value;
 
-                var reasonMatch = Regex.Match(depBlock, @"reason\s*=\s*""([^""]+)""");
+                var reasonMatch = ForgeReasonRegex.Match(depBlock);
                 if (reasonMatch.Success) depInfo.Reason = reasonMatch.Groups[1].Value;
 
                 meta.Dependencies.Add(depInfo);
             }
 
             // Forge 的 logoFile
-            var logoMatch = Regex.Match(tomlContent, @"logoFile\s*=\s*""([^""]+)""");
+            var logoMatch = ForgeLogoFileRegex.Match(tomlContent);
             if (logoMatch.Success) meta.IconPath = logoMatch.Groups[1].Value;
 
             return meta;
         }
         catch { return null; }
     }
+
+    private static readonly Regex ForgeModIdRegex = new(@"modId\s*=\s*""([^""]+)""", RegexOptions.Compiled);
+    private static readonly Regex ForgeVersionRegex = new(@"version\s*=\s*""([^""]+)""", RegexOptions.Compiled);
+    private static readonly Regex ForgeDisplayNameRegex = new(@"displayName\s*=\s*""([^""]+)""", RegexOptions.Compiled);
+    private static readonly Regex ForgeDescriptionRegex = new(@"description\s*=\s*""([^""]+)""", RegexOptions.Compiled);
+    private static readonly Regex ForgeDependenciesRegex = new(@"\[\[dependencies\.(\w+)\]\]([\s\S]*?)(?=\[\[|\z)", RegexOptions.Compiled);
+    private static readonly Regex ForgeMandatoryRegex = new(@"mandatory\s*=\s*(true|false)", RegexOptions.Compiled);
+    private static readonly Regex ForgeVersionRangeRegex = new(@"versionRange\s*=\s*""([^""]+)""", RegexOptions.Compiled);
+    private static readonly Regex ForgeReasonRegex = new(@"reason\s*=\s*""([^""]+)""", RegexOptions.Compiled);
+    private static readonly Regex ForgeLogoFileRegex = new(@"logoFile\s*=\s*""([^""]+)""", RegexOptions.Compiled);
 }

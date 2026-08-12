@@ -295,69 +295,6 @@ namespace ObsMCLauncher.Core.Services.Minecraft
             }
         }
 
-        private static async Task DownloadLibrariesAsync(
-            List<Library> libraries,
-            string gameDirectory,
-            IDownloadSourceService downloadSource,
-            IProgress<DownloadProgress>? progress,
-            CancellationToken cancellationToken)
-        {
-            var librariesPath = Path.Combine(gameDirectory, "libraries");
-            Directory.CreateDirectory(librariesPath);
-
-            int completed = 0;
-            int total = libraries.Count;
-
-            foreach (var library in libraries)
-            {
-                if (cancellationToken.IsCancellationRequested) break;
-
-                if (!IsLibraryAllowed(library)) continue;
-
-                var artifact = library.Downloads?.Artifact;
-                if (artifact == null || string.IsNullOrEmpty(artifact.Path)) continue;
-
-                var libraryPath = Path.Combine(librariesPath, artifact.Path.Replace('/', Path.DirectorySeparatorChar));
-                
-                if (File.Exists(libraryPath))
-                {
-                    var fileInfo = new FileInfo(libraryPath);
-                    if (fileInfo.Length == artifact.Size)
-                    {
-                        completed++;
-                        continue;
-                    }
-                }
-
-                Directory.CreateDirectory(Path.GetDirectoryName(libraryPath)!);
-
-                try
-                {
-                    var url = artifact.Url;
-                    if (string.IsNullOrEmpty(url))
-                    {
-                        url = downloadSource.GetLibraryUrl(artifact.Path);
-                    }
-
-                    await DownloadFileAsync(url, libraryPath, null, cancellationToken);
-                    completed++;
-
-                    var libraryProgress = total > 0 ? (completed * 100.0 / total) : 0;
-                    progress?.Report(new DownloadProgress
-                    {
-                        Status = $"正在下载库文件 ({completed}/{total})...",
-                        CurrentFileTotalBytes = 100,
-                        CurrentFileBytes = (long)libraryProgress,
-                        CurrentFile = Path.GetFileName(libraryPath)
-                    });
-                }
-                catch (Exception ex)
-                {
-                    DebugLogger.Error("Download", $"下载库文件失败 {artifact.Path}: {ex.Message}");
-                }
-            }
-        }
-
         private static async Task DownloadAssetsAsync(
             AssetIndex assetIndex,
             string gameDirectory,

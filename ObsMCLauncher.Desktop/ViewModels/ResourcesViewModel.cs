@@ -971,52 +971,6 @@ public partial class ResourcesViewModel : ViewModelBase
             cts.Dispose();
         }
     }
-
-    private async Task HandleModpackInstallation(string zipPath, string versionName)
-    {
-        // 此方法已由 DownloadAndInstallModpackAsync 替代，保留签名以防万一但内部留空或删除
-        await Task.CompletedTask;
-    }
-
-    private static async Task<string?> ShowModpackInstallDialogAsync(string defaultName)
-    {
-        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
-        {
-            var viewModel = new ModpackInstallDialogViewModel(defaultName);
-            var dialog = new ModpackInstallDialog { DataContext = viewModel };
-
-            var tcs = new TaskCompletionSource<string?>();
-            viewModel.CloseRequested = name =>
-            {
-                dialog.Close();
-                tcs.TrySetResult(name);
-            };
-
-            await dialog.ShowDialog(desktop.MainWindow!);
-            return await tcs.Task;
-        }
-        return null;
-    }
-
-    private static async Task<string?> ShowWorldSelectDialogAsync(string savesDir)
-    {
-        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
-        {
-            var viewModel = new WorldSelectDialogViewModel(savesDir);
-            var dialog = new WorldSelectDialog { DataContext = viewModel };
-
-            var tcs = new TaskCompletionSource<string?>();
-            viewModel.CloseRequested = world =>
-            {
-                dialog.Close();
-                tcs.TrySetResult(world?.Path);
-            };
-
-            await dialog.ShowDialog(desktop.MainWindow!);
-            return await tcs.Task;
-        }
-        return null;
-    }
 }
 
 public partial class ResourceItemViewModel : ObservableObject

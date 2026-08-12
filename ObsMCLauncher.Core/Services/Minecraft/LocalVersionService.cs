@@ -168,6 +168,12 @@ namespace ObsMCLauncher.Core.Services.Minecraft
     /// </summary>
     public class LocalVersionService
     {
+        private static readonly JsonSerializerOptions VersionJsonOptions = new()
+        {
+            PropertyNameCaseInsensitive = true,
+            Converters = { new FlexibleDateTimeConverter() }
+        };
+
         /// <summary>
         /// 获取所有已安装的版本
         /// </summary>
@@ -227,12 +233,7 @@ namespace ObsMCLauncher.Core.Services.Minecraft
                     try
                     {
                         // 解析版本JSON，使用自定义DateTime转换器
-                        var options = new JsonSerializerOptions 
-                        { 
-                            PropertyNameCaseInsensitive = true,
-                            Converters = { new FlexibleDateTimeConverter() }
-                        };
-                        var versionData = JsonSerializer.Deserialize<VersionJsonData>(jsonContent, options);
+                        var versionData = JsonSerializer.Deserialize<VersionJsonData>(jsonContent, VersionJsonOptions);
 
                         if (versionData != null)
                         {
@@ -392,40 +393,37 @@ namespace ObsMCLauncher.Core.Services.Minecraft
         {
             try
             {
-                // 转换为小写以便不区分大小写匹配
-                var jsonLower = jsonContent.ToLower();
-                
                 // 检测NeoForge
-                if (jsonLower.Contains("\"neoforged\"") || 
-                    jsonLower.Contains("\"net.neoforged\""))
+                if (jsonContent.Contains("\"neoforged\"", StringComparison.OrdinalIgnoreCase) || 
+                    jsonContent.Contains("\"net.neoforged\"", StringComparison.OrdinalIgnoreCase))
                 {
                     return "NeoForge";
                 }
 
                 // 检测Forge - 通过mainClass或libraries
-                if (jsonLower.Contains("\"minecraftforge\"") || 
-                    jsonLower.Contains("\"net.minecraftforge\"") ||
-                    (jsonLower.Contains("forge") && jsonLower.Contains("\"mainclass\"")))
+                if (jsonContent.Contains("\"minecraftforge\"", StringComparison.OrdinalIgnoreCase) || 
+                    jsonContent.Contains("\"net.minecraftforge\"", StringComparison.OrdinalIgnoreCase) ||
+                    (jsonContent.Contains("forge", StringComparison.OrdinalIgnoreCase) && jsonContent.Contains("\"mainclass\"", StringComparison.OrdinalIgnoreCase)))
                 {
                     return "Forge";
                 }
                 
                 // 检测Fabric
-                if (jsonLower.Contains("\"fabricmc\"") || 
-                    jsonLower.Contains("\"net.fabricmc\"") ||
-                    jsonLower.Contains("fabric") && jsonLower.Contains("\"mainclass\""))
+                if (jsonContent.Contains("\"fabricmc\"", StringComparison.OrdinalIgnoreCase) || 
+                    jsonContent.Contains("\"net.fabricmc\"", StringComparison.OrdinalIgnoreCase) ||
+                    (jsonContent.Contains("fabric", StringComparison.OrdinalIgnoreCase) && jsonContent.Contains("\"mainclass\"", StringComparison.OrdinalIgnoreCase)))
                 {
                     return "Fabric";
                 }
                 
                 // 检测OptiFine
-                if (jsonLower.Contains("optifine"))
+                if (jsonContent.Contains("optifine", StringComparison.OrdinalIgnoreCase))
                 {
                     return "OptiFine";
                 }
                 
                 // 检测Quilt
-                if (jsonLower.Contains("quilt"))
+                if (jsonContent.Contains("quilt", StringComparison.OrdinalIgnoreCase))
                 {
                     return "Quilt";
                 }

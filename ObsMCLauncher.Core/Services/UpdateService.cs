@@ -84,6 +84,9 @@ public class UpdateCheckResult
 
 public static class UpdateService
 {
+    private static readonly System.Text.RegularExpressions.Regex PreReleaseInfoRegex =
+        new(@"(alpha|beta|rc|preview|pre|test)[.\-]?(\d+)?", System.Text.RegularExpressions.RegexOptions.Compiled);
+
     private static readonly HttpClient _httpClient;
     private static UpdateManager? _updateManager;
     private static UpdateChannel _currentChannel = UpdateChannel.Stable;
@@ -414,7 +417,7 @@ public static class UpdateService
 
         var preRelease = version.Substring(dashIndex + 1).ToLowerInvariant();
 
-        var match = System.Text.RegularExpressions.Regex.Match(preRelease, @"(alpha|beta|rc|preview|pre|test)[.\-]?(\d+)?");
+        var match = PreReleaseInfoRegex.Match(preRelease);
         if (match.Success)
         {
             var type = match.Groups[1].Value;

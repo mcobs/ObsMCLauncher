@@ -7,6 +7,12 @@ namespace ObsMCLauncher.Core.Utils;
 
 public class GameVersionNumber : IComparable<GameVersionNumber>
 {
+    private static readonly Regex NewReleaseRegex = new(@"^(\d{2})\.(\d+)(?:\.(\d+))?$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex NewPreReleaseRegex = new(@"^(\d{2})\.(\d+)(?:\.(\d+))?-(rc|pre|snapshot)\.(\d+)$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex LegacyReleaseRegex = new(@"^1\.(\d+)(?:\.(\d+))?$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex LegacyPreReleaseRegex = new(@"^1\.(\d+)(?:\.(\d+))?-(rc|pre|snapshot)\.(\d+)$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex LegacySnapshotRegex = new(@"^(\d{2})w(\d{2})([a-z])$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
     private readonly string _originalVersion;
     private readonly VersionType _type;
     private readonly bool _isNewFormat;
@@ -43,7 +49,7 @@ public class GameVersionNumber : IComparable<GameVersionNumber>
             return new GameVersionNumber(version ?? "", VersionType.Unknown, false, 0, 0, 0);
 
         // 新格式正式版: 26.1, 26.1.1
-        var newReleaseMatch = Regex.Match(version, @"^(\d{2})\.(\d+)(?:\.(\d+))?$", RegexOptions.IgnoreCase);
+        var newReleaseMatch = NewReleaseRegex.Match(version);
         if (newReleaseMatch.Success)
         {
             int year = int.Parse(newReleaseMatch.Groups[1].Value);
@@ -53,7 +59,7 @@ public class GameVersionNumber : IComparable<GameVersionNumber>
         }
 
         // 新格式预发布版: 26.1-rc.1, 26.1-pre.1, 26.1-snapshot.1
-        var newPreReleaseMatch = Regex.Match(version, @"^(\d{2})\.(\d+)(?:\.(\d+))?-(rc|pre|snapshot)\.(\d+)$", RegexOptions.IgnoreCase);
+        var newPreReleaseMatch = NewPreReleaseRegex.Match(version);
         if (newPreReleaseMatch.Success)
         {
             int year = int.Parse(newPreReleaseMatch.Groups[1].Value);
@@ -73,7 +79,7 @@ public class GameVersionNumber : IComparable<GameVersionNumber>
         }
 
         // 旧格式正式版: 1.21.4, 1.21
-        var legacyReleaseMatch = Regex.Match(version, @"^1\.(\d+)(?:\.(\d+))?$", RegexOptions.IgnoreCase);
+        var legacyReleaseMatch = LegacyReleaseRegex.Match(version);
         if (legacyReleaseMatch.Success)
         {
             int minor = int.Parse(legacyReleaseMatch.Groups[1].Value);
@@ -82,7 +88,7 @@ public class GameVersionNumber : IComparable<GameVersionNumber>
         }
 
         // 旧格式预发布版: 1.21.4-rc.1, 1.21.4-pre.1, 1.21-rc.1
-        var legacyPreReleaseMatch = Regex.Match(version, @"^1\.(\d+)(?:\.(\d+))?-(rc|pre|snapshot)\.(\d+)$", RegexOptions.IgnoreCase);
+        var legacyPreReleaseMatch = LegacyPreReleaseRegex.Match(version);
         if (legacyPreReleaseMatch.Success)
         {
             int minor = int.Parse(legacyPreReleaseMatch.Groups[1].Value);
@@ -101,7 +107,7 @@ public class GameVersionNumber : IComparable<GameVersionNumber>
         }
 
         // 旧格式快照: 25w14a
-        var legacySnapshotMatch = Regex.Match(version, @"^(\d{2})w(\d{2})([a-z])$", RegexOptions.IgnoreCase);
+        var legacySnapshotMatch = LegacySnapshotRegex.Match(version);
         if (legacySnapshotMatch.Success)
         {
             int year = int.Parse(legacySnapshotMatch.Groups[1].Value);
@@ -281,6 +287,10 @@ public class MinecraftVersionComparer : IComparer<string>
 
 public static class VersionUtils
 {
+    private static readonly Regex NewFormatVersionRegex = new(@"^\d{2}\.\d+(\.\d+)?(-rc\.\d+|-pre\.\d+|-snapshot\.\d+)?$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex LegacyFormatVersionRegex = new(@"^1\.\d+(\.\d+)?(-rc\.\d+|-pre\.\d+|-snapshot\.\d+)?$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex SnapshotFormatVersionRegex = new(@"^\d{2}w\d{2}[a-z]$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
     public static bool IsMinecraftVersion(string version)
     {
         if (string.IsNullOrWhiteSpace(version))
@@ -296,9 +306,9 @@ public static class VersionUtils
             return false;
         }
 
-        return Regex.IsMatch(version, @"^\d{2}\.\d+(\.\d+)?(-rc\.\d+|-pre\.\d+|-snapshot\.\d+)?$", RegexOptions.IgnoreCase) ||
-               Regex.IsMatch(version, @"^1\.\d+(\.\d+)?(-rc\.\d+|-pre\.\d+|-snapshot\.\d+)?$", RegexOptions.IgnoreCase) ||
-               Regex.IsMatch(version, @"^\d{2}w\d{2}[a-z]$", RegexOptions.IgnoreCase);
+        return NewFormatVersionRegex.IsMatch(version) ||
+               LegacyFormatVersionRegex.IsMatch(version) ||
+               SnapshotFormatVersionRegex.IsMatch(version);
     }
 
     public static string ExtractMinecraftVersion(IEnumerable<string> versions)

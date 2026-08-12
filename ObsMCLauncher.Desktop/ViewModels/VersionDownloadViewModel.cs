@@ -94,7 +94,7 @@ public partial class VersionDownloadViewModel : ViewModelBase
 
         LoadGameDirectories();
 
-        InitializeAsync();
+        _ = InitializeAsync();
     }
 
     private void BuildGroupSections()
@@ -139,10 +139,17 @@ public partial class VersionDownloadViewModel : ViewModelBase
         GroupSections = sections;
     }
 
-    private async void InitializeAsync()
+    private async Task InitializeAsync()
     {
-        await LoadOnlineVersionsAsync();
-        RefreshInstalled();
+        try
+        {
+            await LoadOnlineVersionsAsync();
+            RefreshInstalled();
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Error("VersionDownloadVM", $"初始化失败: {ex.Message}");
+        }
     }
 
     [RelayCommand]
