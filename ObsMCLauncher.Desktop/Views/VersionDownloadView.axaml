@@ -26,6 +26,14 @@
     <Style Selector="ListBox.online-versions-list ListBoxItem:selected /template/ ContentPresenter">
       <Setter Property="Background" Value="Transparent" />
     </Style>
+
+    <!-- 删除按钮：默认透明，悬停时红色背景 + 红色图标 -->
+    <Style Selector="Button.ghost.delete-icon:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="#20E81123" />
+    </Style>
+    <Style Selector="Button.ghost.delete-icon:pointerover Path">
+      <Setter Property="Fill" Value="#E81123" />
+    </Style>
   </UserControl.Styles>
 
   <Grid>
@@ -147,9 +155,13 @@
                                                IsVisible="{Binding HasDescription}"/>
                                   </StackPanel>
                                   <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
-                                    <Button Content="选择" Classes="ghost" Height="26" FontSize="12" Padding="8,0"
+                                    <Button Width="26" Height="26" Padding="0" Classes="ghost"
+                                            ToolTip.Tip="选择为当前版本"
                                             Command="{Binding #Root.((vm:VersionDownloadViewModel)DataContext).SelectInstalledCommand}"
-                                            CommandParameter="{Binding}" IsVisible="{Binding !IsSelected}"/>
+                                            CommandParameter="{Binding}" IsVisible="{Binding !IsSelected}">
+                                      <Path Data="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"
+                                            Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Button>
                                     <Button Width="26" Height="26" Padding="0" Classes="ghost"
                                             ToolTip.Tip="快速启动"
                                             Command="{Binding #Root.((vm:VersionDownloadViewModel)DataContext).QuickLaunchCommand}"
@@ -164,12 +176,12 @@
                                       <Path Data="M19.14 12.94C19.18 12.64 19.2 12.33 19.2 12C19.2 11.68 19.18 11.36 19.13 11.06L21.16 9.48C21.34 9.34 21.39 9.07 21.28 8.87L19.36 5.55C19.24 5.33 18.99 5.26 18.77 5.33L16.38 6.29C15.88 5.91 15.35 5.59 14.76 5.35L14.4 2.81C14.36 2.57 14.16 2.4 13.92 2.4H10.08C9.84 2.4 9.65 2.57 9.61 2.81L9.25 5.35C8.66 5.59 8.12 5.92 7.63 6.29L5.24 5.33C5.02 5.25 4.77 5.33 4.65 5.55L2.74 8.87C2.62 9.08 2.66 9.34 2.86 9.48L4.89 11.06C4.84 11.36 4.8 11.69 4.8 12C4.8 12.31 4.82 12.64 4.87 12.94L2.85 14.52C2.67 14.66 2.62 14.93 2.73 15.13L4.65 18.45C4.77 18.67 5.02 18.74 5.24 18.67L7.63 17.71C8.13 18.09 8.66 18.41 9.25 18.65L9.61 21.19C9.65 21.43 9.84 21.6 10.08 21.6H13.92C14.16 21.6 14.36 21.43 14.4 21.19L14.76 18.65C15.35 18.41 15.89 18.09 16.38 17.71L18.77 18.67C18.99 18.74 19.24 18.67 19.36 18.45L21.28 15.13C21.39 14.91 21.34 14.66 21.16 14.52L19.14 12.94ZM12 15.6C10.02 15.6 8.4 13.98 8.4 12C8.4 10.02 10.02 8.4 12 8.4C13.98 8.4 15.6 10.02 15.6 12C15.6 13.98 13.98 15.6 12 15.6Z"
                                             Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                     </Button>
-                                    <Button Width="26" Height="26" Padding="0" Classes="danger"
+                                    <Button Width="26" Height="26" Padding="0" Classes="ghost delete-icon"
                                             ToolTip.Tip="删除版本"
                                             Command="{Binding #Root.((vm:VersionDownloadViewModel)DataContext).DeleteInstalledCommand}"
                                             CommandParameter="{Binding}">
                                       <Path Data="M19 4H15.5L14.5 3H9.5L8.5 4H5V6H19M6 19C6 20.1 6.9 21 8 21H16C17.1 21 18 20.1 18 19V7H6V19Z"
-                                            Width="12" Height="12" Stretch="Uniform" Fill="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                     </Button>
                                   </StackPanel>
                                 </Grid>
