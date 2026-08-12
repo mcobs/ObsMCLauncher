@@ -8,9 +8,13 @@
     <Setter Property="VerticalContentAlignment" Value="Center" />
     <Setter Property="Padding" Value="16,8" />
     <Setter Property="CornerRadius" Value="{DynamicResource ControlCornerRadius}" />
+  </Style>
+
+  <!-- 模板内内容面板背景过渡：悬停/按下/禁用时颜色平滑渐变，避免生硬跳变 -->
+  <Style Selector="Button /template/ ContentPresenter">
     <Setter Property="Transitions">
       <Transitions>
-        <DoubleTransition Property="Opacity" Duration="0:0:0.12" Easing="LinearEasing" />
+        <BrushTransition Property="Background" Duration="0:0:0.15" Easing="CircularEaseOut" />
       </Transitions>
     </Setter>
   </Style>

@@ -1,6 +1,7 @@
  ## 2026-08-12
 
 ### 修复
+- 修复按钮悬停/按下背景色生硬跳变：模板内容面板统一添加 0.15s 背景渐变过渡，移除无用的全局 Opacity 动画
 - 修复版本详情页返回时崩溃（ObjectDisposedException）：安装流程结束后 CTS 已释放，返回操作再次调用 Cancel 抛异常，统一改为安全取消并置空字段
 - 修复崩溃窗口错误信息编辑框大小异常：只读长文本改用 ScrollViewer + SelectableTextBlock，布局稳定且支持选择复制
 - 开发者控制台输出框同步改用 SelectableTextBlock，高频输出不再触发 TextBox 全量重渲染
