@@ -77,11 +77,7 @@ ObsMCLauncher/
 │   ├── Services/                        # 平台服务（Dispatcher 等）
 │   ├── Styles/                          # 样式主题
 │   │   ├── Theme.axaml                  # 主题资源定义（颜色/画刷/阴影）
-│   │   ├── Controls.axaml               # 控件基础样式
-│   │   ├── AcrylicStyle.axaml           # 亚克力质感样式
-│   │   ├── GlassStyle.axaml             # 磨砂玻璃质感样式
-│   │   ├── FlatStyle.axaml              # 纯色扁平稳感样式
-│   │   └── CardStyle.axaml              # 悬浮卡片质感样式
+│   │   └── Controls.axaml               # 控件基础样式
 │   ├── ViewModels/                      # MVVM 视图模型
 │   │   ├── MainWindowViewModel.cs
 │   │   ├── HomeViewModel.cs             # 主页（含插件卡片管理）
@@ -112,7 +108,7 @@ ObsMCLauncher/
 
 - **Core/Desktop 分层**：`ObsMCLauncher.Core` 不依赖 Avalonia，可独立测试；`ObsMCLauncher.Desktop` 承载 UI 与平台交互
 - **配置版本化**：每个版本的配置存储在自身目录的 `OMCL/init.json` 中，便于备份/迁移/删除
-- **主题资源化**：颜色、画刷、阴影通过 `Theme.axaml` 集中定义，运行时通过 `DynamicResource` 绑定，质感切换不修改 `.axaml` 文件
+- **主题资源化**：颜色、画刷、阴影通过 `Theme.axaml` 集中定义，运行时通过 `DynamicResource` 绑定，切换主题不修改 `.axaml` 文件
 - **插件隔离**：插件通过 `IPluginContext` 访问启动器能力，无法直接访问内部静态状态；命令/钩子/卡片均以 `{pluginId}.{id}` 形式命名防止冲突
 - **安全边界**：所有 ZIP 解压经 `SafeZipExtractor` 防路径遍历；下载请求强制 `http/https` 协议；文件名禁止路径分隔符
 

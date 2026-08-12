@@ -116,20 +116,20 @@
     <SolidColorBrush x:Key="NavItemSelectedBackgroundBrush" Color="#10B981" Opacity="0.08"/>
     <SolidColorBrush x:Key="LightNavItemSelectedBackgroundBrush" Color="#10B981" Opacity="0.06"/>
 
-    <!-- 阴影资源（由质感风格动态覆盖） -->
+    <!-- 阴影资源 -->
     <BoxShadows x:Key="CardShadow">0 4 12 0 #20000000</BoxShadows>
     <BoxShadows x:Key="ChromeShadow">0 1 4 0 #18000000</BoxShadows>
     <BoxShadows x:Key="NavShadow">2 0 8 0 #12000000</BoxShadows>
     <BoxShadows x:Key="WindowShadow">0 0 0 0 transparent</BoxShadows>
 
-    <!-- 卡片资源（由质感风格动态覆盖） -->
+    <!-- 卡片资源 -->
     <SolidColorBrush x:Key="CardBackgroundBrush" Color="#1C1F26"/>
     <SolidColorBrush x:Key="CardBorderBrush" Color="#2A2E37"/>
 
-    <!-- 窗口背景资源（由质感风格动态覆盖） -->
+    <!-- 窗口背景资源 -->
     <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#0B0D10"/>
 
-    <!-- 导航栏背景资源（由质感风格动态覆盖），默认与窗口背景一致 -->
+    <!-- 导航栏背景资源，默认与窗口背景一致 -->
     <SolidColorBrush x:Key="NavBackgroundBrush" Color="#141619"/>
     <SolidColorBrush x:Key="NavBorderBrush" Color="#1E2128"/>
     <SolidColorBrush x:Key="TitleBarBackgroundBrush" Color="#141619"/>

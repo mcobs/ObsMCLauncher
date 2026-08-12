@@ -13,10 +13,8 @@ using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
-using Avalonia.Markup.Xaml;
 using Avalonia.Media;
 using Avalonia.Styling;
-using Avalonia.Themes.Fluent;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -244,71 +242,6 @@ public partial class SettingsViewModel : ViewModelBase
                 AutoSave();
             }
         }
-    }
-
-    private int _windowStyleIndex;
-    public int WindowStyleIndex
-    {
-        get => _windowStyleIndex;
-        set
-        {
-            if (_windowStyleIndex != value)
-            {
-                _windowStyleIndex = value;
-                OnPropertyChanged(new PropertyChangedEventArgs(nameof(WindowStyleIndex)));
-                ApplyWindowStyle(value);
-            }
-        }
-    }
-
-    private Styles? _currentWindowStyle;
-
-    private void ApplyWindowStyle(int styleIndex)
-    {
-        if (Application.Current == null) return;
-
-        var styleUris = new[]
-        {
-            "avares://ObsMCLauncher.Desktop/Styles/AcrylicStyle.axaml",
-            "avares://ObsMCLauncher.Desktop/Styles/GlassStyle.axaml",
-            "avares://ObsMCLauncher.Desktop/Styles/FlatStyle.axaml",
-            "avares://ObsMCLauncher.Desktop/Styles/CardStyle.axaml",
-        };
-
-        if (styleIndex < 0 || styleIndex >= styleUris.Length) return;
-
-        Dispatcher.UIThread.Post(() =>
-        {
-            try
-            {
-                var uri = new Uri(styleUris[styleIndex]);
-                var style = AvaloniaXamlLoader.Load(uri) as Styles;
-                if (style == null) return;
-
-                // 移除旧的质感样式
-                if (_currentWindowStyle != null)
-                {
-                    Application.Current.Styles.Remove(_currentWindowStyle);
-                    _currentWindowStyle = null;
-                }
-
-                // 插入新质感样式（在 FluentTheme 之后）
-                var fluentIndex = Application.Current.Styles.ToList().FindIndex(s => s is FluentTheme);
-                if (fluentIndex >= 0)
-                    Application.Current.Styles.Insert(fluentIndex + 1, style);
-                else
-                    Application.Current.Styles.Add(style);
-
-                _currentWindowStyle = style;
-
-                // 重新应用主题色，确保质感资源与当前主题一致
-                UpdateThemeResources(_config.ThemeMode);
-            }
-            catch (Exception ex)
-            {
-                Status = $"切换质感失败: {ex.Message}";
-            }
-        });
     }
 
     public int MaxMemory
@@ -1227,9 +1160,6 @@ public partial class SettingsViewModel : ViewModelBase
         resources["SystemControlForegroundBaseHighBrush"] = new SolidColorBrush(Color.Parse("#0F172A"));
         resources["SystemControlForegroundBaseLowBrush"] = new SolidColorBrush(Color.Parse("#E2E8F0"));
         resources["NavItemSelectedBackgroundBrush"] = new SolidColorBrush(Color.Parse("#10B981")) { Opacity = 0.10 };
-
-        // 浅色模式下的质感资源覆盖
-        ApplyWindowStyleThemeOverride(resources, isLight: true);
     }
 
     private void ApplyDarkTheme(IResourceDictionary resources)
@@ -1262,88 +1192,7 @@ public partial class SettingsViewModel : ViewModelBase
         resources["SystemControlForegroundBaseHighBrush"] = new SolidColorBrush(Color.Parse("#F1F5F9"));
         resources["SystemControlForegroundBaseLowBrush"] = new SolidColorBrush(Color.Parse("#2A2E37"));
         resources["NavItemSelectedBackgroundBrush"] = new SolidColorBrush(Color.Parse("#10B981")) { Opacity = 0.08 };
-
-        // 深色模式下的质感资源覆盖
-        ApplyWindowStyleThemeOverride(resources, isLight: false);
     }
-
-    /// <summary>
-    /// 质感风格覆盖：原 4 case 收敛为 2 case
-    /// case 0 Mica（默认）：窗体透明透出系统 Mica 模糊，标题栏/导航栏半透明，卡片纯色+阴影
-    /// case 1 Flat：纯色无阴影
-    /// 旧 _windowStyleIndex 值通过 MapWindowStyleIndex 兼容映射
-    /// </summary>
-    private void ApplyWindowStyleThemeOverride(IResourceDictionary resources, bool isLight)
-    {
-        // 三级表面色阶已由 ApplyLightTheme/ApplyDarkTheme 写入
-        // Mica 模式下窗体背景透明，标题栏/导航栏半透明透出系统模糊
-        // Flat 模式下全部纯色不透明
-        var navBg = isLight ? "#F1F5F9" : "#0B0D10";
-        var contentBg = isLight ? "#F8FAFC" : "#141619";
-        var cardSurface = isLight ? "#FFFFFF" : "#1C1F26";
-        var cardBorder = isLight ? "#E2E8F0" : "#2A2E37";
-        var chromeBorder = isLight ? "#E2E8F0" : "#1E2128";
-
-        // Windows 11 22000+ 才支持 Mica，其他平台回退为纯色
-        var micaSupported = OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000);
-
-        var mappedIndex = MapWindowStyleIndex(_windowStyleIndex);
-
-        switch (mappedIndex)
-        {
-            case 0: // Mica：窗体透明 + 标题栏/导航栏半透明 + 卡片阴影
-                if (micaSupported)
-                {
-                    // 窗体背景透明，让系统 Mica 模糊透出
-                    resources["WindowBackgroundBrush"] = new SolidColorBrush(Colors.Transparent);
-                    // 标题栏/导航栏半透明，透出 Mica 质感
-                    resources["TitleBarBackgroundBrush"] = new SolidColorBrush(Color.Parse(navBg)) { Opacity = 0.72 };
-                    resources["NavBackgroundBrush"] = new SolidColorBrush(Color.Parse(navBg)) { Opacity = 0.82 };
-                    // 内容区也半透明，让 Mica 透出，整个窗体都有质感
-                    resources["LayerFillColorAltBrush"] = new SolidColorBrush(Color.Parse(contentBg)) { Opacity = 0.88 };
-                }
-                else
-                {
-                    // 非 Windows 11：纯色回退，用明度差表达层级
-                    resources["WindowBackgroundBrush"] = new SolidColorBrush(Color.Parse(contentBg));
-                    resources["TitleBarBackgroundBrush"] = new SolidColorBrush(Color.Parse(navBg));
-                    resources["NavBackgroundBrush"] = new SolidColorBrush(Color.Parse(navBg));
-                    resources["LayerFillColorAltBrush"] = new SolidColorBrush(Color.Parse(contentBg));
-                }
-                resources["TitleBarBorderBrush"] = new SolidColorBrush(Color.Parse(isLight ? "#000000" : "#FFFFFF")) { Opacity = isLight ? 0.06 : 0.10 };
-                resources["NavBorderBrush"] = new SolidColorBrush(Color.Parse(isLight ? "#000000" : "#FFFFFF")) { Opacity = isLight ? 0.06 : 0.10 };
-                resources["CardBackgroundBrush"] = new SolidColorBrush(Color.Parse(cardSurface));
-                resources["CardBorderBrush"] = new SolidColorBrush(Color.Parse(cardBorder));
-                resources["CardShadow"] = BoxShadows.Parse(isLight ? "0 4 12 0 #20000000" : "0 6 18 0 #60000000");
-                resources["ChromeShadow"] = BoxShadows.Parse(isLight ? "0 2 6 0 #18000000" : "0 2 6 0 #50000000");
-                resources["NavShadow"] = BoxShadows.Parse("0 0 0 0 transparent");
-                resources["WindowShadow"] = BoxShadows.Parse(isLight ? "0 8 32 0 #20000000" : "0 8 32 0 #70000000");
-                break;
-            case 1: // Flat：无透明、无阴影，纯色表面
-                resources["TitleBarBackgroundBrush"] = new SolidColorBrush(Color.Parse(navBg));
-                resources["TitleBarBorderBrush"] = new SolidColorBrush(Color.Parse(chromeBorder));
-                resources["NavBackgroundBrush"] = new SolidColorBrush(Color.Parse(navBg));
-                resources["NavBorderBrush"] = new SolidColorBrush(Color.Parse(chromeBorder));
-                resources["CardBackgroundBrush"] = new SolidColorBrush(Color.Parse(cardSurface));
-                resources["CardBorderBrush"] = new SolidColorBrush(Color.Parse(cardBorder));
-                resources["CardShadow"] = BoxShadows.Parse("0 0 0 0 transparent");
-                resources["ChromeShadow"] = BoxShadows.Parse("0 0 0 0 transparent");
-                resources["NavShadow"] = BoxShadows.Parse("0 0 0 0 transparent");
-                resources["WindowShadow"] = BoxShadows.Parse(isLight ? "0 0 0 1 #20000000" : "0 0 0 1 #40000000");
-                resources["WindowBackgroundBrush"] = new SolidColorBrush(Color.Parse(contentBg));
-                break;
-        }
-    }
-
-    /// <summary>
-    /// 把历史 _windowStyleIndex（0亚克力/1磨砂/2扁平/3悬浮）映射到新 2 case
-    /// 0,1,3 -> 0(Mica)  2 -> 1(Flat)
-    /// </summary>
-    private static int MapWindowStyleIndex(int raw) => raw switch
-    {
-        2 => 1,
-        _ => 0
-    };
 
     private void OnSystemThemeChanged(object? sender, EventArgs e)
     {

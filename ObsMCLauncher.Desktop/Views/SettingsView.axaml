@@ -189,25 +189,6 @@
             </StackPanel>
           </Border>
 
-          <!-- 窗口质感 -->
-          <Border Classes="card">
-            <StackPanel Spacing="14">
-              <TextBlock Text="窗口质感" FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}"/>
-              <Grid ColumnDefinitions="*,Auto">
-                <StackPanel>
-                  <TextBlock Text="质感风格" FontSize="13" FontWeight="Medium"/>
-                  <TextBlock Text="切换窗口元素的材质与阴影效果" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
-                </StackPanel>
-                <ComboBox Grid.Column="1" Width="140" SelectedIndex="{Binding WindowStyleIndex}">
-                  <ComboBoxItem Content="亚克力"/>
-                  <ComboBoxItem Content="磨砂玻璃"/>
-                  <ComboBoxItem Content="纯色扁平"/>
-                  <ComboBoxItem Content="悬浮卡片"/>
-                </ComboBox>
-              </Grid>
-            </StackPanel>
-          </Border>
-
           <!-- 通知 -->
           <Border Classes="card">
             <StackPanel Spacing="14">
