@@ -4,6 +4,7 @@
         xmlns:converters="using:ObsMCLauncher.Desktop.Converters"
         xmlns:notif="using:ObsMCLauncher.Desktop.ViewModels.Notifications"
         xmlns:dialogs="using:ObsMCLauncher.Desktop.ViewModels.Dialogs"
+        xmlns:download="using:ObsMCLauncher.Core.Services.Download"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" d:DesignWidth="1100" d:DesignHeight="700"
@@ -829,7 +830,7 @@
                     <ItemsControl ItemsSource="{Binding DownloadManager.Tasks}" Margin="12"
                                   IsVisible="{Binding DownloadManager.HasAnyTasks}">
                         <ItemsControl.ItemTemplate>
-                            <DataTemplate x:CompileBindings="False">
+                            <DataTemplate x:DataType="download:DownloadTask">
                                 <Border CornerRadius="10"
                                         Padding="0"
                                         Margin="0,0,0,8"

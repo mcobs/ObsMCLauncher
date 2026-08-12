@@ -1,8 +1,10 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Data.Converters;
@@ -18,8 +20,14 @@ namespace ObsMCLauncher.Desktop.Converters;
 public class PluginIconConverter : IValueConverter, IMultiValueConverter
 {
     public static readonly PluginIconConverter Instance = new();
+
     private static readonly HttpClient _httpClient = new();
     private static readonly string _defaultIcon = "avares://ObsMCLauncher.Desktop/Assets/default_plugin.svg";
+
+    private static readonly ConcurrentDictionary<string, IImage?> _iconCache = new();
+    private static readonly ConcurrentDictionary<string, SemaphoreSlim> _inflightLocks = new();
+    private static readonly object _defaultIconLock = new();
+    private static IImage? _cachedDefaultIcon;
 
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
@@ -47,10 +55,22 @@ public class PluginIconConverter : IValueConverter, IMultiValueConverter
         {
             if (iconPath.StartsWith("http://") || iconPath.StartsWith("https://"))
             {
-                _ = LoadRemoteIconAsync(iconPath);
+                if (_iconCache.TryGetValue(iconPath, out var cached))
+                {
+                    return cached;
+                }
+
+                _ = DownloadRemoteIconAsync(iconPath);
                 return LoadDefaultIcon();
             }
-            else if (File.Exists(iconPath))
+
+            if (_iconCache.TryGetValue(iconPath, out var fileCached))
+            {
+                return fileCached;
+            }
+
+            IImage? icon = null;
+            if (File.Exists(iconPath))
             {
                 if (iconPath.EndsWith(".svg", StringComparison.OrdinalIgnoreCase))
                 {
@@ -58,12 +78,20 @@ public class PluginIconConverter : IValueConverter, IMultiValueConverter
                     svgContent = SvgThemeHelper.ReplaceCurrentColor(svgContent);
                     using var ms = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(svgContent));
                     var svgSource = SvgSource.LoadFromStream(ms);
-                    return svgSource != null ? new SvgImage { Source = svgSource } : null;
+                    icon = svgSource != null ? new SvgImage { Source = svgSource } : null;
                 }
-
-                using var stream = File.OpenRead(iconPath);
-                return new Bitmap(stream);
+                else
+                {
+                    using var stream = File.OpenRead(iconPath);
+                    icon = new Bitmap(stream);
+                }
             }
+
+            if (icon != null)
+            {
+                _iconCache[iconPath] = icon;
+            }
+            return icon;
         }
         catch (Exception ex)
         {
@@ -75,38 +103,75 @@ public class PluginIconConverter : IValueConverter, IMultiValueConverter
 
     private static IImage? LoadDefaultIcon()
     {
-        try
+        if (_cachedDefaultIcon != null) return _cachedDefaultIcon;
+
+        lock (_defaultIconLock)
         {
-            using var asset = AssetLoader.Open(new Uri(_defaultIcon));
-            using var reader = new StreamReader(asset);
-            var svgContent = reader.ReadToEnd();
-            svgContent = SvgThemeHelper.ReplaceCurrentColor(svgContent);
-            using var ms = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(svgContent));
-            var svgSource = SvgSource.LoadFromStream(ms);
-            return svgSource != null ? new SvgImage { Source = svgSource } : null;
+            if (_cachedDefaultIcon != null) return _cachedDefaultIcon;
+
+            try
+            {
+                using var asset = AssetLoader.Open(new Uri(_defaultIcon));
+                using var reader = new StreamReader(asset);
+                var svgContent = reader.ReadToEnd();
+                svgContent = SvgThemeHelper.ReplaceCurrentColor(svgContent);
+                using var ms = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(svgContent));
+                var svgSource = SvgSource.LoadFromStream(ms);
+                _cachedDefaultIcon = svgSource != null ? new SvgImage { Source = svgSource } : null;
+            }
+            catch
+            {
+                _cachedDefaultIcon = null;
+            }
         }
-        catch
-        {
-            return null;
-        }
+
+        return _cachedDefaultIcon;
     }
 
-    private static async Task LoadRemoteIconAsync(string url)
+    private static async Task DownloadRemoteIconAsync(string url)
     {
+        // 同一 URL 并发去重，避免滚动时重复请求
+        var semaphore = _inflightLocks.GetOrAdd(url, _ => new SemaphoreSlim(1, 1));
+        if (!await semaphore.WaitAsync(0).ConfigureAwait(false))
+        {
+            return;
+        }
+
         try
         {
-            var imageData = await _httpClient.GetByteArrayAsync(url);
-            Dispatcher.UIThread.Post(() =>
-        {
+            if (_iconCache.ContainsKey(url)) return;
+
+            var imageData = await _httpClient.GetByteArrayAsync(url).ConfigureAwait(false);
+            IImage? bitmap = null;
+            try
+            {
                 using var stream = new MemoryStream(imageData);
-                var bitmap = new Bitmap(stream);
-            });
+                bitmap = new Bitmap(stream);
+            }
+            catch
+            {
+                // 非位图格式（如 SVG），忽略
+            }
+
+            if (bitmap != null)
+            {
+                _iconCache[url] = bitmap;
+                // 通知 UI 线程重新评估该图标的绑定
+                Dispatcher.UIThread.Post(() => IconDownloaded?.Invoke(url));
+            }
         }
         catch (Exception ex)
         {
             DebugLogger.Error("PluginIconConverter", $"加载远程图标失败: {url}. Error: {ex.Message}");
         }
+        finally
+        {
+            semaphore.Release();
+        }
     }
+
+    /// <summary>远程图标下载完成事件（由绑定源据此触发刷新）</summary>
+    public static event Action<string>? IconDownloaded;
 
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
     {

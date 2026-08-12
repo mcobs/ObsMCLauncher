@@ -6,6 +6,22 @@
              x:DataType="vm:ResourcesViewModel"
              x:Name="Root">
 
+  <UserControl.Styles>
+    <!-- 结果列表：移除 ListBox 选中/悬浮视觉，保持原 ItemsControl 观感 -->
+    <Style Selector="ListBox.results-list ListBoxItem">
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Margin" Value="0" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    </Style>
+    <Style Selector="ListBox.results-list ListBoxItem:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="ListBox.results-list ListBoxItem:selected /template/ ContentPresenter">
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
+  </UserControl.Styles>
+
   <Grid RowDefinitions="Auto,Auto,*" Margin="20">
 
     <StackPanel Grid.Row="0" Spacing="4" IsVisible="{Binding IsListVisible}">
@@ -82,23 +98,46 @@
     <Grid Grid.Row="2">
       <ContentControl Content="{Binding DetailViewModel}" IsVisible="{Binding DetailViewModel, Converter={x:Static converters:NotNullConverter.Instance}}" />
 
-      <ItemsControl IsVisible="{Binding IsLoading}" Margin="0">
-        <ItemsControl.ItemTemplate>
-          <DataTemplate>
-            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" Margin="0,0,0,6">
-              <Border Width="40" Height="40" CornerRadius="6" Background="{DynamicResource SurfaceHoverBrush}" Margin="0,0,10,0"/>
-              <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
-                <Border Height="12" Width="160" Background="{DynamicResource SurfaceHoverBrush}" CornerRadius="3" />
-                <Border Height="10" Width="280" Background="{DynamicResource SurfaceHoverBrush}" CornerRadius="3" />
-              </StackPanel>
-            </Grid>
-          </DataTemplate>
-        </ItemsControl.ItemTemplate>
-      </ItemsControl>
+      <StackPanel IsVisible="{Binding IsLoading}" Margin="0">
+        <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" Margin="0,0,0,6">
+          <Border Width="40" Height="40" CornerRadius="6" Background="{DynamicResource SurfaceHoverBrush}" Margin="0,0,10,0"/>
+          <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
+            <Border Height="12" Width="160" Background="{DynamicResource SurfaceHoverBrush}" CornerRadius="3" />
+            <Border Height="10" Width="280" Background="{DynamicResource SurfaceHoverBrush}" CornerRadius="3" />
+          </StackPanel>
+        </Grid>
+        <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" Margin="0,0,0,6">
+          <Border Width="40" Height="40" CornerRadius="6" Background="{DynamicResource SurfaceHoverBrush}" Margin="0,0,10,0"/>
+          <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
+            <Border Height="12" Width="150" Background="{DynamicResource SurfaceHoverBrush}" CornerRadius="3" />
+            <Border Height="10" Width="240" Background="{DynamicResource SurfaceHoverBrush}" CornerRadius="3" />
+          </StackPanel>
+        </Grid>
+        <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" Margin="0,0,0,6">
+          <Border Width="40" Height="40" CornerRadius="6" Background="{DynamicResource SurfaceHoverBrush}" Margin="0,0,10,0"/>
+          <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
+            <Border Height="12" Width="180" Background="{DynamicResource SurfaceHoverBrush}" CornerRadius="3" />
+            <Border Height="10" Width="200" Background="{DynamicResource SurfaceHoverBrush}" CornerRadius="3" />
+          </StackPanel>
+        </Grid>
+        <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" Margin="0,0,0,6">
+          <Border Width="40" Height="40" CornerRadius="6" Background="{DynamicResource SurfaceHoverBrush}" Margin="0,0,10,0"/>
+          <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
+            <Border Height="12" Width="140" Background="{DynamicResource SurfaceHoverBrush}" CornerRadius="3" />
+            <Border Height="10" Width="260" Background="{DynamicResource SurfaceHoverBrush}" CornerRadius="3" />
+          </StackPanel>
+        </Grid>
+      </StackPanel>
 
-      <ScrollViewer x:Name="ResourceScrollViewer" IsVisible="{Binding IsListVisible}" ScrollChanged="OnResourceScrollChanged" Padding="0,0,12,0">
-        <ItemsControl ItemsSource="{Binding Results}">
-          <ItemsControl.ItemTemplate>
+      <ListBox x:Name="ResourceListBox"
+               IsVisible="{Binding IsListVisible}"
+               ScrollViewer.ScrollChanged="OnResourceScrollChanged"
+               Padding="0,0,12,0"
+               ItemsSource="{Binding Results}"
+               Background="Transparent"
+               BorderThickness="0"
+               Classes="results-list">
+          <ListBox.ItemTemplate>
             <DataTemplate>
               <StackPanel Margin="0,0,0,0">
                 <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto" Margin="0,8">
@@ -134,9 +173,8 @@
                 <Separator Background="{DynamicResource DividerBrush}" Opacity="0.5"/>
               </StackPanel>
             </DataTemplate>
-          </ItemsControl.ItemTemplate>
-        </ItemsControl>
-      </ScrollViewer>
+          </ListBox.ItemTemplate>
+        </ListBox>
     </Grid>
 
   </Grid>

@@ -30,6 +30,10 @@ public class DownloadTaskManager : INotifyPropertyChanged
 
     private readonly ObservableCollection<DownloadTask> _tasks = new();
 
+    // 进度上报节流：同一任务 100ms 内最多派发一次，避免高频下载刷新压满 UI 线程
+    private const long ProgressThrottleMs = 100;
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, long> _lastProgressReportAt = new();
+
     public ObservableCollection<DownloadTask> Tasks => _tasks;
 
     public bool HasActiveTasks => _tasks.Any(t => t.Status == DownloadTaskStatus.Downloading);
@@ -98,6 +102,15 @@ public class DownloadTaskManager : INotifyPropertyChanged
 
     public void UpdateTaskProgress(string taskId, double progress, string? message = null, double speed = 0)
     {
+        // 节流：丢弃高频中间值，最终状态由 CompleteTask/FailTask/CancelTask 保证
+        var now = Environment.TickCount64;
+        var lastReport = _lastProgressReportAt.GetOrAdd(taskId, now);
+        if (now - lastReport < ProgressThrottleMs)
+        {
+            return;
+        }
+        _lastProgressReportAt[taskId] = now;
+
         _dispatcher.Post(() =>
         {
             var task = _tasks.FirstOrDefault(t => t.Id == taskId);

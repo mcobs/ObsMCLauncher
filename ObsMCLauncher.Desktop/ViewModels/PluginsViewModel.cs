@@ -86,6 +86,23 @@ public partial class PluginsViewModel : ViewModelBase
         };
 
         SelectedPlatformFilter = PlatformFilters.FirstOrDefault(p => p.Filter == GetCurrentPlatformFilter());
+
+        // 远程图标下载完成后刷新列表项图标绑定
+        Converters.PluginIconConverter.IconDownloaded += OnIconDownloaded;
+    }
+
+    private void OnIconDownloaded(string url)
+    {
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            foreach (var item in LeftItems)
+            {
+                if (item.IconUrl == url)
+                {
+                    item.NotifyIconUrlChanged();
+                }
+            }
+        });
     }
 
     private PlatformFilter GetCurrentPlatformFilter()
@@ -486,6 +503,9 @@ public partial class PluginListItemViewModel : ObservableObject
         MarketPlugin = marketPlugin;
         IconUrl = iconUrl;
     }
+
+    /// <summary>远程图标下载完成后通知重新求值图标绑定</summary>
+    public void NotifyIconUrlChanged() => OnPropertyChanged(nameof(IconUrl));
 
     public static PluginListItemViewModel FromInstalled(LoadedPlugin p)
         => new(PluginItemSource.Installed, p.Name, $"{p.Version} | {p.Author}", !string.IsNullOrEmpty(p.ErrorOutput), p, null, p.IconPath);

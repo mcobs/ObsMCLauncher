@@ -12,6 +12,22 @@
     <converters:BitmapAssetValueConverter x:Key="BitmapConverter"/>
   </UserControl.Resources>
 
+  <UserControl.Styles>
+    <!-- 在线版本列表：移除 ListBox 选中/悬浮视觉，保持原 ItemsControl 观感 -->
+    <Style Selector="ListBox.online-versions-list ListBoxItem">
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Margin" Value="0" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    </Style>
+    <Style Selector="ListBox.online-versions-list ListBoxItem:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="ListBox.online-versions-list ListBoxItem:selected /template/ ContentPresenter">
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
+  </UserControl.Styles>
+
   <Grid>
     <Grid x:Name="VersionListGrid" Margin="24,16,24,24" RowDefinitions="Auto,*">
 
@@ -194,9 +210,15 @@
             <Separator Grid.Row="0" Margin="0,38,0,0" Background="{DynamicResource DividerBrush}"/>
 
             <Grid Grid.Row="1">
-              <ScrollViewer x:Name="OnlineVersionScrollViewer" VerticalScrollBarVisibility="Auto" IsVisible="{Binding !IsLoading}" ScrollChanged="OnOnlineVersionScrollChanged">
-                <ItemsControl ItemsSource="{Binding FilteredVersions}">
-                  <ItemsControl.ItemTemplate>
+              <ListBox x:Name="OnlineVersionListBox"
+                       ScrollViewer.VerticalScrollBarVisibility="Auto"
+                       ScrollViewer.ScrollChanged="OnOnlineVersionScrollChanged"
+                       IsVisible="{Binding !IsLoading}"
+                       ItemsSource="{Binding FilteredVersions}"
+                       Background="Transparent"
+                       BorderThickness="0"
+                       Classes="online-versions-list">
+                  <ListBox.ItemTemplate>
                     <DataTemplate x:DataType="mc:MinecraftVersion">
                       <Button Command="{Binding #Root.((vm:VersionDownloadViewModel)DataContext).OpenDetailCommand}"
                               CommandParameter="{Binding}"
@@ -233,9 +255,8 @@
                         </Border>
                       </Button>
                     </DataTemplate>
-                  </ItemsControl.ItemTemplate>
-                </ItemsControl>
-              </ScrollViewer>
+                  </ListBox.ItemTemplate>
+                </ListBox>
 
               <StackPanel IsVisible="{Binding IsLoading}" Margin="0,4">
                 <Border Background="{DynamicResource SurfaceElevatedBrush}" CornerRadius="6" Padding="10,8" Margin="0,0,0,4" Opacity="0.6"

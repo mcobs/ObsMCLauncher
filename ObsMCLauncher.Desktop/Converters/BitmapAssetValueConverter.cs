@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -17,11 +18,15 @@ public class BitmapAssetValueConverter : IValueConverter, IMultiValueConverter
 {
     public static readonly BitmapAssetValueConverter Instance = new();
 
+    // SVG 图标随主题变色，缓存键需包含主题；PNG 与主题无关
+    private static readonly ConcurrentDictionary<string, object> _cache = new();
+    private const int MaxCacheEntries = 512;
+
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         if (value is string rawUri && !string.IsNullOrWhiteSpace(rawUri))
         {
-            return LoadImage(rawUri);
+            return LoadImage(rawUri, Avalonia.Application.Current?.ActualThemeVariant ?? Avalonia.Styling.ThemeVariant.Default);
         }
 
         return null;
@@ -31,16 +36,25 @@ public class BitmapAssetValueConverter : IValueConverter, IMultiValueConverter
     {
         if (values.Count > 0 && values[0] is string rawUri && !string.IsNullOrWhiteSpace(rawUri))
         {
-            return LoadImage(rawUri);
+            var theme = values.Count > 1 && values[1] is Avalonia.Styling.ThemeVariant tv ? tv : (Avalonia.Application.Current?.ActualThemeVariant ?? Avalonia.Styling.ThemeVariant.Default);
+            return LoadImage(rawUri, theme);
         }
 
         return null;
     }
 
-    private static object? LoadImage(string rawUri)
+    private static object? LoadImage(string rawUri, Avalonia.Styling.ThemeVariant theme)
     {
         try
         {
+            var isSvg = rawUri.EndsWith(".svg", StringComparison.OrdinalIgnoreCase);
+            var cacheKey = isSvg ? $"{rawUri}|{theme.Key}" : rawUri;
+
+            if (_cache.TryGetValue(cacheKey, out var cached))
+            {
+                return cached;
+            }
+
             Uri uri;
             if (rawUri.StartsWith("avares://"))
             {
@@ -53,8 +67,9 @@ public class BitmapAssetValueConverter : IValueConverter, IMultiValueConverter
             }
 
             var asset = AssetLoader.Open(uri);
+            object? result;
 
-            if (rawUri.EndsWith(".svg", StringComparison.OrdinalIgnoreCase))
+            if (isSvg)
             {
                 using var reader = new StreamReader(asset);
                 var svgContent = reader.ReadToEnd();
@@ -62,15 +77,42 @@ public class BitmapAssetValueConverter : IValueConverter, IMultiValueConverter
 
                 using var memStream = new MemoryStream(Encoding.UTF8.GetBytes(svgContent));
                 var svgSource = SvgSource.LoadFromStream(memStream);
-                return new SvgImage { Source = svgSource };
+                result = new SvgImage { Source = svgSource };
+            }
+            else
+            {
+                result = new Bitmap(asset);
             }
 
-            return new Bitmap(asset);
+            if (result != null)
+            {
+                TrimCacheIfNeeded();
+                _cache[cacheKey] = result;
+            }
+
+            return result;
         }
         catch (Exception ex)
         {
             DebugLogger.Error("BitmapConverter", $"Failed to load bitmap: {rawUri}. Error: {ex.Message}");
             return null;
+        }
+    }
+
+    private static void TrimCacheIfNeeded()
+    {
+        if (_cache.Count < MaxCacheEntries) return;
+
+        // 清理一半的旧条目（ConcurrentDictionary 无序，简单移除即可）
+        var keysToRemove = new List<string>();
+        foreach (var kvp in _cache)
+        {
+            keysToRemove.Add(kvp.Key);
+            if (keysToRemove.Count >= MaxCacheEntries / 2) break;
+        }
+        foreach (var key in keysToRemove)
+        {
+            _cache.TryRemove(key, out _);
         }
     }
 
