@@ -373,6 +373,21 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             if (disposing)
             {
                 Notifications?.Dispose();
+                DownloadManager?.Dispose();
+                foreach (var item in NavItems)
+                {
+                    if (item.Page is IDisposable disposable)
+                    {
+                        disposable.Dispose();
+                    }
+                }
+                foreach (var item in BottomNavItems)
+                {
+                    if (item.Page is IDisposable disposable)
+                    {
+                        disposable.Dispose();
+                    }
+                }
             }
             _disposed = true;
         }

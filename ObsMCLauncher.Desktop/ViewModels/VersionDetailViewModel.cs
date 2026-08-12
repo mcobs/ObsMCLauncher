@@ -692,7 +692,9 @@ public class VersionDetailViewModel : ViewModelBase
     {
         _isDisposed = true;
         _loadCts?.Cancel();
+        _loadCts?.Dispose();
         _installCts?.Cancel();
+        _installCts?.Dispose();
         CloseRequested?.Invoke();
     }
 
@@ -976,32 +978,7 @@ public class VersionDetailViewModel : ViewModelBase
             // 如果开启了自动下载资源，则在后台启动下载任务
             if (cfg.DownloadAssetsWithGame)
             {
-                _ = Task.Run(async () =>
-                {
-                    var cts = new CancellationTokenSource();
-                    var task = Core.Services.Download.DownloadTaskManager.Instance.AddTask(
-                        $"补全资源: {CustomVersionName}",
-                        Core.Services.Download.DownloadTaskType.Resource,
-                        cts);
-
-                    try
-                    {
-                        await AssetsDownloadService.DownloadAndCheckAssetsAsync(
-                            gameDir,
-                            CustomVersionName,
-                            (p, total, msg, speed) =>
-                            {
-                                Core.Services.Download.DownloadTaskManager.Instance.UpdateTaskProgress(task.Id, p, msg);
-                            },
-                            cts.Token);
-
-                        Core.Services.Download.DownloadTaskManager.Instance.CompleteTask(task.Id);
-                    }
-                    catch (Exception ex)
-                    {
-                        Core.Services.Download.DownloadTaskManager.Instance.FailTask(task.Id, ex.Message);
-                    }
-                });
+                _ = DownloadAssetsInBackgroundAsync(gameDir);
             }
         }
         catch (OperationCanceledException)
@@ -1082,6 +1059,34 @@ public class VersionDetailViewModel : ViewModelBase
         finally
         {
             IsBusy = false;
+            _installCts?.Dispose();
+        }
+    }
+
+    private async Task DownloadAssetsInBackgroundAsync(string gameDir)
+    {
+        using var cts = new CancellationTokenSource();
+        var task = Core.Services.Download.DownloadTaskManager.Instance.AddTask(
+            $"补全资源: {CustomVersionName}",
+            Core.Services.Download.DownloadTaskType.Resource,
+            cts);
+
+        try
+        {
+            await AssetsDownloadService.DownloadAndCheckAssetsAsync(
+                gameDir,
+                CustomVersionName,
+                (p, total, msg, speed) =>
+                {
+                    Core.Services.Download.DownloadTaskManager.Instance.UpdateTaskProgress(task.Id, p, msg);
+                },
+                cts.Token);
+
+            Core.Services.Download.DownloadTaskManager.Instance.CompleteTask(task.Id);
+        }
+        catch (Exception ex)
+        {
+            Core.Services.Download.DownloadTaskManager.Instance.FailTask(task.Id, ex.Message);
         }
     }
 
@@ -1106,6 +1111,7 @@ public class VersionDetailViewModel : ViewModelBase
 
         // 取消上一次加载任务，防止并发修改集合
         _loadCts?.Cancel();
+        _loadCts?.Dispose();
         _loadCts = new CancellationTokenSource();
         var token = _loadCts.Token;
 

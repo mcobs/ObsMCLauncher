@@ -235,7 +235,20 @@ public class GameVersionNumber : IComparable<GameVersionNumber>
         return false;
     }
 
-    public override int GetHashCode() => _originalVersion.GetHashCode();
+    public override int GetHashCode()
+    {
+        var hash = new HashCode();
+        hash.Add(_type);
+        hash.Add(_isNewFormat);
+        hash.Add(_year);
+        hash.Add(_release);
+        hash.Add(_patch);
+        hash.Add(_legacyMinor);
+        hash.Add(_preReleaseNumber);
+        if (_type == VersionType.Unknown)
+            hash.Add(_originalVersion);
+        return hash.ToHashCode();
+    }
 }
 
 public class MinecraftVersionComparer : IComparer<string>

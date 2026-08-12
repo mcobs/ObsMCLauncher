@@ -130,7 +130,7 @@ public class AssetsDownloadService
                 onProgress?.Invoke(5, 100, "正在下载资源索引文件...", 0);
                 DebugLogger.Info("Assets", $"正在下载 AssetIndex: {assetIndexUrl}");
 
-                var response = await _httpClient.GetAsync(assetIndexUrl, cancellationToken).ConfigureAwait(false);
+                using var response = await _httpClient.GetAsync(assetIndexUrl, cancellationToken).ConfigureAwait(false);
                 response.EnsureSuccessStatusCode();
                 var indexContent = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
                 await File.WriteAllTextAsync(assetIndexPath, indexContent, cancellationToken).ConfigureAwait(false);
@@ -295,7 +295,7 @@ public class AssetsDownloadService
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                 cts.CancelAfter(TimeSpan.FromSeconds(30));
 
-                var resp = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cts.Token).ConfigureAwait(false);
+                using var resp = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cts.Token).ConfigureAwait(false);
                 resp.EnsureSuccessStatusCode();
 
                 // 使用 FileShare.Read 允许其他进程（如杀毒软件）读取文件，

@@ -595,7 +595,7 @@ public partial class AccountManagementViewModel : ViewModelBase
                 {
                     try
                     {
-                        var defaultAvatar = AssetLoader.Open(new Uri("avares://ObsMCLauncher.Desktop/Assets/logo.png"));
+                        using var defaultAvatar = AssetLoader.Open(new Uri("avares://ObsMCLauncher.Desktop/Assets/logo.png"));
                         acc.Avatar = new Avalonia.Media.Imaging.Bitmap(defaultAvatar);
                         var index = Accounts.IndexOf(acc);
                         if (index >= 0) Accounts[index] = acc;

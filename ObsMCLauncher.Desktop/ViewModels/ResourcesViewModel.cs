@@ -113,6 +113,7 @@ public partial class ResourcesViewModel : ViewModelBase
         if (!IsViewReady) return;
 
         _debounceCts?.Cancel();
+        _debounceCts?.Dispose();
         _debounceCts = new CancellationTokenSource();
         _ = DebouncedSearchAsync(_debounceCts.Token);
     }
@@ -288,6 +289,7 @@ public partial class ResourcesViewModel : ViewModelBase
         if (IsLoading) return;
 
         _searchCts?.Cancel();
+        _searchCts?.Dispose();
         _searchCts = new CancellationTokenSource();
         var ct = _searchCts.Token;
 
@@ -465,6 +467,7 @@ public partial class ResourcesViewModel : ViewModelBase
         try
         {
             _searchCts?.Cancel();
+            _searchCts?.Dispose();
             _searchCts = new CancellationTokenSource();
             var ct = _searchCts.Token;
 

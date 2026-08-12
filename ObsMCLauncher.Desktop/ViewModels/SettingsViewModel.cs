@@ -26,7 +26,7 @@ using ObsMCLauncher.Desktop.ViewModels.Notifications;
 
 namespace ObsMCLauncher.Desktop.ViewModels;
 
-public partial class SettingsViewModel : ViewModelBase
+public partial class SettingsViewModel : ViewModelBase, IDisposable
 {
     private readonly NotificationService _notificationService;
     private bool _isInitializing;
@@ -655,6 +655,7 @@ public partial class SettingsViewModel : ViewModelBase
             if (!_isInitializing)
             {
                 _saveNotifyCts?.Cancel();
+                _saveNotifyCts?.Dispose();
                 _saveNotifyCts = new CancellationTokenSource();
                 _ = DebouncedSaveNotificationAsync(_saveNotifyCts.Token);
             }
@@ -1201,6 +1202,17 @@ public partial class SettingsViewModel : ViewModelBase
         {
             UpdateThemeResources(2);
         }
+    }
+
+    public void Dispose()
+    {
+        if (Application.Current != null)
+        {
+            Application.Current.ActualThemeVariantChanged -= OnSystemThemeChanged;
+        }
+        _saveNotifyCts?.Cancel();
+        _saveNotifyCts?.Dispose();
+        GC.SuppressFinalize(this);
     }
 
     public sealed record JavaOption(JavaOptionType Type, string Path)

@@ -21,7 +21,7 @@ using ObsMCLauncher.Desktop.Views;
 
 namespace ObsMCLauncher.Desktop.ViewModels;
 
-public partial class HomeViewModel : ViewModelBase
+public partial class HomeViewModel : ViewModelBase, IDisposable
 {
     private readonly ObsMCLauncher.Core.Services.Ui.IDispatcher _dispatcher;
     private readonly NotificationService _notificationService;
@@ -200,6 +200,8 @@ public partial class HomeViewModel : ViewModelBase
 
     public InstanceViewModel InstanceViewModel { get; }
 
+    private readonly System.Collections.Specialized.NotifyCollectionChangedEventHandler _homeCardsChangedHandler;
+
     public HomeViewModel(ObsMCLauncher.Core.Services.Ui.IDispatcher dispatcher, NotificationService notificationService)
     {
         _dispatcher = dispatcher;
@@ -218,7 +220,7 @@ public partial class HomeViewModel : ViewModelBase
         SelectedVersionId = config.SelectedVersion;
         _showGameLog = config.ShowGameLogOnLaunch;
 
-        HomeCards.CollectionChanged += (s, e) =>
+        _homeCardsChangedHandler = (s, e) =>
         {
             OnPropertyChanged(nameof(WelcomeCard));
             OnPropertyChanged(nameof(IsWelcomeCardEnabled));
@@ -231,11 +233,18 @@ public partial class HomeViewModel : ViewModelBase
                 SubscribeToWelcomeCardChanges();
             }
         };
+        HomeCards.CollectionChanged += _homeCardsChangedHandler;
 
         InitializeHomeData();
 
         _ = LoadAsync();
         _ = LoadLocalAsync();
+    }
+
+    public void Dispose()
+    {
+        HomeCards.CollectionChanged -= _homeCardsChangedHandler;
+        GC.SuppressFinalize(this);
     }
 
     private void InitializeHomeData()
@@ -553,7 +562,7 @@ public partial class HomeViewModel : ViewModelBase
                         {
                             await _dispatcher.InvokeAsync(() =>
                             {
-                                acc.Avatar = bitmap;
+                                SetAvatar(acc, bitmap);
                             });
                             return;
                         }
@@ -564,10 +573,10 @@ public partial class HomeViewModel : ViewModelBase
                     {
                         try
                         {
-                            var defaultAvatar = AssetLoader.Open(new Uri("avares://ObsMCLauncher.Desktop/Assets/logo.png"));
+                            using var defaultAvatar = AssetLoader.Open(new Uri("avares://ObsMCLauncher.Desktop/Assets/logo.png"));
                             if (defaultAvatar != null)
                             {
-                                acc.Avatar = new Avalonia.Media.Imaging.Bitmap(defaultAvatar);
+                                SetAvatar(acc, new Avalonia.Media.Imaging.Bitmap(defaultAvatar));
                             }
                         }
                         catch { }
@@ -575,6 +584,19 @@ public partial class HomeViewModel : ViewModelBase
                 }
                 catch { }
             });
+        }
+    }
+
+    private void SetAvatar(GameAccount acc, object? newAvatar)
+    {
+        var old = acc.Avatar;
+        if (!ReferenceEquals(old, newAvatar))
+        {
+            if (old is IDisposable oldDisposable)
+            {
+                oldDisposable.Dispose();
+            }
+            acc.Avatar = newAvatar;
         }
     }
 
@@ -797,6 +819,7 @@ public partial class HomeViewModel : ViewModelBase
         finally
         {
             IsLaunching = false;
+            launchCts.Dispose();
         }
     }
 }

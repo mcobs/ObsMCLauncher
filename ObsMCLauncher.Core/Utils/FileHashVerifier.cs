@@ -6,7 +6,25 @@ namespace ObsMCLauncher.Core.Utils;
 
 public static class FileHashVerifier
 {
-    public static bool IsEnabled => LauncherConfig.Load().EnableFileHashVerification;
+    private static bool? _isEnabled;
+    private static readonly object _cacheLock = new();
+
+    public static bool IsEnabled
+    {
+        get
+        {
+            if (_isEnabled is null)
+            {
+                lock (_cacheLock)
+                {
+                    _isEnabled ??= LauncherConfig.Load().EnableFileHashVerification;
+                }
+            }
+            return _isEnabled.Value;
+        }
+    }
+
+    public static void InvalidateCache() => _isEnabled = null;
 
     public static bool VerifyFileHash(string filePath, string expectedHash, HashType hashType = HashType.Sha1)
     {

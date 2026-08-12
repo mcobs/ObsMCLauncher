@@ -233,6 +233,7 @@ public class LauncherConfig
         File.WriteAllText(configPath, json);
 
         _currentConfigPath = configPath;
+        FileHashVerifier.InvalidateCache();
     }
 
     public static LauncherConfig Load()

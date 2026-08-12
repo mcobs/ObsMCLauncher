@@ -741,6 +741,10 @@ public partial class VersionDownloadViewModel : ViewModelBase
         {
             _notificationService.Show("启动异常", ex.Message, NotificationType.Error);
         }
+        finally
+        {
+            launchCts.Dispose();
+        }
     }
 
     [RelayCommand]

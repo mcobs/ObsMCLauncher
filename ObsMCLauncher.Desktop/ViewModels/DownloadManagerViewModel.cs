@@ -1,3 +1,4 @@
+using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
@@ -8,7 +9,7 @@ using ObsMCLauncher.Core.Services.Ui;
 
 namespace ObsMCLauncher.Desktop.ViewModels;
 
-public partial class DownloadManagerViewModel : ViewModelBase
+public partial class DownloadManagerViewModel : ViewModelBase, IDisposable
 {
     private readonly DownloadTaskManager _manager;
     private readonly IDispatcher _dispatcher;
@@ -55,6 +56,13 @@ public partial class DownloadManagerViewModel : ViewModelBase
 
         _manager.PropertyChanged += OnManagerPropertyChanged;
         _manager.TasksChanged += OnTasksCollectionChanged;
+    }
+
+    public void Dispose()
+    {
+        _manager.PropertyChanged -= OnManagerPropertyChanged;
+        _manager.TasksChanged -= OnTasksCollectionChanged;
+        GC.SuppressFinalize(this);
     }
 
     private void OnManagerPropertyChanged(object? sender, PropertyChangedEventArgs e)

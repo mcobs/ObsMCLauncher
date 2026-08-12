@@ -475,10 +475,10 @@ public partial class ServersViewModel : ViewModelBase, IDisposable
             if (refreshResult != DialogResult.OK) return;
         }
 
+        var launchCts = new CancellationTokenSource();
         try
         {
             IsConnecting = true;
-            var launchCts = new CancellationTokenSource();
 
             var notifId = _notificationService.Show("正在连接",
                 $"正在启动 Minecraft 并连接到 {server.FullAddress}...",
@@ -526,6 +526,7 @@ public partial class ServersViewModel : ViewModelBase, IDisposable
         finally
         {
             IsConnecting = false;
+            launchCts.Dispose();
         }
     }
 

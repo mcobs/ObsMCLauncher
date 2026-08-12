@@ -22,7 +22,8 @@ namespace ObsMCLauncher.Desktop.ViewModels;
 public partial class ModDetailViewModel : ViewModelBase
 {
     private readonly ModrinthService _modrinth = new();
-    private readonly CancellationTokenSource _cts = new();
+    private CancellationTokenSource? _cts = new();
+    private CancellationToken OperationToken => _cts?.Token ?? CancellationToken.None;
 
     public object RawData { get; }
     public string SelectedVersionId { get; }
@@ -161,7 +162,7 @@ public partial class ModDetailViewModel : ViewModelBase
     {
         try
         {
-            var project = await _modrinth.GetProjectAsync(hit.ProjectId, _cts.Token);
+            var project = await _modrinth.GetProjectAsync(hit.ProjectId, OperationToken);
             if (project != null)
             {
                 var translation = ModTranslationService.Instance.GetTranslationByCurseForgeId(project.Id);
@@ -180,7 +181,10 @@ public partial class ModDetailViewModel : ViewModelBase
 
     private void Back()
     {
-        _cts.Cancel();
+        var cts = _cts;
+        _cts = null;
+        cts?.Cancel();
+        cts?.Dispose();
         _onBack?.Invoke();
     }
 
@@ -272,11 +276,11 @@ public partial class ModDetailViewModel : ViewModelBase
 
         if (RawData is CurseForgeMod cf)
         {
-            await LoadCurseForgeVersionsAsync(cf, _cts.Token);
+            await LoadCurseForgeVersionsAsync(cf, OperationToken);
         }
         else if (RawData is ModrinthSearchHit hit)
         {
-            await LoadModrinthVersionsAsync(hit, _cts.Token);
+            await LoadModrinthVersionsAsync(hit, OperationToken);
         }
 
         await LoadDependenciesAsync();
@@ -356,7 +360,7 @@ public partial class ModDetailViewModel : ViewModelBase
         {
             tasks.Add(Task.Run(async () =>
             {
-                try { modrinthProjects = await _modrinth.GetProjectsAsync(modrinthDepProjectIds, _cts.Token).ConfigureAwait(false); }
+                try { modrinthProjects = await _modrinth.GetProjectsAsync(modrinthDepProjectIds, OperationToken).ConfigureAwait(false); }
                 catch { }
 
                 // 批量获取失败的 project，逐个回退获取
@@ -367,7 +371,7 @@ public partial class ModDetailViewModel : ViewModelBase
                     {
                         try
                         {
-                            var proj = await _modrinth.GetProjectAsync(id, _cts.Token).ConfigureAwait(false);
+                            var proj = await _modrinth.GetProjectAsync(id, OperationToken).ConfigureAwait(false);
                             if (proj != null)
                                 modrinthProjects[id] = proj;
                         }
@@ -381,7 +385,7 @@ public partial class ModDetailViewModel : ViewModelBase
                     {
                         try
                         {
-                            var proj = await _modrinth.GetProjectAsync(id, _cts.Token).ConfigureAwait(false);
+                            var proj = await _modrinth.GetProjectAsync(id, OperationToken).ConfigureAwait(false);
                             if (proj != null)
                                 modrinthProjects[id] = proj;
                         }

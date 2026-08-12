@@ -651,7 +651,7 @@ namespace ObsMCLauncher.Core.Services.Minecraft
 
         private static async Task<string> DownloadStringAsync(string url, CancellationToken cancellationToken)
         {
-            var response = await _httpClient.GetAsync(url, cancellationToken);
+            using var response = await _httpClient.GetAsync(url, cancellationToken);
             response.EnsureSuccessStatusCode();
             return await response.Content.ReadAsStringAsync(cancellationToken);
         }

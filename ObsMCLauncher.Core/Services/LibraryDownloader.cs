@@ -195,7 +195,7 @@ public static class LibraryDownloader
 
                 progressCallback?.Invoke($"正在下载 {libInfo.Name} ({current}/{total})...", current, total);
 
-                var response = await _httpClient.GetAsync(libInfo.Url, cancellationToken);
+                using var response = await _httpClient.GetAsync(libInfo.Url, cancellationToken);
 
                 if (response.IsSuccessStatusCode)
                 {
@@ -275,7 +275,7 @@ public static class LibraryDownloader
                             Directory.CreateDirectory(destDir);
                         }
 
-                        var response = await _httpClient.GetAsync(url, cancellationToken);
+                        using var response = await _httpClient.GetAsync(url, cancellationToken);
 
                         if (response.IsSuccessStatusCode)
                         {
