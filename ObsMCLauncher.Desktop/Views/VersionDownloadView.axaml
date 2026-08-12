@@ -254,13 +254,26 @@
                             <Image Width="24" Height="24" Margin="0,0,10,0"
                                    Source="{Binding IconPath, Converter={StaticResource BitmapConverter}}"/>
                             <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                              <TextBlock FontSize="13" FontWeight="Medium">
-                                <Run Text="Minecraft "/>
-                                <Run Text="{Binding Id}"/>
-                                <Run Text=" [" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
-                                <Run Text="{Binding Type}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
-                                <Run Text="]" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
-                              </TextBlock>
+                              <StackPanel Orientation="Horizontal" Spacing="6">
+                                <TextBlock Text="{Binding Id}" FontSize="13" FontWeight="Medium"/>
+                                <Border CornerRadius="4" Padding="5,1"
+                                        Background="{Binding Type, Converter={x:Static converters:VersionTypeColorConverter.Instance}}">
+                                  <TextBlock Text="{Binding Type, Converter={x:Static converters:VersionTypeTextConverter.Instance}}"
+                                             FontSize="9" FontWeight="SemiBold" Foreground="White"/>
+                                </Border>
+                                <Border CornerRadius="4" Padding="5,1"
+                                        Background="#20FFFFFF"
+                                        BorderThickness="1"
+                                        BorderBrush="{DynamicResource AccentBrush}">
+                                  <Border.IsVisible>
+                                    <MultiBinding Converter="{x:Static converters:InstalledMarkerConverter.Instance}">
+                                      <Binding Path="Id" />
+                                      <Binding Path="#Root.DataContext.InstalledVersionIds" />
+                                    </MultiBinding>
+                                  </Border.IsVisible>
+                                  <TextBlock Text="已安装" FontSize="9" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}"/>
+                                </Border>
+                              </StackPanel>
                               <TextBlock Text="{Binding ReleaseTime, StringFormat='发布时间: {0:yyyy-MM-dd HH:mm}'}"
                                          FontSize="11" Margin="0,1,0,0"
                                          Foreground="{DynamicResource TextTertiaryBrush}"/>

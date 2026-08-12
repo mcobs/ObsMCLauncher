@@ -81,6 +81,12 @@ public partial class VersionDownloadViewModel : ViewModelBase
     [ObservableProperty]
     private ObservableCollection<object> _flatGroupItems = new();
 
+    /// <summary>
+    /// 已安装版本 Id 集合（用于在线版本列表标记"已安装"）
+    /// </summary>
+    [ObservableProperty]
+    private HashSet<string> _installedVersionIds = new();
+
     public InstanceViewModel InstanceViewModel { get; }
 
     public VersionDownloadViewModel(ObsMCLauncher.Core.Services.Ui.IDispatcher dispatcher, NotificationService notificationService)
@@ -191,6 +197,7 @@ public partial class VersionDownloadViewModel : ViewModelBase
         var list = LocalVersionService.GetInstalledVersions(_config.GameDirectory);
         InstalledVersions = new ObservableCollection<Core.Services.Minecraft.InstalledVersion>(list);
         InstalledVersionsCount = list.Count;
+        InstalledVersionIds = new HashSet<string>(list.Select(v => v.Id));
         BuildGroupSections();
     }
 
