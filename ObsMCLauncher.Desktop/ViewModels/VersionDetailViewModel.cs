@@ -691,11 +691,26 @@ public class VersionDetailViewModel : ViewModelBase
     private void BackToVersionList()
     {
         _isDisposed = true;
-        _loadCts?.Cancel();
-        _loadCts?.Dispose();
-        _installCts?.Cancel();
-        _installCts?.Dispose();
+        CancelAndDispose(ref _loadCts);
+        CancelAndDispose(ref _installCts);
         CloseRequested?.Invoke();
+    }
+
+    /// <summary>
+    /// 安全取消并释放 CTS：置空字段后取消/释放，避免对已释放实例调用 Cancel 抛 ObjectDisposedException
+    /// </summary>
+    private static void CancelAndDispose(ref CancellationTokenSource? cts)
+    {
+        var c = Interlocked.Exchange(ref cts, null);
+        if (c == null) return;
+        try
+        {
+            c.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+        }
+        c.Dispose();
     }
 
     private bool CanInstall()
@@ -724,7 +739,13 @@ public class VersionDetailViewModel : ViewModelBase
         var result = await _dialogService.ShowQuestion("确认取消", "确定要取消当前安装吗？\n已下载的临时文件将被清理。");
         if (result != DialogResult.Yes) return;
 
-        _installCts?.Cancel();
+        try
+        {
+            _installCts?.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+        }
         Status = "正在取消安装...";
     }
 
@@ -769,7 +790,8 @@ public class VersionDetailViewModel : ViewModelBase
     {
         if (!CanInstall()) return;
 
-        _installCts?.Dispose();
+        var oldInstallCts = Interlocked.Exchange(ref _installCts, null);
+        oldInstallCts?.Dispose();
         _installCts = new CancellationTokenSource();
         var token = _installCts.Token;
 
@@ -1059,7 +1081,8 @@ public class VersionDetailViewModel : ViewModelBase
         finally
         {
             IsBusy = false;
-            _installCts?.Dispose();
+            var installCts = Interlocked.Exchange(ref _installCts, null);
+            installCts?.Dispose();
         }
     }
 
@@ -1110,8 +1133,7 @@ public class VersionDetailViewModel : ViewModelBase
         if (string.IsNullOrWhiteSpace(SelectedMcVersion)) return;
 
         // 取消上一次加载任务，防止并发修改集合
-        _loadCts?.Cancel();
-        _loadCts?.Dispose();
+        CancelAndDispose(ref _loadCts);
         _loadCts = new CancellationTokenSource();
         var token = _loadCts.Token;
 

@@ -13,27 +13,6 @@
         Background="{DynamicResource BackgroundBrush}">
 
 <Window.Styles>
-    <!-- 修复：TextBox 悬停/聚焦时背景和边框不要变化 -->
-    <Style Selector="TextBox">
-      <Setter Property="Background" Value="Transparent"/>
-      <Setter Property="BorderBrush" Value="Transparent"/>
-      <Setter Property="BorderThickness" Value="0"/>
-    </Style>
-    <Style Selector="TextBox:pointerover">
-      <Setter Property="Background" Value="Transparent"/>
-      <Setter Property="BorderBrush" Value="Transparent"/>
-      <Setter Property="BorderThickness" Value="0"/>
-    </Style>
-    <Style Selector="TextBox:focus">
-      <Setter Property="Background" Value="Transparent"/>
-      <Setter Property="BorderBrush" Value="Transparent"/>
-      <Setter Property="BorderThickness" Value="0"/>
-    </Style>
-    <Style Selector="TextBox:focus-within">
-      <Setter Property="Background" Value="Transparent"/>
-      <Setter Property="BorderBrush" Value="Transparent"/>
-      <Setter Property="BorderThickness" Value="0"/>
-    </Style>
   </Window.Styles>
 
   <Grid RowDefinitions="40,*,Auto">
@@ -94,19 +73,19 @@
               Margin="0,14,0,0">
         <Grid RowDefinitions="Auto,*">
           <TextBlock Grid.Row="0" Text="详细错误信息" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,8"/>
-          
-          <TextBox Grid.Row="1"
-                   Text="{Binding CrashReport}"
-                   IsReadOnly="True"
-                   Background="Transparent"
-                   BorderThickness="0"
-                   Foreground="{DynamicResource TextBrush}"
-                   FontFamily="Consolas,Courier New"
-                   FontSize="12"
-                   TextWrapping="NoWrap"
-                   AcceptsReturn="True"
-                   ScrollViewer.VerticalScrollBarVisibility="Auto"
-                   ScrollViewer.HorizontalScrollBarVisibility="Auto"/>
+
+          <!-- 使用 ScrollViewer + SelectableTextBlock：只读长文本布局稳定，支持选择复制与双滚动 -->
+          <ScrollViewer Grid.Row="1"
+                        Background="Transparent"
+                        VerticalScrollBarVisibility="Auto"
+                        HorizontalScrollBarVisibility="Auto">
+            <SelectableTextBlock Text="{Binding CrashReport}"
+                                 Foreground="{DynamicResource TextBrush}"
+                                 FontFamily="Consolas,Courier New"
+                                 FontSize="12"
+                                 TextWrapping="NoWrap"
+                                 SelectionBrush="#40FFFFFF"/>
+          </ScrollViewer>
         </Grid>
       </Border>
     </Grid>

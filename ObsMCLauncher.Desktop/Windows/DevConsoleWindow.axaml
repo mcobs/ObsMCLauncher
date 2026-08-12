@@ -13,19 +13,6 @@
         Background="{DynamicResource BackgroundBrush}">
 
 <Window.Styles>
-    <Style Selector="TextBox.console-output">
-      <Setter Property="Background" Value="Transparent"/>
-      <Setter Property="BorderThickness" Value="0"/>
-    </Style>
-    <Style Selector="TextBox.console-output:pointerover /template/ Border#PART_BorderElement">
-      <Setter Property="Background" Value="Transparent"/>
-      <Setter Property="BorderThickness" Value="0"/>
-    </Style>
-    <Style Selector="TextBox.console-output:focus /template/ Border#PART_BorderElement">
-      <Setter Property="Background" Value="Transparent"/>
-      <Setter Property="BorderThickness" Value="0"/>
-    </Style>
-
     <Style Selector="TextBox.console-input /template/ Border#PART_BorderElement">
       <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
       <Setter Property="Transitions" Value="{x:Null}"/>
@@ -72,18 +59,17 @@
 
     <!-- 输出区 -->
     <Border Grid.Row="1" Background="#151515" Padding="0">
-      <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
-        <TextBox Classes="console-output"
-                 Text="{Binding Output}"
-                 IsReadOnly="True"
-                 Background="Transparent"
-                 BorderThickness="0"
-                 Foreground="#FFFFFF"
-                 FontFamily="Consolas,Courier New"
-                 FontSize="12"
-                 TextWrapping="NoWrap"
-                 AcceptsReturn="True"
-                 Padding="12"/>
+      <ScrollViewer x:Name="OutputScrollViewer"
+                    VerticalScrollBarVisibility="Auto"
+                    HorizontalScrollBarVisibility="Auto">
+        <SelectableTextBlock Text="{Binding Output}"
+                             Background="Transparent"
+                             Foreground="#FFFFFF"
+                             FontFamily="Consolas,Courier New"
+                             FontSize="12"
+                             TextWrapping="NoWrap"
+                             Padding="12"
+                             SelectionBrush="#40FFFFFF"/>
       </ScrollViewer>
     </Border>
 
