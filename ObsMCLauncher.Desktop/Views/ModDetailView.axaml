@@ -10,14 +10,16 @@
     <conv:BitmapAssetValueConverter x:Key="BitmapConverter"/>
   </UserControl.Resources>
 
-  <Grid RowDefinitions="Auto,Auto,*" Margin="16">
-    <!-- 顶部：返回按钮左上角 + 基本信息 -->
-    <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,8">
-      <Button Content="返回"
-              Command="{Binding BackCommand}"
-              VerticalAlignment="Top"/>
+  <Grid RowDefinitions="Auto,Auto,Auto,*" Margin="16">
+    <!-- 返回按钮：独立一行，位于页面左上角 -->
+    <Button Grid.Row="0" Content="返回"
+            Command="{Binding BackCommand}"
+            HorizontalAlignment="Left"
+            Margin="0,0,0,8"/>
 
-      <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0">
+    <!-- 标题行 -->
+    <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="0,0,0,8">
+      <StackPanel Grid.Column="0" VerticalAlignment="Center">
         <StackPanel Orientation="Horizontal" Spacing="8">
           <Border Width="36" Height="36" CornerRadius="6" Background="{DynamicResource BorderBrush}">
             <Image Source="{Binding Icon}" Stretch="UniformToFill"/>
@@ -33,7 +35,7 @@
         </StackPanel>
       </StackPanel>
 
-      <Button Grid.Column="2"
+      <Button Grid.Column="1"
               Content="{Binding WebsiteButtonText}"
               Classes="ghost" FontSize="11"
               Command="{Binding OpenWebsiteCommand}"
@@ -41,12 +43,12 @@
               VerticalAlignment="Center"/>
     </Grid>
 
-    <TextBlock Grid.Row="1" Text="{Binding Summary}" TextWrapping="Wrap" FontSize="12" Opacity="0.7" Margin="0,0,0,10" MaxLines="2"/>
+    <TextBlock Grid.Row="2" Text="{Binding Summary}" TextWrapping="Wrap" FontSize="12" Opacity="0.7" Margin="0,0,0,10" MaxLines="2"/>
 
-    <Separator Grid.Row="2" Margin="0,0,0,10" Background="{DynamicResource DividerBrush}"/>
+    <Separator Grid.Row="3" Margin="0,0,0,10" Background="{DynamicResource DividerBrush}"/>
 
     <!-- 版本分组列表 -->
-    <Grid Grid.Row="2">
+    <Grid Grid.Row="3">
       <Grid RowDefinitions="Auto,Auto,*">
         <TextBlock Grid.Row="0" Text="可用版本" FontSize="16" FontWeight="Medium" Margin="0,0,0,6"/>
 
