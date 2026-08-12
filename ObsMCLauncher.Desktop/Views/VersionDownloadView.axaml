@@ -257,7 +257,8 @@
                               <StackPanel Orientation="Horizontal" Spacing="6">
                                 <TextBlock Text="{Binding Id}" FontSize="13" FontWeight="Medium"/>
                                 <Border CornerRadius="4" Padding="5,1"
-                                        Background="{Binding Type, Converter={x:Static converters:VersionTypeColorConverter.Instance}}">
+                                        Background="{Binding Type, Converter={x:Static converters:VersionTypeColorConverter.Instance}}"
+                                        IsVisible="{Binding Type, Converter={x:Static converters:VersionTypeTagVisibleConverter.Instance}}">
                                   <TextBlock Text="{Binding Type, Converter={x:Static converters:VersionTypeTextConverter.Instance}}"
                                              FontSize="9" FontWeight="SemiBold" Foreground="White"/>
                                 </Border>

@@ -1114,7 +1114,7 @@ public class VersionDetailViewModel : ViewModelBase
                 CustomVersionName,
                 (p, total, msg, speed) =>
                 {
-                    Core.Services.Download.DownloadTaskManager.Instance.UpdateTaskProgress(task.Id, p, msg);
+                    Core.Services.Download.DownloadTaskManager.Instance.UpdateTaskProgress(task.Id, p, msg, speed);
                 },
                 cts.Token);
 

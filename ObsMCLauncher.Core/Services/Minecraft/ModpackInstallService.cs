@@ -113,7 +113,7 @@ public class ModpackInstallService
                             versionName,
                             (p, total, msg, speed) =>
                             {
-                                DownloadTaskManager.Instance.UpdateTaskProgress(task.Id, p, msg);
+                                DownloadTaskManager.Instance.UpdateTaskProgress(task.Id, p, msg, speed);
                             },
                             cts.Token);
 

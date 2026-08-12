@@ -59,6 +59,24 @@ public class VersionTypeColorConverter : IValueConverter
 }
 
 /// <summary>
+/// 版本类型标签可见性：正式版不显示标签，快照/远古版显示
+/// </summary>
+public class VersionTypeTagVisibleConverter : IValueConverter
+{
+    public static readonly VersionTypeTagVisibleConverter Instance = new();
+
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        return value is string t && !string.Equals(t, "release", StringComparison.OrdinalIgnoreCase);
+    }
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        throw new NotSupportedException();
+    }
+}
+
+/// <summary>
 /// 已安装标记：values[0]=版本Id，values[1]=已安装版本Id集合
 /// </summary>
 public class InstalledMarkerConverter : IMultiValueConverter

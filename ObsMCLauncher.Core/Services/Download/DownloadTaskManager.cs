@@ -103,8 +103,9 @@ public class DownloadTaskManager : INotifyPropertyChanged
     public void UpdateTaskProgress(string taskId, double progress, string? message = null, double speed = 0)
     {
         // 节流：丢弃高频中间值，最终状态由 CompleteTask/FailTask/CancelTask 保证
+        // 首次上报不丢弃（GetOrAdd 初始值为 now - 阈值），避免快速完成的任务详情从未显示
         var now = Environment.TickCount64;
-        var lastReport = _lastProgressReportAt.GetOrAdd(taskId, now);
+        var lastReport = _lastProgressReportAt.GetOrAdd(taskId, now - ProgressThrottleMs);
         if (now - lastReport < ProgressThrottleMs)
         {
             return;
