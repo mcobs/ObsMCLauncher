@@ -1085,16 +1085,20 @@ public partial class ResourceItemViewModel : ObservableObject
     {
         if (Icon != null) return;
         var path = await ImageCacheService.GetImagePathAsync(IconUrl);
-        if (!string.IsNullOrEmpty(path) && File.Exists(path))
+        if (string.IsNullOrEmpty(path) || !File.Exists(path)) return;
+
+        await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
         {
             try
             {
-                Icon = new Avalonia.Media.Imaging.Bitmap(path);
+                if (Icon != null) return;
+                var newIcon = new Avalonia.Media.Imaging.Bitmap(path);
+                Icon = newIcon;
             }
             catch
             {
                 // 加载失败逻辑
             }
-        }
+        });
     }
 }

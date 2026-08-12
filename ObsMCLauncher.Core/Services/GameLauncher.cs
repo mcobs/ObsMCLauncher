@@ -14,21 +14,13 @@ public class GameLauncher
 {
     private static readonly JsonSerializerOptions CachedJsonOptions = new() { PropertyNameCaseInsensitive = true };
 
-    public static string LastError { get; private set; } = string.Empty;
-
-    public static List<string> MissingLibraries { get; private set; } = [];
-
-    public static List<string> MissingOptionalLibraries { get; private set; } = [];
-
-    public static async Task<bool> CheckGameIntegrityAsync(
+    public static async Task<GameIntegrityResult> CheckGameIntegrityAsync(
         string versionId,
         LauncherConfig config,
         Action<string>? onProgressUpdate = null,
         CancellationToken cancellationToken = default)
     {
-        LastError = string.Empty;
-        MissingLibraries.Clear();
-        MissingOptionalLibraries.Clear();
+        var errorMessage = string.Empty;
 
         try
         {
@@ -38,8 +30,8 @@ public class GameLauncher
             var versionJsonPath = Path.Combine(config.GameDirectory, "versions", versionId, $"{versionId}.json");
             if (!File.Exists(versionJsonPath))
             {
-                LastError = $"版本配置文件不存在: {versionJsonPath}";
-                throw new FileNotFoundException(LastError);
+                errorMessage = $"版本配置文件不存在: {versionJsonPath}";
+                throw new FileNotFoundException(errorMessage);
             }
 
             var versionJson = await File.ReadAllTextAsync(versionJsonPath, cancellationToken).ConfigureAwait(false);
@@ -47,8 +39,8 @@ public class GameLauncher
 
             if (versionInfo == null)
             {
-                LastError = "无法解析版本配置文件";
-                throw new Exception(LastError);
+                errorMessage = "无法解析版本配置文件";
+                throw new Exception(errorMessage);
             }
 
             string actualMcVersion = versionId;
@@ -64,8 +56,8 @@ public class GameLauncher
             var actualJavaPath = config.GetActualJavaPath(actualMcVersion);
             if (!File.Exists(actualJavaPath))
             {
-                LastError = $"Java路径不存在: {actualJavaPath}";
-                return false;
+                errorMessage = $"Java路径不存在: {actualJavaPath}";
+                return new GameIntegrityResult { HasIssue = true, ErrorMessage = errorMessage };
             }
 
             onProgressUpdate?.Invoke("正在检查游戏主文件...");
@@ -78,42 +70,51 @@ public class GameLauncher
             var clientJarPath = Path.Combine(config.GameDirectory, "versions", versionId, $"{versionId}.jar");
             if (!isModLoader && !File.Exists(clientJarPath))
             {
-                LastError = $"游戏主文件不存在: {clientJarPath}\n请先下载游戏版本";
-                throw new FileNotFoundException(LastError);
+                errorMessage = $"游戏主文件不存在: {clientJarPath}\n请先下载游戏版本";
+                throw new FileNotFoundException(errorMessage);
             }
 
             onProgressUpdate?.Invoke("正在检查游戏依赖库...");
             cancellationToken.ThrowIfCancellationRequested();
 
             var (missingRequired, missingOptional) = GetMissingLibraries(config.GameDirectory, versionInfo);
-            MissingLibraries = missingRequired;
-            MissingOptionalLibraries = missingOptional;
 
             if (missingRequired.Count > 0)
             {
-                LastError = $"检测到 {missingRequired.Count} 个缺失或不完整的必需库文件";
-                return true;
+                errorMessage = $"检测到 {missingRequired.Count} 个缺失或不完整的必需库文件";
+                return new GameIntegrityResult
+                {
+                    HasIssue = true,
+                    MissingLibraries = missingRequired,
+                    MissingOptionalLibraries = missingOptional,
+                    ErrorMessage = errorMessage
+                };
             }
 
             onProgressUpdate?.Invoke("游戏完整性检查完成");
-            return false;
+            return new GameIntegrityResult
+            {
+                HasIssue = false,
+                MissingLibraries = missingRequired,
+                MissingOptionalLibraries = missingOptional
+            };
         }
         catch (OperationCanceledException)
         {
-            LastError = "检查已取消";
-            return true;
+            errorMessage = "检查已取消";
+            return new GameIntegrityResult { HasIssue = true, ErrorMessage = errorMessage };
         }
         catch (Exception ex)
         {
-            if (string.IsNullOrEmpty(LastError))
+            if (string.IsNullOrEmpty(errorMessage))
             {
-                LastError = ex.Message;
+                errorMessage = ex.Message;
             }
-            return true;
+            return new GameIntegrityResult { HasIssue = true, ErrorMessage = errorMessage };
         }
     }
 
-    public static async Task<bool> LaunchGameAsync(
+    public static async Task<GameLaunchResult> LaunchGameAsync(
         string versionId,
         GameAccount account,
         LauncherConfig config,
@@ -125,7 +126,7 @@ public class GameLauncher
         return await LaunchGameInternalAsync(versionId, account, config, null, 0, onProgressUpdate, onGameOutput, onGameExit, cancellationToken);
     }
 
-    public static async Task<bool> LaunchAndConnectServerAsync(
+    public static async Task<GameLaunchResult> LaunchAndConnectServerAsync(
         string versionId,
         GameAccount account,
         LauncherConfig config,
@@ -139,7 +140,7 @@ public class GameLauncher
         return await LaunchGameInternalAsync(versionId, account, config, serverAddress, serverPort, onProgressUpdate, onGameOutput, onGameExit, cancellationToken);
     }
 
-    private static async Task<bool> LaunchGameInternalAsync(
+    private static async Task<GameLaunchResult> LaunchGameInternalAsync(
         string versionId,
         GameAccount account,
         LauncherConfig config,
@@ -150,7 +151,8 @@ public class GameLauncher
         Action<int>? onGameExit,
         CancellationToken cancellationToken)
     {
-        LastError = string.Empty;
+        var errorMessage = string.Empty;
+        Process? process = null;
 
         try
         {
@@ -161,8 +163,8 @@ public class GameLauncher
                 onProgressUpdate?.Invoke("正在检查外置登录文件...");
                 if (!AuthlibInjectorService.IsAuthlibInjectorExists())
                 {
-                    LastError = "外置登录需要 authlib-injector.jar 文件\n请在账号管理中重新登录以自动下载";
-                    throw new Exception(LastError);
+                    errorMessage = "外置登录需要 authlib-injector.jar 文件\n请在账号管理中重新登录以自动下载";
+                    throw new Exception(errorMessage);
                 }
 
                 onProgressUpdate?.Invoke("正在刷新外置登录令牌...");
@@ -172,23 +174,30 @@ public class GameLauncher
             {
                 onProgressUpdate?.Invoke("正在刷新微软账号令牌...");
 
+                using var refreshCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                 var refreshTask = Task.Run(async () =>
-                    await AccountService.Instance.RefreshMicrosoftAccountAsync(account.Id, onProgressUpdate, cancellationToken));
+                    await AccountService.Instance.RefreshMicrosoftAccountAsync(account.Id, onProgressUpdate, refreshCts.Token));
 
                 var timeoutTask = Task.Delay(TimeSpan.FromSeconds(30), cancellationToken);
                 var completedTask = await Task.WhenAny(refreshTask, timeoutTask).ConfigureAwait(false);
 
                 if (completedTask == timeoutTask)
                 {
-                    LastError = "微软账号令牌刷新超时（30秒）\n请检查网络连接或重新登录";
-                    throw new Exception(LastError);
+                    // 超时后取消仍在后台运行的刷新任务，避免游离任务与未观察异常
+                    refreshCts.Cancel();
+                    _ = refreshTask.ContinueWith(t => _ = t.Exception,
+                        CancellationToken.None,
+                        TaskContinuationOptions.OnlyOnFaulted,
+                        TaskScheduler.Default);
+                    errorMessage = "微软账号令牌刷新超时（30秒）\n请检查网络连接或重新登录";
+                    throw new Exception(errorMessage);
                 }
 
                 var refreshSuccess = await refreshTask.ConfigureAwait(false);
                 if (!refreshSuccess)
                 {
-                    LastError = "微软账号令牌已过期且刷新失败\n请重新登录微软账号";
-                    throw new Exception(LastError);
+                    errorMessage = "微软账号令牌已过期且刷新失败\n请重新登录微软账号";
+                    throw new Exception(errorMessage);
                 }
             }
 
@@ -200,8 +209,8 @@ public class GameLauncher
             var versionJsonPath = Path.Combine(config.GameDirectory, "versions", versionId, $"{versionId}.json");
             if (!File.Exists(versionJsonPath))
             {
-                LastError = $"版本JSON文件不存在\n路径: {versionJsonPath}";
-                throw new FileNotFoundException(LastError);
+                errorMessage = $"版本JSON文件不存在\n路径: {versionJsonPath}";
+                throw new FileNotFoundException(errorMessage);
             }
 
             var versionJson = File.ReadAllText(versionJsonPath);
@@ -209,8 +218,8 @@ public class GameLauncher
 
             if (versionInfo == null)
             {
-                LastError = "无法解析版本JSON文件，文件格式可能不正确";
-                throw new Exception(LastError);
+                errorMessage = "无法解析版本JSON文件，文件格式可能不正确";
+                throw new Exception(errorMessage);
             }
 
             string actualMcVersion = versionId;
@@ -226,14 +235,14 @@ public class GameLauncher
             var actualJavaPath = config.GetActualJavaPath(actualMcVersion);
             if (!File.Exists(actualJavaPath))
             {
-                LastError = $"Java可执行文件不存在\n路径: {actualJavaPath}";
-                throw new FileNotFoundException(LastError);
+                errorMessage = $"Java可执行文件不存在\n路径: {actualJavaPath}";
+                throw new FileNotFoundException(errorMessage);
             }
 
             if (string.IsNullOrEmpty(versionInfo.MainClass))
             {
-                LastError = "版本JSON中缺少MainClass字段";
-                throw new Exception(LastError);
+                errorMessage = "版本JSON中缺少MainClass字段";
+                throw new Exception(errorMessage);
             }
 
             bool isModLoader = versionInfo.MainClass?.Contains("forge", StringComparison.OrdinalIgnoreCase) == true ||
@@ -254,16 +263,14 @@ public class GameLauncher
             var clientJar = Path.Combine(versionDir, $"{versionId}.jar");
             if (!isModLoader && !File.Exists(clientJar))
             {
-                LastError = $"客户端JAR文件不存在\n路径: {clientJar}";
-                throw new FileNotFoundException(LastError);
+                errorMessage = $"客户端JAR文件不存在\n路径: {clientJar}";
+                throw new FileNotFoundException(errorMessage);
             }
 
             onProgressUpdate?.Invoke("正在检查游戏依赖库...");
             cancellationToken.ThrowIfCancellationRequested();
 
             var (missingRequired, missingOptional) = GetMissingLibraries(config.GameDirectory, versionInfo);
-            MissingLibraries = missingRequired;
-            MissingOptionalLibraries = missingOptional;
 
             if (missingRequired.Count > 0)
             {
@@ -278,8 +285,8 @@ public class GameLauncher
 
                 if (failedCount > 0)
                 {
-                    LastError = "❌ 必需依赖库下载失败！";
-                    return false;
+                    errorMessage = "❌ 必需依赖库下载失败！";
+                    return new GameLaunchResult { Success = false, ErrorMessage = errorMessage };
                 }
             }
 
@@ -297,8 +304,8 @@ public class GameLauncher
 
             if (!assetsResult.Success)
             {
-                LastError = "❌ 游戏资源检查或下载失败！";
-                return false;
+                errorMessage = "❌ 游戏资源检查或下载失败！";
+                return new GameLaunchResult { Success = false, ErrorMessage = errorMessage };
             }
 
             onProgressUpdate?.Invoke("正在准备启动参数...");
@@ -322,67 +329,97 @@ public class GameLauncher
                 RedirectStandardError = true
             };
 
-            var process = new Process { StartInfo = processInfo };
-
-            process.OutputDataReceived += (_, e) =>
+            try
             {
-                if (!string.IsNullOrEmpty(e.Data))
+                process = new Process { StartInfo = processInfo };
+
+                process.OutputDataReceived += (_, e) =>
                 {
-                    onGameOutput?.Invoke(e.Data);
-                }
-            };
-
-            process.ErrorDataReceived += (_, e) =>
-            {
-                if (!string.IsNullOrEmpty(e.Data))
-                {
-                    onGameOutput?.Invoke(e.Data);
-                }
-            };
-
-            if (!process.Start())
-            {
-                LastError = "无法启动Java进程，请检查Java路径是否正确";
-                throw new Exception(LastError);
-            }
-
-            process.BeginOutputReadLine();
-            process.BeginErrorReadLine();
-
-            if (onGameExit != null)
-            {
-                process.EnableRaisingEvents = true;
-                process.Exited += (_, _) =>
-                {
-                    var exitCode = process.ExitCode;
-                    onGameExit.Invoke(exitCode);
+                    if (!string.IsNullOrEmpty(e.Data))
+                    {
+                        onGameOutput?.Invoke(e.Data);
+                    }
                 };
+
+                process.ErrorDataReceived += (_, e) =>
+                {
+                    if (!string.IsNullOrEmpty(e.Data))
+                    {
+                        onGameOutput?.Invoke(e.Data);
+                    }
+                };
+
+                if (!process.Start())
+                {
+                    errorMessage = "无法启动Java进程，请检查Java路径是否正确";
+                    throw new Exception(errorMessage);
+                }
+
+                process.BeginOutputReadLine();
+                process.BeginErrorReadLine();
+
+                if (onGameExit != null)
+                {
+                    process.EnableRaisingEvents = true;
+                    process.Exited += (_, _) =>
+                    {
+                        var exitCode = process.ExitCode;
+                        onGameExit.Invoke(exitCode);
+                    };
+                }
+
+                await Task.Delay(500, cancellationToken).ConfigureAwait(false);
+
+                if (process.HasExited)
+                {
+                    errorMessage = $"游戏进程启动后立即退出\n退出代码: {process.ExitCode}\n请检查Debug输出窗口查看详细错误日志";
+                    var exitCode = process.ExitCode;
+                    process.Dispose();
+                    onGameExit?.Invoke(exitCode);
+                    return new GameLaunchResult { Success = false, ErrorMessage = errorMessage };
+                }
+
+                onProgressUpdate?.Invoke("启动完成");
+                return new GameLaunchResult { Success = true };
             }
-
-            await Task.Delay(500, cancellationToken).ConfigureAwait(false);
-
-            if (process.HasExited)
+            catch (OperationCanceledException)
             {
-                LastError = $"游戏进程启动后立即退出\n退出代码: {process.ExitCode}\n请检查Debug输出窗口查看详细错误日志";
-                onGameExit?.Invoke(process.ExitCode);
-                return false;
+                // 启动流程被取消时，终止已启动的游戏进程
+                TryKillGameProcess(process);
+                process?.Dispose();
+                throw;
             }
-
-            onProgressUpdate?.Invoke("启动完成");
-            return true;
         }
         catch (OperationCanceledException)
         {
-            LastError = "启动已取消";
-            return false;
+            errorMessage = "启动已取消";
+            return new GameLaunchResult { Success = false, ErrorMessage = errorMessage };
         }
         catch (Exception ex)
         {
-            if (string.IsNullOrEmpty(LastError))
+            TryKillGameProcess(process);
+            process?.Dispose();
+            if (string.IsNullOrEmpty(errorMessage))
             {
-                LastError = ex.Message;
+                errorMessage = ex.Message;
             }
-            return false;
+            return new GameLaunchResult { Success = false, ErrorMessage = errorMessage };
+        }
+    }
+
+    private static void TryKillGameProcess(Process? process)
+    {
+        if (process == null) return;
+        try
+        {
+            if (!process.HasExited)
+            {
+                process.Kill(entireProcessTree: true);
+                process.WaitForExit(5000);
+            }
+        }
+        catch
+        {
         }
     }
 
@@ -424,7 +461,7 @@ public class GameLauncher
             {
                 if (!ShouldSkipJvmArg(userArg))
                 {
-                    args.Append($"{userArg} ");
+                    args.Append($"{QuoteArgument(userArg)} ");
                 }
             }
         }
@@ -702,18 +739,11 @@ public class GameLauncher
         args.Append($"\"{classpathString}\" ");
 
         var mainClass = versionInfo.MainClass ?? "";
-        if (mainClass.Contains(' '))
-        {
-            args.Append($"\"{mainClass}\" ");
-        }
-        else
-        {
-            args.Append($"{mainClass} ");
-        }
+        args.Append($"{QuoteArgument(mainClass)} ");
 
         if (!string.IsNullOrEmpty(serverAddress))
         {
-            args.Append($"--server {serverAddress} ");
+            args.Append($"--server {QuoteArgument(serverAddress)} ");
             if (serverPort != 25565)
             {
                 args.Append($"--port {serverPort} ");
@@ -745,18 +775,18 @@ public class GameLauncher
             var gameAssetsPath = isVeryOldVersion ? gameDir : assetsDir;
 
             var minecraftArgs = versionInfo.MinecraftArguments
-                .Replace("${auth_player_name}", $"\"{account.Username}\"")
-                .Replace("${version_name}", $"\"{versionId}\"")
-                .Replace("${game_directory}", $"\"{gameDir}\"")
-                .Replace("${assets_root}", $"\"{assetsDir}\"")
-                .Replace("${assets_index_name}", $"\"{assetIndex}\"")
+                .Replace("${auth_player_name}", QuoteArgument(account.Username))
+                .Replace("${version_name}", QuoteArgument(versionId))
+                .Replace("${game_directory}", QuoteArgument(gameDir))
+                .Replace("${assets_root}", QuoteArgument(assetsDir))
+                .Replace("${assets_index_name}", QuoteArgument(assetIndex))
                 .Replace("${auth_uuid}", isVeryOldVersion ? "00000000-0000-0000-0000-000000000000" : (account.Type == AccountType.Microsoft ? (account.MinecraftUUID ?? account.UUID) : account.UUID))
                 .Replace("${auth_access_token}", sessionToken)
                 .Replace("${auth_session}", sessionToken)
                 .Replace("${user_properties}", "{}")
                 .Replace("${user_type}", isVeryOldVersion ? "legacy" : (account.Type == AccountType.Microsoft ? "msa" : "legacy"))
                 .Replace("${version_type}", "ObsMCLauncher")
-                .Replace("${game_assets}", $"\"{gameAssetsPath}\"");
+                .Replace("${game_assets}", QuoteArgument(gameAssetsPath));
 
             args.Append(minecraftArgs);
             return args.ToString();
@@ -783,31 +813,31 @@ public class GameLauncher
             }
         }
 
-        args.Append($"--username \"{account.Username}\" ");
-        args.Append($"--version \"{versionId}\" ");
-        args.Append($"--gameDir \"{gameDir}\" ");
-        args.Append($"--assetsDir \"{assetsDir}\" ");
-        args.Append($"--assetIndex \"{assetIndex}\" ");
+        args.Append($"--username {QuoteArgument(account.Username)} ");
+        args.Append($"--version {QuoteArgument(versionId)} ");
+        args.Append($"--gameDir {QuoteArgument(gameDir)} ");
+        args.Append($"--assetsDir {QuoteArgument(assetsDir)} ");
+        args.Append($"--assetIndex {QuoteArgument(assetIndex)} ");
 
         if (account.Type == AccountType.Microsoft)
         {
             var uuid = account.MinecraftUUID ?? account.UUID;
             var accessToken = account.MinecraftAccessToken ?? "0";
-            args.Append($"--uuid {uuid} ");
-            args.Append($"--accessToken {accessToken} ");
+            args.Append($"--uuid {QuoteArgument(uuid)} ");
+            args.Append($"--accessToken {QuoteArgument(accessToken)} ");
             args.Append("--userType msa ");
         }
         else if (account.Type == AccountType.Yggdrasil)
         {
             var uuid = account.UUID;
             var accessToken = account.YggdrasilAccessToken ?? "0";
-            args.Append($"--uuid {uuid} ");
-            args.Append($"--accessToken {accessToken} ");
+            args.Append($"--uuid {QuoteArgument(uuid)} ");
+            args.Append($"--accessToken {QuoteArgument(accessToken)} ");
             args.Append("--userType mojang ");
         }
         else
         {
-            args.Append($"--uuid {account.UUID} ");
+            args.Append($"--uuid {QuoteArgument(account.UUID)} ");
             args.Append("--accessToken 0 ");
             args.Append("--userType legacy ");
         }
@@ -832,6 +862,45 @@ public class GameLauncher
             return true;
 
         return false;
+    }
+
+    /// <summary>
+    /// 按 Windows CommandLineToArgvW 规则为命令行参数加引号并转义，
+    /// 防止用户名/服务器地址等用户输入破坏命令行结构或注入额外参数。
+    /// </summary>
+    private static string QuoteArgument(string value)
+    {
+        if (string.IsNullOrEmpty(value)) return "\"\"";
+
+        var sb = new StringBuilder(value.Length + 2);
+        sb.Append('"');
+
+        int backslashes = 0;
+        foreach (var c in value)
+        {
+            if (c == '\\')
+            {
+                backslashes++;
+                continue;
+            }
+            if (c == '"')
+            {
+                sb.Append('\\', backslashes * 2 + 1);
+                sb.Append('"');
+                backslashes = 0;
+                continue;
+            }
+            sb.Append('\\', backslashes);
+            backslashes = 0;
+            sb.Append(c);
+        }
+
+        if (backslashes > 0)
+        {
+            sb.Append('\\', backslashes * 2);
+        }
+        sb.Append('"');
+        return sb.ToString();
     }
 
     private static string ReplaceArgVariables(string arg, string versionId, string gameDir, string librariesDir, string nativesDir, string assetsDir, string classpath)
@@ -1585,4 +1654,28 @@ public class GameLauncher
         string lpszLongPath,
         StringBuilder lpszShortPath,
         int cchBuffer);
+}
+
+/// <summary>
+/// 游戏完整性检查结果（调用级上下文，避免静态可变状态并发竞争）
+/// </summary>
+public sealed class GameIntegrityResult
+{
+    public bool HasIssue { get; init; }
+
+    public List<string> MissingLibraries { get; init; } = [];
+
+    public List<string> MissingOptionalLibraries { get; init; } = [];
+
+    public string ErrorMessage { get; init; } = "";
+}
+
+/// <summary>
+/// 游戏启动结果（调用级上下文）
+/// </summary>
+public sealed class GameLaunchResult
+{
+    public bool Success { get; init; }
+
+    public string ErrorMessage { get; init; } = "";
 }

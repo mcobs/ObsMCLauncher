@@ -12,12 +12,14 @@ public class PluginContext : IPluginContext
     private readonly string _pluginDataDir;
 
     private static readonly Dictionary<string, List<Action<object?>>> _eventHandlers = new();
+    private static readonly object _eventHandlersLock = new();
 
     private static readonly Dictionary<string, Action<object?>> _pluginCommands = new();
     private static readonly object _pluginCommandsLock = new();
 
     /// <summary>启动钩子表：key = $"{pluginId}.{hookId}"，value = (phase, handler)</summary>
     private static readonly Dictionary<string, (GameLaunchPhase phase, Action<GameLaunchHookContext> handler)> _launchHooks = new();
+    private static readonly object _launchHooksLock = new();
 
     public static Action<string, string, string, string?, object?>? OnTabRegistered { get; set; }
 
@@ -80,28 +82,38 @@ public class PluginContext : IPluginContext
 
     public void SubscribeEvent(string eventName, Action<object?> handler)
     {
-        if (!_eventHandlers.ContainsKey(eventName))
+        lock (_eventHandlersLock)
         {
-            _eventHandlers[eventName] = new List<Action<object?>>();
+            if (!_eventHandlers.TryGetValue(eventName, out var list))
+            {
+                list = new List<Action<object?>>();
+                _eventHandlers[eventName] = list;
+            }
+            list.Add(handler);
         }
-
-        _eventHandlers[eventName].Add(handler);
     }
 
     public void PublishEvent(string eventName, object? eventData)
     {
-        if (_eventHandlers.TryGetValue(eventName, out var handlers))
+        List<Action<object?>>? handlers = null;
+        lock (_eventHandlersLock)
         {
-            foreach (var handler in handlers)
+            if (_eventHandlers.TryGetValue(eventName, out var list))
             {
-                try
-                {
-                    handler(eventData);
-                }
-                catch (Exception ex)
-                {
-                    DebugLogger.Error("PluginContext", $"事件处理器异常: {ex.Message}");
-                }
+                handlers = list.ToList();
+            }
+        }
+
+        if (handlers == null) return;
+        foreach (var handler in handlers)
+        {
+            try
+            {
+                handler(eventData);
+            }
+            catch (Exception ex)
+            {
+                DebugLogger.Error("PluginContext", $"事件处理器异常: {ex.Message}");
             }
         }
     }
@@ -200,14 +212,20 @@ public class PluginContext : IPluginContext
     {
         if (string.IsNullOrEmpty(hookId) || handler == null) return;
         var fullId = $"{_pluginId}.{hookId}";
-        _launchHooks[fullId] = (phase, handler);
+        lock (_launchHooksLock)
+        {
+            _launchHooks[fullId] = (phase, handler);
+        }
     }
 
     public void UnregisterGameLaunchHook(string hookId)
     {
         if (string.IsNullOrEmpty(hookId)) return;
         var fullId = $"{_pluginId}.{hookId}";
-        _launchHooks.Remove(fullId);
+        lock (_launchHooksLock)
+        {
+            _launchHooks.Remove(fullId);
+        }
     }
 
     public string RequestDownload(PluginDownloadRequest request)
@@ -305,8 +323,14 @@ public class PluginContext : IPluginContext
     {
         if (context == null) return new GameLaunchHookContext();
 
-        // 按 key 字典序触发，保证多次调用顺序稳定
-        foreach (var kvp in _launchHooks.OrderBy(k => k.Key))
+        List<KeyValuePair<string, (GameLaunchPhase phase, Action<GameLaunchHookContext> handler)>> snapshot;
+        lock (_launchHooksLock)
+        {
+            // 按 key 字典序触发，保证多次调用顺序稳定
+            snapshot = _launchHooks.OrderBy(k => k.Key).ToList();
+        }
+
+        foreach (var kvp in snapshot)
         {
             if (kvp.Value.phase != phase) continue;
             try
@@ -328,7 +352,13 @@ public class PluginContext : IPluginContext
     /// <summary>
     /// 获取当前已注册的启动钩子数量（主要用于测试与诊断）
     /// </summary>
-    public static int GetRegisteredHookCount() => _launchHooks.Count;
+    public static int GetRegisteredHookCount()
+    {
+        lock (_launchHooksLock)
+        {
+            return _launchHooks.Count;
+        }
+    }
 
     /// <summary>
     /// 移除指定插件的所有启动钩子（插件卸载时调用）
@@ -336,10 +366,14 @@ public class PluginContext : IPluginContext
     public static void RemovePluginLaunchHooks(string pluginId)
     {
         var prefix = $"{pluginId}.";
-        var keysToRemove = _launchHooks.Keys.Where(k => k.StartsWith(prefix)).ToList();
-        foreach (var key in keysToRemove)
+        List<string> keysToRemove;
+        lock (_launchHooksLock)
         {
-            _launchHooks.Remove(key);
+            keysToRemove = _launchHooks.Keys.Where(k => k.StartsWith(prefix)).ToList();
+            foreach (var key in keysToRemove)
+            {
+                _launchHooks.Remove(key);
+            }
         }
     }
 
@@ -350,23 +384,33 @@ public class PluginContext : IPluginContext
     /// </summary>
     public static void ClearAllStateForTests()
     {
-        _launchHooks.Clear();
+        lock (_launchHooksLock)
+        {
+            _launchHooks.Clear();
+        }
     }
 
     public static void TriggerGlobalEvent(string eventName, object? eventData)
     {
-        if (_eventHandlers.TryGetValue(eventName, out var handlers))
+        List<Action<object?>>? handlers = null;
+        lock (_eventHandlersLock)
         {
-            foreach (var handler in handlers)
+            if (_eventHandlers.TryGetValue(eventName, out var list))
             {
-                try
-                {
-                    handler(eventData);
-                }
-                catch (Exception ex)
-                {
-                    DebugLogger.Error("PluginContext", $"全局事件处理器异常: {ex.Message}");
-                }
+                handlers = list.ToList();
+            }
+        }
+
+        if (handlers == null) return;
+        foreach (var handler in handlers)
+        {
+            try
+            {
+                handler(eventData);
+            }
+            catch (Exception ex)
+            {
+                DebugLogger.Error("PluginContext", $"全局事件处理器异常: {ex.Message}");
             }
         }
     }

@@ -484,7 +484,7 @@ public partial class ServersViewModel : ViewModelBase, IDisposable
                 $"正在启动 Minecraft 并连接到 {server.FullAddress}...",
                 NotificationType.Progress, cts: launchCts);
 
-            var success = await GameLauncher.LaunchAndConnectServerAsync(
+            var launchResult = await GameLauncher.LaunchAndConnectServerAsync(
                 config.SelectedVersion,
                 account,
                 config,
@@ -505,7 +505,7 @@ public partial class ServersViewModel : ViewModelBase, IDisposable
 
             _notificationService.Remove(notifId);
 
-            if (success)
+            if (launchResult.Success)
             {
                 _notificationService.Show("连接成功",
                     $"已启动 Minecraft 并连接到 {server.Name}",

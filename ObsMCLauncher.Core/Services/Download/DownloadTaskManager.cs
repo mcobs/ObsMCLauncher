@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading;
 using ObsMCLauncher.Core.Plugins;
 using ObsMCLauncher.Core.Plugins.Events;
+using ObsMCLauncher.Core.Services.Ui;
 
 namespace ObsMCLauncher.Core.Services.Download;
 
@@ -13,8 +14,18 @@ public class DownloadTaskManager : INotifyPropertyChanged
     private static DownloadTaskManager? _instance;
     public static DownloadTaskManager Instance => _instance ??= new DownloadTaskManager();
 
+    private IDispatcher _dispatcher = new ImmediateDispatcher();
+
     private DownloadTaskManager()
     {
+    }
+
+    /// <summary>
+    /// 设置 UI 派发器（用于 Avalonia 联动）
+    /// </summary>
+    public void SetDispatcher(IDispatcher dispatcher)
+    {
+        _dispatcher = dispatcher;
     }
 
     private readonly ObservableCollection<DownloadTask> _tasks = new();
@@ -39,127 +50,147 @@ public class DownloadTaskManager : INotifyPropertyChanged
             Status = DownloadTaskStatus.Downloading
         };
 
-        // Core 不负责切线程；由调用方保证在合适的线程订阅/操作
-        _tasks.Insert(0, task);
-        NotifyTasksChanged();
+        _dispatcher.Post(() =>
+        {
+            _tasks.Insert(0, task);
+            NotifyTasksChanged();
+        });
 
         return task;
     }
 
     public void RemoveTask(string taskId)
     {
-        var task = _tasks.FirstOrDefault(t => t.Id == taskId);
-        if (task != null)
+        _dispatcher.Post(() =>
         {
-            _tasks.Remove(task);
-            NotifyTasksChanged();
-        }
+            var task = _tasks.FirstOrDefault(t => t.Id == taskId);
+            if (task != null)
+            {
+                _tasks.Remove(task);
+                NotifyTasksChanged();
+            }
+        });
     }
 
     public void CancelTask(string taskId)
     {
-        var task = _tasks.FirstOrDefault(t => t.Id == taskId);
-        if (task != null && task.CanCancel)
+        _dispatcher.Post(() =>
         {
-            try
+            var task = _tasks.FirstOrDefault(t => t.Id == taskId);
+            if (task != null && task.CanCancel)
             {
-                if (task.CancellationTokenSource != null && !task.CancellationTokenSource.IsCancellationRequested)
+                try
                 {
-                    task.CancellationTokenSource.Cancel();
+                    if (task.CancellationTokenSource != null && !task.CancellationTokenSource.IsCancellationRequested)
+                    {
+                        task.CancellationTokenSource.Cancel();
+                    }
                 }
-            }
-            catch (ObjectDisposedException)
-            {
-            }
+                catch (ObjectDisposedException)
+                {
+                }
 
-            task.Status = DownloadTaskStatus.Cancelled;
-            NotifyTasksChanged();
-        }
+                task.Status = DownloadTaskStatus.Cancelled;
+                NotifyTasksChanged();
+            }
+        });
     }
 
     public void UpdateTaskProgress(string taskId, double progress, string? message = null, double speed = 0)
     {
-        var task = _tasks.FirstOrDefault(t => t.Id == taskId);
-        if (task != null)
+        _dispatcher.Post(() =>
         {
-            task.Progress = progress;
-            if (message != null)
-                task.StatusMessage = message;
-            task.DownloadSpeed = speed;
+            var task = _tasks.FirstOrDefault(t => t.Id == taskId);
+            if (task != null)
+            {
+                task.Progress = progress;
+                if (message != null)
+                    task.StatusMessage = message;
+                task.DownloadSpeed = speed;
 
-            PluginContext.TriggerGlobalEvent(IPluginContext.EventNames.DownloadProgress,
-                new DownloadProgressEventArgs
-                {
-                    TaskId = taskId,
-                    TaskName = task.Name,
-                    TaskType = task.Type.ToString(),
-                    Progress = progress,
-                    StatusMessage = message,
-                    DownloadSpeed = speed,
-                    Status = DownloadStatus.Downloading
-                });
-        }
+                PluginContext.TriggerGlobalEvent(IPluginContext.EventNames.DownloadProgress,
+                    new DownloadProgressEventArgs
+                    {
+                        TaskId = taskId,
+                        TaskName = task.Name,
+                        TaskType = task.Type.ToString(),
+                        Progress = progress,
+                        StatusMessage = message,
+                        DownloadSpeed = speed,
+                        Status = DownloadStatus.Downloading
+                    });
+            }
+        });
     }
 
     public void CompleteTask(string taskId)
     {
-        var task = _tasks.FirstOrDefault(t => t.Id == taskId);
-        if (task != null)
+        _dispatcher.Post(() =>
         {
-            task.Status = DownloadTaskStatus.Completed;
-            task.Progress = 100;
-            task.DownloadSpeed = 0;
-            NotifyTasksChanged();
+            var task = _tasks.FirstOrDefault(t => t.Id == taskId);
+            if (task != null)
+            {
+                task.Status = DownloadTaskStatus.Completed;
+                task.Progress = 100;
+                task.DownloadSpeed = 0;
+                NotifyTasksChanged();
 
-            PluginContext.TriggerGlobalEvent(IPluginContext.EventNames.DownloadProgress,
-                new DownloadProgressEventArgs
-                {
-                    TaskId = taskId,
-                    TaskName = task.Name,
-                    TaskType = task.Type.ToString(),
-                    Progress = 100,
-                    Status = DownloadStatus.Completed
-                });
-        }
+                PluginContext.TriggerGlobalEvent(IPluginContext.EventNames.DownloadProgress,
+                    new DownloadProgressEventArgs
+                    {
+                        TaskId = taskId,
+                        TaskName = task.Name,
+                        TaskType = task.Type.ToString(),
+                        Progress = 100,
+                        Status = DownloadStatus.Completed
+                    });
+            }
+        });
     }
 
     public void FailTask(string taskId, string errorMessage)
     {
-        var task = _tasks.FirstOrDefault(t => t.Id == taskId);
-        if (task != null)
+        _dispatcher.Post(() =>
         {
-            task.Status = DownloadTaskStatus.Failed;
-            task.StatusMessage = errorMessage;
-            task.DownloadSpeed = 0;
-            NotifyTasksChanged();
+            var task = _tasks.FirstOrDefault(t => t.Id == taskId);
+            if (task != null)
+            {
+                task.Status = DownloadTaskStatus.Failed;
+                task.StatusMessage = errorMessage;
+                task.DownloadSpeed = 0;
+                NotifyTasksChanged();
 
-            PluginContext.TriggerGlobalEvent(IPluginContext.EventNames.DownloadProgress,
-                new DownloadProgressEventArgs
-                {
-                    TaskId = taskId,
-                    TaskName = task.Name,
-                    TaskType = task.Type.ToString(),
-                    Progress = task.Progress,
-                    StatusMessage = errorMessage,
-                    Status = DownloadStatus.Failed
-                });
-        }
+                PluginContext.TriggerGlobalEvent(IPluginContext.EventNames.DownloadProgress,
+                    new DownloadProgressEventArgs
+                    {
+                        TaskId = taskId,
+                        TaskName = task.Name,
+                        TaskType = task.Type.ToString(),
+                        Progress = task.Progress,
+                        StatusMessage = errorMessage,
+                        Status = DownloadStatus.Failed
+                    });
+            }
+        });
     }
 
     public void ClearInactiveTasks()
     {
-        var inactiveTasks = _tasks.Where(t =>
-                t.Status == DownloadTaskStatus.Completed ||
-                t.Status == DownloadTaskStatus.Cancelled ||
-                t.Status == DownloadTaskStatus.Failed)
-            .ToList();
-
-        foreach (var task in inactiveTasks)
+        _dispatcher.Post(() =>
         {
-            _tasks.Remove(task);
-        }
+            var inactiveTasks = _tasks.Where(t =>
+                    t.Status == DownloadTaskStatus.Completed ||
+                    t.Status == DownloadTaskStatus.Cancelled ||
+                    t.Status == DownloadTaskStatus.Failed)
+                .ToList();
 
-        NotifyTasksChanged();
+            foreach (var task in inactiveTasks)
+            {
+                _tasks.Remove(task);
+            }
+
+            NotifyTasksChanged();
+        });
     }
 
     private void NotifyTasksChanged()
@@ -167,5 +198,15 @@ public class DownloadTaskManager : INotifyPropertyChanged
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasActiveTasks)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ActiveTaskCount)));
         TasksChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private class ImmediateDispatcher : IDispatcher
+    {
+        public void Post(Action action) => action();
+        public System.Threading.Tasks.Task InvokeAsync(Action action)
+        {
+            action();
+            return System.Threading.Tasks.Task.CompletedTask;
+        }
     }
 }

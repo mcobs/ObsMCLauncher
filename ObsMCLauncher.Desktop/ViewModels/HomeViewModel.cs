@@ -687,7 +687,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
             var notifId = _notificationService.Show("正在启动", "正在检查游戏完整性...", NotificationType.Progress, cts: launchCts);
 
             // 1. 检查完整性
-            bool hasIssue = await ObsMCLauncher.Core.Services.GameLauncher.CheckGameIntegrityAsync(
+            var integrity = await ObsMCLauncher.Core.Services.GameLauncher.CheckGameIntegrityAsync(
                 versionId,
                 config,
                 (msg) => 
@@ -705,9 +705,9 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
                 },
                 launchCts.Token);
 
-            if (hasIssue && ObsMCLauncher.Core.Services.GameLauncher.MissingLibraries.Count > 0)
+            if (integrity.HasIssue && integrity.MissingLibraries.Count > 0)
             {
-                var missingCount = ObsMCLauncher.Core.Services.GameLauncher.MissingLibraries.Count;
+                var missingCount = integrity.MissingLibraries.Count;
                 _notificationService.Update(notifId, $"正在补全 {missingCount} 个缺失依赖...", 0);
 
                 try
@@ -715,7 +715,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
                     var (successCount, failedCount) = await ObsMCLauncher.Core.Services.LibraryDownloader.DownloadMissingLibrariesAsync(
                         config.GameDirectory,
                         versionId,
-                        ObsMCLauncher.Core.Services.GameLauncher.MissingLibraries,
+                        integrity.MissingLibraries,
                         (progress, current, total) =>
                         {
                             _notificationService.Update(notifId, progress, current * 100.0 / Math.Max(1, total));
@@ -769,7 +769,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
 
             _notificationService.Update(notifId, "正在启动 Minecraft...");
 
-            bool success = await ObsMCLauncher.Core.Services.GameLauncher.LaunchGameAsync(
+            var launchResult = await ObsMCLauncher.Core.Services.GameLauncher.LaunchGameAsync(
                 versionId,
                 account,
                 config,
@@ -788,7 +788,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
 
             _notificationService.Remove(notifId);
 
-            if (success)
+            if (launchResult.Success)
             {
                 _notificationService.Show("启动成功", $"Minecraft {versionId} 已成功拉起", NotificationType.Success);
 
@@ -805,7 +805,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
             }
             else
             {
-                _notificationService.Show("启动失败", ObsMCLauncher.Core.Services.GameLauncher.LastError ?? "请检查日志或Java配置", NotificationType.Error);
+                _notificationService.Show("启动失败", string.IsNullOrEmpty(launchResult.ErrorMessage) ? "请检查日志或Java配置" : launchResult.ErrorMessage, NotificationType.Error);
             }
         }
         catch (OperationCanceledException)

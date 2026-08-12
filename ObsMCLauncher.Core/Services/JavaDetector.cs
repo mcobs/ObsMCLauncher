@@ -32,9 +32,9 @@ public static class JavaDetector
     {
         lock (_cacheLock)
         {
-            if (_cachedJavaList != null && (DateTime.Now - _cachedAt) < CacheTtl)
+            if (_cachedJavaList != null && (DateTime.UtcNow - _cachedAt) < CacheTtl)
             {
-                return _cachedJavaList;
+                return new List<JavaInfo>(_cachedJavaList);
             }
         }
 
@@ -57,11 +57,16 @@ public static class JavaDetector
 
         lock (_cacheLock)
         {
+            if (_cachedJavaList != null && (DateTime.UtcNow - _cachedAt) < CacheTtl)
+            {
+                return new List<JavaInfo>(_cachedJavaList);
+            }
+
             _cachedJavaList = sorted;
-            _cachedAt = DateTime.Now;
+            _cachedAt = DateTime.UtcNow;
         }
 
-        return sorted;
+        return new List<JavaInfo>(sorted);
     }
 
     public static JavaInfo? SelectBestJava()
@@ -304,8 +309,23 @@ public static class JavaDetector
                 }
             };
             process.Start();
-            var output = process.StandardOutput.ReadToEnd();
-            process.WaitForExit(3000);
+            var outputTask = process.StandardOutput.ReadToEndAsync();
+
+            if (!process.WaitForExit(3000))
+            {
+                TryKillJavaProcess(process);
+                if (!process.WaitForExit(2000))
+                {
+                    return;
+                }
+            }
+
+            if (!outputTask.Wait(5000))
+            {
+                return;
+            }
+
+            var output = outputTask.Result;
             if (!string.IsNullOrWhiteSpace(output))
             {
                 foreach (var line in output.Split('\n', StringSplitOptions.RemoveEmptyEntries))
@@ -316,6 +336,20 @@ public static class JavaDetector
             }
         }
         catch { }
+    }
+
+    private static void TryKillJavaProcess(Process process)
+    {
+        try
+        {
+            if (!process.HasExited)
+            {
+                process.Kill(entireProcessTree: true);
+            }
+        }
+        catch
+        {
+        }
     }
 
     private static void DetectFromLinuxLocations(List<JavaInfo> javaList, HashSet<string> foundPaths)
@@ -395,9 +429,24 @@ public static class JavaDetector
             };
 
             process.Start();
-            var output = process.StandardError.ReadToEnd();
-            process.WaitForExit(5000);
+            var outputTask = process.StandardError.ReadToEndAsync();
 
+            // 若进程挂起（损坏安装/等待输入），超时后强制终止，避免检测线程永久阻塞
+            if (!process.WaitForExit(5000))
+            {
+                TryKillJavaProcess(process);
+                if (!process.WaitForExit(3000))
+                {
+                    return null;
+                }
+            }
+
+            if (!outputTask.Wait(5000))
+            {
+                return null;
+            }
+
+            var output = outputTask.Result;
             if (string.IsNullOrEmpty(output)) return null;
 
             var lines = output.Split('\n');

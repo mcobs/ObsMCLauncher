@@ -108,6 +108,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
         var dispatcher = new ObsMCLauncher.Desktop.Services.AvaloniaDispatcher();
         ObsMCLauncher.Core.Services.Minecraft.DownloadTaskManager.Instance.SetDispatcher(dispatcher);
+        ObsMCLauncher.Core.Services.Download.DownloadTaskManager.Instance.SetDispatcher(dispatcher);
         ObsMCLauncher.Core.Services.Minecraft.DownloadBridge.Initialize();
 
         DownloadManager = new DownloadManagerViewModel(dispatcher);

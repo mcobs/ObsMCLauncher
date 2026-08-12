@@ -257,16 +257,24 @@ public partial class ModDetailViewModel : ViewModelBase
     {
         if (string.IsNullOrEmpty(url)) return;
         var path = await ImageCacheService.GetImagePathAsync(url);
-        if (!string.IsNullOrEmpty(path) && File.Exists(path))
+        if (string.IsNullOrEmpty(path) || !File.Exists(path)) return;
+
+        await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
         {
             try
             {
-                Icon = new Bitmap(path);
+                var newIcon = new Bitmap(path);
+                var old = Icon;
+                Icon = newIcon;
+                if (old is IDisposable oldDisposable)
+                {
+                    oldDisposable.Dispose();
+                }
             }
             catch
             {
             }
-        }
+        });
     }
 
     private async Task LoadVersionsAsync()
@@ -397,6 +405,9 @@ public partial class ModDetailViewModel : ViewModelBase
         if (tasks.Count > 0)
             await Task.WhenAll(tasks).ConfigureAwait(false);
 
+        // 集合更新统一回到 UI 线程，避免跨线程修改 ObservableCollection
+        await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+        {
         foreach (var group in VersionGroups)
         {
             foreach (var entry in group.Files)
@@ -672,6 +683,7 @@ SelectedLoaderFilter = string.IsNullOrEmpty(previousSelection)
     ? AvailableLoaders.FirstOrDefault()
     : AvailableLoaders.FirstOrDefault(l => string.Equals(l.LoaderName, previousSelection, StringComparison.OrdinalIgnoreCase))
       ?? AvailableLoaders.FirstOrDefault();
+        });
     }
 
     private async Task LoadCurseForgeVersionsAsync(CurseForgeMod mod, CancellationToken cancellationToken)
@@ -706,10 +718,13 @@ SelectedLoaderFilter = string.IsNullOrEmpty(previousSelection)
 
         var sorted = allFiles.OrderByDescending(f => f.FileDate).ToList();
         var groups = GroupCurseForgeFiles(sorted);
-        foreach (var g in groups)
+        await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
         {
-            VersionGroups.Add(g);
-        }
+            foreach (var g in groups)
+            {
+                VersionGroups.Add(g);
+            }
+        });
     }
 
     private List<VersionGroupViewModel> GroupCurseForgeFiles(List<CurseForgeFile> files)
@@ -813,6 +828,7 @@ SelectedLoaderFilter = string.IsNullOrEmpty(previousSelection)
         }
 
         var sortedKeys = grouped.Keys.OrderByDescending(v => v, new MinecraftVersionComparer()).ToList();
+        var groups = new List<VersionGroupViewModel>();
         for (int i = 0; i < sortedKeys.Count; i++)
         {
             var key = sortedKeys[i];
@@ -848,8 +864,16 @@ SelectedLoaderFilter = string.IsNullOrEmpty(previousSelection)
                 });
             }
 
-            VersionGroups.Add(groupVm);
+            groups.Add(groupVm);
         }
+
+        await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            foreach (var groupVm in groups)
+            {
+                VersionGroups.Add(groupVm);
+            }
+        });
     }
 
     private static string FormatFileSize(long bytes)
