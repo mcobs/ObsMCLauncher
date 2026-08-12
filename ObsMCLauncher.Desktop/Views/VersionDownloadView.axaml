@@ -10,20 +10,108 @@
 
   <UserControl.Resources>
     <converters:BitmapAssetValueConverter x:Key="BitmapConverter"/>
+
+    <!-- 已安装版本列表：分组头与版本项使用不同模板 -->
+    <converters:GroupItemTemplateSelector x:Key="GroupItemTemplateSelector">
+      <converters:GroupItemTemplateSelector.GroupHeaderTemplate>
+        <DataTemplate x:DataType="vm:GroupSectionHeader">
+          <StackPanel Margin="12,14,12,6">
+            <Grid ColumnDefinitions="*,Auto">
+              <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                <TextBlock Text="{Binding GroupName}" FontSize="13" FontWeight="Medium" VerticalAlignment="Center"/>
+                <Border CornerRadius="3" Padding="4,1"
+                        Background="{DynamicResource SurfaceElevatedBrush}"
+                        IsVisible="{Binding IsSystem}" VerticalAlignment="Center">
+                  <TextBlock Text="系统组" FontSize="9" Foreground="{DynamicResource TextTertiaryBrush}"/>
+                </Border>
+              </StackPanel>
+              <Border Grid.Column="1" CornerRadius="8" Padding="8,2"
+                      Background="{DynamicResource SurfaceElevatedBrush}"
+                      VerticalAlignment="Center">
+                <TextBlock Text="{Binding VersionCount, StringFormat='{}{0} 个版本'}"
+                           FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}"/>
+              </Border>
+            </Grid>
+            <TextBlock Text="{Binding Description}" FontSize="11"
+                       Foreground="{DynamicResource TextTertiaryBrush}"
+                       Margin="0,2,0,0"
+                       IsVisible="{Binding HasDescription}"/>
+          </StackPanel>
+        </DataTemplate>
+      </converters:GroupItemTemplateSelector.GroupHeaderTemplate>
+
+      <converters:GroupItemTemplateSelector.VersionTemplate>
+        <DataTemplate x:DataType="mc:InstalledVersion">
+          <Border Background="{DynamicResource LayerFillColorPrimaryBrush}"
+                  CornerRadius="6" Padding="10,8" Margin="0,2"
+                  BorderThickness="1" BorderBrush="{DynamicResource CardBorderBrush}">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+              <Image Grid.Column="0" Width="24" Height="24" Margin="0,0,10,0"
+                     Source="{Binding LoaderIconPath, Converter={StaticResource BitmapConverter}}"/>
+              <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <TextBlock Text="{Binding Id}" FontSize="13" FontWeight="Medium"/>
+                  <Border Background="{DynamicResource AccentBrush}"
+                          CornerRadius="4" Padding="5,1"
+                          IsVisible="{Binding IsSelected}">
+                    <TextBlock Text="当前版本" FontSize="9" FontWeight="SemiBold" Foreground="White"/>
+                  </Border>
+                </StackPanel>
+                <TextBlock Text="{Binding DetailText}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,1,0,0"/>
+                <TextBlock Text="{Binding Description}" FontSize="10"
+                           Foreground="{DynamicResource TextTertiaryBrush}" Margin="0,3,0,0"
+                           MaxLines="2" TextTrimming="CharacterEllipsis" TextWrapping="Wrap"
+                           IsVisible="{Binding HasDescription}"/>
+              </StackPanel>
+              <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+                <Button Width="26" Height="26" Padding="0" Classes="ghost"
+                        ToolTip.Tip="选择为当前版本"
+                        Command="{Binding #Root.((vm:VersionDownloadViewModel)DataContext).SelectInstalledCommand}"
+                        CommandParameter="{Binding}" IsVisible="{Binding !IsSelected}">
+                  <Path Data="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"
+                        Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Button>
+                <Button Width="26" Height="26" Padding="0" Classes="ghost"
+                        ToolTip.Tip="快速启动"
+                        Command="{Binding #Root.((vm:VersionDownloadViewModel)DataContext).QuickLaunchCommand}"
+                        CommandParameter="{Binding}">
+                  <Path Data="M8 5V19L19 12L8 5Z"
+                        Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Button>
+                <Button Width="26" Height="26" Padding="0" Classes="ghost"
+                        ToolTip.Tip="管理实例"
+                        Command="{Binding #Root.((vm:VersionDownloadViewModel)DataContext).OpenInstanceCommand}"
+                        CommandParameter="{Binding}">
+                  <Path Data="M19.14 12.94C19.18 12.64 19.2 12.33 19.2 12C19.2 11.68 19.18 11.36 19.13 11.06L21.16 9.48C21.34 9.34 21.39 9.07 21.28 8.87L19.36 5.55C19.24 5.33 18.99 5.26 18.77 5.33L16.38 6.29C15.88 5.91 15.35 5.59 14.76 5.35L14.4 2.81C14.36 2.57 14.16 2.4 13.92 2.4H10.08C9.84 2.4 9.65 2.57 9.61 2.81L9.25 5.35C8.66 5.59 8.12 5.92 7.63 6.29L5.24 5.33C5.02 5.25 4.77 5.33 4.65 5.55L2.74 8.87C2.62 9.08 2.66 9.34 2.86 9.48L4.89 11.06C4.84 11.36 4.8 11.69 4.8 12C4.8 12.31 4.82 12.64 4.87 12.94L2.85 14.52C2.67 14.66 2.62 14.93 2.73 15.13L4.65 18.45C4.77 18.67 5.02 18.74 5.24 18.67L7.63 17.71C8.13 18.09 8.66 18.41 9.25 18.65L9.61 21.19C9.65 21.43 9.84 21.6 10.08 21.6H13.92C14.16 21.6 14.36 21.43 14.4 21.19L14.76 18.65C15.35 18.41 15.89 18.09 16.38 17.71L18.77 18.67C18.99 18.74 19.24 18.67 19.36 18.45L21.28 15.13C21.39 14.91 21.34 14.66 21.16 14.52L19.14 12.94ZM12 15.6C10.02 15.6 8.4 13.98 8.4 12C8.4 10.02 10.02 8.4 12 8.4C13.98 8.4 15.6 10.02 15.6 12C15.6 13.98 13.98 15.6 12 15.6Z"
+                        Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Button>
+                <Button Width="26" Height="26" Padding="0" Classes="ghost delete-icon"
+                        ToolTip.Tip="删除版本"
+                        Command="{Binding #Root.((vm:VersionDownloadViewModel)DataContext).DeleteInstalledCommand}"
+                        CommandParameter="{Binding}">
+                  <Path Data="M19 4H15.5L14.5 3H9.5L8.5 4H5V6H19M6 19C6 20.1 6.9 21 8 21H16C17.1 21 18 20.1 18 19V7H6V19Z"
+                        Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Button>
+              </StackPanel>
+            </Grid>
+          </Border>
+        </DataTemplate>
+      </converters:GroupItemTemplateSelector.VersionTemplate>
+    </converters:GroupItemTemplateSelector>
   </UserControl.Resources>
 
   <UserControl.Styles>
-    <!-- 在线版本列表：移除 ListBox 选中/悬浮视觉，保持原 ItemsControl 观感 -->
-    <Style Selector="ListBox.online-versions-list ListBoxItem">
+    <!-- 扁平列表（已安装/在线版本）：移除 ListBox 选中/悬浮视觉，保持原 ItemsControl 观感 -->
+    <Style Selector="ListBox.flat-list ListBoxItem">
       <Setter Property="Padding" Value="0" />
       <Setter Property="Margin" Value="0" />
       <Setter Property="Background" Value="Transparent" />
       <Setter Property="HorizontalContentAlignment" Value="Stretch" />
     </Style>
-    <Style Selector="ListBox.online-versions-list ListBoxItem:pointerover /template/ ContentPresenter">
+    <Style Selector="ListBox.flat-list ListBoxItem:pointerover /template/ ContentPresenter">
       <Setter Property="Background" Value="Transparent" />
     </Style>
-    <Style Selector="ListBox.online-versions-list ListBoxItem:selected /template/ ContentPresenter">
+    <Style Selector="ListBox.flat-list ListBoxItem:selected /template/ ContentPresenter">
       <Setter Property="Background" Value="Transparent" />
     </Style>
 
@@ -105,108 +193,13 @@
             <Separator Grid.Row="0" Margin="0,36,0,0" Background="{DynamicResource DividerBrush}"/>
 
             <!-- 分组列表 -->
-            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-              <StackPanel Spacing="10" Margin="0,0,0,6">
-                <ItemsControl ItemsSource="{Binding GroupSections}">
-                  <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                      <StackPanel>
-                        <!-- 分组标题栏 -->
-                        <StackPanel Margin="12,8,12,4">
-                          <Grid ColumnDefinitions="*,Auto">
-                            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                              <TextBlock Text="{Binding GroupName}" FontSize="13" FontWeight="Medium" VerticalAlignment="Center"/>
-                              <Border CornerRadius="3" Padding="4,1"
-                                      Background="{DynamicResource SurfaceElevatedBrush}"
-                                      IsVisible="{Binding IsSystem}" VerticalAlignment="Center">
-                                <TextBlock Text="系统组" FontSize="9" Foreground="{DynamicResource TextTertiaryBrush}"/>
-                              </Border>
-                            </StackPanel>
-                            <Border Grid.Column="1" CornerRadius="8" Padding="8,2"
-                                    Background="{DynamicResource SurfaceElevatedBrush}"
-                                    VerticalAlignment="Center">
-                              <TextBlock Text="{Binding VersionCount, StringFormat='{}{0} 个版本'}"
-                                         FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}"/>
-                            </Border>
-                          </Grid>
-                          <TextBlock Text="{Binding Description}" FontSize="11"
-                                     Foreground="{DynamicResource TextTertiaryBrush}"
-                                     Margin="0,2,0,0"
-                                     IsVisible="{Binding HasDescription}"/>
-                        </StackPanel>
-
-                        <!-- 分组版本列表 -->
-                        <ItemsControl ItemsSource="{Binding Versions}" Margin="0,0,0,0"
-                                      IsVisible="{Binding HasVersions}">
-                          <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                              <Border Background="{DynamicResource LayerFillColorPrimaryBrush}"
-                                      CornerRadius="6" Padding="10,8" Margin="0,2"
-                                      BorderThickness="1" BorderBrush="{DynamicResource CardBorderBrush}">
-                                <Grid ColumnDefinitions="Auto,*,Auto">
-                                  <Image Grid.Column="0" Width="24" Height="24" Margin="0,0,10,0"
-                                         Source="{Binding LoaderIconPath, Converter={StaticResource BitmapConverter}}"/>
-                                  <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                    <StackPanel Orientation="Horizontal" Spacing="6">
-                                      <TextBlock Text="{Binding Id}" FontSize="13" FontWeight="Medium"/>
-                                      <Border Background="{DynamicResource AccentBrush}"
-                                              CornerRadius="4" Padding="5,1"
-                                              IsVisible="{Binding IsSelected}">
-                                        <TextBlock Text="当前版本" FontSize="9" FontWeight="SemiBold" Foreground="White"/>
-                                      </Border>
-                                    </StackPanel>
-                                    <TextBlock Text="{Binding DetailText}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,1,0,0"/>
-                                    <TextBlock Text="{Binding Description}" FontSize="10"
-                                               Foreground="{DynamicResource TextTertiaryBrush}" Margin="0,3,0,0"
-                                               MaxLines="2" TextTrimming="CharacterEllipsis" TextWrapping="Wrap"
-                                               IsVisible="{Binding HasDescription}"/>
-                                  </StackPanel>
-                                  <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
-                                    <Button Width="26" Height="26" Padding="0" Classes="ghost"
-                                            ToolTip.Tip="选择为当前版本"
-                                            Command="{Binding #Root.((vm:VersionDownloadViewModel)DataContext).SelectInstalledCommand}"
-                                            CommandParameter="{Binding}" IsVisible="{Binding !IsSelected}">
-                                      <Path Data="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"
-                                            Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                    </Button>
-                                    <Button Width="26" Height="26" Padding="0" Classes="ghost"
-                                            ToolTip.Tip="快速启动"
-                                            Command="{Binding #Root.((vm:VersionDownloadViewModel)DataContext).QuickLaunchCommand}"
-                                            CommandParameter="{Binding}">
-                                      <Path Data="M8 5V19L19 12L8 5Z"
-                                            Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                    </Button>
-                                    <Button Width="26" Height="26" Padding="0" Classes="ghost"
-                                            ToolTip.Tip="管理实例"
-                                            Command="{Binding #Root.((vm:VersionDownloadViewModel)DataContext).OpenInstanceCommand}"
-                                            CommandParameter="{Binding}">
-                                      <Path Data="M19.14 12.94C19.18 12.64 19.2 12.33 19.2 12C19.2 11.68 19.18 11.36 19.13 11.06L21.16 9.48C21.34 9.34 21.39 9.07 21.28 8.87L19.36 5.55C19.24 5.33 18.99 5.26 18.77 5.33L16.38 6.29C15.88 5.91 15.35 5.59 14.76 5.35L14.4 2.81C14.36 2.57 14.16 2.4 13.92 2.4H10.08C9.84 2.4 9.65 2.57 9.61 2.81L9.25 5.35C8.66 5.59 8.12 5.92 7.63 6.29L5.24 5.33C5.02 5.25 4.77 5.33 4.65 5.55L2.74 8.87C2.62 9.08 2.66 9.34 2.86 9.48L4.89 11.06C4.84 11.36 4.8 11.69 4.8 12C4.8 12.31 4.82 12.64 4.87 12.94L2.85 14.52C2.67 14.66 2.62 14.93 2.73 15.13L4.65 18.45C4.77 18.67 5.02 18.74 5.24 18.67L7.63 17.71C8.13 18.09 8.66 18.41 9.25 18.65L9.61 21.19C9.65 21.43 9.84 21.6 10.08 21.6H13.92C14.16 21.6 14.36 21.43 14.4 21.19L14.76 18.65C15.35 18.41 15.89 18.09 16.38 17.71L18.77 18.67C18.99 18.74 19.24 18.67 19.36 18.45L21.28 15.13C21.39 14.91 21.34 14.66 21.16 14.52L19.14 12.94ZM12 15.6C10.02 15.6 8.4 13.98 8.4 12C8.4 10.02 10.02 8.4 12 8.4C13.98 8.4 15.6 10.02 15.6 12C15.6 13.98 13.98 15.6 12 15.6Z"
-                                            Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                    </Button>
-                                    <Button Width="26" Height="26" Padding="0" Classes="ghost delete-icon"
-                                            ToolTip.Tip="删除版本"
-                                            Command="{Binding #Root.((vm:VersionDownloadViewModel)DataContext).DeleteInstalledCommand}"
-                                            CommandParameter="{Binding}">
-                                      <Path Data="M19 4H15.5L14.5 3H9.5L8.5 4H5V6H19M6 19C6 20.1 6.9 21 8 21H16C17.1 21 18 20.1 18 19V7H6V19Z"
-                                            Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                    </Button>
-                                  </StackPanel>
-                                </Grid>
-                              </Border>
-                            </DataTemplate>
-                          </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-
-                        <!-- 空状态 -->
-                        <TextBlock Text="此分组暂无版本" FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}"
-                                   HorizontalAlignment="Center" Margin="0,4"
-                                   IsVisible="{Binding !HasVersions}"/>
-                      </StackPanel>
-                    </DataTemplate>
-                  </ItemsControl.ItemTemplate>
-                </ItemsControl>
-              </StackPanel>
-            </ScrollViewer>
+            <ListBox Grid.Row="1"
+                     ScrollViewer.VerticalScrollBarVisibility="Auto"
+                     ItemsSource="{Binding FlatGroupItems}"
+                     ItemTemplate="{StaticResource GroupItemTemplateSelector}"
+                     Background="Transparent"
+                     BorderThickness="0"
+                     Classes="flat-list"/>
 
           </Grid>
         </TabItem>
@@ -242,7 +235,7 @@
                        ItemsSource="{Binding FilteredVersions}"
                        Background="Transparent"
                        BorderThickness="0"
-                       Classes="online-versions-list">
+                       Classes="flat-list">
                   <ListBox.ItemTemplate>
                     <DataTemplate x:DataType="mc:MinecraftVersion">
                       <Button Command="{Binding #Root.((vm:VersionDownloadViewModel)DataContext).OpenDetailCommand}"

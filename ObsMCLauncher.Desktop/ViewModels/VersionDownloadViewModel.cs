@@ -79,7 +79,7 @@ public partial class VersionDownloadViewModel : ViewModelBase
     private bool _isCurrentDirectoryValid = true;
 
     [ObservableProperty]
-    private ObservableCollection<GroupSection> _groupSections = new();
+    private ObservableCollection<object> _flatGroupItems = new();
 
     public InstanceViewModel InstanceViewModel { get; }
 
@@ -101,7 +101,8 @@ public partial class VersionDownloadViewModel : ViewModelBase
     {
         var groups = Core.Services.VersionGroupService.GetAllGroups();
         var allVersions = InstalledVersions.ToList();
-        var sections = new ObservableCollection<GroupSection>();
+        // 平铺列表：分组头 + 版本项混合，支持虚拟化
+        var items = new ObservableCollection<object>();
 
         foreach (var group in groups)
         {
@@ -114,6 +115,9 @@ public partial class VersionDownloadViewModel : ViewModelBase
                 return displayGroup == group.Id;
             }).ToList();
 
+            // 空分组不显示
+            if (versions.Count == 0) continue;
+
             var description = group.Id switch
             {
                 VersionGroup.ModdableGroupId => "安装了Mod加载器的版本",
@@ -122,21 +126,23 @@ public partial class VersionDownloadViewModel : ViewModelBase
                 _ => ""
             };
 
-            sections.Add(new GroupSection
+            items.Add(new GroupSectionHeader
             {
                 GroupId = group.Id,
                 GroupName = group.Name,
                 IsSystem = group.IsSystem,
-                IsDeletable = group.IsDeletable,
                 Description = description,
                 HasDescription = !string.IsNullOrEmpty(description),
-                VersionCount = versions.Count,
-                HasVersions = versions.Count > 0,
-                Versions = new ObservableCollection<Core.Services.Minecraft.InstalledVersion>(versions)
+                VersionCount = versions.Count
             });
+
+            foreach (var version in versions)
+            {
+                items.Add(version);
+            }
         }
 
-        GroupSections = sections;
+        FlatGroupItems = items;
     }
 
     private async Task InitializeAsync()
@@ -877,17 +883,14 @@ public partial class GameDirectoryItem : ObservableObject
 }
 
 /// <summary>
-/// 版本分组展示区段模型
+/// 版本分组头（平铺列表中的分组标题项）
 /// </summary>
-public class GroupSection
+public class GroupSectionHeader
 {
     public string GroupId { get; set; } = "";
     public string GroupName { get; set; } = "";
     public bool IsSystem { get; set; }
-    public bool IsDeletable { get; set; }
     public string Description { get; set; } = "";
     public bool HasDescription { get; set; }
     public int VersionCount { get; set; }
-    public bool HasVersions { get; set; }
-    public ObservableCollection<ObsMCLauncher.Core.Services.Minecraft.InstalledVersion> Versions { get; set; } = new();
 }
