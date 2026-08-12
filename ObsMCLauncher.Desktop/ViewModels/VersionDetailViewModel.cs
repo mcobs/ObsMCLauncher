@@ -900,6 +900,19 @@ public class VersionDetailViewModel : ViewModelBase
                     CurrentFileProgress = pct;
                 });
             }
+            else
+            {
+                // 没有加载器时需要手动下载原版文件（Forge/Fabric/Quilt/NeoForge 内部会自行下载原版）
+                Status = "正在下载原版版本...";
+                var vanillaProgress = new Progress<Core.Services.Minecraft.DownloadProgress>(p =>
+                    HandleDetailedProgress(p, 0, loaderEnd));
+
+                var vanillaOk = await Core.Services.Minecraft.DownloadService.DownloadMinecraftVersion(
+                    SelectedMcVersion, gameDir, CustomVersionName, vanillaProgress, token);
+
+                if (!vanillaOk)
+                    throw new Exception($"下载原版版本 {SelectedMcVersion} 失败");
+            }
 
             // === 阶段2: OptiFine安装 ===
             if (hasOptiFine)
