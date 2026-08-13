@@ -71,110 +71,115 @@
           <Border Background="{DynamicResource SurfaceElevatedBrush}"
                   CornerRadius="12" Padding="24" Margin="0,0,0,16"
                   BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
-            <StackPanel HorizontalAlignment="Center">
-              <Image Source="avares://ObsMCLauncher.Desktop/Assets/logo.png"
-                     Width="120" Height="120" Margin="0,0,0,20"
-                     Stretch="Uniform"/>
+            <Grid ColumnDefinitions="Auto,*,Auto">
+              <Border Grid.Column="0" Width="80" Height="80" CornerRadius="12" ClipToBounds="True"
+                      Background="{DynamicResource SurfaceBrush}" Margin="0,0,20,0">
+                <Image Source="avares://ObsMCLauncher.Desktop/Assets/logo.png" Stretch="Uniform"/>
+              </Border>
 
-              <TextBlock Text="ObsMCLauncher"
-                         FontSize="28" FontWeight="SemiBold"
-                         HorizontalAlignment="Center" Margin="0,0,0,6"
-                         PointerPressed="TitleText_PointerPressed"/>
+              <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                <TextBlock Text="ObsMCLauncher"
+                           FontSize="22" FontWeight="SemiBold"
+                           PointerPressed="TitleText_PointerPressed"/>
 
-              <TextBlock Text="黑曜石 Minecraft 启动器"
-                         FontSize="14" Foreground="{DynamicResource TextSecondaryBrush}"
-                         HorizontalAlignment="Center" Margin="0,0,0,12"/>
+                <TextBlock Text="黑曜石 Minecraft 启动器"
+                           FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}"
+                           Margin="0,4,0,0"/>
 
-              <TextBlock Text="{Binding VersionText}"
-                         FontSize="13" Foreground="{DynamicResource TextTertiaryBrush}"
-                         HorizontalAlignment="Center" Margin="0,0,0,4"/>
+                <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,8,0,0">
+                  <TextBlock Text="{Binding VersionText}"
+                             FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}"/>
+                  <TextBlock Text="{Binding UpdateChannelText}"
+                             FontSize="12" FontWeight="Medium"
+                             Foreground="{DynamicResource PrimaryBrush}"/>
+                </StackPanel>
+              </StackPanel>
 
-              <TextBlock Text="{Binding UpdateChannelText}"
-                         FontSize="12" Foreground="{DynamicResource PrimaryBrush}"
-                         FontWeight="Medium"
-                         HorizontalAlignment="Center" Margin="0,0,0,14"/>
-
-              <Button Command="{Binding CheckUpdateCommand}"
+              <Button Grid.Column="2" Command="{Binding CheckUpdateCommand}"
                       IsEnabled="{Binding !IsCheckingUpdate}"
-                      Height="34" Padding="20,0" HorizontalAlignment="Center">
+                      Height="34" Padding="18,0" VerticalAlignment="Center">
                 <StackPanel Orientation="Horizontal" Spacing="6">
                   <Path Data="M17.65 6.35C16.2 4.9 14.21 4 12 4C7.58 4 4.01 7.58 4.01 12S7.58 20 12 20C15.73 20 18.84 17.45 19.73 14H17.65C16.83 16.33 14.61 18 12 18C8.69 18 6 15.31 6 12S8.69 6 12 6C13.66 6 15.14 6.69 16.22 7.78L13 11H20V4L17.65 6.35Z"
                         Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource TextBrush}" VerticalAlignment="Center"/>
                   <TextBlock Text="检查更新" VerticalAlignment="Center" FontSize="13"/>
                 </StackPanel>
               </Button>
-            </StackPanel>
+            </Grid>
           </Border>
 
           <Border Background="{DynamicResource SurfaceElevatedBrush}"
                   CornerRadius="12" Padding="20" Margin="0,0,0,16"
                   BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
-            <Grid ColumnDefinitions="*,16,*">
-              <StackPanel Grid.Column="0">
-                <TextBlock Text="相关链接" FontSize="16" FontWeight="Medium" Margin="0,0,0,12"/>
+            <WrapPanel Orientation="Horizontal">
+              <StackPanel Width="360" Margin="0,0,24,0">
+                <TextBlock Text="相关链接" FontSize="16" FontWeight="Medium" Margin="0,0,0,10"/>
 
                 <Button Command="{Binding OpenGitHubCommand}"
                         Classes="ghost"
                         HorizontalContentAlignment="Left"
-                        Padding="12,10" Margin="0,0,0,8" CornerRadius="8" HorizontalAlignment="Stretch">
-                  <StackPanel Orientation="Horizontal" Spacing="8">
-                    <Path Data="M12 2C6.48 2 2 6.48 2 12C2 16.42 4.87 20.17 8.84 21.5C9.34 21.58 9.5 21.27 9.5 21C9.5 20.77 9.5 20.14 9.5 19.31C6.73 19.91 6.14 17.97 6.14 17.97C5.68 16.81 5.03 16.5 5.03 16.5C4.12 15.88 5.1 15.9 5.1 15.9C6.1 15.97 6.63 16.93 6.63 16.93C7.5 18.45 8.97 18 9.54 17.76C9.63 17.11 9.89 16.67 10.17 16.42C7.95 16.17 5.62 15.31 5.62 11.5C5.62 10.39 6 9.5 6.65 8.79C6.55 8.54 6.2 7.5 6.75 6.15C6.75 6.15 7.59 5.88 9.5 7.17C10.29 6.95 11.15 6.84 12 6.84C12.85 6.84 13.71 6.95 14.5 7.17C16.41 5.88 17.25 6.15 17.25 6.15C17.8 7.5 17.45 8.54 17.35 8.79C18 9.5 18.38 10.39 18.38 11.5C18.38 15.32 16.04 16.16 13.81 16.41C14.17 16.72 14.5 17.33 14.5 18.26C14.5 19.6 14.5 20.68 14.5 21C14.5 21.27 14.66 21.59 15.17 21.5C19.14 20.16 22 16.42 22 12C22 6.48 17.52 2 12 2Z" Width="16" Height="16" Stretch="Uniform" Fill="{DynamicResource TextBrush}" VerticalAlignment="Center"/>
-                    <StackPanel>
+                        Padding="10,6" Margin="0,0,0,6" CornerRadius="8" HorizontalAlignment="Stretch">
+                  <Grid ColumnDefinitions="Auto,*">
+                    <Path Grid.Column="0" Data="M12 2C6.48 2 2 6.48 2 12C2 16.42 4.87 20.17 8.84 21.5C9.34 21.58 9.5 21.27 9.5 21C9.5 20.77 9.5 20.14 9.5 19.31C6.73 19.91 6.14 17.97 6.14 17.97C5.68 16.81 5.03 16.5 5.03 16.5C4.12 15.88 5.1 15.9 5.1 15.9C6.1 15.97 6.63 16.93 6.63 16.93C7.5 18.45 8.97 18 9.54 17.76C9.63 17.11 9.89 16.67 10.17 16.42C7.95 16.17 5.62 15.31 5.62 11.5C5.62 10.39 6 9.5 6.65 8.79C6.55 8.54 6.2 7.5 6.75 6.15C6.75 6.15 7.59 5.88 9.5 7.17C10.29 6.95 11.15 6.84 12 6.84C12.85 6.84 13.71 6.95 14.5 7.17C16.41 5.88 17.25 6.15 17.25 6.15C17.8 7.5 17.45 8.54 17.35 8.79C18 9.5 18.38 10.39 18.38 11.5C18.38 15.32 16.04 16.16 13.81 16.41C14.17 16.72 14.5 17.33 14.5 18.26C14.5 19.6 14.5 20.68 14.5 21C14.5 21.27 14.66 21.59 15.17 21.5C19.14 20.16 22 16.42 22 12C22 6.48 17.52 2 12 2Z"
+                          Width="16" Height="16" Stretch="Uniform" Fill="{DynamicResource TextBrush}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                    <StackPanel Grid.Column="1">
                       <TextBlock Text="GitHub 开源仓库" FontWeight="Medium" FontSize="13"/>
                       <TextBlock Text="github.com/mcobs/ObsMCLauncher"
                                  FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" Margin="0,2,0,0"/>
                     </StackPanel>
-                  </StackPanel>
+                  </Grid>
                 </Button>
 
                 <Button Command="{Binding OpenForumCommand}"
                         Classes="ghost"
                         HorizontalContentAlignment="Left"
-                        Padding="12,10" Margin="0,0,0,8" CornerRadius="8" HorizontalAlignment="Stretch">
-                  <StackPanel Orientation="Horizontal" Spacing="8">
-                    <Path Data="M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2M20 16H6L4 18V4H20V16Z" Width="16" Height="16" Stretch="Uniform" Fill="{DynamicResource TextBrush}" VerticalAlignment="Center"/>
-                    <StackPanel>
+                        Padding="10,6" Margin="0,0,0,6" CornerRadius="8" HorizontalAlignment="Stretch">
+                  <Grid ColumnDefinitions="Auto,*">
+                    <Path Grid.Column="0" Data="M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2M20 16H6L4 18V4H20V16Z"
+                          Width="16" Height="16" Stretch="Uniform" Fill="{DynamicResource TextBrush}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                    <StackPanel Grid.Column="1">
                       <TextBlock Text="黑曜石论坛" FontWeight="Medium" FontSize="13"/>
                       <TextBlock Text="mcobs.cn"
                                  FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" Margin="0,2,0,0"/>
                     </StackPanel>
-                  </StackPanel>
+                  </Grid>
                 </Button>
 
                 <Button Command="{Binding OpenMciLmLinkCommand}"
                         Classes="ghost"
                         HorizontalContentAlignment="Left"
-                        Padding="12,10" Margin="0,0,0,8" CornerRadius="8" HorizontalAlignment="Stretch">
-                  <StackPanel Orientation="Horizontal" Spacing="8">
-                    <Path Data="M10.59 13.41C11.21 14.03 12.05 14.42 13 14.42C13.95 14.42 14.79 14.03 15.41 13.41L19.41 9.41C20.63 8.19 20.63 6.19 19.41 4.97C18.19 3.75 16.19 3.75 14.97 4.97L13.41 6.54" Width="16" Height="16" Stretch="Uniform" Fill="{DynamicResource TextBrush}" VerticalAlignment="Center"/>
-                    <StackPanel>
+                        Padding="10,6" Margin="0,0,0,6" CornerRadius="8" HorizontalAlignment="Stretch">
+                  <Grid ColumnDefinitions="Auto,*">
+                    <Path Grid.Column="0" Data="M10.59 13.41C11.21 14.03 12.05 14.42 13 14.42C13.95 14.42 14.79 14.03 15.41 13.41L19.41 9.41C20.63 8.19 20.63 6.19 19.41 4.97C18.19 3.75 16.19 3.75 14.97 4.97L13.41 6.54"
+                          Width="16" Height="16" Stretch="Uniform" Fill="{DynamicResource TextBrush}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                    <StackPanel Grid.Column="1">
                       <TextBlock Text="MciLm-link" FontWeight="Medium" FontSize="13"/>
                       <TextBlock Text="link.mcilm.top"
                                  FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" Margin="0,2,0,0"/>
                     </StackPanel>
-                  </StackPanel>
+                  </Grid>
                 </Button>
 
                 <Button Command="{Binding OpenMCIMCommand}"
                         Classes="ghost"
                         HorizontalContentAlignment="Left"
-                        Padding="12,10" CornerRadius="8" HorizontalAlignment="Stretch">
-                  <StackPanel Orientation="Horizontal" Spacing="8">
-                    <Path Data="M12 2C6.48 2 2 6.48 2 12S6.48 22 12 22 22 17.52 22 12 17.52 2 12 2M12 20C7.59 20 4 16.41 4 12S7.59 4 12 4 20 7.59 20 12 16.41 20 12 20M11 7H13V13H11V7M11 15H13V17H11V15Z" Width="16" Height="16" Stretch="Uniform" Fill="{DynamicResource TextBrush}" VerticalAlignment="Center"/>
-                    <StackPanel>
+                        Padding="10,6" CornerRadius="8" HorizontalAlignment="Stretch">
+                  <Grid ColumnDefinitions="Auto,*">
+                    <Path Grid.Column="0" Data="M12 2C6.48 2 2 6.48 2 12S6.48 22 12 22 22 17.52 22 12 17.52 2 12 2M12 20C7.59 20 4 16.41 4 12S7.59 4 12 4 20 7.59 20 12 16.41 20 12 20M11 7H13V13H11V7M11 15H13V17H11V15Z"
+                          Width="16" Height="16" Stretch="Uniform" Fill="{DynamicResource TextBrush}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                    <StackPanel Grid.Column="1">
                       <TextBlock Text="MCIM" FontWeight="Medium" FontSize="13"/>
                       <TextBlock Text="www.mcimirror.top"
                                  FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" Margin="0,2,0,0"/>
                     </StackPanel>
-                  </StackPanel>
+                  </Grid>
                 </Button>
               </StackPanel>
 
-              <StackPanel Grid.Column="2">
-                <TextBlock Text="特别感谢" FontSize="16" FontWeight="Medium" Margin="0,0,0,12"/>
+              <StackPanel Width="360">
+                <TextBlock Text="特别感谢" FontSize="16" FontWeight="Medium" Margin="0,0,0,10"/>
 
                 <Border Background="{DynamicResource SurfaceBrush}"
-                        CornerRadius="8" Padding="12" Margin="0,0,0,8"
+                        CornerRadius="8" Padding="10" Margin="0,0,0,6"
                         BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
                   <StackPanel>
                     <StackPanel Orientation="Horizontal" Spacing="6">
@@ -188,7 +193,7 @@
                 </Border>
 
                 <Border Background="{DynamicResource SurfaceBrush}"
-                        CornerRadius="8" Padding="12" Margin="0,0,0,8"
+                        CornerRadius="8" Padding="10" Margin="0,0,0,6"
                         BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
                   <StackPanel>
                     <StackPanel Orientation="Horizontal" Spacing="6">
@@ -202,7 +207,7 @@
                 </Border>
 
                 <Border Background="{DynamicResource SurfaceBrush}"
-                        CornerRadius="8" Padding="12" Margin="0,0,0,8"
+                        CornerRadius="8" Padding="10" Margin="0,0,0,6"
                         BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
                   <StackPanel>
                     <StackPanel Orientation="Horizontal" Spacing="6">
@@ -216,7 +221,7 @@
                 </Border>
 
                 <Border Background="{DynamicResource SurfaceBrush}"
-                        CornerRadius="8" Padding="12" Margin="0,0,0,8"
+                        CornerRadius="8" Padding="10" Margin="0,0,0,6"
                         BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
                   <StackPanel>
                     <StackPanel Orientation="Horizontal" Spacing="6">
@@ -230,7 +235,7 @@
                 </Border>
 
                 <Border Background="{DynamicResource SurfaceBrush}"
-                        CornerRadius="8" Padding="12"
+                        CornerRadius="8" Padding="10"
                         BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
                   <StackPanel>
                     <StackPanel Orientation="Horizontal" Spacing="6">
@@ -243,27 +248,35 @@
                   </StackPanel>
                 </Border>
               </StackPanel>
-            </Grid>
+            </WrapPanel>
           </Border>
 
           <Border Background="{DynamicResource SurfaceElevatedBrush}"
                   CornerRadius="12" Padding="20" Margin="0,0,0,16"
                   BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
             <StackPanel>
-              <TextBlock Text="关于" FontSize="16" FontWeight="Medium" Margin="0,0,0,12"/>
+              <TextBlock Text="关于" FontSize="16" FontWeight="Medium" Margin="0,0,0,10"/>
               <TextBlock Text="ObsMCLauncher 是一款现代化的 Minecraft 启动器，采用 .NET 8.0 和 Avalonia 技术开发，提供流畅的游戏管理体验。"
                          FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}"
-                         TextWrapping="Wrap" LineHeight="22" Margin="0,0,0,16"/>
+                         TextWrapping="Wrap" LineHeight="22" Margin="0,0,0,14"/>
 
-              <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                <TextBlock Text="开源协议：" FontSize="13" Foreground="{DynamicResource TextTertiaryBrush}" Width="80"/>
-                <TextBlock Text="GNU GPL v3.0" FontSize="13"/>
+              <StackPanel Orientation="Horizontal" Spacing="24" Margin="0,0,0,12">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <TextBlock Text="开源协议" FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}"/>
+                  <TextBlock Text="GNU GPL v3.0" FontSize="12" FontWeight="Medium"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <TextBlock Text="技术栈" FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}"/>
+                  <TextBlock Text=".NET 8.0 | Avalonia | C#" FontSize="12" FontWeight="Medium"/>
+                </StackPanel>
               </StackPanel>
 
-              <StackPanel Orientation="Horizontal">
-                <TextBlock Text="技术栈：" FontSize="13" Foreground="{DynamicResource TextTertiaryBrush}" Width="80"/>
-                <TextBlock Text=".NET 8.0 | Avalonia | C#" FontSize="13"/>
-              </StackPanel>
+              <Border Background="{DynamicResource SurfaceBrush}"
+                      CornerRadius="8" Padding="10,6"
+                      BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
+                <TextBlock Text="(c) 2025 ObsMCLauncher"
+                           FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}"/>
+              </Border>
             </StackPanel>
           </Border>
 
@@ -285,10 +298,6 @@
               </TextBlock>
             </StackPanel>
           </Border>
-
-          <TextBlock Text="(c) 2025 ObsMCLauncher"
-                     FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}"
-                     HorizontalAlignment="Center" Margin="0,8,0,20"/>
         </StackPanel>
       </ScrollViewer>
 
