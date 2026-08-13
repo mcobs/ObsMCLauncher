@@ -255,6 +255,8 @@ public partial class PluginsViewModel : ViewModelBase
 
     private async Task RefreshLeftAsync()
     {
+        var previousSelected = SelectedItem?.Title;
+
         LeftItems.Clear();
         SelectedItem = null;
 
@@ -294,6 +296,19 @@ public partial class PluginsViewModel : ViewModelBase
                 IsMarketLoading = false;
             }
         }
+
+        TryRestoreSelection(previousSelected);
+    }
+
+    private void TryRestoreSelection(string? title)
+    {
+        if (string.IsNullOrEmpty(title)) return;
+
+        var match = LeftItems.FirstOrDefault(i => i.Title == title);
+        if (match != null)
+        {
+            SelectedItem = match;
+        }
     }
 
     private async Task FilterMarketPluginsAsync()
@@ -309,6 +324,8 @@ public partial class PluginsViewModel : ViewModelBase
         {
             await Task.Delay(FILTER_DEBOUNCE_MS, token);
             if (token.IsCancellationRequested) return;
+
+            var previousSelected = SelectedItem?.Title;
 
             var filtered = _allMarketPlugins.AsEnumerable();
 
@@ -344,6 +361,7 @@ public partial class PluginsViewModel : ViewModelBase
             }
 
             IsEmptyHintVisible = LeftItems.Count == 0;
+            TryRestoreSelection(previousSelected);
         }
         catch (OperationCanceledException) { }
     }
