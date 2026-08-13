@@ -121,11 +121,6 @@ public partial class ServersViewModel : ViewModelBase, IDisposable
         var page = _allFilteredServers.Skip(skip).Take(PageSize).ToList();
         Servers.Clear();
         foreach (var s in page) Servers.Add(s);
-        DebugLogger.Info("ServersVM", $"分页渲染: 第{CurrentPage}/{TotalPages}页, {page.Count}个服务器加入 ObservableCollection");
-        foreach (var s in page)
-        {
-            DebugLogger.Info("ServersVM", $"  绑定数据: [{s.Name}] 在线={s.IsOnline}, Ping={s.Ping}, 版本={s.Version ?? "null"}, 玩家={s.OnlinePlayers}/{s.MaxPlayers}, MOTD={s.Motd?.Length ?? 0}字符, 图标={s.IconPath ?? "null"}, StatusText={s.StatusText}, FormattedPing={s.FormattedPing}, FormattedPlayers={s.FormattedPlayers}, FormattedVersion={s.FormattedVersion}");
-        }
     }
 
     [RelayCommand]
@@ -162,10 +157,10 @@ public partial class ServersViewModel : ViewModelBase, IDisposable
         {
             IsRefreshing = true;
 
-            var allServers = LauncherConfig.Load().Servers ?? new List<ServerInfo>();
+            var config = LauncherConfig.Load();
+            var allServers = config.Servers ?? new List<ServerInfo>();
             var updated = await ServerManager.Instance.QueryServersAsync(allServers);
 
-            var config = LauncherConfig.Load();
             foreach (var updatedServer in updated)
             {
                 var existing = config.Servers?.FirstOrDefault(s =>
