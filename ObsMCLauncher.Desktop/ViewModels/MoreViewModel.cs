@@ -157,13 +157,6 @@ public partial class MoreViewModel : ViewModelBase
         _previousTabContent = selectedTab.Content;
     }
 
-    public async Task InitializeAsync()
-    {
-        await Plugins.InitializeAsync();
-        await Screenshots.LoadAsync();
-        Servers.Load();
-    }
-
     private void OpenDebugConsole()
     {
         Dispatcher.UIThread.Post(() =>
