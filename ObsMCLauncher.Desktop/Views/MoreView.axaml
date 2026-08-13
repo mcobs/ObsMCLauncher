@@ -480,10 +480,10 @@
               <Setter Property="Background" Value="Transparent"/>
               <Setter Property="Focusable" Value="False"/>
               <Setter Property="HorizontalContentAlignment" Value="Left"/>
-              <Style Selector=":pointerover" x:SetterTargetType="ListBoxItem">
+              <Style Selector="^:pointerover">
                 <Setter Property="Background" Value="Transparent"/>
               </Style>
-              <Style Selector=":selected" x:SetterTargetType="ListBoxItem">
+              <Style Selector="^:selected">
                 <Setter Property="Background" Value="Transparent"/>
               </Style>
             </ControlTheme>
@@ -600,10 +600,10 @@
                 <Setter Property="Background" Value="Transparent"/>
                 <Setter Property="Focusable" Value="False"/>
                 <Setter Property="HorizontalContentAlignment" Value="Left"/>
-                <Style Selector=":pointerover" x:SetterTargetType="ListBoxItem">
+                <Style Selector="^:pointerover">
                   <Setter Property="Background" Value="Transparent"/>
                 </Style>
-                <Style Selector=":selected" x:SetterTargetType="ListBoxItem">
+                <Style Selector="^:selected">
                   <Setter Property="Background" Value="Transparent"/>
                 </Style>
               </ControlTheme>

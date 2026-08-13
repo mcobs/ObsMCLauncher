@@ -5,6 +5,7 @@
 ## [Unreleased] - 2026-08-13
 
 ### 修复
+- 修复"更多"页打开时崩溃的问题：ListBoxItem 主题内伪类样式改用嵌套选择器写法，符合 Avalonia 主题语法规范
 - 修复"更多-插件"详情 README 加载竞态：快速切换插件时，旧请求结果不再覆盖当前选中插件的内容
 - 修复"更多-截图管理"分页加载失效的问题：滚动到底部时自动加载更多截图，此前最多只显示前 20 张
 - 修复浅色主题下导航栏/标题栏/窗口/卡片背景仍为深色的问题：ApplyLightTheme/ApplyDarkTheme 补充 NavBackgroundBrush、TitleBarBackgroundBrush、WindowBackgroundBrush、CardBackgroundBrush 等资源更新
