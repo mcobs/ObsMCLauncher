@@ -130,7 +130,7 @@ public class EnumToChineseTextConverter : IValueConverter, IMultiValueConverter
             {
                 using var reader = new StreamReader(AssetLoader.Open(uri));
                 var svgContent = reader.ReadToEnd();
-                svgContent = SvgThemeHelper.ReplaceCurrentColor(svgContent);
+                svgContent = SvgThemeHelper.ReplaceCurrentColor(svgContent, Avalonia.Application.Current?.ActualThemeVariant);
 
                 using var ms = new MemoryStream(Encoding.UTF8.GetBytes(svgContent));
                 var svgSource = SvgSource.LoadFromStream(ms);

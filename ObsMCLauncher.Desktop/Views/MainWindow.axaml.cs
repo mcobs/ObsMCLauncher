@@ -5,10 +5,15 @@ using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Controls.Presenters;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using FluentAvalonia.UI.Controls;
+using FluentAvalonia.UI.Controls.Primitives;
+using FluentAvalonia.UI.Media.Animation;
+using FluentAvalonia.UI.Navigation;
 using ObsMCLauncher.Core.Models;
 using ObsMCLauncher.Desktop.ViewModels;
 using ObsMCLauncher.Desktop.ViewModels.Notifications;
@@ -20,31 +25,24 @@ public partial class MainWindow : Window
     private MainWindowViewModel? _vm;
     private readonly Dictionary<string, Point> _swipeStartPoints = new();
     private readonly HashSet<string> _swipeActive = new();
-
-    // 导航栏 hover-intent 防抖
-    private readonly DispatcherTimer _hoverTimer;
-    private ListBoxItem? _pendingHoverItem;
+    private bool _navInitialized;
 
     public MainWindow()
     {
         InitializeComponent();
 
-        _hoverTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(80) };
-        _hoverTimer.Tick += OnHoverTimerTick;
-
         PropertyChanged += OnWindowPropertyChanged;
-        DataContextChanged += (_, _) => HookNavCollapsed();
-        HookNavCollapsed();
+        DataContextChanged += (_, _) => HookVm();
+        HookVm();
 
         if (_vm != null)
         {
             _vm.WindowWidth = Width;
         }
 
-        NavListBox.ContainerPrepared += OnNavContainerPrepared;
-        BottomNavListBox.ContainerPrepared += OnNavContainerPrepared;
-        NavListBox.SelectionChanged += OnNavSelectionChanged;
-        BottomNavListBox.SelectionChanged += OnNavSelectionChanged;
+        MainFrame.NavigationPageFactory = new ViewModelPageFactory();
+        MainNav.SelectionChanged += OnNavSelectionChanged;
+        MainNav.Loaded += OnMainNavLoaded;
     }
 
     private void OnWindowPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
@@ -55,7 +53,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private void HookNavCollapsed()
+    private void HookVm()
     {
         if (_vm != null)
         {
@@ -67,6 +65,7 @@ public partial class MainWindow : Window
         if (_vm != null)
         {
             _vm.PropertyChanged += VmOnPropertyChanged;
+            _vm.WindowWidth = Width;
         }
 
         UpdateNotificationPosition();
@@ -74,11 +73,143 @@ public partial class MainWindow : Window
 
     private void VmOnPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(MainWindowViewModel.NotificationPosition))
+        switch (e.PropertyName)
         {
-            Dispatcher.UIThread.Post(UpdateNotificationPosition);
+            case nameof(MainWindowViewModel.NotificationPosition):
+                Dispatcher.UIThread.Post(UpdateNotificationPosition);
+                break;
+
+            case nameof(MainWindowViewModel.SelectedNavItem):
+            case nameof(MainWindowViewModel.SelectedBottomNavItem):
+            case nameof(MainWindowViewModel.CurrentPage):
+                SyncSelectionAndNavigate();
+                break;
         }
     }
+
+    // ===== FluentAvalonia NavigationView 导航 =====
+
+    private void OnMainNavLoaded(object? sender, RoutedEventArgs e)
+    {
+        if (_navInitialized || _vm == null) return;
+        _navInitialized = true;
+
+        SyncSelectionAndNavigate();
+    }
+
+    private void OnNavSelectionChanged(object? sender, NavigationViewSelectionChangedEventArgs e)
+    {
+        if (_vm == null) return;
+
+        if (e.SelectedItem is NavItemViewModel item &&
+            !ReferenceEquals(_vm.SelectedNavItem, item) &&
+            !ReferenceEquals(_vm.SelectedBottomNavItem, item))
+        {
+            if (_vm.NavItems.Contains(item))
+            {
+                _vm.SelectedNavItem = item;
+            }
+            else if (_vm.BottomNavItems.Contains(item))
+            {
+                _vm.SelectedBottomNavItem = item;
+            }
+        }
+
+        Dispatcher.UIThread.Post(FixSelectionIndicatorGhosts);
+    }
+
+    private void SyncSelectionAndNavigate()
+    {
+        if (_vm == null) return;
+
+        var entry = _vm.SelectedNavEntry;
+        if (entry != null && !ReferenceEquals(MainNav.SelectedItem, entry))
+        {
+            MainNav.SelectedItem = entry;
+        }
+
+        var page = _vm.CurrentPage;
+        if (page == null) return;
+
+        if (MainFrame.Content is Control current && ReferenceEquals(current.DataContext, page))
+        {
+            return;
+        }
+
+        MainFrame.NavigateFromObject(page, new FrameNavigationOptions
+        {
+            IsNavigationStackEnabled = false,
+            TransitionInfoOverride = new EntranceNavigationTransitionInfo()
+        });
+    }
+
+    // FluentAvalonia 2.4.1 中，取消选中的项其 SelectionIndicator 透明度不会复位，
+    // 导致切换时旧选项的绿色指示条残留（拖影）。这里手动同步指示条透明度。
+    private void FixSelectionIndicatorGhosts()
+    {
+        var selected = MainNav.SelectedItem;
+
+        foreach (var presenter in MainNav.GetVisualDescendants().OfType<NavigationViewItemPresenter>())
+        {
+            var hostItem = presenter.FindAncestorOfType<NavigationViewItem>();
+            if (hostItem == null) continue;
+
+            var indicator = presenter.GetVisualDescendants().OfType<Border>()
+                .FirstOrDefault(b => b.Name == "SelectionIndicator");
+            if (indicator != null)
+            {
+                indicator.Opacity = selected != null &&
+                                    (ReferenceEquals(hostItem.DataContext, selected) ||
+                                     ReferenceEquals(hostItem.Content, selected))
+                    ? 1
+                    : 0;
+            }
+        }
+    }
+
+    // 根据 ViewModel 创建对应 View（与 ViewLocator 相同规则）。
+    // Frame 会按 ViewModel 实例缓存页面，切回时复用同一 View 实例。
+    private sealed class ViewModelPageFactory : INavigationPageFactory
+    {
+        public Control GetPage(Type sourcePageType) => Resolve(sourcePageType, null);
+
+        public Control GetPageFromObject(object target) => Resolve(target.GetType(), target);
+
+        private static Control Resolve(Type vmType, object? dataContext)
+        {
+            var name = vmType.FullName!.Replace("ViewModel", "View", StringComparison.Ordinal);
+            var type = Type.GetType(name);
+            if (type == null)
+            {
+                foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+                {
+                    type = asm.GetType(name);
+                    if (type != null) break;
+                }
+            }
+
+            if (type == null)
+            {
+                return new TextBlock
+                {
+                    Text = "Not Found: " + name,
+                    FontSize = 24,
+                    HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+                    VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
+                };
+            }
+
+            var control = (Control)Activator.CreateInstance(type)!;
+            if (dataContext != null)
+            {
+                control.DataContext = dataContext;
+            }
+
+            return control;
+        }
+    }
+
+    // ===== 通知位置 =====
 
     private void UpdateNotificationPosition()
     {
@@ -197,81 +328,5 @@ public partial class MainWindow : Window
         _swipeStartPoints.Remove(vm.Id);
 
         vm.EndSwipeDrag(totalDeltaX);
-    }
-
-    // ===== 导航栏 hover-intent 防抖 =====
-
-    private void OnNavContainerPrepared(object? sender, ContainerPreparedEventArgs e)
-    {
-        if (e.Container is ListBoxItem item)
-        {
-            item.PointerEntered += OnNavPointerEntered;
-            item.PointerExited += OnNavPointerExited;
-        }
-    }
-
-    private void OnNavPointerEntered(object? sender, PointerEventArgs e)
-    {
-        if (sender is not ListBoxItem item || item.IsSelected) return;
-
-        CancelPendingHover();
-        _pendingHoverItem = item;
-        _hoverTimer.Start();
-    }
-
-    private void OnNavPointerExited(object? sender, PointerEventArgs e)
-    {
-        if (sender is not ListBoxItem item) return;
-
-        RemoveHoverClass(item);
-
-        if (_pendingHoverItem == item)
-        {
-            CancelPendingHover();
-        }
-    }
-
-    private void OnNavSelectionChanged(object? sender, SelectionChangedEventArgs e)
-    {
-        // 选中切换时立即取消待处理的悬浮动画，避免与 :selected 样式冲突闪烁
-        CancelPendingHover();
-    }
-
-    private void OnHoverTimerTick(object? sender, EventArgs e)
-    {
-        _hoverTimer.Stop();
-        var item = _pendingHoverItem;
-        _pendingHoverItem = null;
-
-        if (item is { IsSelected: false })
-        {
-            ApplyHoverClass(item);
-        }
-    }
-
-    private void CancelPendingHover()
-    {
-        _hoverTimer.Stop();
-        if (_pendingHoverItem != null)
-        {
-            RemoveHoverClass(_pendingHoverItem);
-            _pendingHoverItem = null;
-        }
-    }
-
-    private static void ApplyHoverClass(ListBoxItem item)
-    {
-        var border = item.GetVisualDescendants()
-            .OfType<Border>()
-            .FirstOrDefault(b => b.Classes.Contains("nav-item"));
-        border?.Classes.Add("nav-item-hovered");
-    }
-
-    private static void RemoveHoverClass(ListBoxItem item)
-    {
-        var border = item.GetVisualDescendants()
-            .OfType<Border>()
-            .FirstOrDefault(b => b.Classes.Contains("nav-item"));
-        border?.Classes.Remove("nav-item-hovered");
     }
 }

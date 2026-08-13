@@ -422,10 +422,18 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
 
             if (pageMapping.TryGetValue(page.ToLower(), out var navTitle))
             {
-                var targetNav = main.NavItems.FirstOrDefault(n => n.Title == navTitle);
+                var targetNav = main.NavItems.FirstOrDefault(n => n.Title == navTitle)
+                    ?? main.BottomNavItems.FirstOrDefault(n => n.Title == navTitle);
                 if (targetNav != null)
                 {
-                    main.SelectedNavItem = targetNav;
+                    if (main.NavItems.Contains(targetNav))
+                    {
+                        main.SelectedNavItem = targetNav;
+                    }
+                    else if (main.BottomNavItems.Contains(targetNav))
+                    {
+                        main.SelectedBottomNavItem = targetNav;
+                    }
                 }
                 else
                 {

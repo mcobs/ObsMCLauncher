@@ -75,7 +75,7 @@ public class PluginIconConverter : IValueConverter, IMultiValueConverter
                 if (iconPath.EndsWith(".svg", StringComparison.OrdinalIgnoreCase))
                 {
                     var svgContent = File.ReadAllText(iconPath);
-                    svgContent = SvgThemeHelper.ReplaceCurrentColor(svgContent);
+                svgContent = SvgThemeHelper.ReplaceCurrentColor(svgContent, Avalonia.Application.Current?.ActualThemeVariant);
                     using var ms = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(svgContent));
                     var svgSource = SvgSource.LoadFromStream(ms);
                     icon = svgSource != null ? new SvgImage { Source = svgSource } : null;
@@ -114,7 +114,7 @@ public class PluginIconConverter : IValueConverter, IMultiValueConverter
                 using var asset = AssetLoader.Open(new Uri(_defaultIcon));
                 using var reader = new StreamReader(asset);
                 var svgContent = reader.ReadToEnd();
-                svgContent = SvgThemeHelper.ReplaceCurrentColor(svgContent);
+                svgContent = SvgThemeHelper.ReplaceCurrentColor(svgContent, Avalonia.Application.Current?.ActualThemeVariant);
                 using var ms = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(svgContent));
                 var svgSource = SvgSource.LoadFromStream(ms);
                 _cachedDefaultIcon = svgSource != null ? new SvgImage { Source = svgSource } : null;

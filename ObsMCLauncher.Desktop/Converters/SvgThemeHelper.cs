@@ -6,17 +6,17 @@ namespace ObsMCLauncher.Desktop.Converters;
 
 internal static class SvgThemeHelper
 {
-    public static string ReplaceCurrentColor(string svgContent)
+    public static string ReplaceCurrentColor(string svgContent, ThemeVariant? theme)
     {
         if (string.IsNullOrEmpty(svgContent))
             return svgContent;
 
-        // 深色主题用白色，浅色主题用黑色
-        var hexColor = "#FFFFFF";
-        if (Application.Current is { } app && app.ActualThemeVariant == Avalonia.Styling.ThemeVariant.Light)
-        {
-            hexColor = "#000000";
-        }
+        var isLight = theme == ThemeVariant.Light ||
+                      (theme == ThemeVariant.Default &&
+                       Application.Current?.ActualThemeVariant == ThemeVariant.Light);
+
+        // 浅色主题用黑色，深色主题用白色
+        var hexColor = isLight ? "#000000" : "#FFFFFF";
 
         return svgContent.Replace("currentColor", hexColor);
     }

@@ -1,6 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:ObsMCLauncher.Desktop.ViewModels"
+        xmlns:ui="using:FluentAvalonia.UI.Controls"
         xmlns:converters="using:ObsMCLauncher.Desktop.Converters"
         xmlns:notif="using:ObsMCLauncher.Desktop.ViewModels.Notifications"
         xmlns:dialogs="using:ObsMCLauncher.Desktop.ViewModels.Dialogs"
@@ -21,72 +22,48 @@
         ExtendClientAreaChromeHints="PreferSystemChrome"
         WindowStartupLocation="CenterScreen">
 
+    <Window.Resources>
+        <x:Double x:Key="PaneToggleButtonHeight">44</x:Double>
+    </Window.Resources>
+
     <Design.DataContext>
         <vm:MainWindowViewModel/>
     </Design.DataContext>
 
     <Window.Styles>
-        <!-- 覆盖 FluentAvalonia ListBox 默认 Padding/Border -->
-        <Style Selector="ListBox#NavListBox, ListBox#BottomNavListBox">
+        <!-- 折叠按钮：无文字、无 PaneTitle，图标与点击区域一致 -->
+        <Style Selector="ui|NavigationView /template/ Button#TogglePaneButton">
+            <Setter Property="MinWidth" Value="48" />
+            <Setter Property="Width" Value="48" />
+            <Setter Property="Height" Value="40" />
             <Setter Property="Padding" Value="0" />
-            <Setter Property="BorderThickness" Value="0" />
-        </Style>
-
-        <!-- 导航栏 ListBox 内 ScrollViewer 禁止横向滚动，内容拉伸 -->
-        <Style Selector="ListBox#NavListBox ScrollViewer, ListBox#BottomNavListBox ScrollViewer">
-            <Setter Property="HorizontalScrollBarVisibility" Value="Disabled" />
-        </Style>
-
-        <Style Selector="ListBox#NavListBox ListBoxItem">
-            <Setter Property="Padding" Value="0" />
-            <Setter Property="Margin" Value="0,1" />
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="CornerRadius" Value="8" />
-            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-            <Setter Property="BorderThickness" Value="0" />
-        </Style>
-
-        <Style Selector="ListBox#NavListBox ListBoxItem:selected Border.nav-item">
-            <Setter Property="Background" Value="{DynamicResource NavItemSelectedBackgroundBrush}" />
-        </Style>
-
-        <Style Selector="ListBox#NavListBox ListBoxItem:selected TextBlock">
-            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
-            <Setter Property="FontWeight" Value="Medium" />
-        </Style>
-
-        <!-- pointerover 背景由代码后端 hover-intent 控制，此处不再设置 -->
-
-        <Style Selector="ListBox#BottomNavListBox ListBoxItem">
-            <Setter Property="Padding" Value="0" />
-            <Setter Property="Margin" Value="0,1" />
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="CornerRadius" Value="8" />
-            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-            <Setter Property="BorderThickness" Value="0" />
-        </Style>
-
-        <Style Selector="ListBox#BottomNavListBox ListBoxItem:selected Border.nav-item">
-            <Setter Property="Background" Value="{DynamicResource NavItemSelectedBackgroundBrush}" />
-        </Style>
-
-        <Style Selector="ListBox#BottomNavListBox ListBoxItem:selected TextBlock">
-            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
-            <Setter Property="FontWeight" Value="Medium" />
-        </Style>
-
-        <!-- nav-item 基础过渡 -->
-        <Style Selector="Border.nav-item">
-            <Setter Property="Transitions">
-                <Transitions>
-                    <BrushTransition Property="Background" Duration="0:0:0.15" />
-                </Transitions>
+            <Setter Property="Margin" Value="4,6,4,2" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border x:Name="LayoutRoot"
+                            Background="Transparent"
+                            CornerRadius="8">
+                        <Path Data="M3 6L21 6M3 12L21 12M3 18L21 18"
+                              Width="18" Height="14"
+                              Stretch="Uniform"
+                              Stroke="{DynamicResource TextBrush}"
+                              StrokeThickness="2"
+                              HorizontalAlignment="Center"
+                              VerticalAlignment="Center"/>
+                    </Border>
+                </ControlTemplate>
             </Setter>
         </Style>
 
-        <!-- hover-intent 触发的悬浮样式 -->
-        <Style Selector="Border.nav-item-hovered">
+        <Style Selector="ui|NavigationView /template/ Button#TogglePaneButton:pointerover /template/ Border#LayoutRoot">
             <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
+        </Style>
+
+        <Style Selector="ui|NavigationView /template/ Button#TogglePaneButton:pressed /template/ Border#LayoutRoot">
+            <Setter Property="Background" Value="{DynamicResource SurfaceElevatedBrush}" />
         </Style>
 
         <Style Selector="Border.notification-card">
@@ -241,231 +218,47 @@
             </Grid>
         </Border>
 
-        <SplitView Grid.Row="1"
-                   x:Name="MainSplitView"
-                   IsPaneOpen="{Binding IsPaneOpen}"
-                   DisplayMode="CompactInline"
-                   OpenPaneLength="200"
-                   CompactPaneLength="48"
-                   PanePlacement="Left"
-                   PaneBackground="{DynamicResource NavBackgroundBrush}">
+        <ui:NavigationView x:Name="MainNav"
+                           Grid.Row="1"
+                           PaneDisplayMode="Auto"
+                           CompactModeThresholdWidth="950"
+                           ExpandedModeThresholdWidth="950"
+                           OpenPaneLength="200"
+                           CompactPaneLength="48"
+                           IsBackButtonVisible="False"
+                           IsPaneToggleButtonVisible="True"
+                           IsSettingsVisible="False"
+                           IsPaneOpen="{Binding IsPaneOpen, Mode=TwoWay}"
+                           MenuItemsSource="{Binding NavItems}"
+                           FooterMenuItemsSource="{Binding BottomNavItems}">
 
-            <SplitView.Pane>
-                <Border x:Name="NavBorder"
-                        Background="{DynamicResource NavBackgroundBrush}"
-                        BorderThickness="0"
-                        BoxShadow="{DynamicResource NavShadow}">
-                    <Grid RowDefinitions="Auto,*,Auto,Auto">
+            <ui:NavigationView.MenuItemTemplate>
+                <DataTemplate x:DataType="vm:NavItemViewModel">
+                    <ui:NavigationViewItem Content="{Binding Title}"
+                                           ToolTip.Tip="{Binding Title}">
+                        <ui:NavigationViewItem.IconSource>
+                            <ui:ImageIconSource>
+                                <ui:ImageIconSource.Source>
+                                    <MultiBinding Converter="{x:Static converters:BitmapAssetValueConverter.Instance}">
+                                        <Binding Path="IconPath" />
+                                        <Binding Path="ActualThemeVariant" RelativeSource="{RelativeSource AncestorType=Window}" />
+                                    </MultiBinding>
+                                </ui:ImageIconSource.Source>
+                            </ui:ImageIconSource>
+                        </ui:NavigationViewItem.IconSource>
+                    </ui:NavigationViewItem>
+                </DataTemplate>
+            </ui:NavigationView.MenuItemTemplate>
 
-                        <Border Grid.Row="0" Padding="6,10">
-                            <Button Width="36"
-                                    Height="36"
-                                    HorizontalAlignment="Left"
-                                    Command="{Binding ToggleNavCommand}"
-                                    ToolTip.Tip="折叠/展开"
-                                    Background="Transparent"
-                                    BorderThickness="0"
-                                    CornerRadius="8"
-                                    RenderTransformOrigin="50%,50%">
-                                <Button.RenderTransform>
-                                    <RotateTransform Angle="{Binding NavRotationAngle}" />
-                                </Button.RenderTransform>
-                                <Path Data="M3 6L21 6M3 12L21 12M3 18L21 18" Width="18" Height="14"
-                                      Stretch="Uniform" Stroke="{DynamicResource TextBrush}" StrokeThickness="2"
-                                      HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                            </Button>
-                        </Border>
-
-                        <ListBox x:Name="NavListBox"
-                                 Grid.Row="1"
-                                 Margin="0"
-                                 Padding="0"
-                                 BorderThickness="0"
-                                 Background="Transparent"
-                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                                 ItemsSource="{Binding NavItems}"
-                                 SelectedItem="{Binding SelectedNavItem}"
-                                 HorizontalAlignment="Stretch">
-                            <ListBox.ItemTemplate>
-                                <DataTemplate x:DataType="vm:NavItemViewModel">
-                                    <Border Classes="nav-item"
-                                            CornerRadius="8"
-                                            Height="40"
-                                            Padding="0"
-                                            HorizontalAlignment="Stretch"
-                                            ToolTip.Tip="{Binding Title}">
-                                        <Grid>
-                                            <!-- 折叠状态：图标在整个按钮内居中 -->
-                                            <Grid IsVisible="{Binding !$parent[Window].DataContext.IsPaneOpen}">
-                                                <Image Width="20"
-                                                       Height="20"
-                                                       HorizontalAlignment="Center"
-                                                       VerticalAlignment="Center"
-                                                       Stretch="Uniform"
-                                                       IsVisible="{Binding IconPath, Converter={x:Static converters:NotNullConverter.Instance}}">
-                                                    <Image.Source>
-                                                        <MultiBinding Converter="{x:Static converters:BitmapAssetValueConverter.Instance}">
-                                                            <Binding Path="IconPath" />
-                                                            <Binding Path="ActualThemeVariant" RelativeSource="{RelativeSource AncestorType=Window}" />
-                                                        </MultiBinding>
-                                                    </Image.Source>
-                                                </Image>
-                                                <TextBlock Text="{Binding Icon}"
-                                                           FontSize="18"
-                                                           Width="24"
-                                                           Height="24"
-                                                           HorizontalAlignment="Center"
-                                                           VerticalAlignment="Center"
-                                                           TextAlignment="Center"
-                                                           Foreground="{DynamicResource TextBrush}"
-                                                           IsVisible="{Binding IconPath, Converter={x:Static converters:NullToBoolConverter.Instance}, ConverterParameter=Invert}" />
-                                            </Grid>
-                                            <!-- 展开状态：图标在左侧48px区域 + 文字 -->
-                                            <Grid IsVisible="{Binding $parent[Window].DataContext.IsPaneOpen}"
-                                                  ColumnDefinitions="48,*">
-                                                <Image Grid.Column="0"
-                                                       Width="20"
-                                                       Height="20"
-                                                       HorizontalAlignment="Center"
-                                                       VerticalAlignment="Center"
-                                                       Stretch="Uniform"
-                                                       IsVisible="{Binding IconPath, Converter={x:Static converters:NotNullConverter.Instance}}">
-                                                    <Image.Source>
-                                                        <MultiBinding Converter="{x:Static converters:BitmapAssetValueConverter.Instance}">
-                                                            <Binding Path="IconPath" />
-                                                            <Binding Path="ActualThemeVariant" RelativeSource="{RelativeSource AncestorType=Window}" />
-                                                        </MultiBinding>
-                                                    </Image.Source>
-                                                </Image>
-                                                <TextBlock Grid.Column="0"
-                                                           Text="{Binding Icon}"
-                                                           FontSize="18"
-                                                           Width="24"
-                                                           Height="24"
-                                                           HorizontalAlignment="Center"
-                                                           VerticalAlignment="Center"
-                                                           TextAlignment="Center"
-                                                           Foreground="{DynamicResource TextBrush}"
-                                                           IsVisible="{Binding IconPath, Converter={x:Static converters:NullToBoolConverter.Instance}, ConverterParameter=Invert}" />
-                                                <TextBlock Grid.Column="1"
-                                                           Text="{Binding Title}"
-                                                           FontSize="13"
-                                                           Margin="0,0,12,0"
-                                                           VerticalAlignment="Center"
-                                                           HorizontalAlignment="Left"
-                                                           Foreground="{DynamicResource TextBrush}" />
-                                            </Grid>
-                                        </Grid>
-                                    </Border>
-                                </DataTemplate>
-                            </ListBox.ItemTemplate>
-                        </ListBox>
-
-                        <ListBox x:Name="BottomNavListBox"
-                                 Grid.Row="2"
-                                 Margin="0"
-                                 Padding="0"
-                                 BorderThickness="0"
-                                 Background="Transparent"
-                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                                 ItemsSource="{Binding BottomNavItems}"
-                                 SelectedItem="{Binding SelectedBottomNavItem}"
-                                 HorizontalAlignment="Stretch">
-                            <ListBox.ItemTemplate>
-                                <DataTemplate x:DataType="vm:NavItemViewModel">
-                                    <Border Classes="nav-item"
-                                            CornerRadius="8"
-                                            Height="40"
-                                            Padding="0"
-                                            HorizontalAlignment="Stretch"
-                                            ToolTip.Tip="{Binding Title}">
-                                        <Grid>
-                                            <!-- 折叠状态：图标在整个按钮内居中 -->
-                                            <Grid IsVisible="{Binding !$parent[Window].DataContext.IsPaneOpen}">
-                                                <Image Width="20"
-                                                       Height="20"
-                                                       HorizontalAlignment="Center"
-                                                       VerticalAlignment="Center"
-                                                       Stretch="Uniform"
-                                                       IsVisible="{Binding IconPath, Converter={x:Static converters:NotNullConverter.Instance}}">
-                                                    <Image.Source>
-                                                        <MultiBinding Converter="{x:Static converters:BitmapAssetValueConverter.Instance}">
-                                                            <Binding Path="IconPath" />
-                                                            <Binding Path="ActualThemeVariant" RelativeSource="{RelativeSource AncestorType=Window}" />
-                                                        </MultiBinding>
-                                                    </Image.Source>
-                                                </Image>
-                                                <TextBlock Text="{Binding Icon}"
-                                                           FontSize="18"
-                                                           Width="24"
-                                                           Height="24"
-                                                           HorizontalAlignment="Center"
-                                                           VerticalAlignment="Center"
-                                                           TextAlignment="Center"
-                                                           Foreground="{DynamicResource TextBrush}"
-                                                           IsVisible="{Binding IconPath, Converter={x:Static converters:NullToBoolConverter.Instance}, ConverterParameter=Invert}" />
-                                            </Grid>
-                                            <!-- 展开状态：图标在左侧48px区域 + 文字 -->
-                                            <Grid IsVisible="{Binding $parent[Window].DataContext.IsPaneOpen}"
-                                                  ColumnDefinitions="48,*">
-                                                <Image Grid.Column="0"
-                                                       Width="20"
-                                                       Height="20"
-                                                       HorizontalAlignment="Center"
-                                                       VerticalAlignment="Center"
-                                                       Stretch="Uniform"
-                                                       IsVisible="{Binding IconPath, Converter={x:Static converters:NotNullConverter.Instance}}">
-                                                    <Image.Source>
-                                                        <MultiBinding Converter="{x:Static converters:BitmapAssetValueConverter.Instance}">
-                                                            <Binding Path="IconPath" />
-                                                            <Binding Path="ActualThemeVariant" RelativeSource="{RelativeSource AncestorType=Window}" />
-                                                        </MultiBinding>
-                                                    </Image.Source>
-                                                </Image>
-                                                <TextBlock Grid.Column="0"
-                                                           Text="{Binding Icon}"
-                                                           FontSize="18"
-                                                           Width="24"
-                                                           Height="24"
-                                                           HorizontalAlignment="Center"
-                                                           VerticalAlignment="Center"
-                                                           TextAlignment="Center"
-                                                           Foreground="{DynamicResource TextBrush}"
-                                                           IsVisible="{Binding IconPath, Converter={x:Static converters:NullToBoolConverter.Instance}, ConverterParameter=Invert}" />
-                                                <TextBlock Grid.Column="1"
-                                                           Text="{Binding Title}"
-                                                           FontSize="13"
-                                                           Margin="0,0,12,0"
-                                                           VerticalAlignment="Center"
-                                                           HorizontalAlignment="Left"
-                                                           Foreground="{DynamicResource TextBrush}" />
-                                            </Grid>
-                                        </Grid>
-                                    </Border>
-                                </DataTemplate>
-                            </ListBox.ItemTemplate>
-                        </ListBox>
-
-                        <StackPanel Grid.Row="3" Margin="4,12" IsVisible="{Binding IsPaneOpen}">
-                            <TextBlock Text="{Binding NavCopyrightText}" FontSize="10" Opacity="0.5" HorizontalAlignment="Center" Foreground="{DynamicResource TextTertiaryBrush}" />
-                        </StackPanel>
-
-                    </Grid>
-                </Border>
-            </SplitView.Pane>
-
-            <SplitView.Content>
-                <Border Background="{DynamicResource NavBackgroundBrush}"
-                        BorderBrush="{DynamicResource NavBorderBrush}"
-                        BorderThickness="1,0,0,0">
-                    <TransitioningContentControl Content="{Binding CurrentPage}" Margin="24">
-                        <TransitioningContentControl.PageTransition>
-                            <CrossFade Duration="0:0:0.25"/>
-                        </TransitioningContentControl.PageTransition>
-                    </TransitioningContentControl>
-                </Border>
-            </SplitView.Content>
-        </SplitView>
+            <Border Background="{DynamicResource NavBackgroundBrush}"
+                    BorderBrush="{DynamicResource NavBorderBrush}"
+                    BorderThickness="1,0,0,0">
+                <ui:Frame x:Name="MainFrame"
+                          IsNavigationStackEnabled="False"
+                          Margin="24"
+                          Background="Transparent"/>
+            </Border>
+        </ui:NavigationView>
 
         <Border Grid.Row="0" Grid.Column="0" Grid.RowSpan="2" Grid.ColumnSpan="2"
                 Background="#80000000"

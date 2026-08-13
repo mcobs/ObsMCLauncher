@@ -29,52 +29,20 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     private NavItemViewModel? selectedBottomNavItem;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsPaneOpen))]
-    private bool isNavCollapsed;
+    private bool isPaneOpen = true;
 
-    public bool IsPaneOpen => !IsNavCollapsed;
-
-    private double _navRotationAngle;
-    public double NavRotationAngle
+    partial void OnIsPaneOpenChanged(bool value)
     {
-        get => _navRotationAngle;
-        private set => SetProperty(ref _navRotationAngle, value);
-    }
-
-    private CancellationTokenSource? _navAnimationCts;
-
-    partial void OnIsNavCollapsedChanged(bool value)
-    {
-        _navAnimationCts?.Cancel();
-        _navAnimationCts?.Dispose();
-        _navAnimationCts = new CancellationTokenSource();
-        _ = AnimateNavRotationAsync(value ? 90 : 0, _navAnimationCts.Token);
-    }
-
-    private async Task AnimateNavRotationAsync(double targetAngle, CancellationToken token)
-    {
-        try
+        // 仅在窗口宽度允许展开时记忆状态，窄窗口下的自适应收起不写入配置
+        if (_windowWidth >= CollapseThreshold)
         {
-            const int steps = 15;
-            const int delay = 12;
-            var startAngle = NavRotationAngle;
-            var diff = targetAngle - startAngle;
-
-            for (int i = 1; i <= steps; i++)
-            {
-                token.ThrowIfCancellationRequested();
-                var progress = (double)i / steps;
-                var easedProgress = 1 - Math.Pow(1 - progress, 3);
-                NavRotationAngle = startAngle + diff * easedProgress;
-                await System.Threading.Tasks.Task.Delay(delay, token);
-            }
-
-            NavRotationAngle = targetAngle;
-        }
-        catch (OperationCanceledException)
-        {
+            var config = LauncherConfig.Load();
+            config.IsNavCollapsed = !value;
+            config.Save();
         }
     }
+
+    public NavItemViewModel? SelectedNavEntry => SelectedNavItem ?? SelectedBottomNavItem;
 
     public ViewModelBase? CurrentPage => SelectedNavItem?.Page ?? SelectedBottomNavItem?.Page;
 
@@ -85,8 +53,6 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     public DialogService Dialogs { get; } = new();
 
     public string NavVersionText => $"v{ObsMCLauncher.Core.Utils.VersionInfo.ShortVersion}";
-
-    public string NavCopyrightText => ObsMCLauncher.Core.Utils.VersionInfo.Copyright;
 
     [ObservableProperty]
     private NotificationPosition _notificationPosition;
@@ -100,20 +66,13 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     private HomeViewModel? _homeViewModel;
     private MoreViewModel? _moreViewModel;
 
-    private bool _userManuallyToggled;
     private const double CollapseThreshold = 950;
 
     private double _windowWidth = double.NaN;
     public double WindowWidth
     {
         get => _windowWidth;
-        set
-        {
-            if (SetProperty(ref _windowWidth, value))
-            {
-                CheckWidthBasedCollapse();
-            }
-        }
+        set => SetProperty(ref _windowWidth, value);
     }
 
     public MainWindowViewModel()
@@ -149,6 +108,9 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         Notifications.NotificationPosition = config.NotificationPosition;
         Notifications.AutoCloseSeconds = config.NotificationAutoCloseSeconds;
 
+        // 恢复上次的导航栏状态（窗口宽度自适应逻辑由 NavigationView 阈值接管）
+        IsPaneOpen = !config.IsNavCollapsed;
+
         const string iconBase = "avares://ObsMCLauncher.Desktop/Assets/SidebarIcons/";
         NavItems.Add(new NavItemViewModel("主页", _homeViewModel, "🏠") { IconPath = iconBase + "dashboard.svg" });
         NavItems.Add(new NavItemViewModel("多人联机", new MultiplayerViewModel(Notifications, Dialogs), "🌐") { IconPath = iconBase + "multiplayer.svg" });
@@ -157,7 +119,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         NavItems.Add(new NavItemViewModel("资源下载", new ResourcesViewModel(), "📦") { IconPath = iconBase + "resources.svg" });
 
         BottomNavItems.Add(new NavItemViewModel("设置", new SettingsViewModel(Notifications, _homeViewModel), "⚙️") { IconPath = iconBase + "settings.svg" });
-        BottomNavItems.Add(new NavItemViewModel("更多", _moreViewModel, "⋯"));
+        BottomNavItems.Add(new NavItemViewModel("更多", _moreViewModel, "⋯") { IconPath = iconBase + "more.svg" });
 
         SelectedNavItem = NavItems[0];
     }
@@ -316,6 +278,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         }
         
         OnPropertyChanged(nameof(CurrentPage));
+        OnPropertyChanged(nameof(SelectedNavEntry));
         
         if (value?.Page is HomeViewModel homeVm)
         {
@@ -335,41 +298,12 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         }
         
         OnPropertyChanged(nameof(CurrentPage));
+        OnPropertyChanged(nameof(SelectedNavEntry));
 
         // 切换到"更多"页面时刷新更新通道显示
         if (value?.Title == "更多")
         {
             _moreViewModel?.RefreshChannelInfo();
-        }
-    }
-
-    [RelayCommand]
-    private void ToggleNav()
-    {
-        _userManuallyToggled = true;
-        IsNavCollapsed = !IsNavCollapsed;
-    }
-
-    private void CheckWidthBasedCollapse()
-    {
-        if (double.IsNaN(_windowWidth))
-            return;
-
-        var shouldCollapse = _windowWidth < CollapseThreshold;
-
-        if (_userManuallyToggled)
-        {
-            // 如果手动切换后的状态与当前宽度期望状态一致，重置手动标记
-            if (shouldCollapse == IsNavCollapsed)
-            {
-                _userManuallyToggled = false;
-            }
-            return;
-        }
-
-        if (shouldCollapse != IsNavCollapsed)
-        {
-            IsNavCollapsed = shouldCollapse;
         }
     }
 
@@ -387,8 +321,6 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         {
             if (disposing)
             {
-                _navAnimationCts?.Cancel();
-                _navAnimationCts?.Dispose();
                 Notifications?.Dispose();
                 DownloadManager?.Dispose();
                 foreach (var item in NavItems)

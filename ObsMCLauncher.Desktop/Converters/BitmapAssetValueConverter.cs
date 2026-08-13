@@ -73,7 +73,7 @@ public class BitmapAssetValueConverter : IValueConverter, IMultiValueConverter
             {
                 using var reader = new StreamReader(asset);
                 var svgContent = reader.ReadToEnd();
-                svgContent = SvgThemeHelper.ReplaceCurrentColor(svgContent);
+                svgContent = SvgThemeHelper.ReplaceCurrentColor(svgContent, theme);
 
                 using var memStream = new MemoryStream(Encoding.UTF8.GetBytes(svgContent));
                 var svgSource = SvgSource.LoadFromStream(memStream);
