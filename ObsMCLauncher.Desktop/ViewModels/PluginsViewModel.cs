@@ -114,6 +114,8 @@ public partial class PluginsViewModel : ViewModelBase
         return PlatformFilter.All;
     }
 
+    private int _readmeRequestId;
+
     partial void OnSelectedItemChanged(PluginListItemViewModel? value)
     {
         Detail = value?.ToDetail(_pluginLoader) ?? new PluginDetailViewModel();
@@ -144,6 +146,8 @@ public partial class PluginsViewModel : ViewModelBase
 
     private async Task LoadReadmeForDetailAsync(PluginListItemViewModel? item)
     {
+        var requestId = ++_readmeRequestId;
+
         try
         {
             if (item == null) return;
@@ -154,6 +158,7 @@ public partial class PluginsViewModel : ViewModelBase
                 if (!string.IsNullOrWhiteSpace(readmePath) && System.IO.File.Exists(readmePath))
                 {
                     Detail.Markdown = await System.IO.File.ReadAllTextAsync(readmePath);
+                    if (requestId != _readmeRequestId) return;
                     Detail.MarkdownVisible = !string.IsNullOrWhiteSpace(Detail.Markdown);
                 }
                 else
@@ -171,17 +176,21 @@ public partial class PluginsViewModel : ViewModelBase
                         var url = ObsMCLauncher.Core.Utils.GitHubProxyHelper.WithProxy(item.MarketPlugin.Readme);
                         using var client = new System.Net.Http.HttpClient();
                         client.Timeout = TimeSpan.FromSeconds(10);
-                        Detail.Markdown = await client.GetStringAsync(url);
+                        var markdown = await client.GetStringAsync(url);
+                        if (requestId != _readmeRequestId) return;
+                        Detail.Markdown = markdown;
                         Detail.MarkdownVisible = !string.IsNullOrWhiteSpace(Detail.Markdown);
                     }
                     catch
                     {
+                        if (requestId != _readmeRequestId) return;
                         Detail.Markdown = item.MarketPlugin.Description;
                         Detail.MarkdownVisible = !string.IsNullOrWhiteSpace(Detail.Markdown);
                     }
                 }
                 else
                 {
+                    if (requestId != _readmeRequestId) return;
                     Detail.Markdown = item.MarketPlugin.Description;
                     Detail.MarkdownVisible = !string.IsNullOrWhiteSpace(Detail.Markdown);
                 }
@@ -189,6 +198,7 @@ public partial class PluginsViewModel : ViewModelBase
         }
         catch
         {
+            if (requestId != _readmeRequestId) return;
             Detail.Markdown = "";
             Detail.MarkdownVisible = false;
         }
