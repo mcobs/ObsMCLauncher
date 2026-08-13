@@ -92,13 +92,22 @@ public class FilePathToBitmapConverter : IValueConverter
 {
     public static readonly FilePathToBitmapConverter Instance = new();
 
+    private const int THUMBNAIL_MAX_WIDTH = 640;
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, WeakReference<Bitmap>> Cache = new();
+
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         if (value is string path && !string.IsNullOrEmpty(path) && File.Exists(path))
         {
+            if (Cache.TryGetValue(path, out var weakRef) && weakRef.TryGetTarget(out var cached))
+                return cached;
+
             try
             {
-                return new Bitmap(path);
+                using var stream = File.OpenRead(path);
+                var bitmap = Bitmap.DecodeToWidth(stream, THUMBNAIL_MAX_WIDTH, BitmapInterpolationMode.MediumQuality);
+                Cache[path] = new WeakReference<Bitmap>(bitmap);
+                return bitmap;
             }
             catch
             {
