@@ -1,0 +1,58 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ObsMCLauncher.Desktop.ViewModels"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
+             xmlns:converters="using:ObsMCLauncher.Desktop.Converters"
+             x:Class="ObsMCLauncher.Desktop.Views.SettingsPages.SettingsDownloadPage"
+             x:DataType="vm:SettingsViewModel">
+
+  <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <StackPanel Margin="12,16,12,24" Spacing="16">
+
+      <TextBlock Text="下载设置" FontSize="22" FontWeight="SemiBold"/>
+
+      <!-- 下载源 -->
+      <ui:SettingsExpander Header="下载源" IsExpanded="True">
+        <ui:SettingsExpanderItem Content="下载源" Description="{Binding DownloadSourceDescription}">
+          <ui:SettingsExpanderItem.Footer>
+            <ComboBox Width="220" ItemsSource="{Binding DownloadSourceOptions}" SelectedItem="{Binding DownloadSource}"/>
+          </ui:SettingsExpanderItem.Footer>
+        </ui:SettingsExpanderItem>
+
+        <ui:SettingsExpanderItem Content="社区镜像源" Description="{Binding MirrorSourceModeDescription}">
+          <ui:SettingsExpanderItem.Footer>
+            <ComboBox Width="220" ItemsSource="{Binding MirrorSourceModeOptions}" SelectedItem="{Binding MirrorSourceMode}">
+              <ComboBox.ItemTemplate>
+                <DataTemplate>
+                  <TextBlock Text="{Binding Converter={x:Static converters:EnumToChineseTextConverter.Instance}}"/>
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+          </ui:SettingsExpanderItem.Footer>
+        </ui:SettingsExpanderItem>
+      </ui:SettingsExpander>
+
+      <!-- 下载选项 -->
+      <ui:SettingsExpander Header="下载选项" IsExpanded="True">
+        <ui:SettingsExpanderItem Content="最大下载线程" Description="同时下载的文件数量">
+          <ui:SettingsExpanderItem.Footer>
+            <ComboBox Width="120" ItemsSource="{Binding MaxDownloadThreadsOptions}" SelectedItem="{Binding MaxDownloadThreads}"/>
+          </ui:SettingsExpanderItem.Footer>
+        </ui:SettingsExpanderItem>
+
+        <ui:SettingsExpanderItem Content="下载游戏时完整下载所有资源文件" Description="下载游戏依赖库、声音、语言、纹理等全部资源文件">
+          <ui:SettingsExpanderItem.Footer>
+            <ToggleSwitch IsChecked="{Binding DownloadAssetsWithGame}"/>
+          </ui:SettingsExpanderItem.Footer>
+        </ui:SettingsExpanderItem>
+      </ui:SettingsExpander>
+
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+        <Button Content="测试下载源" Command="{Binding TestDownloadSourceCommand}"/>
+        <Button Content="恢复默认设置" Command="{Binding ResetDefaultsCommand}"/>
+      </StackPanel>
+
+    </StackPanel>
+  </ScrollViewer>
+
+</UserControl>

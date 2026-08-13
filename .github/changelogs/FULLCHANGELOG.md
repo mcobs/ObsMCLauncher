@@ -2,6 +2,17 @@
 
 本文件记录所有版本的更新历史。
 
+## [Unreleased] - 2026-08-13
+
+### 优化
+- 设置界面重构：采用 FluentAvalonia 的 NavigationView、Frame、SettingsExpander 实现 Fluent Design 风格布局，替换原有卡片式界面
+- 设置子页面实例缓存：离开设置页再返回时保留在原分页，且滚动位置等页面状态不丢失
+- 主题切换补充 FluentAvalonia 控件资源键映射，NavigationView/SettingsExpander 与自定义主题保持一致
+
+### 修复
+- 修复设置导航选择指示条切换选项时的残留拖影
+- 修复从其他页面切回设置界面时当前设置分页空白的问题
+
 ## [v1.0.1-beta.2] - 2026-08-12
 
 ### 修复

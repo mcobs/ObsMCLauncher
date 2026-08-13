@@ -135,6 +135,18 @@
     <SolidColorBrush x:Key="TitleBarBackgroundBrush" Color="#141619"/>
     <SolidColorBrush x:Key="TitleBarBorderBrush" Color="#1E2128"/>
 
+    <!-- ===== FluentAvalonia 控件资源（NavigationView / SettingsExpander 等），深色默认值 ===== -->
+    <SolidColorBrush x:Key="NavigationViewDefaultPaneBackground" Color="#141619"/>
+    <SolidColorBrush x:Key="NavigationViewContentBackground" Color="Transparent"/>
+    <SolidColorBrush x:Key="CardStrokeColorDefaultBrush" Color="#2A2E37"/>
+    <SolidColorBrush x:Key="DividerStrokeColorDefaultBrush" Color="#1E2128"/>
+    <SolidColorBrush x:Key="TextFillColorPrimaryBrush" Color="#F1F5F9"/>
+    <SolidColorBrush x:Key="TextFillColorSecondaryBrush" Color="#94A3B8"/>
+    <SolidColorBrush x:Key="TextFillColorTertiaryBrush" Color="#64748B"/>
+    <SolidColorBrush x:Key="SubtleFillColorSecondaryBrush" Color="#252830"/>
+    <SolidColorBrush x:Key="SubtleFillColorTertiaryBrush" Color="#1C1F26"/>
+    <SolidColorBrush x:Key="ControlFillColorDefaultBrush" Color="#141619"/>
+
   </Styles.Resources>
 
   <Style Selector="TextBlock">

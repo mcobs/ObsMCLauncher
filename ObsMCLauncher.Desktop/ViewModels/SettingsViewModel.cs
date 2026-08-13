@@ -1161,6 +1161,18 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
         resources["SystemControlForegroundBaseHighBrush"] = new SolidColorBrush(Color.Parse("#0F172A"));
         resources["SystemControlForegroundBaseLowBrush"] = new SolidColorBrush(Color.Parse("#E2E8F0"));
         resources["NavItemSelectedBackgroundBrush"] = new SolidColorBrush(Color.Parse("#10B981")) { Opacity = 0.10 };
+
+        // FluentAvalonia 控件资源（NavigationView / SettingsExpander 等）
+        resources["NavigationViewDefaultPaneBackground"] = new SolidColorBrush(Color.Parse("#F8FAFC"));
+        resources["NavigationViewContentBackground"] = new SolidColorBrush(Colors.Transparent);
+        resources["CardStrokeColorDefaultBrush"] = new SolidColorBrush(Color.Parse("#E2E8F0"));
+        resources["DividerStrokeColorDefaultBrush"] = new SolidColorBrush(Color.Parse("#F1F5F9"));
+        resources["TextFillColorPrimaryBrush"] = new SolidColorBrush(Color.Parse("#0F172A"));
+        resources["TextFillColorSecondaryBrush"] = new SolidColorBrush(Color.Parse("#475569"));
+        resources["TextFillColorTertiaryBrush"] = new SolidColorBrush(Color.Parse("#94A3B8"));
+        resources["SubtleFillColorSecondaryBrush"] = new SolidColorBrush(Color.Parse("#E8ECF1"));
+        resources["SubtleFillColorTertiaryBrush"] = new SolidColorBrush(Color.Parse("#F1F5F9"));
+        resources["ControlFillColorDefaultBrush"] = new SolidColorBrush(Color.Parse("#FFFFFF"));
     }
 
     private void ApplyDarkTheme(IResourceDictionary resources)
@@ -1193,6 +1205,18 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
         resources["SystemControlForegroundBaseHighBrush"] = new SolidColorBrush(Color.Parse("#F1F5F9"));
         resources["SystemControlForegroundBaseLowBrush"] = new SolidColorBrush(Color.Parse("#2A2E37"));
         resources["NavItemSelectedBackgroundBrush"] = new SolidColorBrush(Color.Parse("#10B981")) { Opacity = 0.08 };
+
+        // FluentAvalonia 控件资源（NavigationView / SettingsExpander 等）
+        resources["NavigationViewDefaultPaneBackground"] = new SolidColorBrush(Color.Parse("#141619"));
+        resources["NavigationViewContentBackground"] = new SolidColorBrush(Colors.Transparent);
+        resources["CardStrokeColorDefaultBrush"] = new SolidColorBrush(Color.Parse("#2A2E37"));
+        resources["DividerStrokeColorDefaultBrush"] = new SolidColorBrush(Color.Parse("#1E2128"));
+        resources["TextFillColorPrimaryBrush"] = new SolidColorBrush(Color.Parse("#F1F5F9"));
+        resources["TextFillColorSecondaryBrush"] = new SolidColorBrush(Color.Parse("#94A3B8"));
+        resources["TextFillColorTertiaryBrush"] = new SolidColorBrush(Color.Parse("#64748B"));
+        resources["SubtleFillColorSecondaryBrush"] = new SolidColorBrush(Color.Parse("#252830"));
+        resources["SubtleFillColorTertiaryBrush"] = new SolidColorBrush(Color.Parse("#1C1F26"));
+        resources["ControlFillColorDefaultBrush"] = new SolidColorBrush(Color.Parse("#141619"));
     }
 
     private void OnSystemThemeChanged(object? sender, EventArgs e)
