@@ -38,6 +38,8 @@ public partial class ResourcesViewModel : ViewModelBase
     private readonly SemaphoreSlim _debounceLock = new(1, 1);
     private CancellationTokenSource? _debounceCts;
 
+    private static readonly TimeSpan SearchTimeout = TimeSpan.FromSeconds(60);
+
     // 分页状态
     private int _curseForgePage;
     private int _modrinthOffset;
@@ -48,7 +50,9 @@ public partial class ResourcesViewModel : ViewModelBase
     // --- 状态定义 ---
     [ObservableProperty] private string _query = "";
     [ObservableProperty] private string _status = "输入关键词开始搜索";
-    [ObservableProperty] private bool _isLoading;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowSkeleton))]
+    private bool _isLoading;
     [ObservableProperty] private ResourceSource _currentSource = ResourceSource.Both;
     [ObservableProperty] private string _currentResourceType = "Mods";
     [ObservableProperty] private string? _selectedVersionId;
@@ -76,6 +80,8 @@ public partial class ResourcesViewModel : ViewModelBase
     public bool HasInstalledVersions => InstalledVersions.Count > 0;
     public string VersionHintText => HasInstalledVersions ? "" : "未检测到游戏版本，请先下载版本";
 
+    public bool ShowSkeleton => IsLoading && Results.Count == 0;
+
     private class ResourceTypeState
     {
         public string Query { get; set; } = "";
@@ -97,6 +103,8 @@ public partial class ResourcesViewModel : ViewModelBase
 
         UpdateAvailableSortOptions();
         SortFieldIndex = 0;
+
+        Results.CollectionChanged += (_, _) => OnPropertyChanged(nameof(ShowSkeleton));
 
         LoadInstalledVersions();
         _ = InitializeAsync();
@@ -291,6 +299,7 @@ public partial class ResourcesViewModel : ViewModelBase
         _searchCts?.Cancel();
         _searchCts?.Dispose();
         _searchCts = new CancellationTokenSource();
+        _searchCts.CancelAfter(SearchTimeout);
         var ct = _searchCts.Token;
 
         try
@@ -339,7 +348,7 @@ public partial class ResourcesViewModel : ViewModelBase
         }
         catch (OperationCanceledException)
         {
-            Status = "搜索已取消";
+            Status = ct.IsCancellationRequested ? "搜索超时，已显示部分结果" : "搜索已取消";
         }
         catch (Exception ex)
         {
@@ -469,6 +478,7 @@ public partial class ResourcesViewModel : ViewModelBase
             _searchCts?.Cancel();
             _searchCts?.Dispose();
             _searchCts = new CancellationTokenSource();
+            _searchCts.CancelAfter(SearchTimeout);
             var ct = _searchCts.Token;
 
             string gameVersion = "";
@@ -639,7 +649,7 @@ public partial class ResourcesViewModel : ViewModelBase
             items.Add(item);
 
             tasks.Add(item.LoadIconAsync());
-            tasks.Add(LoadModrinthVersionsAsync(item, hit.ProjectId));
+            _ = LoadModrinthVersionsAsync(item, hit.ProjectId);
         }
         await Task.WhenAll(tasks);
 
