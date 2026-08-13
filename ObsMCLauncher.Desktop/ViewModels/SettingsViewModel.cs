@@ -1162,6 +1162,15 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
         resources["SystemControlForegroundBaseLowBrush"] = new SolidColorBrush(Color.Parse("#E2E8F0"));
         resources["NavItemSelectedBackgroundBrush"] = new SolidColorBrush(Color.Parse("#10B981")) { Opacity = 0.10 };
 
+        // 导航栏 / 标题栏 / 窗口 / 卡片背景，浅色模式下必须同步更新，否则会残留深色底
+        resources["NavBackgroundBrush"] = new SolidColorBrush(Color.Parse("#FFFFFF"));
+        resources["NavBorderBrush"] = new SolidColorBrush(Color.Parse("#E2E8F0"));
+        resources["TitleBarBackgroundBrush"] = new SolidColorBrush(Color.Parse("#FFFFFF"));
+        resources["TitleBarBorderBrush"] = new SolidColorBrush(Color.Parse("#E2E8F0"));
+        resources["WindowBackgroundBrush"] = new SolidColorBrush(Color.Parse("#F8FAFC"));
+        resources["CardBackgroundBrush"] = new SolidColorBrush(Color.Parse("#FFFFFF"));
+        resources["CardBorderBrush"] = new SolidColorBrush(Color.Parse("#E2E8F0"));
+
         // FluentAvalonia 控件资源（NavigationView / SettingsExpander 等）
         resources["NavigationViewDefaultPaneBackground"] = new SolidColorBrush(Color.Parse("#F8FAFC"));
         resources["NavigationViewContentBackground"] = new SolidColorBrush(Colors.Transparent);
@@ -1205,6 +1214,15 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
         resources["SystemControlForegroundBaseHighBrush"] = new SolidColorBrush(Color.Parse("#F1F5F9"));
         resources["SystemControlForegroundBaseLowBrush"] = new SolidColorBrush(Color.Parse("#2A2E37"));
         resources["NavItemSelectedBackgroundBrush"] = new SolidColorBrush(Color.Parse("#10B981")) { Opacity = 0.08 };
+
+        // 导航栏 / 标题栏 / 窗口 / 卡片背景，深色模式下同步恢复
+        resources["NavBackgroundBrush"] = new SolidColorBrush(Color.Parse("#141619"));
+        resources["NavBorderBrush"] = new SolidColorBrush(Color.Parse("#1E2128"));
+        resources["TitleBarBackgroundBrush"] = new SolidColorBrush(Color.Parse("#141619"));
+        resources["TitleBarBorderBrush"] = new SolidColorBrush(Color.Parse("#1E2128"));
+        resources["WindowBackgroundBrush"] = new SolidColorBrush(Color.Parse("#0B0D10"));
+        resources["CardBackgroundBrush"] = new SolidColorBrush(Color.Parse("#1C1F26"));
+        resources["CardBorderBrush"] = new SolidColorBrush(Color.Parse("#2A2E37"));
 
         // FluentAvalonia 控件资源（NavigationView / SettingsExpander 等）
         resources["NavigationViewDefaultPaneBackground"] = new SolidColorBrush(Color.Parse("#141619"));

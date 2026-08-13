@@ -237,14 +237,7 @@
                     <ui:NavigationViewItem Content="{Binding Title}"
                                            ToolTip.Tip="{Binding Title}">
                         <ui:NavigationViewItem.IconSource>
-                            <ui:ImageIconSource>
-                                <ui:ImageIconSource.Source>
-                                    <MultiBinding Converter="{x:Static converters:BitmapAssetValueConverter.Instance}">
-                                        <Binding Path="IconPath" />
-                                        <Binding Path="ActualThemeVariant" RelativeSource="{RelativeSource AncestorType=Window}" />
-                                    </MultiBinding>
-                                </ui:ImageIconSource.Source>
-                            </ui:ImageIconSource>
+                            <ui:PathIconSource Data="{Binding IconPath, Converter={x:Static converters:SvgToGeometryConverter.Instance}}"/>
                         </ui:NavigationViewItem.IconSource>
                     </ui:NavigationViewItem>
                 </DataTemplate>

@@ -15,8 +15,8 @@ internal static class SvgThemeHelper
                       (theme == ThemeVariant.Default &&
                        Application.Current?.ActualThemeVariant == ThemeVariant.Light);
 
-        // 浅色主题用黑色，深色主题用白色
-        var hexColor = isLight ? "#000000" : "#FFFFFF";
+        // 与 TextSecondaryBrush 对齐，避免纯黑/纯白对比度过强
+        var hexColor = isLight ? "#475569" : "#94A3B8";
 
         return svgContent.Replace("currentColor", hexColor);
     }

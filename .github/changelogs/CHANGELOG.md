@@ -1,19 +1,21 @@
 ## [Unreleased] - 2026-08-13
 
+### 修复
+- 修复浅色主题下导航栏/标题栏/窗口/卡片背景仍为深色的问题：ApplyLightTheme/ApplyDarkTheme 补充 NavBackgroundBrush、TitleBarBackgroundBrush、WindowBackgroundBrush、CardBackgroundBrush 等资源更新
+- 导航栏图标改用 PathIconSource + SvgToGeometryConverter，图标随 Foreground 变色（选中态变主题色、主题切换跟随文本色），不再使用固定颜色的 ImageIconSource
+- SvgThemeHelper 浅色/深色图标颜色改为 TextSecondaryBrush 色值，避免纯黑/纯白对比度过强
+- 修复导航栏"更多"按钮图标过大问题：SvgToGeometryConverter 解析 SVG viewBox 使图标 Bounds 与设计等比
+
 ### 优化
-- 主窗口导航栏迁移到 FluentAvalonia NavigationView + Frame：替换原 SplitView + ListBox 自绘导航，使用 Fluent Design 风格控件
-- 折叠按钮改为自定义无文字汉堡按钮，图标与点击区域一致（48×40）
-- 移除导航栏底部版权标志
-- 导航栏图标改为 Assets/SidebarIcons 下的 SVG 图标，浅色模式转换为黑色、深色模式为白色（跟随主题自动换色），并新增"更多"页图标
-- 导航栏状态记忆：折叠/展开状态写入配置，下次启动自动恢复
-- 导航栏根据窗口宽度自适应展开/收起（宽度低于 950px 自动收起为图标模式）
+- 主窗口导航栏迁移到 FluentAvalonia NavigationView + Frame：替换原 SplitView + ListBox 自绘导航，导航项/底部导航通过 MenuItemsSource/FooterMenuItemsSource 数据绑定生成，内容区使用 Frame 按 ViewModel 实例缓存页面，页面切换带 Fluent 转场动画
+- 移除导航栏底部版权标志（含版权条目、模板选择器及相关代码）
+- 导航栏图标改用 Assets/SidebarIcons 的 SVG（ImageIconSource 绑定 BitmapAssetValueConverter，随深浅色主题自动换色），并新增 more.svg 补充"更多"页图标
+- 图标主题换色改为使用绑定传入的主题（此前 SvgThemeHelper 读取 Application 当前主题，浅色模式下可能误用深色白色图标）；账户/插件图标转换一并同步
 - 设置界面重构：采用 FluentAvalonia 的 NavigationView、Frame、SettingsExpander 实现 Fluent Design 风格布局，替换原有卡片式界面
-- 设置子页面实例缓存：离开设置页再返回时停留在原来的分页
+- 设置子页面实例缓存：离开设置页再返回时保留在原分页，且滚动位置等页面状态不丢失
 
 ### 修复
-- 修复设置导航选择指示条切换选项时的残留拖影
-- 修复从其他页面切回设置界面时当前设置分页空白的问题
-- 修复主页卡片导航到"设置/更多"页无效的问题
+- 修复主页卡片导航到"设置/更多"页无效的问题（底部导航项未参与查找）
 
 ## [v1.0.1-beta.2] - 2026-08-12
 
