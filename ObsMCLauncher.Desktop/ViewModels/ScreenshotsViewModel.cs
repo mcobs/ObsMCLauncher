@@ -1,8 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Avalonia;
+using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -231,12 +235,46 @@ public partial class ScreenshotsViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private Task ExportScreenshotAsync(ScreenshotInfo? screenshot)
+    private async Task ExportScreenshotAsync(ScreenshotInfo? screenshot)
     {
-        if (screenshot == null) return Task.CompletedTask;
+        if (screenshot == null) return;
 
-        _notificationService.Show("提示", "导出功能需要选择目录，暂未实现文件对话框", NotificationType.Info);
-        return Task.CompletedTask;
+        try
+        {
+            if (!File.Exists(screenshot.FullPath))
+            {
+                _notificationService.Show("错误", "截图文件不存在", NotificationType.Error);
+                return;
+            }
+
+            if (Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop)
+                return;
+            var storage = desktop.MainWindow?.StorageProvider;
+            if (storage == null) return;
+
+            var extension = Path.GetExtension(screenshot.FullPath);
+            if (string.IsNullOrEmpty(extension)) extension = ".png";
+
+            var file = await storage.SaveFilePickerAsync(new FilePickerSaveOptions
+            {
+                Title = "导出截图",
+                SuggestedFileName = Path.GetFileName(screenshot.FullPath),
+                DefaultExtension = extension.TrimStart('.'),
+                FileTypeChoices = new[] { new FilePickerFileType("图片文件") { Patterns = new[] { $"*{extension}" } } }
+            });
+
+            if (file == null) return;
+
+            await using var source = File.OpenRead(screenshot.FullPath);
+            await using var destination = await file.OpenWriteAsync();
+            await source.CopyToAsync(destination);
+
+            _notificationService.Show("导出成功", $"截图已导出到 {file.Name}", NotificationType.Success);
+        }
+        catch (Exception ex)
+        {
+            _notificationService.Show("导出失败", $"导出截图失败: {ex.Message}", NotificationType.Error);
+        }
     }
 
     [RelayCommand]

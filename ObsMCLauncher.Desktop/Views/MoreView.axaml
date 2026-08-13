@@ -498,11 +498,14 @@
                         <Run Text="创建: "/><Run Text="{Binding FormattedCreatedTime}"/>
                       </TextBlock>
                     </StackPanel>
-                    <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right">
-                      <Button Content="查看" Classes="ghost" Padding="8,4" Margin="0,0,4,0"
+                    <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="4">
+                      <Button Content="查看" Classes="ghost" Padding="6,4"
                               Command="{Binding $parent[ItemsControl].((vm:ScreenshotsViewModel)DataContext).ViewScreenshotCommand}"
                               CommandParameter="{Binding}"/>
-                      <Button Content="删除" Classes="danger" Padding="8,4"
+                      <Button Content="导出" Classes="ghost" Padding="6,4"
+                              Command="{Binding $parent[ItemsControl].((vm:ScreenshotsViewModel)DataContext).ExportScreenshotCommand}"
+                              CommandParameter="{Binding}"/>
+                      <Button Content="删除" Classes="danger" Padding="6,4"
                               Command="{Binding $parent[ItemsControl].((vm:ScreenshotsViewModel)DataContext).DeleteScreenshotCommand}"
                               CommandParameter="{Binding}"/>
                     </StackPanel>
