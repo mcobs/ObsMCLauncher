@@ -119,6 +119,9 @@ public partial class PluginsViewModel : ViewModelBase
     private CancellationTokenSource? _filterCts;
     private const int FILTER_DEBOUNCE_MS = 200;
 
+    private static readonly System.Net.Http.HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(10) };
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, string> ReadmeCache = new();
+
     partial void OnSelectedItemChanged(PluginListItemViewModel? value)
     {
         Detail = value?.ToDetail(_pluginLoader) ?? new PluginDetailViewModel();
@@ -177,9 +180,11 @@ public partial class PluginsViewModel : ViewModelBase
                     try
                     {
                         var url = ObsMCLauncher.Core.Utils.GitHubProxyHelper.WithProxy(item.MarketPlugin.Readme);
-                        using var client = new System.Net.Http.HttpClient();
-                        client.Timeout = TimeSpan.FromSeconds(10);
-                        var markdown = await client.GetStringAsync(url);
+                        if (!ReadmeCache.TryGetValue(url, out var markdown))
+                        {
+                            markdown = await _httpClient.GetStringAsync(url);
+                            ReadmeCache[url] = markdown;
+                        }
                         if (requestId != _readmeRequestId) return;
                         Detail.Markdown = markdown;
                         Detail.MarkdownVisible = !string.IsNullOrWhiteSpace(Detail.Markdown);
