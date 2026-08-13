@@ -469,50 +469,65 @@
           </Grid>
         </Border>
 
-        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="24,0,24,24"
-                      ScrollViewer.ScrollChanged="OnScreenshotsScrollChanged">
-          <ItemsControl ItemsSource="{Binding Screenshots}">
-            <ItemsControl.ItemsPanel>
-              <ItemsPanelTemplate>
-                <WrapPanel Orientation="Horizontal"/>
-              </ItemsPanelTemplate>
-            </ItemsControl.ItemsPanel>
-            <ItemsControl.ItemTemplate>
-              <DataTemplate>
-                <Border Background="{DynamicResource SurfaceBrush}"
-                        CornerRadius="12" Padding="8" Margin="0,0,14,14" Width="200"
-                        BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
-                  <Grid RowDefinitions="150,Auto,Auto,Auto">
-                    <Border Grid.Row="0" CornerRadius="8" Background="{DynamicResource SurfaceElevatedBrush}" Margin="0,0,0,8">
-                      <Image Source="{Binding FullPath, Converter={x:Static converters:FilePathToBitmapConverter.Instance}}" Stretch="UniformToFill"/>
-                    </Border>
-                    <TextBlock Grid.Row="1" Text="{Binding FileName}" FontSize="13"
-                               FontWeight="Medium" TextTrimming="CharacterEllipsis" Margin="0,0,0,4"/>
-                    <StackPanel Grid.Row="2" Margin="0,0,0,8">
-                      <TextBlock FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,2">
-                        <Run Text="大小: "/><Run Text="{Binding FormattedSize}"/>
-                      </TextBlock>
-                      <TextBlock FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}">
-                        <Run Text="创建: "/><Run Text="{Binding FormattedCreatedTime}"/>
-                      </TextBlock>
-                    </StackPanel>
-                    <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="4">
-                      <Button Content="查看" Classes="ghost" Padding="6,4"
-                              Command="{Binding $parent[ItemsControl].((vm:ScreenshotsViewModel)DataContext).ViewScreenshotCommand}"
-                              CommandParameter="{Binding}"/>
-                      <Button Content="导出" Classes="ghost" Padding="6,4"
-                              Command="{Binding $parent[ItemsControl].((vm:ScreenshotsViewModel)DataContext).ExportScreenshotCommand}"
-                              CommandParameter="{Binding}"/>
-                      <Button Content="删除" Classes="danger" Padding="6,4"
-                              Command="{Binding $parent[ItemsControl].((vm:ScreenshotsViewModel)DataContext).DeleteScreenshotCommand}"
-                              CommandParameter="{Binding}"/>
-                    </StackPanel>
-                  </Grid>
-                </Border>
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
-        </ScrollViewer>
+        <ListBox Grid.Row="1" Margin="24,0,24,24"
+                 ItemsSource="{Binding Screenshots}"
+                 Background="Transparent"
+                 BorderThickness="0"
+                 ScrollViewer.ScrollChanged="OnScreenshotsScrollChanged">
+          <ListBox.ItemContainerTheme>
+            <ControlTheme TargetType="ListBoxItem">
+              <Setter Property="Padding" Value="0"/>
+              <Setter Property="Background" Value="Transparent"/>
+              <Setter Property="Focusable" Value="False"/>
+              <Setter Property="HorizontalContentAlignment" Value="Left"/>
+              <Style Selector=":pointerover" x:SetterTargetType="ListBoxItem">
+                <Setter Property="Background" Value="Transparent"/>
+              </Style>
+              <Style Selector=":selected" x:SetterTargetType="ListBoxItem">
+                <Setter Property="Background" Value="Transparent"/>
+              </Style>
+            </ControlTheme>
+          </ListBox.ItemContainerTheme>
+          <ListBox.ItemsPanel>
+            <ItemsPanelTemplate>
+              <WrapPanel Orientation="Horizontal"/>
+            </ItemsPanelTemplate>
+          </ListBox.ItemsPanel>
+          <ListBox.ItemTemplate>
+            <DataTemplate>
+              <Border Background="{DynamicResource SurfaceBrush}"
+                      CornerRadius="12" Padding="8" Margin="0,0,14,14" Width="200"
+                      BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
+                <Grid RowDefinitions="150,Auto,Auto,Auto">
+                  <Border Grid.Row="0" CornerRadius="8" Background="{DynamicResource SurfaceElevatedBrush}" Margin="0,0,0,8">
+                    <Image Source="{Binding FullPath, Converter={x:Static converters:FilePathToBitmapConverter.Instance}}" Stretch="UniformToFill"/>
+                  </Border>
+                  <TextBlock Grid.Row="1" Text="{Binding FileName}" FontSize="13"
+                             FontWeight="Medium" TextTrimming="CharacterEllipsis" Margin="0,0,0,4"/>
+                  <StackPanel Grid.Row="2" Margin="0,0,0,8">
+                    <TextBlock FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,2">
+                      <Run Text="大小: "/><Run Text="{Binding FormattedSize}"/>
+                    </TextBlock>
+                    <TextBlock FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}">
+                      <Run Text="创建: "/><Run Text="{Binding FormattedCreatedTime}"/>
+                    </TextBlock>
+                  </StackPanel>
+                  <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="4">
+                    <Button Content="查看" Classes="ghost" Padding="6,4"
+                            Command="{Binding $parent[ListBox].((vm:ScreenshotsViewModel)DataContext).ViewScreenshotCommand}"
+                            CommandParameter="{Binding}"/>
+                    <Button Content="导出" Classes="ghost" Padding="6,4"
+                            Command="{Binding $parent[ListBox].((vm:ScreenshotsViewModel)DataContext).ExportScreenshotCommand}"
+                            CommandParameter="{Binding}"/>
+                    <Button Content="删除" Classes="danger" Padding="6,4"
+                            Command="{Binding $parent[ListBox].((vm:ScreenshotsViewModel)DataContext).DeleteScreenshotCommand}"
+                            CommandParameter="{Binding}"/>
+                  </StackPanel>
+                </Grid>
+              </Border>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
 
         <StackPanel Grid.Row="1" Classes="empty-state"
                     IsVisible="{Binding IsEmpty}">
@@ -571,15 +586,34 @@
           </StackPanel>
         </Border>
 
-        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="24,0,24,0">
-          <StackPanel>
-          <ItemsControl ItemsSource="{Binding Servers}">
-            <ItemsControl.ItemsPanel>
+        <Grid Grid.Row="1" Margin="24,0,24,0">
+          <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+          </Grid.RowDefinitions>
+          <ListBox Grid.Row="0" ItemsSource="{Binding Servers}"
+                   Background="Transparent" BorderThickness="0"
+                   ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+            <ListBox.ItemContainerTheme>
+              <ControlTheme TargetType="ListBoxItem">
+                <Setter Property="Padding" Value="0"/>
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="Focusable" Value="False"/>
+                <Setter Property="HorizontalContentAlignment" Value="Left"/>
+                <Style Selector=":pointerover" x:SetterTargetType="ListBoxItem">
+                  <Setter Property="Background" Value="Transparent"/>
+                </Style>
+                <Style Selector=":selected" x:SetterTargetType="ListBoxItem">
+                  <Setter Property="Background" Value="Transparent"/>
+                </Style>
+              </ControlTheme>
+            </ListBox.ItemContainerTheme>
+            <ListBox.ItemsPanel>
               <ItemsPanelTemplate>
                 <WrapPanel Orientation="Horizontal"/>
               </ItemsPanelTemplate>
-            </ItemsControl.ItemsPanel>
-            <ItemsControl.ItemTemplate>
+            </ListBox.ItemsPanel>
+            <ListBox.ItemTemplate>
               <DataTemplate>
                 <Border Background="{DynamicResource SurfaceBrush}"
                         CornerRadius="14" Padding="22" Margin="0,0,16,16"
@@ -624,9 +658,9 @@
                                    Width="36"/>
                         <ProgressBar Grid.Column="1" IsIndeterminate="True" Height="2" Width="64"
                                      VerticalAlignment="Center" Margin="4,0,0,0"
-                                     IsVisible="{Binding $parent[ItemsControl].((vm:ServersViewModel)DataContext).IsRefreshing}"/>
+                                     IsVisible="{Binding $parent[ListBox].((vm:ServersViewModel)DataContext).IsRefreshing}"/>
                         <StackPanel Grid.Column="1" Margin="4,0,0,0"
-                                    IsVisible="{Binding $parent[ItemsControl].((vm:ServersViewModel)DataContext).IsRefreshing, Converter={x:Static converters:NotConverter.Instance}}">
+                                    IsVisible="{Binding $parent[ListBox].((vm:ServersViewModel)DataContext).IsRefreshing, Converter={x:Static converters:NotConverter.Instance}}">
                           <TextBlock FontSize="12" FontWeight="Medium" IsVisible="{Binding IsOnline}">
                             <TextBlock.Foreground>
                               <SolidColorBrush Color="{Binding PingLevel, Converter={x:Static converters:PingLevelToColorConverter.Instance}}"/>
@@ -655,25 +689,25 @@
                     <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
                       <Button Content="连接" Classes="accent"
                               Padding="16,7" FontSize="13"
-                              Command="{Binding $parent[ItemsControl].((vm:ServersViewModel)DataContext).ConnectServerCommand}"
+                              Command="{Binding $parent[ListBox].((vm:ServersViewModel)DataContext).ConnectServerCommand}"
                               CommandParameter="{Binding}"
-                              IsEnabled="{Binding $parent[ItemsControl].((vm:ServersViewModel)DataContext).IsConnecting, Converter={x:Static converters:NotConverter.Instance}}"/>
+                              IsEnabled="{Binding $parent[ListBox].((vm:ServersViewModel)DataContext).IsConnecting, Converter={x:Static converters:NotConverter.Instance}}"/>
                       <Button Content="编辑" Classes="ghost"
                               Padding="14,7" FontSize="13"
-                              Command="{Binding $parent[ItemsControl].((vm:ServersViewModel)DataContext).EditServerCommand}"
+                              Command="{Binding $parent[ListBox].((vm:ServersViewModel)DataContext).EditServerCommand}"
                               CommandParameter="{Binding}"/>
                       <Button Content="删除" Classes="danger"
                               Padding="14,7" FontSize="13"
-                              Command="{Binding $parent[ItemsControl].((vm:ServersViewModel)DataContext).DeleteServerCommand}"
+                              Command="{Binding $parent[ListBox].((vm:ServersViewModel)DataContext).DeleteServerCommand}"
                               CommandParameter="{Binding}"/>
                     </StackPanel>
                   </Grid>
                 </Border>
               </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
+            </ListBox.ItemTemplate>
+          </ListBox>
 
-          <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="12"
+          <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="12"
                       Margin="0,12,0,28">
             <Button Content="上一页" Classes="ghost" Padding="16,8" FontSize="13"
                     Command="{Binding PreviousPageCommand}"
@@ -695,8 +729,7 @@
                     Command="{Binding NextPageCommand}"
                     IsEnabled="{Binding !IsLoading}"/>
           </StackPanel>
-          </StackPanel>
-        </ScrollViewer>
+        </Grid>
 
         <StackPanel Grid.Row="1" Classes="empty-state"
                     IsVisible="{Binding IsEmpty}">
