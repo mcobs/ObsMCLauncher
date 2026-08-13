@@ -24,22 +24,6 @@ public partial class MoreViewModel : ViewModelBase
     [ObservableProperty]
     private int _selectedTabIndex;
 
-    [ObservableProperty]
-    private string _versionText = $"版本 {VersionInfo.DisplayVersion}";
-
-    public string UpdateChannelText => $"更新通道: {UpdateService.GetChannelDisplayName(UpdateService.CurrentChannel)}";
-
-    /// <summary>
-    /// 刷新版本和通道显示信息（在导航到"更多"页面时调用）
-    /// </summary>
-    public void RefreshChannelInfo()
-    {
-        OnPropertyChanged(nameof(UpdateChannelText));
-    }
-
-    [ObservableProperty]
-    private bool _isCheckingUpdate;
-
     public ObservableCollection<TabItemViewModel> Tabs { get; }
 
     public AboutViewModel About { get; }
@@ -187,99 +171,6 @@ public partial class MoreViewModel : ViewModelBase
             var win = new DevConsoleWindow();
             win.Show();
         });
-    }
-
-    [RelayCommand]
-    private async Task CheckUpdate()
-    {
-        if (IsCheckingUpdate) return;
-
-        try
-        {
-            IsCheckingUpdate = true;
-            _notificationService.Show("检查更新", "正在检查更新...", NotificationType.Info);
-
-            var result = await UpdateService.CheckForUpdatesAsync();
-            if (result != null)
-            {
-                await HandleUpdateResultAsync(result);
-            }
-            else
-            {
-                _notificationService.Show("已是最新版本", $"当前版本 {VersionInfo.DisplayVersion} 已是最新版本", NotificationType.Success);
-            }
-        }
-        catch (Exception ex)
-        {
-            _notificationService.Show("检查更新失败", ex.Message, NotificationType.Error);
-        }
-        finally
-        {
-            IsCheckingUpdate = false;
-        }
-    }
-
-    private async Task HandleUpdateResultAsync(UpdateCheckResult result)
-    {
-        if (result.CanAutoUpdate)
-        {
-            var notes = string.IsNullOrEmpty(result.ReleaseNotes) ? $"新版本 {result.Version} 已发布" : result.ReleaseNotes;
-            var confirmed = await _dialogService.ShowUpdateDialogAsync(
-                "发现新版本",
-                notes,
-                "下载并安装",
-                "稍后再说");
-
-            if (confirmed && result.VelopackUpdateInfo != null)
-            {
-                var dialog = _dialogService.UpdateDialogCurrent;
-                if (dialog != null)
-                {
-                    dialog.IsDownloading = true;
-                    dialog.DownloadStatusText = "正在下载更新...";
-                    dialog.ConfirmText = "下载中...";
-                    _dialogService.ReopenUpdateDialog();
-
-                    try
-                    {
-                        await UpdateService.DownloadAndApplyUpdateAsync(
-                            result.VelopackUpdateInfo,
-                            progress =>
-                            {
-                                Dispatcher.UIThread.Post(() =>
-                                {
-                                    dialog.DownloadProgress = progress;
-                                    dialog.DownloadStatusText = $"正在下载更新... {progress}%";
-                                });
-                            });
-                    }
-                    catch (Exception ex)
-                    {
-                        dialog.IsDownloading = false;
-                        dialog.ConfirmText = "下载并安装";
-                        _notificationService.Show("下载更新失败", ex.Message, NotificationType.Error);
-                        return;
-                    }
-                }
-                else
-                {
-                    try
-                    {
-                        await UpdateService.DownloadAndApplyUpdateAsync(result.VelopackUpdateInfo);
-                    }
-                    catch (Exception ex)
-                    {
-                        _notificationService.Show("下载更新失败", ex.Message, NotificationType.Error);
-                        return;
-                    }
-                }
-            }
-        }
-        else
-        {
-            _notificationService.Show("发现新版本", $"有新版本 {result.Version} 可用，正在打开下载页面...", NotificationType.Success);
-            UpdateService.OpenLatestReleasePage();
-        }
     }
 }
 

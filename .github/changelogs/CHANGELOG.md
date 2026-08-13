@@ -9,6 +9,7 @@
 - SvgThemeHelper 浅色/深色图标颜色改为 TextSecondaryBrush 色值，避免纯黑/纯白对比度过强
 
 ### 优化
+- 移除"更多"页重复的检查更新逻辑（MoreViewModel 中的死代码，约 90 行），统一使用关于页中的实现
 - 主窗口导航栏迁移到 FluentAvalonia NavigationView + Frame：替换原 SplitView + ListBox 自绘导航，导航项/底部导航通过 MenuItemsSource/FooterMenuItemsSource 数据绑定生成，内容区使用 Frame 按 ViewModel 实例缓存页面，页面切换带 Fluent 转场动画
 - 移除导航栏底部版权标志（含版权条目、模板选择器及相关代码）
 - 导航栏图标改用 Assets/SidebarIcons 的 SVG（ImageIconSource 绑定 BitmapAssetValueConverter，随深浅色主题自动换色），并新增 more.svg 补充"更多"页图标
