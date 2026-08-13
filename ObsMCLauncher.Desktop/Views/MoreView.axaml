@@ -471,7 +471,8 @@
           </Grid>
         </Border>
 
-        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="24,0,24,24">
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="24,0,24,24"
+                      ScrollViewer.ScrollChanged="OnScreenshotsScrollChanged">
           <ItemsControl ItemsSource="{Binding Screenshots}">
             <ItemsControl.ItemsPanel>
               <ItemsPanelTemplate>

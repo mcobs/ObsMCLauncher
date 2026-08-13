@@ -1,6 +1,7 @@
 ## [Unreleased] - 2026-08-13
 
 ### 修复
+- 修复"更多-截图管理"分页加载失效的问题：滚动到底部时自动加载更多截图，此前最多只显示前 20 张
 - 修复浅色主题下导航栏/标题栏/窗口/卡片背景仍为深色的问题：ApplyLightTheme/ApplyDarkTheme 补充 NavBackgroundBrush、TitleBarBackgroundBrush、WindowBackgroundBrush、CardBackgroundBrush 等资源更新
 - 修复资源中心搜索结果已显示但骨架屏仍不消失的问题：Modrinth 版本信息改为后台异步加载，不再阻塞搜索完成；搜索增加 60 秒超时兜底；已有结果时立即隐藏骨架屏
 - 导航栏图标改用 PathIconSource + SvgToGeometryConverter，图标随 Foreground 变色（选中态变主题色、主题切换跟随文本色），不再使用固定颜色的 ImageIconSource
