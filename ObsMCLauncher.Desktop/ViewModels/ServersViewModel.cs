@@ -26,6 +26,8 @@ public partial class ServersViewModel : ViewModelBase, IDisposable
     private readonly NotificationService _notificationService;
     private readonly DialogService _dialogService;
     private CancellationTokenSource? _autoRefreshCts;
+    private CancellationTokenSource? _filterCts;
+    private const int FILTER_DEBOUNCE_MS = 300;
     private bool _disposed;
 
     [ObservableProperty]
@@ -257,8 +259,15 @@ public partial class ServersViewModel : ViewModelBase, IDisposable
 
     private async Task FilterAsync()
     {
+        _filterCts?.Cancel();
+        var cts = new CancellationTokenSource();
+        _filterCts = cts;
+        var token = cts.Token;
+
         try
         {
+            await Task.Delay(FILTER_DEBOUNCE_MS, token);
+
             var config = LauncherConfig.Load();
             var servers = config.Servers ?? new List<ServerInfo>();
 
@@ -275,18 +284,24 @@ public partial class ServersViewModel : ViewModelBase, IDisposable
                         (s.Version != null && s.Version.Contains(SearchText, StringComparison.OrdinalIgnoreCase)));
                 }
 
+                if (token.IsCancellationRequested) return;
+
                 Dispatcher.UIThread.Post(() =>
                 {
+                    if (token.IsCancellationRequested) return;
+
                     _allFilteredServers = filtered.ToList();
                     DebugLogger.Info("ServersVM", $"筛选完成: {_allFilteredServers.Count} 个服务器" + (string.IsNullOrEmpty(SearchText) ? "" : $" (搜索: {SearchText})"));
                     UpdatePagination();
                     ApplyPaging();
                     IsEmpty = _allFilteredServers.Count == 0;
                 });
-            });
+            }, token);
         }
+        catch (OperationCanceledException) { }
         catch (Exception ex)
         {
+            if (token.IsCancellationRequested) return;
             DebugLogger.Error("ServersVM", $"筛选失败: {ex.Message}");
         }
     }

@@ -13,6 +13,7 @@
 - SvgThemeHelper 浅色/深色图标颜色改为 TextSecondaryBrush 色值，避免纯黑/纯白对比度过强
 
 ### 优化
+- 更多页搜索/筛选增加防抖与取消：截图、服务器收藏、插件市场三处的搜索输入与筛选操作不再并发执行，快速输入时结果乱序问题消除
 - 截图管理支持导出：点击截图卡片"导出"按钮可选择保存位置，替换原先的占位实现
 - 移除"更多"页重复的检查更新逻辑（MoreViewModel 中的死代码，约 90 行），统一使用关于页中的实现
 - 主窗口导航栏迁移到 FluentAvalonia NavigationView + Frame：替换原 SplitView + ListBox 自绘导航，导航项/底部导航通过 MenuItemsSource/FooterMenuItemsSource 数据绑定生成，内容区使用 Frame 按 ViewModel 实例缓存页面，页面切换带 Fluent 转场动画

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -48,8 +49,10 @@ public partial class ScreenshotsViewModel : ViewModelBase
     private bool _isLoadingMore;
 
     private const int PAGE_SIZE = 20;
+    private const int FILTER_DEBOUNCE_MS = 300;
     private int _currentPage = 0;
     private List<ScreenshotInfo>? _allFilteredScreenshots;
+    private CancellationTokenSource? _filterCts;
 
     public ScreenshotsViewModel(NotificationService notificationService)
     {
@@ -123,8 +126,15 @@ public partial class ScreenshotsViewModel : ViewModelBase
 
     private async Task FilterAsync()
     {
+        _filterCts?.Cancel();
+        var cts = new CancellationTokenSource();
+        _filterCts = cts;
+        var token = cts.Token;
+
         try
         {
+            await Task.Delay(FILTER_DEBOUNCE_MS, token);
+
             var config = LauncherConfig.Load();
             string? versionName = null;
 
@@ -162,8 +172,12 @@ public partial class ScreenshotsViewModel : ViewModelBase
                     .Take(PAGE_SIZE)
                     .ToList();
 
+                if (token.IsCancellationRequested) return;
+
                 Dispatcher.UIThread.Post(() =>
                 {
+                    if (token.IsCancellationRequested) return;
+
                     if (_currentPage == 0)
                     {
                         Screenshots.Clear();
@@ -172,10 +186,12 @@ public partial class ScreenshotsViewModel : ViewModelBase
                     foreach (var s in pageData) Screenshots.Add(s);
                     IsEmpty = Screenshots.Count == 0;
                 });
-            });
+            }, token);
         }
+        catch (OperationCanceledException) { }
         catch (Exception ex)
         {
+            if (token.IsCancellationRequested) return;
             _notificationService.Show("错误", $"筛选截图失败: {ex.Message}", NotificationType.Error);
         }
     }

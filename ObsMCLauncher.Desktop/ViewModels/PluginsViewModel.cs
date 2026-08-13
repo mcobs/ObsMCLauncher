@@ -1,6 +1,7 @@
 using System;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -115,6 +116,8 @@ public partial class PluginsViewModel : ViewModelBase
     }
 
     private int _readmeRequestId;
+    private CancellationTokenSource? _filterCts;
+    private const int FILTER_DEBOUNCE_MS = 200;
 
     partial void OnSelectedItemChanged(PluginListItemViewModel? value)
     {
@@ -288,43 +291,56 @@ public partial class PluginsViewModel : ViewModelBase
         }
     }
 
-    private Task FilterMarketPluginsAsync()
+    private async Task FilterMarketPluginsAsync()
     {
-        if (_allMarketPlugins == null) return Task.CompletedTask;
+        if (_allMarketPlugins == null) return;
 
-        var filtered = _allMarketPlugins.AsEnumerable();
+        _filterCts?.Cancel();
+        var cts = new CancellationTokenSource();
+        _filterCts = cts;
+        var token = cts.Token;
 
-        // 平台过滤
-        if (SelectedPlatformFilter != null && SelectedPlatformFilter.Filter != PlatformFilter.All)
+        try
         {
-            var targetPlatform = SelectedPlatformFilter.Filter.ToString();
-            filtered = filtered.Where(p => p.Platforms.Count == 0 || p.Platforms.Contains(targetPlatform));
-        }
+            await Task.Delay(FILTER_DEBOUNCE_MS, token);
+            if (token.IsCancellationRequested) return;
 
-        // 分类过滤
-        if (SelectedCategory != null && !string.IsNullOrEmpty(SelectedCategory.Id))
-        {
-            filtered = filtered.Where(p => p.Category == SelectedCategory.Id);
-        }
+            var filtered = _allMarketPlugins.AsEnumerable();
 
-        // 搜索过滤
-        if (!string.IsNullOrWhiteSpace(SearchText))
-        {
-            var search = SearchText.ToLowerInvariant();
-            filtered = filtered.Where(p =>
-                p.Name.ToLowerInvariant().Contains(search) ||
-                p.Description.ToLowerInvariant().Contains(search) ||
-                p.Author.ToLowerInvariant().Contains(search));
-        }
+            // 平台过滤
+            if (SelectedPlatformFilter != null && SelectedPlatformFilter.Filter != PlatformFilter.All)
+            {
+                var targetPlatform = SelectedPlatformFilter.Filter.ToString();
+                filtered = filtered.Where(p => p.Platforms.Count == 0 || p.Platforms.Contains(targetPlatform));
+            }
 
-        LeftItems.Clear();
-        foreach (var p in filtered)
-        {
-            LeftItems.Add(PluginListItemViewModel.FromMarket(p));
-        }
+            // 分类过滤
+            if (SelectedCategory != null && !string.IsNullOrEmpty(SelectedCategory.Id))
+            {
+                filtered = filtered.Where(p => p.Category == SelectedCategory.Id);
+            }
 
-        IsEmptyHintVisible = LeftItems.Count == 0;
-        return Task.CompletedTask;
+            // 搜索过滤
+            if (!string.IsNullOrWhiteSpace(SearchText))
+            {
+                var search = SearchText.ToLowerInvariant();
+                filtered = filtered.Where(p =>
+                    p.Name.ToLowerInvariant().Contains(search) ||
+                    p.Description.ToLowerInvariant().Contains(search) ||
+                    p.Author.ToLowerInvariant().Contains(search));
+            }
+
+            if (token.IsCancellationRequested) return;
+
+            LeftItems.Clear();
+            foreach (var p in filtered)
+            {
+                LeftItems.Add(PluginListItemViewModel.FromMarket(p));
+            }
+
+            IsEmptyHintVisible = LeftItems.Count == 0;
+        }
+        catch (OperationCanceledException) { }
     }
 
     [RelayCommand]
