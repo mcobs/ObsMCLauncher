@@ -4,7 +4,6 @@
 - 修复浅色主题下导航栏/标题栏/窗口/卡片背景仍为深色的问题：ApplyLightTheme/ApplyDarkTheme 补充 NavBackgroundBrush、TitleBarBackgroundBrush、WindowBackgroundBrush、CardBackgroundBrush 等资源更新
 - 导航栏图标改用 PathIconSource + SvgToGeometryConverter，图标随 Foreground 变色（选中态变主题色、主题切换跟随文本色），不再使用固定颜色的 ImageIconSource
 - SvgThemeHelper 浅色/深色图标颜色改为 TextSecondaryBrush 色值，避免纯黑/纯白对比度过强
-- 修复导航栏"更多"按钮图标过大问题：SvgToGeometryConverter 解析 SVG viewBox 使图标 Bounds 与设计等比
 
 ### 优化
 - 主窗口导航栏迁移到 FluentAvalonia NavigationView + Frame：替换原 SplitView + ListBox 自绘导航，导航项/底部导航通过 MenuItemsSource/FooterMenuItemsSource 数据绑定生成，内容区使用 Frame 按 ViewModel 实例缓存页面，页面切换带 Fluent 转场动画
