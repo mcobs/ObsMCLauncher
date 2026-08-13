@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:ObsMCLauncher.Desktop.ViewModels"
              xmlns:converters="using:ObsMCLauncher.Desktop.Converters"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
              x:Class="ObsMCLauncher.Desktop.Views.MoreView"
              x:DataType="vm:MoreViewModel"
              x:Name="MoreViewControl">
@@ -67,13 +68,13 @@
             <Binding Path="#MoreViewControl.DataContext.SelectedTabIndex"/>
           </MultiBinding>
         </ScrollViewer.IsVisible>
-        <StackPanel MaxWidth="800" DataContext="{Binding About}">
+        <StackPanel MaxWidth="800" DataContext="{Binding About}" Margin="12,16,12,24">
           <Border Background="{DynamicResource SurfaceElevatedBrush}"
-                  CornerRadius="12" Padding="24" Margin="0,0,0,16"
+                  CornerRadius="12" Padding="20" Margin="0,0,0,12"
                   BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
             <Grid ColumnDefinitions="Auto,*,Auto">
-              <Border Grid.Column="0" Width="80" Height="80" CornerRadius="12" ClipToBounds="True"
-                      Background="{DynamicResource SurfaceBrush}" Margin="0,0,20,0">
+              <Border Grid.Column="0" Width="72" Height="72" CornerRadius="12" ClipToBounds="True"
+                      Background="{DynamicResource SurfaceBrush}" Margin="0,0,16,0">
                 <Image Source="avares://ObsMCLauncher.Desktop/Assets/logo.png" Stretch="Uniform"/>
               </Border>
 
@@ -84,9 +85,9 @@
 
                 <TextBlock Text="黑曜石 Minecraft 启动器"
                            FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}"
-                           Margin="0,4,0,0"/>
+                           Margin="0,3,0,0"/>
 
-                <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,8,0,0">
+                <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,6,0,0">
                   <TextBlock Text="{Binding VersionText}"
                              FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}"/>
                   <TextBlock Text="{Binding UpdateChannelText}"
@@ -107,197 +108,103 @@
             </Grid>
           </Border>
 
-          <Border Background="{DynamicResource SurfaceElevatedBrush}"
-                  CornerRadius="12" Padding="20" Margin="0,0,0,16"
-                  BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
-            <WrapPanel Orientation="Horizontal">
-              <StackPanel Width="360" Margin="0,0,24,0">
-                <TextBlock Text="相关链接" FontSize="16" FontWeight="Medium" Margin="0,0,0,10"/>
+          <ui:SettingsExpander Header="相关链接" IsExpanded="True">
+            <ui:SettingsExpanderItem Content="GitHub 开源仓库" Description="github.com/mcobs/ObsMCLauncher"
+                                     IsClickEnabled="True" Command="{Binding OpenGitHubCommand}">
+              <ui:SettingsExpanderItem.IconSource>
+                <ui:PathIconSource Data="M12 2C6.48 2 2 6.48 2 12C2 16.42 4.87 20.17 8.84 21.5C9.34 21.58 9.5 21.27 9.5 21C9.5 20.77 9.5 20.14 9.5 19.31C6.73 19.91 6.14 17.97 6.14 17.97C5.68 16.81 5.03 16.5 5.03 16.5C4.12 15.88 5.1 15.9 5.1 15.9C6.1 15.97 6.63 16.93 6.63 16.93C7.5 18.45 8.97 18 9.54 17.76C9.63 17.11 9.89 16.67 10.17 16.42C7.95 16.17 5.62 15.31 5.62 11.5C5.62 10.39 6 9.5 6.65 8.79C6.55 8.54 6.2 7.5 6.75 6.15C6.75 6.15 7.59 5.88 9.5 7.17C10.29 6.95 11.15 6.84 12 6.84C12.85 6.84 13.71 6.95 14.5 7.17C16.41 5.88 17.25 6.15 17.25 6.15C17.8 7.5 17.45 8.54 17.35 8.79C18 9.5 18.38 10.39 18.38 11.5C18.38 15.32 16.04 16.16 13.81 16.41C14.17 16.72 14.5 17.33 14.5 18.26C14.5 19.6 14.5 20.68 14.5 21C14.5 21.27 14.66 21.59 15.17 21.5C19.14 20.16 22 16.42 22 12C22 6.48 17.52 2 12 2Z"/>
+              </ui:SettingsExpanderItem.IconSource>
+            </ui:SettingsExpanderItem>
 
-                <Button Command="{Binding OpenGitHubCommand}"
-                        Classes="ghost"
-                        HorizontalContentAlignment="Left"
-                        Padding="10,6" Margin="0,0,0,6" CornerRadius="8" HorizontalAlignment="Stretch">
-                  <Grid ColumnDefinitions="Auto,*">
-                    <Path Grid.Column="0" Data="M12 2C6.48 2 2 6.48 2 12C2 16.42 4.87 20.17 8.84 21.5C9.34 21.58 9.5 21.27 9.5 21C9.5 20.77 9.5 20.14 9.5 19.31C6.73 19.91 6.14 17.97 6.14 17.97C5.68 16.81 5.03 16.5 5.03 16.5C4.12 15.88 5.1 15.9 5.1 15.9C6.1 15.97 6.63 16.93 6.63 16.93C7.5 18.45 8.97 18 9.54 17.76C9.63 17.11 9.89 16.67 10.17 16.42C7.95 16.17 5.62 15.31 5.62 11.5C5.62 10.39 6 9.5 6.65 8.79C6.55 8.54 6.2 7.5 6.75 6.15C6.75 6.15 7.59 5.88 9.5 7.17C10.29 6.95 11.15 6.84 12 6.84C12.85 6.84 13.71 6.95 14.5 7.17C16.41 5.88 17.25 6.15 17.25 6.15C17.8 7.5 17.45 8.54 17.35 8.79C18 9.5 18.38 10.39 18.38 11.5C18.38 15.32 16.04 16.16 13.81 16.41C14.17 16.72 14.5 17.33 14.5 18.26C14.5 19.6 14.5 20.68 14.5 21C14.5 21.27 14.66 21.59 15.17 21.5C19.14 20.16 22 16.42 22 12C22 6.48 17.52 2 12 2Z"
-                          Width="16" Height="16" Stretch="Uniform" Fill="{DynamicResource TextBrush}" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                    <StackPanel Grid.Column="1">
-                      <TextBlock Text="GitHub 开源仓库" FontWeight="Medium" FontSize="13"/>
-                      <TextBlock Text="github.com/mcobs/ObsMCLauncher"
-                                 FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" Margin="0,2,0,0"/>
-                    </StackPanel>
-                  </Grid>
-                </Button>
+            <ui:SettingsExpanderItem Content="黑曜石论坛" Description="mcobs.cn"
+                                     IsClickEnabled="True" Command="{Binding OpenForumCommand}">
+              <ui:SettingsExpanderItem.IconSource>
+                <ui:PathIconSource Data="M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2M20 16H6L4 18V4H20V16Z"/>
+              </ui:SettingsExpanderItem.IconSource>
+            </ui:SettingsExpanderItem>
 
-                <Button Command="{Binding OpenForumCommand}"
-                        Classes="ghost"
-                        HorizontalContentAlignment="Left"
-                        Padding="10,6" Margin="0,0,0,6" CornerRadius="8" HorizontalAlignment="Stretch">
-                  <Grid ColumnDefinitions="Auto,*">
-                    <Path Grid.Column="0" Data="M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2M20 16H6L4 18V4H20V16Z"
-                          Width="16" Height="16" Stretch="Uniform" Fill="{DynamicResource TextBrush}" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                    <StackPanel Grid.Column="1">
-                      <TextBlock Text="黑曜石论坛" FontWeight="Medium" FontSize="13"/>
-                      <TextBlock Text="mcobs.cn"
-                                 FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" Margin="0,2,0,0"/>
-                    </StackPanel>
-                  </Grid>
-                </Button>
+            <ui:SettingsExpanderItem Content="MciLm-link" Description="link.mcilm.top"
+                                     IsClickEnabled="True" Command="{Binding OpenMciLmLinkCommand}">
+              <ui:SettingsExpanderItem.IconSource>
+                <ui:PathIconSource Data="M10.59 13.41C11.21 14.03 12.05 14.42 13 14.42C13.95 14.42 14.79 14.03 15.41 13.41L19.41 9.41C20.63 8.19 20.63 6.19 19.41 4.97C18.19 3.75 16.19 3.75 14.97 4.97L13.41 6.54"/>
+              </ui:SettingsExpanderItem.IconSource>
+            </ui:SettingsExpanderItem>
 
-                <Button Command="{Binding OpenMciLmLinkCommand}"
-                        Classes="ghost"
-                        HorizontalContentAlignment="Left"
-                        Padding="10,6" Margin="0,0,0,6" CornerRadius="8" HorizontalAlignment="Stretch">
-                  <Grid ColumnDefinitions="Auto,*">
-                    <Path Grid.Column="0" Data="M10.59 13.41C11.21 14.03 12.05 14.42 13 14.42C13.95 14.42 14.79 14.03 15.41 13.41L19.41 9.41C20.63 8.19 20.63 6.19 19.41 4.97C18.19 3.75 16.19 3.75 14.97 4.97L13.41 6.54"
-                          Width="16" Height="16" Stretch="Uniform" Fill="{DynamicResource TextBrush}" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                    <StackPanel Grid.Column="1">
-                      <TextBlock Text="MciLm-link" FontWeight="Medium" FontSize="13"/>
-                      <TextBlock Text="link.mcilm.top"
-                                 FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" Margin="0,2,0,0"/>
-                    </StackPanel>
-                  </Grid>
-                </Button>
+            <ui:SettingsExpanderItem Content="MCIM" Description="www.mcimirror.top"
+                                     IsClickEnabled="True" Command="{Binding OpenMCIMCommand}">
+              <ui:SettingsExpanderItem.IconSource>
+                <ui:PathIconSource Data="M12 2C6.48 2 2 6.48 2 12S6.48 22 12 22 22 17.52 22 12 17.52 2 12 2M12 20C7.59 20 4 16.41 4 12S7.59 4 12 4 20 7.59 20 12 16.41 20 12 20M11 7H13V13H11V7M11 15H13V17H11V15Z"/>
+              </ui:SettingsExpanderItem.IconSource>
+            </ui:SettingsExpanderItem>
+          </ui:SettingsExpander>
 
-                <Button Command="{Binding OpenMCIMCommand}"
-                        Classes="ghost"
-                        HorizontalContentAlignment="Left"
-                        Padding="10,6" CornerRadius="8" HorizontalAlignment="Stretch">
-                  <Grid ColumnDefinitions="Auto,*">
-                    <Path Grid.Column="0" Data="M12 2C6.48 2 2 6.48 2 12S6.48 22 12 22 22 17.52 22 12 17.52 2 12 2M12 20C7.59 20 4 16.41 4 12S7.59 4 12 4 20 7.59 20 12 16.41 20 12 20M11 7H13V13H11V7M11 15H13V17H11V15Z"
-                          Width="16" Height="16" Stretch="Uniform" Fill="{DynamicResource TextBrush}" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                    <StackPanel Grid.Column="1">
-                      <TextBlock Text="MCIM" FontWeight="Medium" FontSize="13"/>
-                      <TextBlock Text="www.mcimirror.top"
-                                 FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" Margin="0,2,0,0"/>
-                    </StackPanel>
-                  </Grid>
-                </Button>
-              </StackPanel>
+          <ui:SettingsExpander Header="特别感谢" IsExpanded="True">
+            <ui:SettingsExpanderItem Content="bangbang93" Description="BMCLAPI 镜像源服务">
+              <ui:SettingsExpanderItem.IconSource>
+                <ui:PathIconSource Data="M12 21.35L10.55 20.03C5.4 15.36 2 12.27 2 8.5C2 5.41 4.42 3 7.5 3C9.24 3 10.91 3.81 12 5.08C13.09 3.81 14.76 3 16.5 3C19.58 3 22 5.41 22 8.5C22 12.27 18.6 15.36 13.45 20.03L12 21.35Z"/>
+              </ui:SettingsExpanderItem.IconSource>
+            </ui:SettingsExpanderItem>
 
-              <StackPanel Width="360">
-                <TextBlock Text="特别感谢" FontSize="16" FontWeight="Medium" Margin="0,0,0,10"/>
+            <ui:SettingsExpanderItem Content="路过的京局DF7C" Description="软件图标设计">
+              <ui:SettingsExpanderItem.IconSource>
+                <ui:PathIconSource Data="M12 2C6.49 2 2 6.49 2 12S6.49 22 12 22S22 17.51 22 12S17.51 2 12 2M12 20C7.59 20 4 16.41 4 12S7.59 4 12 4S20 7.59 20 12S16.41 20 12 20M12.5 7V12.25L17 14.92L16.25 16.15L11 13V7H12.5Z"/>
+              </ui:SettingsExpanderItem.IconSource>
+            </ui:SettingsExpanderItem>
 
-                <Border Background="{DynamicResource SurfaceBrush}"
-                        CornerRadius="8" Padding="10" Margin="0,0,0,6"
-                        BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
-                  <StackPanel>
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                      <Path Data="M12 21.35L10.55 20.03C5.4 15.36 2 12.27 2 8.5C2 5.41 4.42 3 7.5 3C9.24 3 10.91 3.81 12 5.08C13.09 3.81 14.76 3 16.5 3C19.58 3 22 5.41 22 8.5C22 12.27 18.6 15.36 13.45 20.03L12 21.35Z" Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource DangerBrush}" VerticalAlignment="Center"/>
-                      <TextBlock Text="bangbang93" FontSize="13" FontWeight="Medium" VerticalAlignment="Center"/>
-                    </StackPanel>
-                    <TextBlock Text="BMCLAPI 镜像源服务"
-                               FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"
-                               Margin="20,4,0,0" TextWrapping="Wrap"/>
-                  </StackPanel>
-                </Border>
+            <ui:SettingsExpanderItem Content="MciLm-link" Description="多人联机/内网穿透服务">
+              <ui:SettingsExpanderItem.IconSource>
+                <ui:PathIconSource Data="M10.59 13.41C11.21 14.03 12.05 14.42 13 14.42C13.95 14.42 14.79 14.03 15.41 13.41L19.41 9.41C20.63 8.19 20.63 6.19 19.41 4.97C18.19 3.75 16.19 3.75 14.97 4.97L13.41 6.54"/>
+              </ui:SettingsExpanderItem.IconSource>
+            </ui:SettingsExpanderItem>
 
-                <Border Background="{DynamicResource SurfaceBrush}"
-                        CornerRadius="8" Padding="10" Margin="0,0,0,6"
-                        BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
-                  <StackPanel>
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                      <Path Data="M12 2C6.49 2 2 6.49 2 12S6.49 22 12 22S22 17.51 22 12S17.51 2 12 2M12 20C7.59 20 4 16.41 4 12S7.59 4 12 4S20 7.59 20 12S16.41 20 12 20M12.5 7V12.25L17 14.92L16.25 16.15L11 13V7H12.5Z" Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource PrimaryBrush}" VerticalAlignment="Center"/>
-                      <TextBlock Text="路过的京局DF7C" FontSize="13" FontWeight="Medium" VerticalAlignment="Center"/>
-                    </StackPanel>
-                    <TextBlock Text="软件图标设计"
-                               FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"
-                               Margin="20,4,0,0" TextWrapping="Wrap"/>
-                  </StackPanel>
-                </Border>
+            <ui:SettingsExpanderItem Content="authlib-injector" Description="Yggdrasil 外置登录支持">
+              <ui:SettingsExpanderItem.IconSource>
+                <ui:PathIconSource Data="M12 1L3 5V11C3 16.5 6.8 21.7 12 23C17.2 21.7 21 16.5 21 11V5L12 1M12 11H19C18.5 15.5 15.7 19.6 12 20.9V11H5V6.3L12 3.2V11Z"/>
+              </ui:SettingsExpanderItem.IconSource>
+            </ui:SettingsExpanderItem>
 
-                <Border Background="{DynamicResource SurfaceBrush}"
-                        CornerRadius="8" Padding="10" Margin="0,0,0,6"
-                        BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
-                  <StackPanel>
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                      <Path Data="M10.59 13.41C11.21 14.03 12.05 14.42 13 14.42C13.95 14.42 14.79 14.03 15.41 13.41L19.41 9.41C20.63 8.19 20.63 6.19 19.41 4.97C18.19 3.75 16.19 3.75 14.97 4.97L13.41 6.54" Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource InfoBrush}" VerticalAlignment="Center"/>
-                      <TextBlock Text="MciLm-link" FontSize="13" FontWeight="Medium" VerticalAlignment="Center"/>
-                    </StackPanel>
-                    <TextBlock Text="多人联机/内网穿透服务"
-                               FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"
-                               Margin="20,4,0,0" TextWrapping="Wrap"/>
-                  </StackPanel>
-                </Border>
+            <ui:SettingsExpanderItem Content="MCIM" Description="社区资源镜像源服务 (https://www.mcimirror.top/)">
+              <ui:SettingsExpanderItem.IconSource>
+                <ui:PathIconSource Data="M12 2C6.48 2 2 6.48 2 12S6.48 22 12 22 22 17.52 22 12 17.52 2 12 2M12 20C7.59 20 4 16.41 4 12S7.59 4 12 4 20 7.59 20 12 16.41 20 12 20M11 7H13V13H11V7M11 15H13V17H11V15Z"/>
+              </ui:SettingsExpanderItem.IconSource>
+            </ui:SettingsExpanderItem>
+          </ui:SettingsExpander>
 
-                <Border Background="{DynamicResource SurfaceBrush}"
-                        CornerRadius="8" Padding="10" Margin="0,0,0,6"
-                        BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
-                  <StackPanel>
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                      <Path Data="M12 1L3 5V11C3 16.5 6.8 21.7 12 23C17.2 21.7 21 16.5 21 11V5L12 1M12 11H19C18.5 15.5 15.7 19.6 12 20.9V11H5V6.3L12 3.2V11Z" Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource WarningBrush}" VerticalAlignment="Center"/>
-                      <TextBlock Text="authlib-injector" FontSize="13" FontWeight="Medium" VerticalAlignment="Center"/>
-                    </StackPanel>
-                    <TextBlock Text="Yggdrasil 外置登录支持"
-                               FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"
-                               Margin="20,4,0,0" TextWrapping="Wrap"/>
-                  </StackPanel>
-                </Border>
+          <ui:SettingsExpander Header="关于" IsExpanded="True">
+            <ui:SettingsExpanderItem Content="介绍"
+                                     Description="ObsMCLauncher 是一款现代化的 Minecraft 启动器，采用 .NET 8.0 和 Avalonia 技术开发，提供流畅的游戏管理体验。">
+              <ui:SettingsExpanderItem.IconSource>
+                <ui:PathIconSource Data="M12 2C6.48 2 2 6.48 2 12S6.48 22 12 22 22 17.52 22 12 17.52 2 12 2M13 17H11V15H13V17M13 13H11V7H13V13Z"/>
+              </ui:SettingsExpanderItem.IconSource>
+            </ui:SettingsExpanderItem>
 
-                <Border Background="{DynamicResource SurfaceBrush}"
-                        CornerRadius="8" Padding="10"
-                        BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
-                  <StackPanel>
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                      <Path Data="M12 2C6.48 2 2 6.48 2 12S6.48 22 12 22 22 17.52 22 12 17.52 2 12 2M12 20C7.59 20 4 16.41 4 12S7.59 4 12 4 20 7.59 20 12 16.41 20 12 20M11 7H13V13H11V7M11 15H13V17H11V15Z" Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource InfoBrush}" VerticalAlignment="Center"/>
-                      <TextBlock Text="MCIM" FontSize="13" FontWeight="Medium" VerticalAlignment="Center"/>
-                    </StackPanel>
-                    <TextBlock Text="社区资源镜像源服务 (https://www.mcimirror.top/)"
-                               FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"
-                               Margin="20,4,0,0" TextWrapping="Wrap"/>
-                  </StackPanel>
-                </Border>
-              </StackPanel>
-            </WrapPanel>
-          </Border>
+            <ui:SettingsExpanderItem Content="开源协议" Description="GNU GPL v3.0">
+              <ui:SettingsExpanderItem.IconSource>
+                <ui:PathIconSource Data="M12 2C6.48 2 2 6.48 2 12S6.48 22 12 22 22 17.52 22 12 17.52 2 12 2M12 20C7.59 20 4 16.41 4 12S7.59 4 12 4 20 7.59 20 12 16.41 20 12 20M11 7H13V13H11V7M11 15H13V17H11V15Z"/>
+              </ui:SettingsExpanderItem.IconSource>
+            </ui:SettingsExpanderItem>
 
-          <Border Background="{DynamicResource SurfaceElevatedBrush}"
-                  CornerRadius="12" Padding="20" Margin="0,0,0,16"
-                  BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
-            <StackPanel>
-              <TextBlock Text="关于" FontSize="16" FontWeight="Medium" Margin="0,0,0,10"/>
-              <TextBlock Text="ObsMCLauncher 是一款现代化的 Minecraft 启动器，采用 .NET 8.0 和 Avalonia 技术开发，提供流畅的游戏管理体验。"
-                         FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}"
-                         TextWrapping="Wrap" LineHeight="22" Margin="0,0,0,14"/>
+            <ui:SettingsExpanderItem Content="技术栈" Description=".NET 8.0 | Avalonia | C#">
+              <ui:SettingsExpanderItem.IconSource>
+                <ui:PathIconSource Data="M9.4 16.6L4.8 12L9.4 7.4L8 6L2 12L8 18L9.4 16.6M14.6 16.6L19.2 12L14.6 7.4L16 6L22 12L16 18L14.6 16.6Z"/>
+              </ui:SettingsExpanderItem.IconSource>
+            </ui:SettingsExpanderItem>
 
-              <StackPanel Orientation="Horizontal" Spacing="24" Margin="0,0,0,12">
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                  <TextBlock Text="开源协议" FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}"/>
-                  <TextBlock Text="GNU GPL v3.0" FontSize="12" FontWeight="Medium"/>
-                </StackPanel>
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                  <TextBlock Text="技术栈" FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}"/>
-                  <TextBlock Text=".NET 8.0 | Avalonia | C#" FontSize="12" FontWeight="Medium"/>
-                </StackPanel>
-              </StackPanel>
+            <ui:SettingsExpanderItem Content="版权" Description="(c) 2025 ObsMCLauncher">
+              <ui:SettingsExpanderItem.IconSource>
+                <ui:PathIconSource Data="M12 2C6.48 2 2 6.48 2 12S6.48 22 12 22 22 17.52 22 12 17.52 2 12 2M12 20C7.59 20 4 16.41 4 12S7.59 4 12 4 20 7.59 20 12 16.41 20 12 20M11 7H13V13H11V7M11 15H13V17H11V15Z"/>
+              </ui:SettingsExpanderItem.IconSource>
+            </ui:SettingsExpanderItem>
+          </ui:SettingsExpander>
 
-              <Border Background="{DynamicResource SurfaceBrush}"
-                      CornerRadius="8" Padding="10,6"
-                      BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
-                <TextBlock Text="(c) 2025 ObsMCLauncher"
-                           FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}"/>
-              </Border>
-            </StackPanel>
-          </Border>
-
-          <Border Background="{DynamicResource SurfaceElevatedBrush}"
-                  CornerRadius="12" Padding="20" Margin="0,0,0,16"
-                  BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
-            <StackPanel>
-              <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,12">
-                <Path Data="M12 2C6.48 2 2 6.48 2 12S6.48 22 12 22 22 17.52 22 12 17.52 2 12 2M13 17H11V15H13V17M13 13H11V7H13V13Z" Width="18" Height="18" Stretch="Uniform" Fill="{DynamicResource WarningBrush}" VerticalAlignment="Center"/>
-                <TextBlock Text="免责声明" FontSize="16" FontWeight="Medium" VerticalAlignment="Center"/>
-              </StackPanel>
-              <TextBlock FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}"
-                         TextWrapping="Wrap" LineHeight="20">
-                <Run Text="本启动器为第三方工具，与 Mojang Studios 和 Microsoft 无关。"/>
-                <LineBreak/>
-                <Run Text="Minecraft 是 Mojang Studios 的注册商标。"/>
-                <LineBreak/>
-                <Run Text="使用本软件即表示您同意自行承担使用风险。"/>
-              </TextBlock>
-            </StackPanel>
-          </Border>
+          <ui:SettingsExpander Header="免责声明" IsExpanded="True">
+            <ui:SettingsExpanderItem Content="第三方工具声明"
+                                     Description="本启动器为第三方工具，与 Mojang Studios 和 Microsoft 无关。Minecraft 是 Mojang Studios 的注册商标。使用本软件即表示您同意自行承担使用风险。">
+              <ui:SettingsExpanderItem.IconSource>
+                <ui:PathIconSource Data="M12 2C6.48 2 2 6.48 2 12S6.48 22 12 22 22 17.52 22 12 17.52 2 12 2M13 17H11V15H13V17M13 13H11V7H13V13Z"/>
+              </ui:SettingsExpanderItem.IconSource>
+            </ui:SettingsExpanderItem>
+          </ui:SettingsExpander>
         </StackPanel>
       </ScrollViewer>
 
