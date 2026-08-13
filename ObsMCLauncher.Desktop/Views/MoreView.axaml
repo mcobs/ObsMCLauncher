@@ -337,11 +337,10 @@
               </Grid>
 
               <Grid Grid.Row="2">
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                  <ListBox ItemsSource="{Binding LeftItems}"
-                           SelectedItem="{Binding SelectedItem}"
-                           Background="Transparent"
-                           BorderThickness="0">
+                <ListBox ItemsSource="{Binding LeftItems}"
+                         SelectedItem="{Binding SelectedItem}"
+                         Background="Transparent"
+                         BorderThickness="0">
                     <ListBox.ItemTemplate>
                       <DataTemplate>
                         <Border CornerRadius="8" Padding="12" Margin="0,0,0,8"
@@ -374,7 +373,6 @@
                       </DataTemplate>
                     </ListBox.ItemTemplate>
                   </ListBox>
-                </ScrollViewer>
 
                 <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" IsVisible="{Binding IsMarketLoading}" Spacing="16" Margin="16">
                   <Border Classes="shimmer" Width="260" Height="48" Margin="0,0,0,0"/>
