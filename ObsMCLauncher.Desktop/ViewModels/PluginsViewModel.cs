@@ -1,5 +1,6 @@
 using System;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -491,7 +492,7 @@ public partial class PluginsViewModel : ViewModelBase
     {
         try
         {
-            var pluginsDir = System.IO.Path.Combine(System.AppContext.BaseDirectory, "OMCL", "plugins");
+            var pluginsDir = Path.Combine(VersionInfo.GetAppBaseDirectory(), "OMCL", "plugins");
             
             var notificationId = _notificationService.Show("下载中", $"正在下载 {plugin.Name}... 0%", NotificationType.Progress);
 

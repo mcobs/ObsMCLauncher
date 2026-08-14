@@ -16,6 +16,7 @@ using ObsMCLauncher.Core.Models;
 using ObsMCLauncher.Core.Services;
 using ObsMCLauncher.Core.Services.Accounts;
 using ObsMCLauncher.Core.Services.Minecraft;
+using ObsMCLauncher.Core.Utils;
 using ObsMCLauncher.Desktop.ViewModels.Notifications;
 using ObsMCLauncher.Desktop.ViewModels.Dialogs;
 
@@ -390,7 +391,7 @@ public partial class InstanceViewModel : ViewModelBase
         }
     }
 
-    private static readonly string ModIconCacheDir = Path.Combine(AppContext.BaseDirectory, "OMCL", "cache", "mod_icons");
+    private static readonly string ModIconCacheDir = Path.Combine(VersionInfo.GetAppBaseDirectory(), "OMCL", "cache", "mod_icons");
 
     /// <summary>
     /// 生成稳定的十六进制哈希（SHA256 前 4 字节），用于图标缓存文件名。
@@ -653,7 +654,7 @@ public partial class InstanceViewModel : ViewModelBase
         HasShaderPacks = ShaderPacks.Count > 0;
     }
 
-    private static readonly string ShaderIconCacheDir = Path.Combine(AppContext.BaseDirectory, "OMCL", "cache", "shader_icons");
+    private static readonly string ShaderIconCacheDir = Path.Combine(VersionInfo.GetAppBaseDirectory(), "OMCL", "cache", "shader_icons");
 
     /// <summary>
     /// 从光影包 zip 中提取图标，返回缓存文件路径，未找到则返回 null。
@@ -785,7 +786,7 @@ public partial class InstanceViewModel : ViewModelBase
         HasResourcePacks = ResourcePacks.Count > 0;
     }
 
-    private static readonly string ResourcePackIconCacheDir = Path.Combine(AppContext.BaseDirectory, "OMCL", "cache", "resourcepack_icons");
+    private static readonly string ResourcePackIconCacheDir = Path.Combine(VersionInfo.GetAppBaseDirectory(), "OMCL", "cache", "resourcepack_icons");
 
     /// <summary>
     /// 从材质包 zip 中提取图标，返回缓存文件路径，未找到则返回 null。

@@ -384,4 +384,26 @@ public class PluginEventTests
         var ctx = CreateContext();
         Assert.NotEmpty(ctx.LauncherVersion);
     }
+
+    [Fact]
+    public void PluginContext_LauncherBaseDirectory_IsNotEmpty()
+    {
+        var ctx = CreateContext();
+        Assert.False(string.IsNullOrEmpty(ctx.LauncherBaseDirectory));
+        Assert.EndsWith(Path.DirectorySeparatorChar.ToString(), ctx.LauncherBaseDirectory);
+    }
+
+    [Fact]
+    public void PluginContext_LauncherDataDirectory_IsUnderBaseDirectory()
+    {
+        var ctx = CreateContext();
+        Assert.Equal(Path.Combine(ctx.LauncherBaseDirectory, "OMCL"), ctx.LauncherDataDirectory);
+    }
+
+    [Fact]
+    public void PluginContext_GameDirectory_IsNotEmpty()
+    {
+        var ctx = CreateContext();
+        Assert.False(string.IsNullOrEmpty(ctx.GameDirectory));
+    }
 }

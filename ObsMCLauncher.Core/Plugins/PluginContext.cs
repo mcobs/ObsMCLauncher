@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using ObsMCLauncher.Core.Models;
 using ObsMCLauncher.Core.Utils;
 
 namespace ObsMCLauncher.Core.Plugins;
@@ -64,6 +65,12 @@ public class PluginContext : IPluginContext
     public string LauncherVersion => "1.0.1-pre.1";
 
     public string PluginDataDirectory => _pluginDataDir;
+
+    public string LauncherBaseDirectory => VersionInfo.GetAppBaseDirectory();
+
+    public string LauncherDataDirectory => Path.Combine(VersionInfo.GetAppBaseDirectory(), "OMCL");
+
+    public string GameDirectory => LauncherConfig.Load().GameDirectory;
 
     public void RegisterTab(string title, string tabId, string? icon = null, object? payload = null)
     {

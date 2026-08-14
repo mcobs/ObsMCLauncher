@@ -80,4 +80,48 @@ public class VersionInfoTests
         };
         Assert.Equal(expected, text);
     }
+
+    [Fact]
+    public void ResolveAppBaseDirectory_CurrentDir_StepsUpToParent()
+    {
+        var parent = Path.Combine(Path.GetTempPath(), "VelopackApp");
+        var result = VersionInfo.ResolveAppBaseDirectory(Path.Combine(parent, "current"));
+        Assert.Equal(parent + Path.DirectorySeparatorChar, result);
+    }
+
+    [Fact]
+    public void ResolveAppBaseDirectory_CurrentDir_WithTrailingSeparator_StepsUp()
+    {
+        var parent = Path.Combine(Path.GetTempPath(), "VelopackApp");
+        var current = Path.Combine(parent, "current") + Path.DirectorySeparatorChar;
+        var result = VersionInfo.ResolveAppBaseDirectory(current);
+        Assert.Equal(parent + Path.DirectorySeparatorChar, result);
+    }
+
+    [Fact]
+    public void ResolveAppBaseDirectory_CurrentDir_PlainFolder_StepsUp()
+    {
+        // 生产环境解压部署时 current 是普通文件夹（非junction/symlink），也必须跳出，
+        // 否则 OMCL/.minecraft 数据目录会落在被更新流程覆盖的 current 内
+        var parent = Path.Combine(Path.GetTempPath(), "ObsMCLauncher");
+        var result = VersionInfo.ResolveAppBaseDirectory(Path.Combine(parent, "current"));
+        Assert.Equal(parent + Path.DirectorySeparatorChar, result);
+    }
+
+    [Fact]
+    public void ResolveAppBaseDirectory_CurrentDirAtRoot_ReturnsRoot()
+    {
+        var root = Path.GetPathRoot(Path.GetTempPath());
+        Assert.NotNull(root);
+        var result = VersionInfo.ResolveAppBaseDirectory(Path.Combine(root, "current"));
+        Assert.Equal(root, result);
+    }
+
+    [Fact]
+    public void ResolveAppBaseDirectory_NonCurrentDir_ReturnsBaseDir()
+    {
+        var baseDir = Path.Combine(Path.GetTempPath(), "bin", "Debug", "net8.0");
+        var result = VersionInfo.ResolveAppBaseDirectory(baseDir);
+        Assert.Equal(baseDir + Path.DirectorySeparatorChar, result);
+    }
 }

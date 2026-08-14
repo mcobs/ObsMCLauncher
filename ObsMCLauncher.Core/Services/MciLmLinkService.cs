@@ -35,7 +35,7 @@ public class MciLmLinkService : IDisposable
 
     public string GetExecutablePath()
     {
-        var binDir = Path.Combine(AppContext.BaseDirectory, "OMCL", "bin");
+        var binDir = Path.Combine(VersionInfo.GetAppBaseDirectory(), "OMCL", "bin");
         Directory.CreateDirectory(binDir);
 
         string fileName;

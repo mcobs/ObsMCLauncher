@@ -72,24 +72,32 @@ public static class VersionInfo
 
     /// <summary>
     /// 获取应用基础目录，用于定位OMCL等数据目录。
-    /// Velopack安装模式下程序在current/子目录运行（junction/symlink），需要往上一层；
-    /// 便携模式和开发模式直接使用BaseDirectory。
+    /// Velopack部署模式下程序在 current/ 子目录运行。标准安装中 current 是
+    /// junction/symlink，但解压部署或文件系统不支持 reparse point 时它是普通文件夹；
+    /// 无论哪种情况 current 都会被更新流程整体替换。因此只要基目录名为 current
+    /// 就一律向上退一层，避免数据目录（OMCL、.minecraft 等）落在会被覆盖的目录里。
+    /// 便携模式和开发模式直接使用 BaseDirectory。
     /// </summary>
     public static string GetAppBaseDirectory()
     {
-        var baseDir = AppDomain.CurrentDomain.BaseDirectory
-            .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        return ResolveAppBaseDirectory(AppDomain.CurrentDomain.BaseDirectory);
+    }
+
+    /// <summary>
+    /// 解析应用基础目录（纯函数，便于测试）。
+    /// </summary>
+    internal static string ResolveAppBaseDirectory(string baseDirectory)
+    {
+        var baseDir = baseDirectory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
         var dirName = Path.GetFileName(baseDir);
         var parentDir = Path.GetDirectoryName(baseDir);
 
         if (dirName == "current" && parentDir != null)
         {
-            // Velopack安装模式下current是junction/symlink
-            var dirInfo = new DirectoryInfo(baseDir);
-            if (dirInfo.ResolveLinkTarget(true) != null)
-            {
-                return parentDir + Path.DirectorySeparatorChar;
-            }
+            // Velopack部署目录标记：current 可能是junction/symlink，也可能是普通文件夹，
+            // 统一向上退一层，确保OMCL等数据目录落在 current 之外
+            return parentDir.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+                + Path.DirectorySeparatorChar;
         }
 
         return baseDir + Path.DirectorySeparatorChar;

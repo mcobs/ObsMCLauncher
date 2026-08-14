@@ -46,6 +46,22 @@ public interface IPluginContext
     string PluginDataDirectory { get; }
 
     /// <summary>
+    /// 获取启动器基础目录（Velopack 部署模式下已自动定位到 current 的父级，
+    /// 不会落在会被更新整体替换的 current 目录内）
+    /// </summary>
+    string LauncherBaseDirectory { get; }
+
+    /// <summary>
+    /// 获取启动器数据目录（基础目录下的 OMCL 文件夹，存放配置/账户/缓存等）
+    /// </summary>
+    string LauncherDataDirectory { get; }
+
+    /// <summary>
+    /// 获取当前激活的游戏目录（.minecraft 根目录，随设置中切换的目录实时变化）
+    /// </summary>
+    string GameDirectory { get; }
+
+    /// <summary>
     /// 注册插件标签页（显示在"更多"页面）
     /// </summary>
     /// <param name="title">标签页标题</param>

@@ -87,7 +87,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         DownloadManager = new DownloadManagerViewModel(dispatcher);
 
         // 初始化插件系统
-        var pluginsDir = Path.Combine(AppContext.BaseDirectory, "OMCL", "plugins");
+        var pluginsDir = Path.Combine(VersionInfo.GetAppBaseDirectory(), "OMCL", "plugins");
         _pluginLoader = new PluginLoader(pluginsDir);
 
         // 创建主页ViewModel
@@ -128,7 +128,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     {
         try
         {
-            var pluginsDir = Path.Combine(AppContext.BaseDirectory, "OMCL", "plugins");
+            var pluginsDir = Path.Combine(VersionInfo.GetAppBaseDirectory(), "OMCL", "plugins");
             DebugLogger.Info("MainWindow", $"插件目录: {pluginsDir}");
             DebugLogger.Info("MainWindow", $"目录存在: {Directory.Exists(pluginsDir)}");
 

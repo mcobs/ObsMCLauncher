@@ -15,7 +15,7 @@
   - [事件系统](#1-事件系统)
   - [注册UI标签页](#2-注册ui标签页)
   - [注册主页卡片](#3-注册主页卡片)
-  - [插件数据目录](#4-插件数据目录)
+  - [目录获取](#4-目录获取)
   - [启动器版本信息](#5-启动器版本信息)
   - [通知系统](#6-通知系统)
   - [自定义命令](#7-自定义命令)
@@ -208,6 +208,9 @@ namespace ObsMCLauncher.Core.Plugins
     {
         string LauncherVersion { get; }
         string PluginDataDirectory { get; }
+        string LauncherBaseDirectory { get; }
+        string LauncherDataDirectory { get; }
+        string GameDirectory { get; }
 
         void RegisterTab(string title, string tabId, string? icon = null, object? payload = null);
         void SubscribeEvent(string eventName, Action<object?> handler);
@@ -476,11 +479,21 @@ private void OnOpenBackup(object? payload)
 }
 ```
 
-### 4. 插件数据目录
+### 4. 目录获取
+
+`IPluginContext` 提供以下目录 API（均已正确处理 Velopack 部署，不会返回会被更新整体替换的 `current` 目录）：
+
+| API | 说明 |
+| --- | --- |
+| `PluginDataDirectory` | 当前插件的专属数据目录（`<启动器基础目录>/OMCL/plugins/{插件ID}`），插件配置和数据应保存在这里 |
+| `LauncherBaseDirectory` | 启动器基础目录（Velopack 安装模式下自动定位到 `current` 的父级） |
+| `LauncherDataDirectory` | 启动器数据目录（`<启动器基础目录>/OMCL`，存放启动器配置/账户/缓存） |
+| `GameDirectory` | 当前激活的游戏目录（`.minecraft` 根目录，随用户在设置中的切换实时变化） |
 
 ```csharp
 public void OnLoad(IPluginContext context)
 {
+    // 1. 插件自己的数据目录（推荐：插件数据一律放在这里）
     string dataDir = context.PluginDataDirectory;
     
     var configPath = Path.Combine(dataDir, "config.json");
@@ -488,8 +501,20 @@ public void OnLoad(IPluginContext context)
     
     var dataFolder = Path.Combine(dataDir, "data");
     Directory.CreateDirectory(dataFolder);
+
+    // 2. 启动器基础目录 / 数据目录
+    string baseDir = context.LauncherBaseDirectory;   // 例如 .../ObsMCLauncher/
+    string omclDir = context.LauncherDataDirectory;   // 例如 .../ObsMCLauncher/OMCL
+
+    // 3. 当前游戏目录（.minecraft）
+    string gameDir = context.GameDirectory;
+    var modsDir = Path.Combine(gameDir, "mods");
 }
 ```
+
+> ⚠️ 生产环境下启动器运行在 Velopack 的 `current` 子目录中（更新时该目录会被整体替换）。
+> 上述 API 返回的路径都已自动跳出 `current`。插件**不要**自行拼接
+> `AppContext.BaseDirectory` 来定位数据目录，否则数据会写入 `current` 内并在更新时丢失。
 
 ### 5. 启动器版本信息
 
