@@ -4,7 +4,6 @@
         xmlns:ui="using:FluentAvalonia.UI.Controls"
         xmlns:converters="using:ObsMCLauncher.Desktop.Converters"
         xmlns:notif="using:ObsMCLauncher.Desktop.ViewModels.Notifications"
-        xmlns:dialogs="using:ObsMCLauncher.Desktop.ViewModels.Dialogs"
         xmlns:download="using:ObsMCLauncher.Core.Services.Download"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -262,90 +261,6 @@
                     <DoubleTransition Property="Opacity" Duration="0:0:0.2" Easing="CircularEaseOut" />
                 </Transitions>
             </Border.Transitions>
-        </Border>
-
-        <Border Grid.Row="0" Grid.Column="0" Grid.RowSpan="2" Grid.ColumnSpan="2"
-                HorizontalAlignment="Center"
-                VerticalAlignment="Center"
-                IsVisible="{Binding Dialogs.IsOpen}"
-                ZIndex="100"
-                Classes="fluent-dialog"
-                Opacity="{Binding Dialogs.Current.AnimationOpacity, FallbackValue=0}"
-                RenderTransformOrigin="0.5,0.5"
-                x:CompileBindings="False">
-            <Border.RenderTransform>
-                <TransformGroup>
-                    <ScaleTransform ScaleX="{Binding Dialogs.Current.AnimationScale, FallbackValue=0.9}" ScaleY="{Binding Dialogs.Current.AnimationScale, FallbackValue=0.9}" />
-                    <TranslateTransform Y="{Binding Dialogs.Current.AnimationOffsetY, FallbackValue=20}" />
-                </TransformGroup>
-            </Border.RenderTransform>
-            
-            <Grid RowDefinitions="Auto,Auto,Auto,Auto" ColumnDefinitions="Auto,*">
-                <Border Grid.Row="0" Grid.RowSpan="3" Grid.Column="0"
-                        Classes="dialog-icon-container"
-                        Margin="0,0,16,0"
-                        IsVisible="True">
-                    <PathIcon Data="{DynamicResource DialogInfoIcon}"
-                              Classes="dialog-icon"
-                              x:Name="DialogTypeIcon"/>
-                </Border>
-                
-                <TextBlock Grid.Row="0" Grid.Column="1" 
-                           Text="{Binding Dialogs.Current.Title, FallbackValue=''}" 
-                           Classes="dialog-title"/>
-                <Button Grid.Row="0" Grid.Column="2"
-                        Width="32" Height="32"
-                        Classes="ghost"
-                        Command="{Binding Dialogs.CloseCommand}"
-                        HorizontalAlignment="Right">
-                    <Path Data="M6 6L18 18M6 18L18 6" 
-                          Width="12" Height="12"
-                          Stretch="Uniform"
-                          Stroke="{DynamicResource TextSecondaryBrush}" StrokeThickness="2"/>
-                </Button>
-
-                <TextBlock Grid.Row="1" Grid.Column="1"
-                           Text="{Binding Dialogs.Current.Message, FallbackValue=''}"
-                           Classes="dialog-message"/>
-
-                <TextBox Grid.Row="2" Grid.Column="1"
-                         Margin="0,12,0,0"
-                         Text="{Binding Dialogs.Current.InputText, Mode=TwoWay, FallbackValue=''}"
-                         Watermark="{Binding Dialogs.Current.Placeholder, FallbackValue=''}"
-                         IsVisible="{Binding Dialogs.Current.Type, Converter={x:Static converters:DialogInputVisibleConverter.Instance}, FallbackValue=False, TargetNullValue=False}" />
-
-                <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0" Spacing="8">
-                    <Button Content="取消"
-                            IsVisible="{Binding Dialogs.Current.Buttons, Converter={x:Static converters:DialogShowCancelConverter.Instance}, FallbackValue=False, TargetNullValue=False}"
-                            Command="{Binding Dialogs.ChooseCommand}">
-                        <Button.CommandParameter>
-                            <dialogs:DialogResult>Cancel</dialogs:DialogResult>
-                        </Button.CommandParameter>
-                    </Button>
-                    <Button Content="否"
-                            IsVisible="{Binding Dialogs.Current.Buttons, Converter={x:Static converters:DialogShowNoConverter.Instance}, FallbackValue=False, TargetNullValue=False}"
-                            Command="{Binding Dialogs.ChooseCommand}">
-                        <Button.CommandParameter>
-                            <dialogs:DialogResult>No</dialogs:DialogResult>
-                        </Button.CommandParameter>
-                    </Button>
-                    <Button Content="是"
-                            IsVisible="{Binding Dialogs.Current.Buttons, Converter={x:Static converters:DialogShowYesConverter.Instance}, FallbackValue=False, TargetNullValue=False}"
-                            Command="{Binding Dialogs.ChooseCommand}">
-                        <Button.CommandParameter>
-                            <dialogs:DialogResult>Yes</dialogs:DialogResult>
-                        </Button.CommandParameter>
-                    </Button>
-                    <Button Content="确定"
-                            Classes="accent"
-                            IsVisible="{Binding Dialogs.Current.Buttons, Converter={x:Static converters:DialogShowOkConverter.Instance}, FallbackValue=False, TargetNullValue=False}"
-                            Command="{Binding Dialogs.ChooseCommand}">
-                        <Button.CommandParameter>
-                            <dialogs:DialogResult>OK</dialogs:DialogResult>
-                        </Button.CommandParameter>
-                    </Button>
-                </StackPanel>
-            </Grid>
         </Border>
 
         <Border x:Name="AuthUrlOverlay"

@@ -7,9 +7,11 @@
 ### 修复
 - 修复更新服务无法检测不同通道更新（正式版/测试版/预发布版/预览版）的问题：客户端请求的 Velopack 通道名缺少 RID 前缀，与发布端生成的 feed 文件名（如 releases.win-x64-pre.json）不匹配，导致检查更新永远返回"已是最新版本"
 - 修复分组管理弹窗（ContentDialog）内绑定错误：弹窗内容在弹出层中渲染丢失 DataContext 继承，改为显示前显式绑定到当前版本实例 ViewModel
+- 修复分组管理弹窗内重命名/删除操作无响应的问题：自绘对话框在 FluentAvalonia ContentDialog 弹出层下方渲染导致交互失效，统一改用 ContentDialog 后解决
 
 ### 优化
 - 版本实例界面迁移到 FluentAvalonia 组件：顶部导航标签栏改用 TabView（图标改用 PathIconSource），内存配置输入框改用 NumberBox，分组管理弹窗改用 ContentDialog，OptiFine 兼容性警告改用 InfoBar
+- 全局信息框（信息/成功/警告/错误/询问/输入对话框）改用 FluentAvalonia ContentDialog，移除自绘对话框覆盖层
 - 版本实例页标签栏禁止拖动与重排序，避免误操作改变标签顺序
 - 版本实例界面统一危险色语义：硬编码红色（#FF5252/#E74C3C 等）改用主题 DangerBrush / DangerSoftBrush 资源
 - 版本实例页图标缓存改用稳定哈希（SHA256）生成文件名，修复 string.GetHashCode 跨进程随机化导致缓存失效、每次打开实例都重新解压图标的问题

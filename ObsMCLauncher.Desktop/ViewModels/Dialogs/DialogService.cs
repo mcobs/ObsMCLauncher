@@ -3,58 +3,32 @@ using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Media;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using ObsMCLauncher.Desktop.Services;
+using FluentAvalonia.UI.Controls;
 
 namespace ObsMCLauncher.Desktop.ViewModels.Dialogs;
 
 public partial class DialogService : ObservableObject
 {
     [ObservableProperty]
-    private DialogRequest? current;
-
-    [ObservableProperty]
     private AuthUrlDialogRequest? authUrlCurrent;
 
     [ObservableProperty]
     private UpdateDialogRequest? updateDialogCurrent;
 
-    public bool IsOpen => Current != null;
-
     public bool IsAuthUrlOpen => AuthUrlCurrent != null;
 
     public bool IsUpdateDialogOpen => UpdateDialogCurrent != null;
 
-    public bool IsAnyModalOpen => IsOpen || IsAuthUrlOpen || IsUpdateDialogOpen;
+    public bool IsAnyModalOpen => IsAuthUrlOpen || IsUpdateDialogOpen;
+
+    // ===== 常规对话框：改用 FluentAvalonia ContentDialog =====
 
     public Task<DialogResult> ShowAsync(string title, string message, DialogType type, DialogButtons buttons)
-    {
-        if (IsAnyModalOpen)
-        {
-            return Task.FromResult(DialogResult.None);
-        }
-
-        var req = new DialogRequest
-        {
-            Title = title,
-            Message = message,
-            Type = type,
-            Buttons = buttons,
-            Style = GetDialogStyle(type)
-        };
-
-        Current = req;
-        OnPropertyChanged(nameof(IsOpen));
-        OnPropertyChanged(nameof(IsAnyModalOpen));
-
-        Avalonia.Threading.DispatcherTimer.RunOnce(() =>
-        {
-            req.StartEnterAnimation();
-        }, TimeSpan.FromMilliseconds(30));
-
-        return req.Completion.Task.ContinueWith(t => t.Result.Result, TaskScheduler.Default);
-    }
+        => Dispatcher.UIThread.InvokeAsync(() => ShowContentDialogAsync(title, message, type, buttons, null));
 
     public Task<(DialogResult Result, string Text)> ShowInputAsync(
         string title,
@@ -62,67 +36,117 @@ public partial class DialogService : ObservableObject
         string defaultText,
         string placeholder = "",
         DialogButtons buttons = DialogButtons.OKCancel)
-    {
-        if (IsAnyModalOpen)
+        => Dispatcher.UIThread.InvokeAsync(async () =>
         {
-            return Task.FromResult((DialogResult.None, ""));
-        }
+            var textBox = new TextBox
+            {
+                Text = defaultText ?? string.Empty,
+                Watermark = placeholder ?? string.Empty,
+                MinWidth = 320
+            };
 
-        var req = new DialogRequest
+            var result = await ShowContentDialogAsync(title, message, DialogType.Input, buttons, textBox);
+            return (result, textBox.Text ?? string.Empty);
+        });
+
+    public Task<DialogResult> ShowInfo(string title, string message, DialogButtons buttons = DialogButtons.OK)
+        => ShowAsync(title, message, DialogType.Info, buttons);
+
+    public Task<DialogResult> ShowSuccess(string title, string message, DialogButtons buttons = DialogButtons.OK)
+        => ShowAsync(title, message, DialogType.Success, buttons);
+
+    public Task<DialogResult> ShowWarning(string title, string message, DialogButtons buttons = DialogButtons.OK)
+        => ShowAsync(title, message, DialogType.Warning, buttons);
+
+    public Task<DialogResult> ShowError(string title, string message, DialogButtons buttons = DialogButtons.OK)
+        => ShowAsync(title, message, DialogType.Error, buttons);
+
+    public Task<DialogResult> ShowQuestion(string title, string message, DialogButtons buttons = DialogButtons.YesNo)
+        => ShowAsync(title, message, DialogType.Question, buttons);
+
+    private static async Task<DialogResult> ShowContentDialogAsync(
+        string title,
+        string message,
+        DialogType type,
+        DialogButtons buttons,
+        Control? content)
+    {
+        var window = GetMainWindow();
+        if (window == null)
+            return DialogResult.None;
+
+        var dialog = new ContentDialog
         {
             Title = title,
-            Message = message,
-            Type = DialogType.Input,
-            Buttons = buttons,
-            InputText = defaultText ?? string.Empty,
-            Placeholder = placeholder ?? string.Empty,
-            Style = GetDialogStyle(DialogType.Input)
+            Content = content ?? CreateMessageContent(message)
         };
 
-        Current = req;
-        OnPropertyChanged(nameof(IsOpen));
-        OnPropertyChanged(nameof(IsAnyModalOpen));
+        ConfigureButtons(dialog, buttons);
 
-        Avalonia.Threading.DispatcherTimer.RunOnce(() =>
-        {
-            req.StartEnterAnimation();
-        }, TimeSpan.FromMilliseconds(30));
-
-        return req.Completion.Task;
+        var result = await dialog.ShowAsync(window);
+        return MapResult(result, buttons);
     }
 
-    private static DialogStyle GetDialogStyle(DialogType type)
+    private static Control CreateMessageContent(string message)
     {
-        return type switch
+        return new TextBlock
         {
-            DialogType.Info => new DialogStyle
-            {
-                IconPath = "DialogInfoIcon",
-                AccentColorKey = "#2196F3"
-            },
-            DialogType.Success => new DialogStyle
-            {
-                IconPath = "DialogSuccessIcon",
-                AccentColorKey = "#4CAF50"
-            },
-            DialogType.Warning => new DialogStyle
-            {
-                IconPath = "DialogWarningIcon",
-                AccentColorKey = "#FF9800"
-            },
-            DialogType.Error => new DialogStyle
-            {
-                IconPath = "DialogErrorIcon",
-                AccentColorKey = "#F44336"
-            },
-            DialogType.Question => new DialogStyle
-            {
-                IconPath = "DialogQuestionIcon",
-                AccentColorKey = "SystemAccentColor"
-            },
-            _ => new DialogStyle()
+            Text = message,
+            TextWrapping = TextWrapping.Wrap,
+            MaxWidth = 420
         };
     }
+
+    private static void ConfigureButtons(ContentDialog dialog, DialogButtons buttons)
+    {
+        switch (buttons)
+        {
+            case DialogButtons.OK:
+                dialog.PrimaryButtonText = "确定";
+                dialog.DefaultButton = ContentDialogButton.Primary;
+                break;
+
+            case DialogButtons.OKCancel:
+                dialog.PrimaryButtonText = "确定";
+                dialog.CloseButtonText = "取消";
+                dialog.DefaultButton = ContentDialogButton.Primary;
+                break;
+
+            case DialogButtons.YesNo:
+                dialog.PrimaryButtonText = "是";
+                dialog.SecondaryButtonText = "否";
+                dialog.DefaultButton = ContentDialogButton.Primary;
+                break;
+
+            case DialogButtons.YesNoCancel:
+                dialog.PrimaryButtonText = "是";
+                dialog.SecondaryButtonText = "否";
+                dialog.CloseButtonText = "取消";
+                dialog.DefaultButton = ContentDialogButton.Primary;
+                break;
+        }
+    }
+
+    private static DialogResult MapResult(ContentDialogResult result, DialogButtons buttons)
+    {
+        return result switch
+        {
+            ContentDialogResult.Primary => buttons is DialogButtons.OK or DialogButtons.OKCancel
+                ? DialogResult.OK
+                : DialogResult.Yes,
+            ContentDialogResult.Secondary => DialogResult.No,
+            _ => DialogResult.Cancel
+        };
+    }
+
+    private static Window? GetMainWindow()
+    {
+        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+            return desktop.MainWindow;
+        return null;
+    }
+
+    // ===== 授权链接对话框（保留自定义实现） =====
 
     public Task<bool> ShowAuthUrlAsync(string url, string title = "微软账户登录")
     {
@@ -142,70 +166,6 @@ public partial class DialogService : ObservableObject
         OnPropertyChanged(nameof(IsAnyModalOpen));
 
         return req.Completion.Task;
-    }
-
-    public Task<DialogResult> ShowInfo(string title, string message, DialogButtons buttons = DialogButtons.OK)
-        => ShowAsync(title, message, DialogType.Info, buttons);
-
-    public Task<DialogResult> ShowSuccess(string title, string message, DialogButtons buttons = DialogButtons.OK)
-        => ShowAsync(title, message, DialogType.Success, buttons);
-
-    public Task<DialogResult> ShowWarning(string title, string message, DialogButtons buttons = DialogButtons.OK)
-        => ShowAsync(title, message, DialogType.Warning, buttons);
-
-    public Task<DialogResult> ShowError(string title, string message, DialogButtons buttons = DialogButtons.OK)
-        => ShowAsync(title, message, DialogType.Error, buttons);
-
-    public Task<DialogResult> ShowQuestion(string title, string message, DialogButtons buttons = DialogButtons.YesNo)
-        => ShowAsync(title, message, DialogType.Question, buttons);
-
-    public Task<bool> ShowUpdateDialogAsync(string title, string markdownContent, string confirmText = "确定", string cancelText = "取消")
-    {
-        if (IsAnyModalOpen)
-        {
-            return Task.FromResult(false);
-        }
-
-        var req = new UpdateDialogRequest
-        {
-            Title = title,
-            MarkdownContent = markdownContent,
-            ConfirmText = confirmText,
-            CancelText = cancelText
-        };
-
-        UpdateDialogCurrent = req;
-        OnPropertyChanged(nameof(IsUpdateDialogOpen));
-        OnPropertyChanged(nameof(IsAnyModalOpen));
-
-        Avalonia.Threading.DispatcherTimer.RunOnce(() =>
-        {
-            req.StartEnterAnimation();
-        }, TimeSpan.FromMilliseconds(30));
-
-        return req.Completion.Task;
-    }
-
-    [RelayCommand]
-    private async Task ChooseAsync(DialogResult result)
-    {
-        if (Current == null)
-            return;
-
-        var req = Current;
-        req.StartExitAnimation();
-        await Task.Delay(150);
-        Current = null;
-        OnPropertyChanged(nameof(IsOpen));
-        OnPropertyChanged(nameof(IsAnyModalOpen));
-
-        req.Completion.TrySetResult((result, req.InputText));
-    }
-
-    [RelayCommand]
-    private async Task CloseAsync()
-    {
-        await ChooseAsync(DialogResult.Cancel);
     }
 
     [RelayCommand]
@@ -241,6 +201,35 @@ public partial class DialogService : ObservableObject
         req.Completion.TrySetResult(!cancelled);
     }
 
+    // ===== 更新对话框（保留自定义实现） =====
+
+    public Task<bool> ShowUpdateDialogAsync(string title, string markdownContent, string confirmText = "确定", string cancelText = "取消")
+    {
+        if (IsAnyModalOpen)
+        {
+            return Task.FromResult(false);
+        }
+
+        var req = new UpdateDialogRequest
+        {
+            Title = title,
+            MarkdownContent = markdownContent,
+            ConfirmText = confirmText,
+            CancelText = cancelText
+        };
+
+        UpdateDialogCurrent = req;
+        OnPropertyChanged(nameof(IsUpdateDialogOpen));
+        OnPropertyChanged(nameof(IsAnyModalOpen));
+
+        Avalonia.Threading.DispatcherTimer.RunOnce(() =>
+        {
+            req.StartEnterAnimation();
+        }, TimeSpan.FromMilliseconds(30));
+
+        return req.Completion.Task;
+    }
+
     [RelayCommand]
     private async Task CloseUpdateDialogAsync(bool confirmed)
     {
@@ -264,12 +253,6 @@ public partial class DialogService : ObservableObject
     {
         if (UpdateDialogCurrent == null) return;
         OnPropertyChanged(nameof(IsUpdateDialogOpen));
-        OnPropertyChanged(nameof(IsAnyModalOpen));
-    }
-
-    partial void OnCurrentChanged(DialogRequest? value)
-    {
-        OnPropertyChanged(nameof(IsOpen));
         OnPropertyChanged(nameof(IsAnyModalOpen));
     }
 
