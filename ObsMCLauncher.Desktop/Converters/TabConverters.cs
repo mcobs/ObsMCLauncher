@@ -199,7 +199,8 @@ public class BoolToBrushConverter : IValueConverter
         {
             if (this == ConflictBorder)
             {
-                return new SolidColorBrush(Color.Parse("#FF5252"));
+                Application.Current!.Resources.TryGetResource("DangerBrush", null, out var danger);
+                return danger;
             }
             Application.Current!.Resources.TryGetResource("PrimaryBrush", null, out var brush);
             return brush;

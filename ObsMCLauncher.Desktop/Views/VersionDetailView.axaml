@@ -81,7 +81,7 @@
               </TextBlock>
               <TextBlock Text="该版本名称已存在，请修改安装名称"
                          FontSize="12"
-                         Foreground="#E74C3C"
+                         Foreground="{DynamicResource DangerBrush}"
                          IsVisible="{Binding IsVersionNameConflict}"
                          Margin="0,6,0,0"/>
             </StackPanel>
