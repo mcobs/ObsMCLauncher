@@ -16,7 +16,7 @@ public static class VersionInfo
     /// <summary>
     /// 版本号：发布前由人工在此更新，格式为 semver（如 1.0.1-pre.1）
     /// </summary>
-    public static readonly string Version = "1.0.1-pre.1";
+    public static readonly string Version = "1.1.0-beta.1";
 
     public static readonly string CodeName = "GrassBlock";
 
@@ -26,7 +26,7 @@ public static class VersionInfo
 
     public static readonly string FullProductName = "黑曜石MC启动器";
 
-    public static readonly DateTime ReleaseDate = new DateTime(2026, 07, 18);
+    public static readonly DateTime ReleaseDate = new DateTime(2026, 08, 14);
 
     public static string ShortVersion => Version;
 

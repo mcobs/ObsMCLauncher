@@ -405,8 +405,7 @@ jobs:
 
           if (announcement.trim()) {
             body += announcement;
-            body += '\n> [!TIP]\n';
-            body += '> 在启动器的 **设置 -> 通用 -> 更新通道** 中可切换接收预览版更新。\n\n';
+            body += '\n';
           }
 
           // ---- 更新内容 ----
