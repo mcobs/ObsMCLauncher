@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using ObsMCLauncher.Core.Models;
 using ObsMCLauncher.Core.Utils;
 using Velopack;
+using Velopack.Locators;
 
 namespace ObsMCLauncher.Core.Services;
 
@@ -114,8 +115,7 @@ public static class UpdateService
     };
 
     /// <summary>
-    /// 获取Velopack使用的通道名称（与发布流程 tag 推导的通道一致：
-    /// stable/beta/rc/pre，发布端再拼接 RID 形成完整通道名，如 win-x64-pre）
+    /// 获取Velopack使用的通道风味名（与发布流程 tag 推导的通道一致：stable/beta/rc/pre）
     /// </summary>
     private static string GetVelopackChannelName(UpdateChannel channel) => channel switch
     {
@@ -124,6 +124,56 @@ public static class UpdateService
         UpdateChannel.RC => "rc",
         UpdateChannel.Preview => "pre",
         _ => "stable"
+    };
+
+    /// <summary>
+    /// 获取完整的Velopack通道名（RID + 通道风味，如 win-x64-pre），
+    /// 与发布端 vpk pack -c "{rid}-{channel}" 生成的 feed 文件名保持一致
+    /// </summary>
+    private static string GetFullVelopackChannelName(UpdateChannel channel)
+    {
+        return $"{GetRuntimeRid()}-{GetVelopackChannelName(channel)}";
+    }
+
+    /// <summary>
+    /// 获取当前应用的RID，优先从安装时记录的通道中提取（精确匹配发布端RID），
+    /// 未安装（便携版/开发模式）时回退到当前系统RID
+    /// </summary>
+    private static string GetRuntimeRid()
+    {
+        try
+        {
+            var installedChannel = VelopackLocator.Current?.Channel;
+            if (!string.IsNullOrWhiteSpace(installedChannel))
+            {
+                // 安装时记录的通道为 {rid}-{flavor}（如 win-x64-pre），旧版安装为纯 {rid}（如 win-x64）
+                var normalized = installedChannel.ToLowerInvariant();
+                foreach (var flavor in new[] { "stable", "beta", "rc", "pre" })
+                {
+                    var suffix = "-" + flavor;
+                    if (normalized.EndsWith(suffix))
+                        return normalized.Substring(0, normalized.Length - suffix.Length);
+                }
+                return normalized;
+            }
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Warn("Update", $"获取安装RID失败，使用系统RID: {ex.Message}");
+        }
+
+        return VelopackRuntimeInfo.SystemRid;
+    }
+
+    /// <summary>
+    /// 获取降级更新使用的版本标签后缀（beta/rc/pre通道只匹配对应后缀的发布）
+    /// </summary>
+    private static string? GetTagFlavorSuffix(UpdateChannel channel) => channel switch
+    {
+        UpdateChannel.Beta => "-beta",
+        UpdateChannel.RC => "-rc",
+        UpdateChannel.Preview => "-pre",
+        _ => null
     };
 
     static UpdateService()
@@ -158,8 +208,11 @@ public static class UpdateService
     {
         try
         {
-            var channelName = GetVelopackChannelName(channel);
-            var source = new GitHubProxyVelopackSource(GITHUB_REPO_URL, null, false);
+            // 完整通道名（含RID），与发布端 vpk pack -c "{rid}-{channel}" 的命名一致，如 win-x64-pre
+            var channelName = GetFullVelopackChannelName(channel);
+            // 必须允许预发布版本：beta/rc/pre 的 feed 由 GitHub 预发布 release 承载，
+            // 若过滤掉则这些通道永远找不到 feed（stable 通道按资产名精确匹配不受影响）
+            var source = new GitHubProxyVelopackSource(GITHUB_REPO_URL, null, true);
 
             var options = new UpdateOptions
             {
@@ -168,7 +221,7 @@ public static class UpdateService
             };
 
             _updateManager = new UpdateManager(source, options);
-            DebugLogger.Info("Update", $"Velopack UpdateManager 初始化完成 (通道: {GetChannelDisplayName(channel)})");
+            DebugLogger.Info("Update", $"Velopack UpdateManager 初始化完成 (通道: {GetChannelDisplayName(channel)}, Velopack通道: {channelName})");
         }
         catch (Exception ex)
         {
@@ -265,12 +318,12 @@ public static class UpdateService
     {
         try
         {
-            string apiUrl = string.Format(GITHUB_API, GITHUB_OWNER, GITHUB_REPO);
+            // 非正式版通道自动包含预发布版本
+            var wantPrerelease = includePrerelease || _currentChannel != UpdateChannel.Stable;
 
-            if (includePrerelease)
-            {
-                apiUrl = $"https://api.github.com/repos/{GITHUB_OWNER}/{GITHUB_REPO}/releases";
-            }
+            string apiUrl = wantPrerelease
+                ? $"https://api.github.com/repos/{GITHUB_OWNER}/{GITHUB_REPO}/releases?per_page=30"
+                : string.Format(GITHUB_API, GITHUB_OWNER, GITHUB_REPO);
 
             // API请求不使用代理
             DebugLogger.Info("Update", $"API URL: {apiUrl}");
@@ -281,10 +334,20 @@ public static class UpdateService
             var json = await response.Content.ReadAsStringAsync();
 
             GitHubRelease? latestRelease;
-            if (includePrerelease)
+            if (wantPrerelease)
             {
-                var releases = JsonSerializer.Deserialize<GitHubRelease[]>(json);
-                latestRelease = releases?.Length > 0 ? releases[0] : null;
+                var releases = JsonSerializer.Deserialize<GitHubRelease[]>(json) ?? Array.Empty<GitHubRelease>();
+
+                // 按通道匹配版本标签：beta/rc/pre 通道只认对应后缀的发布，正式版通道优先非预发布
+                var tagFlavor = GetTagFlavorSuffix(_currentChannel);
+                if (tagFlavor != null)
+                {
+                    latestRelease = releases.FirstOrDefault(r => r.TagName.Contains(tagFlavor, StringComparison.OrdinalIgnoreCase));
+                }
+                else
+                {
+                    latestRelease = releases.FirstOrDefault(r => !r.Prerelease) ?? releases.FirstOrDefault();
+                }
             }
             else
             {
