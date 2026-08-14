@@ -107,6 +107,12 @@ public partial class InstanceViewModel : ViewModelBase
     [ObservableProperty]
     private string _globalMemoryText = "";
 
+    [ObservableProperty]
+    private string _memoryHint = "建议: 最小内存不超过最大内存的1/4，最大内存不超过系统可用内存的70%";
+
+    [ObservableProperty]
+    private bool _isMemoryHintWarning;
+
     // 描述
     [ObservableProperty]
     private string _description = "";
@@ -269,14 +275,13 @@ public partial class InstanceViewModel : ViewModelBase
             EditingDescription = defaultDesc;
         }
         _isLoadingConfig = false;
+        UpdateMemoryHint();
 
         var items = new ObservableCollection<GroupListItem>();
         foreach (var g in data.Groups)
         {
-            items.Add(new GroupListItem { Id = g.Id, Name = g.Name, IsSystem = g.IsSystem, IsDeletable = g.IsDeletable });
+            items.Add(new GroupListItem { Id = g.Id, Name = g.Name });
         }
-        items.Add(new GroupListItem { Id = "__separator__", Name = "", IsSeparator = true });
-        items.Add(new GroupListItem { Id = "__manage__", Name = "管理分组...", IsManageEntry = true });
 
         GroupListItems = items;
         SelectedGroupItem = items.FirstOrDefault(g => g.Id == data.CurrentGroupId);
@@ -452,21 +457,17 @@ public partial class InstanceViewModel : ViewModelBase
     {
         if (_version == null || value == null) return;
 
-        if (value.IsManageEntry)
-        {
-            var currentGroupId = Core.Services.VersionGroupService.GetEffectiveGroupId(_version);
-            SelectedGroupItem = GroupListItems.FirstOrDefault(g => g.Id == currentGroupId);
-            GroupManagerRequested?.Invoke();
-            return;
-        }
-
-        if (value.IsSeparator) return;
-
         var existingGroupId = Core.Services.VersionGroupService.GetEffectiveGroupId(_version);
         if (existingGroupId == value.Id) return;
 
         Core.Services.VersionGroupService.SetVersionGroup(_version.Id, _versionPath, value.Id);
         _notificationService.Show("分组已更新", $"版本 {_version.Id} 已移动到 \"{value.Name}\"", NotificationType.Success, 2);
+    }
+
+    [RelayCommand]
+    private void OpenGroupManager()
+    {
+        GroupManagerRequested?.Invoke();
     }
 
     [RelayCommand]
@@ -528,10 +529,8 @@ public partial class InstanceViewModel : ViewModelBase
         var items = new ObservableCollection<GroupListItem>();
         foreach (var g in groups)
         {
-            items.Add(new GroupListItem { Id = g.Id, Name = g.Name, IsSystem = g.IsSystem, IsDeletable = g.IsDeletable });
+            items.Add(new GroupListItem { Id = g.Id, Name = g.Name });
         }
-        items.Add(new GroupListItem { Id = "__separator__", Name = "", IsSeparator = true });
-        items.Add(new GroupListItem { Id = "__manage__", Name = "管理分组...", IsManageEntry = true });
 
         GroupListItems = items;
         SelectedGroupItem = items.FirstOrDefault(g => g.Id == currentGroupId);
@@ -893,6 +892,7 @@ public partial class InstanceViewModel : ViewModelBase
     {
         if (_version == null || _isLoadingConfig) return;
         SaveMemoryConfig();
+        UpdateMemoryHint();
     }
 
     partial void OnCustomMaxMemoryChanged(int value)
@@ -901,6 +901,7 @@ public partial class InstanceViewModel : ViewModelBase
         // 限制最小值
         if (value < 512) CustomMaxMemory = 512;
         SaveMemoryConfig();
+        UpdateMemoryHint();
     }
 
     partial void OnCustomMinMemoryChanged(int value)
@@ -908,6 +909,27 @@ public partial class InstanceViewModel : ViewModelBase
         if (_version == null || _isLoadingConfig) return;
         if (value < 256) CustomMinMemory = 256;
         SaveMemoryConfig();
+        UpdateMemoryHint();
+    }
+
+    private void UpdateMemoryHint()
+    {
+        if (UseCustomMemory && CustomMinMemory >= CustomMaxMemory)
+        {
+            MemoryHint = "最小内存应小于最大内存";
+            IsMemoryHintWarning = true;
+            return;
+        }
+
+        if (UseCustomMemory && CustomMinMemory > CustomMaxMemory / 4)
+        {
+            MemoryHint = "最小内存建议不超过最大内存的 1/4";
+            IsMemoryHintWarning = true;
+            return;
+        }
+
+        MemoryHint = "建议: 最小内存不超过最大内存的1/4，最大内存不超过系统可用内存的70%";
+        IsMemoryHintWarning = false;
     }
 
     private void SaveMemoryConfig()
@@ -1646,13 +1668,4 @@ public class GroupListItem
 {
     public string Id { get; set; } = "";
     public string Name { get; set; } = "";
-    public bool IsSystem { get; set; }
-    public bool IsDeletable { get; set; }
-    public bool IsSeparator { get; set; }
-    public bool IsManageEntry { get; set; }
-
-    /// <summary>
-    /// 是否为普通分组项（非分隔线、非管理入口）
-    /// </summary>
-    public bool IsNormalItem => !IsSeparator && !IsManageEntry;
 }
