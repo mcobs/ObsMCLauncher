@@ -2,12 +2,13 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:ObsMCLauncher.Desktop.ViewModels"
              xmlns:converters="using:ObsMCLauncher.Desktop.Converters"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
              x:Class="ObsMCLauncher.Desktop.Views.ResourcesView"
              x:DataType="vm:ResourcesViewModel"
              x:Name="Root">
 
   <UserControl.Styles>
-    <!-- 结果列表：移除 ListBox 选中/悬浮视觉，保持原 ItemsControl 观感 -->
+    <!-- 结果列表：移除 ListBoxItem 选中/悬浮视觉，条目自身为卡片 -->
     <Style Selector="ListBox.results-list ListBoxItem">
       <Setter Property="Padding" Value="0" />
       <Setter Property="Margin" Value="0" />
@@ -20,108 +21,160 @@
     <Style Selector="ListBox.results-list ListBoxItem:selected /template/ ContentPresenter">
       <Setter Property="Background" Value="Transparent" />
     </Style>
+
+    <!-- 结果条目卡片 -->
+    <Style Selector="Border.resource-row">
+      <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="Padding" Value="12,10" />
+      <Setter Property="Margin" Value="0,0,0,8" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="Transitions">
+        <Transitions>
+          <BrushTransition Property="Background" Duration="0:0:0.15" Easing="CircularEaseOut" />
+          <BoxShadowsTransition Property="BoxShadow" Duration="0:0:0.15" Easing="CircularEaseOut" />
+        </Transitions>
+      </Setter>
+    </Style>
+    <Style Selector="Border.resource-row:pointerover">
+      <Setter Property="Background" Value="{DynamicResource SurfaceElevatedBrush}" />
+      <Setter Property="BoxShadow" Value="{DynamicResource CardShadow}" />
+    </Style>
   </UserControl.Styles>
 
-  <Grid RowDefinitions="Auto,Auto,*" Margin="20">
+  <Grid RowDefinitions="Auto,Auto,Auto,*" Margin="20">
 
+    <!-- 页头 -->
     <StackPanel Grid.Row="0" Spacing="4" IsVisible="{Binding IsListVisible}">
-      <TextBlock Text="资源中心" FontSize="22" FontWeight="SemiBold" />
-      <TextBlock Text="下载 MOD、材质包、光影、数据包和整合包" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,10" />
+      <TextBlock Text="资源中心" FontSize="20" FontWeight="SemiBold" />
+      <TextBlock Text="下载 MOD、材质包、光影、数据包和整合包" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,12" />
     </StackPanel>
 
-    <StackPanel Grid.Row="1" Margin="0,0,0,16" Spacing="8" IsVisible="{Binding IsListVisible}">
+    <!-- 工具栏 -->
+    <StackPanel Grid.Row="1" Margin="0,0,0,14" Spacing="8" IsVisible="{Binding IsListVisible}">
 
-        <Grid ColumnDefinitions="Auto,*,Auto">
-          <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="2" Margin="0,0,12,0">
-            <RadioButton Content="MOD" GroupName="resType"
-                         IsChecked="{Binding CurrentResourceType, Converter={x:Static converters:StringEqualsConverter.Instance}, ConverterParameter=Mods}"
-                         Command="{Binding ChangeTypeCommand}" CommandParameter="Mods" FontSize="12" Padding="8,4"/>
-            <RadioButton Content="材质包" GroupName="resType"
-                         IsChecked="{Binding CurrentResourceType, Converter={x:Static converters:StringEqualsConverter.Instance}, ConverterParameter=Textures}"
-                         Command="{Binding ChangeTypeCommand}" CommandParameter="Textures" FontSize="12" Padding="8,4"/>
-            <RadioButton Content="光影" GroupName="resType"
-                         IsChecked="{Binding CurrentResourceType, Converter={x:Static converters:StringEqualsConverter.Instance}, ConverterParameter=Shaders}"
-                         Command="{Binding ChangeTypeCommand}" CommandParameter="Shaders" FontSize="12" Padding="8,4"/>
-            <RadioButton Content="数据包" GroupName="resType"
-                         IsChecked="{Binding CurrentResourceType, Converter={x:Static converters:StringEqualsConverter.Instance}, ConverterParameter=Datapacks}"
-                         Command="{Binding ChangeTypeCommand}" CommandParameter="Datapacks" FontSize="12" Padding="8,4"/>
-            <RadioButton Content="整合包" GroupName="resType"
-                         IsChecked="{Binding CurrentResourceType, Converter={x:Static converters:StringEqualsConverter.Instance}, ConverterParameter=Modpacks}"
-                         Command="{Binding ChangeTypeCommand}" CommandParameter="Modpacks" FontSize="12" Padding="8,4"/>
-          </StackPanel>
+      <Grid ColumnDefinitions="Auto,*">
+        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="2" Margin="0,0,12,0" VerticalAlignment="Center">
+          <RadioButton Classes="segment" Content="MOD" GroupName="resType"
+                       IsChecked="{Binding CurrentResourceType, Converter={x:Static converters:StringEqualsConverter.Instance}, ConverterParameter=Mods}"
+                       Command="{Binding ChangeTypeCommand}" CommandParameter="Mods" />
+          <RadioButton Classes="segment" Content="材质包" GroupName="resType"
+                       IsChecked="{Binding CurrentResourceType, Converter={x:Static converters:StringEqualsConverter.Instance}, ConverterParameter=Textures}"
+                       Command="{Binding ChangeTypeCommand}" CommandParameter="Textures" />
+          <RadioButton Classes="segment" Content="光影" GroupName="resType"
+                       IsChecked="{Binding CurrentResourceType, Converter={x:Static converters:StringEqualsConverter.Instance}, ConverterParameter=Shaders}"
+                       Command="{Binding ChangeTypeCommand}" CommandParameter="Shaders" />
+          <RadioButton Classes="segment" Content="数据包" GroupName="resType"
+                       IsChecked="{Binding CurrentResourceType, Converter={x:Static converters:StringEqualsConverter.Instance}, ConverterParameter=Datapacks}"
+                       Command="{Binding ChangeTypeCommand}" CommandParameter="Datapacks" />
+          <RadioButton Classes="segment" Content="整合包" GroupName="resType"
+                       IsChecked="{Binding CurrentResourceType, Converter={x:Static converters:StringEqualsConverter.Instance}, ConverterParameter=Modpacks}"
+                       Command="{Binding ChangeTypeCommand}" CommandParameter="Modpacks" />
+        </StackPanel>
 
-          <TextBox Grid.Column="1" Text="{Binding Query}" Watermark="搜索资源..." FontSize="12" Margin="0,0,12,0"/>
+        <TextBox Grid.Column="1" Text="{Binding Query}" Watermark="搜索资源名称、作者或中文名"
+                 VerticalContentAlignment="Center">
+          <TextBox.InnerLeftContent>
+            <ui:SymbolIcon Symbol="Find" FontSize="14" Foreground="{DynamicResource TextTertiaryBrush}"
+                           Margin="0,0,8,0" VerticalAlignment="Center" />
+          </TextBox.InnerLeftContent>
+          <TextBox.InnerRightContent>
+            <Button Classes="icon-ghost" IsVisible="{Binding HasQuery}"
+                    Command="{Binding ClearSearchCommand}" ToolTip.Tip="清除搜索">
+              <ui:SymbolIcon Symbol="Cancel" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" />
+            </Button>
+          </TextBox.InnerRightContent>
+          <TextBox.KeyBindings>
+            <KeyBinding Gesture="Enter" Command="{Binding SearchCommand}" />
+          </TextBox.KeyBindings>
+        </TextBox>
+      </Grid>
 
-          <Button Grid.Column="2" Content="搜索" Classes="accent" FontSize="12"
-                  Command="{Binding SearchCommand}" IsEnabled="{Binding !IsLoading}"
-                  Padding="16,5" />
-        </Grid>
+      <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,*,Auto" ColumnSpacing="8">
+        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+          <RadioButton Classes="segment" Content="CurseForge" GroupName="resSource"
+                       IsChecked="{Binding CurrentSourceIndex, Converter={x:Static converters:StringEqualsConverter.Instance}, ConverterParameter=0}"
+                       Command="{Binding ChangeSourceCommand}" CommandParameter="0" />
+          <RadioButton Classes="segment" Content="Modrinth" GroupName="resSource"
+                       IsChecked="{Binding CurrentSourceIndex, Converter={x:Static converters:StringEqualsConverter.Instance}, ConverterParameter=1}"
+                       Command="{Binding ChangeSourceCommand}" CommandParameter="1" />
+          <RadioButton Classes="segment" Content="全部" GroupName="resSource"
+                       IsChecked="{Binding CurrentSourceIndex, Converter={x:Static converters:StringEqualsConverter.Instance}, ConverterParameter=2}"
+                       Command="{Binding ChangeSourceCommand}" CommandParameter="2" />
+        </StackPanel>
 
-        <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto" ColumnSpacing="8">
-          <ComboBox Grid.Column="0" Width="110" FontSize="12"
-                    SelectedIndex="{Binding CurrentSourceIndex}">
-            <ComboBoxItem Content="CurseForge" />
-            <ComboBoxItem Content="Modrinth" />
-            <ComboBoxItem Content="全部" />
-          </ComboBox>
+        <ComboBox Grid.Column="1" Width="118"
+                  ItemsSource="{Binding VersionFilters}"
+                  SelectedItem="{Binding VersionFilter}" />
 
-          <ComboBox Grid.Column="1" Width="110" FontSize="12"
-                    ItemsSource="{Binding VersionFilters}"
-                    SelectedItem="{Binding VersionFilter}" />
+        <ComboBox Grid.Column="2" Width="118"
+                  ItemsSource="{Binding AvailableSortOptions}"
+                  SelectedIndex="{Binding SortFieldIndex}">
+          <ComboBox.ItemTemplate>
+            <DataTemplate>
+              <TextBlock Text="{Binding Name}" />
+            </DataTemplate>
+          </ComboBox.ItemTemplate>
+        </ComboBox>
 
-          <ComboBox Grid.Column="2" Width="110" FontSize="12"
-                    ItemsSource="{Binding AvailableSortOptions}"
-                    SelectedIndex="{Binding SortFieldIndex}">
-            <ComboBox.ItemTemplate>
-              <DataTemplate>
-                <TextBlock Text="{Binding Name}" FontSize="12"/>
-              </DataTemplate>
-            </ComboBox.ItemTemplate>
-          </ComboBox>
+        <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+          <ComboBox Width="132"
+                    ItemsSource="{Binding InstalledVersions}"
+                    SelectedItem="{Binding SelectedVersionId}"
+                    IsEnabled="{Binding HasInstalledVersions}"
+                    PlaceholderText="目标版本" />
+          <TextBlock Text="{Binding VersionHintText}" FontSize="11" Foreground="{DynamicResource DangerBrush}"
+                     IsVisible="{Binding !HasInstalledVersions}" VerticalAlignment="Center"
+                     MaxWidth="150" TextWrapping="Wrap" />
+        </StackPanel>
 
-          <TextBlock Grid.Column="3" Text="{Binding Status}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+        <TextBlock Grid.Column="4" Text="{Binding Status}" FontSize="12"
+                   Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"
+                   Margin="0,0,8,0" TextTrimming="CharacterEllipsis" />
 
-          <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="8">
-            <ComboBox Width="120" FontSize="12"
-                      ItemsSource="{Binding InstalledVersions}"
-                      SelectedItem="{Binding SelectedVersionId}"
-                      IsEnabled="{Binding HasInstalledVersions}"
-                      PlaceholderText="目标版本" />
-            <TextBlock Text="{Binding VersionHintText}" FontSize="11" Foreground="{DynamicResource DangerBrush}"
-                       IsVisible="{Binding !HasInstalledVersions}" VerticalAlignment="Center"/>
-          </StackPanel>
-        </Grid>
+        <ui:ProgressRing Grid.Column="5" Width="16" Height="16" IsIndeterminate="True" IsActive="True"
+                         IsVisible="{Binding IsLoadingMore}" VerticalAlignment="Center" />
+      </Grid>
 
-        <Separator Margin="0,8,0,0" Background="{DynamicResource DividerBrush}"/>
+      <Separator Margin="0,6,0,0" Background="{DynamicResource DividerBrush}" />
     </StackPanel>
 
-    <Grid Grid.Row="2">
+    <!-- 顶部提示条（错误 / 超时 / 警告） -->
+    <ui:InfoBar Grid.Row="2" IsOpen="{Binding IsInfoBarOpen}" Severity="{Binding InfoBarSeverity}"
+                Title="{Binding InfoBarTitle}" Message="{Binding InfoBarMessage}"
+                IsClosable="True" Margin="0,0,0,12" IsVisible="{Binding IsListVisible}" />
+
+    <Grid Grid.Row="3">
+      <!-- 资源详情（覆盖列表） -->
       <ContentControl Content="{Binding DetailViewModel}" IsVisible="{Binding DetailViewModel, Converter={x:Static converters:NotNullConverter.Instance}}" />
 
+      <!-- 骨架屏 -->
       <StackPanel IsVisible="{Binding ShowSkeleton}" Margin="0">
         <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" Margin="0,0,0,6">
-          <Border Width="40" Height="40" CornerRadius="6" Background="{DynamicResource SurfaceHoverBrush}" Margin="0,0,10,0"/>
+          <Border Width="40" Height="40" CornerRadius="6" Background="{DynamicResource SurfaceHoverBrush}" Margin="0,0,10,0" />
           <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
             <Border Height="12" Width="160" Background="{DynamicResource SurfaceHoverBrush}" CornerRadius="3" />
             <Border Height="10" Width="280" Background="{DynamicResource SurfaceHoverBrush}" CornerRadius="3" />
           </StackPanel>
         </Grid>
         <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" Margin="0,0,0,6">
-          <Border Width="40" Height="40" CornerRadius="6" Background="{DynamicResource SurfaceHoverBrush}" Margin="0,0,10,0"/>
+          <Border Width="40" Height="40" CornerRadius="6" Background="{DynamicResource SurfaceHoverBrush}" Margin="0,0,10,0" />
           <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
             <Border Height="12" Width="150" Background="{DynamicResource SurfaceHoverBrush}" CornerRadius="3" />
             <Border Height="10" Width="240" Background="{DynamicResource SurfaceHoverBrush}" CornerRadius="3" />
           </StackPanel>
         </Grid>
         <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" Margin="0,0,0,6">
-          <Border Width="40" Height="40" CornerRadius="6" Background="{DynamicResource SurfaceHoverBrush}" Margin="0,0,10,0"/>
+          <Border Width="40" Height="40" CornerRadius="6" Background="{DynamicResource SurfaceHoverBrush}" Margin="0,0,10,0" />
           <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
             <Border Height="12" Width="180" Background="{DynamicResource SurfaceHoverBrush}" CornerRadius="3" />
             <Border Height="10" Width="200" Background="{DynamicResource SurfaceHoverBrush}" CornerRadius="3" />
           </StackPanel>
         </Grid>
         <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" Margin="0,0,0,6">
-          <Border Width="40" Height="40" CornerRadius="6" Background="{DynamicResource SurfaceHoverBrush}" Margin="0,0,10,0"/>
+          <Border Width="40" Height="40" CornerRadius="6" Background="{DynamicResource SurfaceHoverBrush}" Margin="0,0,10,0" />
           <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
             <Border Height="12" Width="140" Background="{DynamicResource SurfaceHoverBrush}" CornerRadius="3" />
             <Border Height="10" Width="260" Background="{DynamicResource SurfaceHoverBrush}" CornerRadius="3" />
@@ -129,6 +182,18 @@
         </Grid>
       </StackPanel>
 
+      <!-- 空状态 -->
+      <StackPanel IsVisible="{Binding IsEmptyVisible}" Classes="empty-state">
+        <ui:SymbolIcon Symbol="Find" FontSize="42" Foreground="{DynamicResource TextTertiaryBrush}"
+                       HorizontalAlignment="Center" />
+        <TextBlock Text="未找到匹配资源" FontSize="16" FontWeight="Medium" HorizontalAlignment="Center" />
+        <TextBlock Text="换个关键词或调整筛选条件试试" FontSize="12"
+                   Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" />
+        <Button Classes="ghost" Content="清除搜索" Command="{Binding ClearSearchCommand}"
+                IsVisible="{Binding HasQuery}" HorizontalAlignment="Center" Margin="0,10,0,0" />
+      </StackPanel>
+
+      <!-- 结果列表 -->
       <ListBox x:Name="ResourceListBox"
                IsVisible="{Binding IsListVisible}"
                ScrollViewer.ScrollChanged="OnResourceScrollChanged"
@@ -137,44 +202,59 @@
                Background="Transparent"
                BorderThickness="0"
                Classes="results-list">
-          <ListBox.ItemTemplate>
-            <DataTemplate>
-              <StackPanel Margin="0,0,0,0">
-                <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto" Margin="0,8">
+        <ListBox.ItemTemplate>
+          <DataTemplate>
+            <Border Classes="resource-row" Tapped="OnResourceRowTapped">
+              <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
 
-                  <Border Grid.RowSpan="2" Width="40" Height="40" CornerRadius="8"
-                          Background="{DynamicResource SurfaceHoverBrush}" VerticalAlignment="Center">
-                    <Image Source="{Binding Icon}" Width="40" Height="40" />
+                <Border Grid.RowSpan="2" Width="48" Height="48" CornerRadius="8"
+                        Background="{DynamicResource SurfaceHoverBrush}" VerticalAlignment="Center">
+                  <Image Source="{Binding Icon}" Width="48" Height="48" />
+                </Border>
+
+                <StackPanel Grid.Column="1" Grid.Row="0" Orientation="Horizontal" Spacing="8"
+                            Margin="12,0,0,0" VerticalAlignment="Center">
+                  <TextBlock Text="{Binding DisplayName}" FontSize="14" FontWeight="Medium"
+                             TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                  <Border Classes="tag" Background="#F16436" IsVisible="{Binding IsCurseForge}">
+                    <TextBlock Text="CurseForge" />
                   </Border>
+                  <Border Classes="tag" Background="#1BD96A" IsVisible="{Binding IsModrinth}">
+                    <TextBlock Text="Modrinth" />
+                  </Border>
+                </StackPanel>
 
-                  <TextBlock Grid.Column="1" Grid.Row="0" Text="{Binding DisplayName}" FontSize="13" FontWeight="Medium"
-                             TextTrimming="CharacterEllipsis" Margin="10,0,0,2" />
-
-                  <StackPanel Grid.Column="1" Grid.Row="1" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center" Margin="10,0,0,0">
-                    <TextBlock Text="{Binding Description}" Foreground="{DynamicResource TextSecondaryBrush}"
-                               TextTrimming="CharacterEllipsis" FontSize="11" MaxWidth="300"/>
-                    <StackPanel Orientation="Horizontal" Spacing="3">
-                      <TextBlock Text="{Binding Author}" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}" />
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal" Spacing="3">
-                      <Path Data="M5 20H19V18H5M19 9H15V3H9V9H5L12 16L19 9Z" Width="10" Height="10" Stretch="Uniform" Fill="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center"/>
-                      <TextBlock Text="{Binding Downloads}" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}" />
-                    </StackPanel>
-                    <TextBlock Text="{Binding VersionDisplay, StringFormat=v{0}}" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}" />
+                <StackPanel Grid.Column="1" Grid.Row="1" Orientation="Horizontal" Spacing="12"
+                            Margin="12,0,0,0" VerticalAlignment="Center">
+                  <TextBlock Text="{Binding Description}" Foreground="{DynamicResource TextSecondaryBrush}"
+                             TextTrimming="CharacterEllipsis" FontSize="12" MaxWidth="360" />
+                  <StackPanel Orientation="Horizontal" Spacing="4">
+                    <ui:SymbolIcon Symbol="People" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding Author}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" />
                   </StackPanel>
-
-                  <StackPanel Grid.Column="2" Grid.Row="0" Grid.RowSpan="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" Margin="8,0,0,0">
-                    <Button Content="详情" Classes="accent" FontSize="12" Padding="10,4"
-                            Command="{Binding #Root.((vm:ResourcesViewModel)DataContext).OpenDetailCommand}"
-                            CommandParameter="{Binding}" />
+                  <StackPanel Orientation="Horizontal" Spacing="4">
+                    <ui:SymbolIcon Symbol="Download" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding Downloads}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" />
                   </StackPanel>
+                  <TextBlock Text="{Binding VersionDisplay, StringFormat=v{0}}" FontSize="11"
+                             Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" />
+                </StackPanel>
 
-                </Grid>
-                <Separator Background="{DynamicResource DividerBrush}" Opacity="0.5"/>
-              </StackPanel>
-            </DataTemplate>
-          </ListBox.ItemTemplate>
-        </ListBox>
+                <StackPanel Grid.Column="2" Grid.RowSpan="2" Orientation="Horizontal" Spacing="8"
+                            VerticalAlignment="Center" Margin="8,0,0,0">
+                  <Button Content="下载" Classes="accent" FontSize="12" Padding="14,6"
+                          Command="{Binding #Root.((vm:ResourcesViewModel)DataContext).DownloadCommand}"
+                          CommandParameter="{Binding}" Tapped="OnActionTapped" />
+                  <Button Content="详情" Classes="ghost" FontSize="12" Padding="14,6"
+                          Command="{Binding #Root.((vm:ResourcesViewModel)DataContext).OpenDetailCommand}"
+                          CommandParameter="{Binding}" Tapped="OnActionTapped" />
+                </StackPanel>
+
+              </Grid>
+            </Border>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
     </Grid>
 
   </Grid>

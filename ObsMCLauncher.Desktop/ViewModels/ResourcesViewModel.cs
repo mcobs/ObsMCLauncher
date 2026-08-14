@@ -9,6 +9,7 @@ using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using FluentAvalonia.UI.Controls;
 using ObsMCLauncher.Core.Models;
 using ObsMCLauncher.Core.Services;
 using ObsMCLauncher.Core.Services.Minecraft;
@@ -44,7 +45,7 @@ public partial class ResourcesViewModel : ViewModelBase
     private int _curseForgePage;
     private int _modrinthOffset;
     private int _chineseMatchOffset;
-    private bool _isLoadingMore;
+    [ObservableProperty] private bool _isLoadingMore;
     private const int ResourcePageSize = 20;
 
     // --- 状态定义 ---
@@ -53,18 +54,26 @@ public partial class ResourcesViewModel : ViewModelBase
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowSkeleton))]
     private bool _isLoading;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsEmptyVisible))]
+    private bool _isViewReady;
     [ObservableProperty] private ResourceSource _currentSource = ResourceSource.Both;
     [ObservableProperty] private string _currentResourceType = "Mods";
     [ObservableProperty] private string? _selectedVersionId;
     [ObservableProperty] private string _versionFilter = "全部版本";
-    
+    [ObservableProperty] private bool _hasQuery;
+
+    // 顶部提示条（InfoBar）
+    [ObservableProperty] private bool _isInfoBarOpen;
+    [ObservableProperty] private string _infoBarTitle = "";
+    [ObservableProperty] private string _infoBarMessage = "";
+    [ObservableProperty] private InfoBarSeverity _infoBarSeverity = InfoBarSeverity.Informational;
+
     // 实际用于 API 的排序值
-    private object _sortValue = 2; 
+    private object _sortValue = 2;
 
     [ObservableProperty] private int _currentSourceIndex = 2;
     [ObservableProperty] private int _sortFieldIndex = 0;
-
-    [ObservableProperty] private bool _isViewReady;
 
     public ObservableCollection<ResourceItemViewModel> Results { get; } = new();
     public ObservableCollection<string> InstalledVersions { get; } = new();
@@ -82,6 +91,9 @@ public partial class ResourcesViewModel : ViewModelBase
 
     public bool ShowSkeleton => IsLoading && Results.Count == 0;
 
+    /// <summary>列表为空且不在加载中（首次加载未完成前不显示）</summary>
+    public bool IsEmptyVisible => IsViewReady && !IsLoading && !IsLoadingMore && Results.Count == 0;
+
     private class ResourceTypeState
     {
         public string Query { get; set; } = "";
@@ -92,6 +104,8 @@ public partial class ResourcesViewModel : ViewModelBase
 
     public IAsyncRelayCommand SearchCommand { get; }
     public IRelayCommand<string> ChangeTypeCommand { get; }
+    public IRelayCommand<string> ChangeSourceCommand { get; }
+    public IRelayCommand ClearSearchCommand { get; }
 
     public IRelayCommand<ResourceItemViewModel> OpenDetailCommand { get; }
 
@@ -99,31 +113,70 @@ public partial class ResourcesViewModel : ViewModelBase
     {
         SearchCommand = new AsyncRelayCommand(SearchAsync, () => !IsLoading);
         ChangeTypeCommand = new RelayCommand<string>(ChangeType);
+        ChangeSourceCommand = new RelayCommand<string>(ChangeSource);
+        ClearSearchCommand = new RelayCommand(ClearSearch);
         OpenDetailCommand = new RelayCommand<ResourceItemViewModel>(OpenDetail);
 
         UpdateAvailableSortOptions();
         SortFieldIndex = 0;
 
-        Results.CollectionChanged += (_, _) => OnPropertyChanged(nameof(ShowSkeleton));
+        Results.CollectionChanged += (_, _) =>
+        {
+            OnPropertyChanged(nameof(ShowSkeleton));
+            OnPropertyChanged(nameof(IsEmptyVisible));
+        };
 
         LoadInstalledVersions();
         _ = InitializeAsync();
     }
 
-    private async Task InitializeAsync()
+    private void ChangeSource(string? index)
     {
-        await SearchAsync();
-        IsViewReady = true;
+        if (int.TryParse(index, out var i) && CurrentSourceIndex != i)
+            CurrentSourceIndex = i;
+    }
+
+    private void ClearSearch()
+    {
+        if (Query.Length == 0)
+        {
+            if (IsViewReady && !IsLoading)
+                _ = SearchAsync();
+            return;
+        }
+        Query = "";
+    }
+
+    partial void OnIsLoadingChanged(bool value)
+    {
+        OnPropertyChanged(nameof(IsEmptyVisible));
+    }
+
+    partial void OnIsLoadingMoreChanged(bool value)
+    {
+        OnPropertyChanged(nameof(IsEmptyVisible));
+    }
+
+    partial void OnIsViewReadyChanged(bool value)
+    {
+        OnPropertyChanged(nameof(IsEmptyVisible));
     }
 
     partial void OnQueryChanged(string value)
     {
+        HasQuery = !string.IsNullOrEmpty(value);
         if (!IsViewReady) return;
 
         _debounceCts?.Cancel();
         _debounceCts?.Dispose();
         _debounceCts = new CancellationTokenSource();
         _ = DebouncedSearchAsync(_debounceCts.Token);
+    }
+
+    private async Task InitializeAsync()
+    {
+        await SearchAsync();
+        IsViewReady = true;
     }
 
     private async Task DebouncedSearchAsync(CancellationToken ct)
@@ -223,6 +276,10 @@ public partial class ResourcesViewModel : ViewModelBase
         catch (Exception ex)
         {
             Status = $"加载本地版本失败: {ex.Message}";
+            InfoBarSeverity = InfoBarSeverity.Warning;
+            InfoBarTitle = "读取本地版本失败";
+            InfoBarMessage = ex.Message;
+            IsInfoBarOpen = true;
         }
     }
 
@@ -345,14 +402,26 @@ public partial class ResourcesViewModel : ViewModelBase
             ApplyFuzzyFilter();
 
             Status = Results.Count > 0 ? $"找到 {Results.Count} 个资源" : "未找到匹配资源";
+            IsInfoBarOpen = false;
         }
         catch (OperationCanceledException)
         {
             Status = ct.IsCancellationRequested ? "搜索超时，已显示部分结果" : "搜索已取消";
+            if (ct.IsCancellationRequested)
+            {
+                InfoBarSeverity = InfoBarSeverity.Warning;
+                InfoBarTitle = "搜索超时";
+                InfoBarMessage = "云端响应较慢，当前仅显示了部分结果，可稍后重试";
+                IsInfoBarOpen = true;
+            }
         }
         catch (Exception ex)
         {
             Status = $"搜索异常: {ex.Message}";
+            InfoBarSeverity = InfoBarSeverity.Error;
+            InfoBarTitle = "搜索失败";
+            InfoBarMessage = ex.Message;
+            IsInfoBarOpen = true;
         }
         finally
         {
@@ -470,8 +539,8 @@ public partial class ResourcesViewModel : ViewModelBase
     [RelayCommand]
     private async Task LoadMoreResources()
     {
-        if (_isLoadingMore || IsLoading || string.IsNullOrWhiteSpace(Query)) return;
-        _isLoadingMore = true;
+        if (IsLoadingMore || IsLoading || string.IsNullOrWhiteSpace(Query)) return;
+        IsLoadingMore = true;
 
         try
         {
@@ -512,10 +581,14 @@ public partial class ResourcesViewModel : ViewModelBase
         catch (Exception ex)
         {
             Status = $"加载更多失败: {ex.Message}";
+            InfoBarSeverity = InfoBarSeverity.Error;
+            InfoBarTitle = "加载更多失败";
+            InfoBarMessage = ex.Message;
+            IsInfoBarOpen = true;
         }
         finally
         {
-            _isLoadingMore = false;
+            IsLoadingMore = false;
         }
     }
 
@@ -1010,6 +1083,10 @@ public partial class ResourceItemViewModel : ObservableObject
     }
 
     public object RawData { get; }
+
+    public bool IsCurseForge => RawData is CurseForgeMod;
+    public bool IsModrinth => RawData is ModrinthSearchHit;
+    public string SourceDisplay => IsCurseForge ? "CurseForge" : "Modrinth";
 
     public ResourceItemViewModel(CurseForgeMod mod, ModTranslation? translation)
     {

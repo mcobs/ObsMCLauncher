@@ -368,4 +368,85 @@
     <Setter Property="Spacing" Value="8"/>
   </Style>
 
+  <!-- ===== 分段选择按钮（Fluent Segmented 观感，无单选圆点） ===== -->
+  <Style Selector="RadioButton.segment">
+    <Setter Property="Template">
+      <ControlTemplate TargetType="RadioButton">
+        <Border x:Name="SegmentRoot"
+                Background="Transparent"
+                CornerRadius="6"
+                BorderThickness="0"
+                Padding="{TemplateBinding Padding}">
+          <ContentPresenter Content="{TemplateBinding Content}"
+                            ContentTemplate="{TemplateBinding ContentTemplate}"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"/>
+        </Border>
+      </ControlTemplate>
+    </Setter>
+  </Style>
+  <Style Selector="RadioButton.segment">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="Padding" Value="12,6" />
+    <Setter Property="Cursor" Value="Hand" />
+  </Style>
+  <Style Selector="RadioButton.segment:pointerover /template/ Border#SegmentRoot">
+    <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
+  </Style>
+  <Style Selector="RadioButton.segment:checked /template/ Border#SegmentRoot">
+    <Setter Property="Background" Value="{DynamicResource NavItemSelectedBackgroundBrush}" />
+  </Style>
+  <Style Selector="RadioButton.segment:checked">
+    <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector="RadioButton.segment:focus-visible /template/ Border#SegmentRoot">
+    <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+  </Style>
+
+  <!-- ===== 标签徽章（依赖类型 / 来源 / 最新） ===== -->
+  <Style Selector="Border.tag">
+    <Setter Property="CornerRadius" Value="3" />
+    <Setter Property="Padding" Value="4,1" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Border.tag TextBlock">
+    <Setter Property="FontSize" Value="9" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="White" />
+  </Style>
+  <Style Selector="Border.tag-accent">
+    <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+  </Style>
+
+  <!-- ===== 链接文字按钮（依赖跳转等） ===== -->
+  <Style Selector="Button.link">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="HorizontalContentAlignment" Value="Left" />
+  </Style>
+  <Style Selector="Button.link /template/ ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="Button.link:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+
+  <!-- ===== 紧凑图标按钮 ===== -->
+  <Style Selector="Button.icon-ghost">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="4" />
+    <Setter Property="CornerRadius" Value="4" />
+  </Style>
+  <Style Selector="Button.icon-ghost:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
+  </Style>
+
 </Styles>

@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:ObsMCLauncher.Desktop.ViewModels"
              xmlns:conv="using:ObsMCLauncher.Desktop.Converters"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
              x:Class="ObsMCLauncher.Desktop.Views.ModDetailView"
              x:DataType="vm:ModDetailViewModel"
              x:Name="Root">
@@ -10,57 +11,147 @@
     <conv:BitmapAssetValueConverter x:Key="BitmapConverter"/>
   </UserControl.Resources>
 
-  <Grid RowDefinitions="Auto,Auto,Auto,*" Margin="16">
-    <!-- 返回按钮：独立一行，位于页面左上角 -->
-    <Button Grid.Row="0" Content="返回"
-            Command="{Binding BackCommand}"
-            HorizontalAlignment="Left"
-            Margin="0,0,0,8"/>
+  <UserControl.Styles>
+    <!-- 加载器筛选 chips（选中态为主题色胶囊） -->
+    <Style Selector="ListBox.loader-filter">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="Padding" Value="0"/>
+      <Setter Property="Margin" Value="0,0,0,10"/>
+      <Setter Property="MaxHeight" Value="36"/>
+    </Style>
+    <Style Selector="ListBox.loader-filter ListBoxItem">
+      <Setter Property="Padding" Value="0"/>
+      <Setter Property="Margin" Value="0,0,6,0"/>
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+    </Style>
+    <Style Selector="ListBox.loader-filter ListBoxItem /template/ ContentPresenter">
+      <Setter Property="CornerRadius" Value="6"/>
+      <Setter Property="Padding" Value="10,5"/>
+      <Setter Property="Background" Value="Transparent"/>
+    </Style>
+    <Style Selector="ListBox.loader-filter ListBoxItem:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}"/>
+    </Style>
+    <Style Selector="ListBox.loader-filter ListBoxItem:selected /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource NavItemSelectedBackgroundBrush}"/>
+    </Style>
+    <Style Selector="ListBox.loader-filter ListBoxItem:selected">
+      <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+    <Style Selector="ListBox.loader-filter ListBoxItem TextBlock">
+      <Setter Property="FontSize" Value="12"/>
+    </Style>
+
+    <!-- 文件条目卡片 -->
+    <Style Selector="Border.file-card">
+      <Setter Property="Background" Value="{DynamicResource SurfaceElevatedBrush}"/>
+      <Setter Property="CornerRadius" Value="8"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="Padding" Value="10,8"/>
+      <Setter Property="Margin" Value="0,0,0,6"/>
+    </Style>
+
+    <!-- 加载器分组名胶囊 -->
+    <Style Selector="Border.loader-chip">
+      <Setter Property="Background" Value="{DynamicResource SurfaceElevatedBrush}"/>
+      <Setter Property="CornerRadius" Value="4"/>
+      <Setter Property="Padding" Value="6,3"/>
+      <Setter Property="Margin" Value="0,0,0,6"/>
+      <Setter Property="HorizontalAlignment" Value="Left"/>
+    </Style>
+  </UserControl.Styles>
+
+  <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,*" Margin="20">
+
+    <!-- 返回按钮 -->
+    <Button Grid.Row="0" Classes="ghost" Command="{Binding BackCommand}"
+            HorizontalAlignment="Left" Margin="0,0,0,10" Padding="8,4">
+      <StackPanel Orientation="Horizontal" Spacing="6">
+        <ui:SymbolIcon Symbol="Back" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+        <TextBlock Text="返回" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}"/>
+      </StackPanel>
+    </Button>
 
     <!-- 标题行 -->
-    <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="0,0,0,8">
-      <StackPanel Grid.Column="0" VerticalAlignment="Center">
-        <StackPanel Orientation="Horizontal" Spacing="8">
-          <Border Width="36" Height="36" CornerRadius="6" Background="{DynamicResource BorderBrush}">
-            <Image Source="{Binding Icon}" Stretch="UniformToFill"/>
-          </Border>
-          <StackPanel Spacing="2">
-            <TextBlock Text="{Binding DisplayName}" FontSize="16" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
-            <StackPanel Orientation="Horizontal" Spacing="10">
-              <TextBlock Text="{Binding AuthorDisplay}" FontSize="11" Opacity="0.7"/>
-              <TextBlock Text="{Binding DownloadsDisplay}" FontSize="11" Opacity="0.7"/>
-              <TextBlock Text="{Binding LastUpdateDisplay}" FontSize="11" Opacity="0.7"/>
+    <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="0,0,0,10">
+      <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="14">
+        <Border Width="56" Height="56" CornerRadius="10"
+                Background="{DynamicResource SurfaceElevatedBrush}"
+                BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+          <Image Source="{Binding Icon}" Stretch="UniformToFill"/>
+        </Border>
+        <StackPanel Spacing="4" VerticalAlignment="Center">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <TextBlock Text="{Binding DisplayName}" FontSize="20" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+            <Border Classes="tag" Background="{DynamicResource SurfaceElevatedBrush}">
+              <TextBlock Text="{Binding SourceDisplay}" Foreground="{DynamicResource TextSecondaryBrush}"/>
+            </Border>
+          </StackPanel>
+          <StackPanel Orientation="Horizontal" Spacing="14">
+            <StackPanel Orientation="Horizontal" Spacing="4">
+              <ui:SymbolIcon Symbol="People" FontSize="11" Foreground="{DynamicResource TextFillColorSecondaryBrush}" VerticalAlignment="Center"/>
+              <TextBlock Text="{Binding AuthorDisplay}" FontSize="11" Foreground="{DynamicResource TextFillColorSecondaryBrush}" VerticalAlignment="Center"/>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="4">
+              <ui:SymbolIcon Symbol="Download" FontSize="11" Foreground="{DynamicResource TextFillColorSecondaryBrush}" VerticalAlignment="Center"/>
+              <TextBlock Text="{Binding DownloadsDisplay}" FontSize="11" Foreground="{DynamicResource TextFillColorSecondaryBrush}" VerticalAlignment="Center"/>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="4"
+                        IsVisible="{Binding LastUpdateDisplay, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+              <ui:SymbolIcon Symbol="Calendar" FontSize="11" Foreground="{DynamicResource TextFillColorSecondaryBrush}" VerticalAlignment="Center"/>
+              <TextBlock Text="{Binding LastUpdateDisplay}" FontSize="11" Foreground="{DynamicResource TextFillColorSecondaryBrush}" VerticalAlignment="Center"/>
             </StackPanel>
           </StackPanel>
         </StackPanel>
       </StackPanel>
 
-      <Button Grid.Column="1"
-              Content="{Binding WebsiteButtonText}"
-              Classes="ghost" FontSize="11"
-              Command="{Binding OpenWebsiteCommand}"
+      <Button Grid.Column="1" Classes="ghost" Command="{Binding OpenWebsiteCommand}"
               IsVisible="{Binding WebsiteUrl, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-              VerticalAlignment="Center"/>
+              VerticalAlignment="Center" Padding="10,6">
+        <StackPanel Orientation="Horizontal" Spacing="6">
+          <ui:SymbolIcon Symbol="Globe" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+          <TextBlock Text="{Binding WebsiteButtonText}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+        </StackPanel>
+      </Button>
     </Grid>
 
-    <TextBlock Grid.Row="2" Text="{Binding Summary}" TextWrapping="Wrap" FontSize="12" Opacity="0.7" Margin="0,0,0,10" MaxLines="2"/>
+    <!-- 摘要（可展开） -->
+    <StackPanel Grid.Row="2" Margin="0,0,0,10">
+      <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" FontSize="12"
+                 Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                 MaxLines="{Binding SummaryMaxLines}" TextTrimming="CharacterEllipsis"/>
+      <Button Classes="ghost" Command="{Binding ToggleSummaryCommand}"
+              IsVisible="{Binding ShowSummaryToggle}" HorizontalAlignment="Left"
+              Padding="0" Margin="0,2,0,0">
+        <StackPanel Orientation="Horizontal" Spacing="4">
+          <TextBlock Text="{Binding SummaryToggleText}" FontSize="11" Foreground="{DynamicResource AccentBrush}"/>
+          <ui:SymbolIcon Symbol="ChevronDown" FontSize="10" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+        </StackPanel>
+      </Button>
+    </StackPanel>
 
-    <Separator Grid.Row="3" Margin="0,0,0,10" Background="{DynamicResource DividerBrush}"/>
+    <!-- 下载 / 安装结果提示 -->
+    <ui:InfoBar Grid.Row="3" IsOpen="{Binding IsInfoBarOpen}" Severity="{Binding InfoBarSeverity}"
+                Title="{Binding InfoBarTitle}" Message="{Binding InfoBarMessage}"
+                IsClosable="True" Margin="0,0,0,10"/>
+
+    <Separator Grid.Row="4" Margin="0,0,0,12" Background="{DynamicResource DividerBrush}"/>
 
     <!-- 版本分组列表 -->
-    <Grid Grid.Row="3">
+    <Grid Grid.Row="5">
       <Grid RowDefinitions="Auto,Auto,*">
-        <TextBlock Grid.Row="0" Text="可用版本" FontSize="16" FontWeight="Medium" Margin="0,0,0,6"/>
+
+        <TextBlock Grid.Row="0" Text="可用版本" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,10"/>
 
         <!-- 加载器筛选栏 -->
-        <ListBox Grid.Row="1" ItemsSource="{Binding AvailableLoaders}"
+        <ListBox Grid.Row="1" Classes="loader-filter"
+                 ItemsSource="{Binding AvailableLoaders}"
                  SelectedItem="{Binding SelectedLoaderFilter}"
-                 Margin="0,0,0,8"
-                 SelectionMode="Single"
-                 Background="Transparent"
-                 BorderThickness="0"
-                 Padding="0"
-                 MaxHeight="32">
+                 SelectionMode="Single">
           <ListBox.ItemsPanel>
             <ItemsPanelTemplate>
               <StackPanel Orientation="Horizontal" Spacing="2"/>
@@ -72,8 +163,9 @@
                 <Image Source="{Binding IconUri, Converter={StaticResource BitmapConverter}}"
                        Width="14" Height="14" VerticalAlignment="Center"
                        IsVisible="{Binding IconUri, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
-                <TextBlock Text="{Binding LoaderName}" FontSize="11" VerticalAlignment="Center"/>
-                <TextBlock Text="{Binding Count, StringFormat='({0})'}" FontSize="9" Opacity="0.5" VerticalAlignment="Center"/>
+                <TextBlock Text="{Binding LoaderName}" VerticalAlignment="Center"/>
+                <TextBlock Text="{Binding Count, StringFormat='({0})'}" FontSize="10"
+                           Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center"/>
               </StackPanel>
             </DataTemplate>
           </ListBox.ItemTemplate>
@@ -91,17 +183,14 @@
                               HorizontalContentAlignment="Stretch">
                       <Expander.Header>
                         <Grid ColumnDefinitions="*,Auto" Margin="2">
-                          <StackPanel Orientation="Horizontal" Spacing="6">
+                          <StackPanel Orientation="Horizontal" Spacing="8">
                             <TextBlock Text="{Binding McVersion}" FontSize="14" FontWeight="SemiBold"/>
-                            <Border IsVisible="{Binding IsLatest}"
-                                    Background="{DynamicResource AccentBrush}"
-                                    CornerRadius="3" Padding="5,1">
-                              <TextBlock Text="最新" FontSize="11" FontWeight="SemiBold" Foreground="White"/>
+                            <Border Classes="tag tag-accent" IsVisible="{Binding IsLatest}">
+                              <TextBlock Text="最新"/>
                             </Border>
                           </StackPanel>
-                          <TextBlock Grid.Column="1"
-                                     Text="{Binding FileCountDisplay}"
-                                     FontSize="12" Opacity="0.7" VerticalAlignment="Center"/>
+                          <TextBlock Grid.Column="1" Text="{Binding FileCountDisplay}" FontSize="12"
+                                     Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
                         </Grid>
                       </Expander.Header>
 
@@ -110,104 +199,79 @@
                           <ItemsControl.ItemTemplate>
                             <DataTemplate>
                               <StackPanel Margin="0,0,0,6">
-                                <Border CornerRadius="4" Padding="6,3" Margin="0,0,0,4"
-                                        Background="{DynamicResource SurfaceElevatedBrush}"
-                                        HorizontalAlignment="Left">
-                                  <TextBlock Text="{Binding LoaderName}" FontSize="12" FontWeight="Medium" Opacity="0.7"/>
+
+                                <Border Classes="loader-chip">
+                                  <TextBlock Text="{Binding LoaderName}" FontSize="12" FontWeight="Medium"
+                                             Foreground="{DynamicResource TextSecondaryBrush}"/>
                                 </Border>
 
-                                <Border IsVisible="{Binding HasCommonDependencies}"
-                                        CornerRadius="4" Padding="8,5" Margin="0,2,0,6"
-                                        Background="{DynamicResource SurfaceElevatedBrush}"
-                                        BorderThickness="1"
-                                        BorderBrush="{DynamicResource AccentBrush}"
-                                        Opacity="0.9">
-                                  <StackPanel Spacing="3">
-                                    <TextBlock Text="{Binding CommonDependenciesDisplay}" FontSize="11" FontWeight="Medium" Opacity="0.9"/>
-                                    <ItemsControl ItemsSource="{Binding CommonDependencies}">
-                                      <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                          <StackPanel Orientation="Horizontal" Spacing="3" Margin="0,1,0,0">
-                                            <Border Background="{Binding TypeTagColor}" CornerRadius="2" Padding="3,0" VerticalAlignment="Center">
-                                              <TextBlock Text="{Binding TypeTag}" FontSize="9" Foreground="White" FontWeight="SemiBold"/>
-                                            </Border>
-                                            <Button Content="{Binding Name}" FontSize="11"
-                                                    Padding="1,0"
-                                                    Foreground="{DynamicResource AccentBrush}"
-                                                    Command="{Binding #Root.DataContext.NavigateToDependencyCommand}"
-                                                    CommandParameter="{Binding}"
-                                                    Cursor="Hand">
-                                              <Button.Template>
-                                                <ControlTemplate TargetType="Button">
-                                                  <TextBlock Text="{TemplateBinding Content}"
-                                                             Foreground="{TemplateBinding Foreground}"
-                                                             FontSize="{TemplateBinding FontSize}"
-                                                             TextDecorations="Underline"
-                                                             Cursor="Hand"/>
-                                                </ControlTemplate>
-                                              </Button.Template>
-                                            </Button>
-                                          </StackPanel>
-                                        </DataTemplate>
-                                      </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                  </StackPanel>
-                                </Border>
+                                <!-- 公共前置依赖 -->
+                                <ui:InfoBar IsOpen="{Binding HasCommonDependencies}"
+                                            Severity="Informational"
+                                            Title="{Binding CommonDependenciesDisplay}"
+                                            IsClosable="False"
+                                            Margin="0,0,0,6">
+                                  <ItemsControl ItemsSource="{Binding CommonDependencies}">
+                                    <ItemsControl.ItemTemplate>
+                                      <DataTemplate>
+                                        <StackPanel Orientation="Horizontal" Spacing="3" Margin="0,1,0,0">
+                                          <Border Classes="tag" Background="{Binding TypeTagColor}">
+                                            <TextBlock Text="{Binding TypeTag}"/>
+                                          </Border>
+                                          <Button Classes="link" Content="{Binding Name}"
+                                                  Command="{Binding #Root.DataContext.NavigateToDependencyCommand}"
+                                                  CommandParameter="{Binding}"/>
+                                        </StackPanel>
+                                      </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                  </ItemsControl>
+                                </ui:InfoBar>
 
                                 <ItemsControl ItemsSource="{Binding Files}">
                                   <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                      <StackPanel>
-                                        <Border CornerRadius="4" Padding="8,5" Margin="0,0,0,3"
-                                                Background="{DynamicResource SurfaceElevatedBrush}">
-                                          <Grid ColumnDefinitions="*,Auto">
-                                            <StackPanel>
-                                              <TextBlock Text="{Binding Name}" FontSize="12" FontWeight="Medium" TextTrimming="CharacterEllipsis"/>
-                                              <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,1,0,0">
-                                                <TextBlock Text="{Binding DateDisplay}" FontSize="10" Opacity="0.5"/>
-                                                <TextBlock Text="{Binding McVersionsDisplay}" FontSize="10" Opacity="0.5"/>
-                                                <TextBlock Text="{Binding SizeDisplay}" FontSize="10" Opacity="0.5"/>
-                                              </StackPanel>
-                                              <StackPanel IsVisible="{Binding HasDependencies}" Margin="0,2,0,0" Spacing="2">
-                                                <ItemsControl ItemsSource="{Binding Dependencies}">
-                                                  <ItemsControl.ItemTemplate>
-                                                    <DataTemplate>
-                                                      <StackPanel Orientation="Horizontal" Spacing="3">
-                                                        <Border Background="{Binding TypeTagColor}" CornerRadius="2" Padding="2,0" VerticalAlignment="Center">
-                                                          <TextBlock Text="{Binding TypeTag}" FontSize="8" Foreground="White" FontWeight="SemiBold"/>
-                                                        </Border>
-                                                        <Button Content="{Binding Name}" FontSize="10"
-                                                                Padding="0"
-                                                                Foreground="{DynamicResource AccentBrush}"
-                                                                Command="{Binding #Root.DataContext.NavigateToDependencyCommand}"
-                                                                CommandParameter="{Binding}"
-                                                                Cursor="Hand">
-                                                          <Button.Template>
-                                                            <ControlTemplate TargetType="Button">
-                                                              <TextBlock Text="{TemplateBinding Content}"
-                                                                         Foreground="{TemplateBinding Foreground}"
-                                                                         FontSize="{TemplateBinding FontSize}"
-                                                                         TextDecorations="Underline"
-                                                                         Cursor="Hand"/>
-                                                            </ControlTemplate>
-                                                          </Button.Template>
-                                                        </Button>
-                                                      </StackPanel>
-                                                    </DataTemplate>
-                                                  </ItemsControl.ItemTemplate>
-                                                </ItemsControl>
-                                              </StackPanel>
+                                      <Border Classes="file-card">
+                                        <Grid ColumnDefinitions="*,Auto">
+                                          <StackPanel>
+                                            <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="Medium" TextTrimming="CharacterEllipsis"/>
+                                            <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,2,0,0">
+                                              <TextBlock Text="{Binding DateDisplay}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}"/>
+                                              <TextBlock Text="{Binding McVersionsDisplay}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}"/>
+                                              <TextBlock Text="{Binding SizeDisplay}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}"/>
                                             </StackPanel>
-                                            <Button Grid.Column="1"
-                                                    Content="下载"
-                                                    FontSize="11"
-                                                    Classes="accent"
+                                            <StackPanel IsVisible="{Binding HasDependencies}" Margin="0,4,0,0" Spacing="2">
+                                              <ItemsControl ItemsSource="{Binding Dependencies}">
+                                                <ItemsControl.ItemTemplate>
+                                                  <DataTemplate>
+                                                    <StackPanel Orientation="Horizontal" Spacing="3">
+                                                      <Border Classes="tag" Background="{Binding TypeTagColor}">
+                                                        <TextBlock Text="{Binding TypeTag}"/>
+                                                      </Border>
+                                                      <Button Classes="link" Content="{Binding Name}"
+                                                              Command="{Binding #Root.DataContext.NavigateToDependencyCommand}"
+                                                              CommandParameter="{Binding}"/>
+                                                    </StackPanel>
+                                                  </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                              </ItemsControl>
+                                            </StackPanel>
+                                          </StackPanel>
+
+                                          <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="12,0,0,0">
+                                            <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding IsDownloading}" VerticalAlignment="Center">
+                                              <ui:ProgressRing Width="16" Height="16" IsIndeterminate="True" IsActive="True"/>
+                                              <TextBlock Text="下载中..." FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                            </StackPanel>
+                                            <Border Classes="tag" Background="{DynamicResource SuccessBrush}" IsVisible="{Binding IsDownloaded}">
+                                              <TextBlock Text="已下载"/>
+                                            </Border>
+                                            <Button Content="下载" Classes="accent" FontSize="12" Padding="14,6"
+                                                    IsEnabled="{Binding !IsDownloading}"
                                                     Command="{Binding #Root.DataContext.DownloadVersionCommand}"
-                                                    CommandParameter="{Binding}"
-                                                    VerticalAlignment="Center" Margin="8,0,0,0"/>
-                                          </Grid>
-                                        </Border>
-                                      </StackPanel>
+                                                    CommandParameter="{Binding}"/>
+                                          </StackPanel>
+                                        </Grid>
+                                      </Border>
                                     </DataTemplate>
                                   </ItemsControl.ItemTemplate>
                                 </ItemsControl>
@@ -223,13 +287,17 @@
             </StackPanel>
           </ScrollViewer>
 
-          <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding IsLoading}">
-            <ProgressBar IsIndeterminate="True" Width="60" Height="6"/>
-            <TextBlock Text="加载中..." Margin="0,12,0,0" Opacity="0.8"/>
+          <!-- 加载中 -->
+          <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding IsLoading}" Spacing="12">
+            <ui:ProgressRing Width="40" Height="40" IsIndeterminate="True" IsActive="True" HorizontalAlignment="Center"/>
+            <TextBlock Text="正在加载版本信息..." FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}"/>
           </StackPanel>
 
-          <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding IsEmptyVisible}">
-            <TextBlock Text="没有找到可用版本" FontSize="16" Opacity="0.8"/>
+          <!-- 空状态 -->
+          <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding IsEmptyVisible}" Classes="empty-state">
+            <ui:SymbolIcon Symbol="Find" FontSize="36" Foreground="{DynamicResource TextTertiaryBrush}" HorizontalAlignment="Center"/>
+            <TextBlock Text="没有找到可用版本" FontSize="15" FontWeight="Medium" HorizontalAlignment="Center"/>
+            <TextBlock Text="该资源可能不支持当前筛选条件" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center"/>
           </StackPanel>
         </Grid>
       </Grid>

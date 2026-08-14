@@ -10,6 +10,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using FluentAvalonia.UI.Controls;
 using ObsMCLauncher.Core.Models;
 using ObsMCLauncher.Core.Services;
 using ObsMCLauncher.Core.Services.Minecraft;
@@ -30,8 +31,17 @@ public partial class ModDetailViewModel : ViewModelBase
     public string ResourceType { get; }
     private readonly Action? _onBack;
 
+    /// <summary>资源来源显示名（CurseForge / Modrinth）</summary>
+    public string SourceDisplay { get; }
+
     [ObservableProperty] private string _displayName = "";
-    [ObservableProperty] private string _summary = "";
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowSummaryToggle))]
+    private string _summary = "";
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SummaryMaxLines))]
+    [NotifyPropertyChangedFor(nameof(SummaryToggleText))]
+    private bool _isSummaryExpanded;
     [ObservableProperty] private string _authorDisplay = "";
     [ObservableProperty] private string _downloadsDisplay = "";
     [ObservableProperty] private string _lastUpdateDisplay = "";
@@ -45,8 +55,19 @@ public partial class ModDetailViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(IsEmptyVisible))]
     private bool _isLoading = true;
 
+    // 顶部提示条（下载 / 安装结果反馈）
+    [ObservableProperty] private bool _isInfoBarOpen;
+    [ObservableProperty] private InfoBarSeverity _infoBarSeverity = InfoBarSeverity.Informational;
+    [ObservableProperty] private string _infoBarTitle = "";
+    [ObservableProperty] private string _infoBarMessage = "";
+
     public bool IsVersionsVisible => !IsLoading && HasAnyGroup;
     public bool IsEmptyVisible => !IsLoading && !HasAnyGroup;
+
+    /// <summary>摘要较长时才显示"展开/收起"入口</summary>
+    public bool ShowSummaryToggle => Summary.Length > 80;
+    public int SummaryMaxLines => IsSummaryExpanded ? int.MaxValue : 2;
+    public string SummaryToggleText => IsSummaryExpanded ? "收起" : "展开";
 
     public ObservableCollection<VersionGroupViewModel> VersionGroups { get; } = new();
     public bool HasAnyGroup => VersionGroups.Count > 0;
@@ -83,8 +104,40 @@ public partial class ModDetailViewModel : ViewModelBase
     public IRelayCommand OpenWebsiteCommand { get; }
     public IAsyncRelayCommand<VersionEntryViewModel> DownloadVersionCommand { get; }
     public IRelayCommand<DependencyItemViewModel> NavigateToDependencyCommand { get; }
+    public IRelayCommand ToggleSummaryCommand { get; }
 
     public event Action<object>? DependencyNavigationRequested;
+
+    public ModDetailViewModel(object rawData, string selectedVersionId, string resourceType, Action? onBack = null)
+    {
+        RawData = rawData;
+        SelectedVersionId = selectedVersionId;
+        ResourceType = resourceType;
+        _onBack = onBack;
+        SourceDisplay = rawData is CurseForgeMod ? "CurseForge" : "Modrinth";
+
+        BackCommand = new RelayCommand(Back);
+        OpenWebsiteCommand = new RelayCommand(OpenWebsite, () => !string.IsNullOrEmpty(WebsiteUrl));
+        DownloadVersionCommand = new AsyncRelayCommand<VersionEntryViewModel>(DownloadVersionAsync);
+        NavigateToDependencyCommand = new RelayCommand<DependencyItemViewModel>(NavigateToDependency);
+        ToggleSummaryCommand = new RelayCommand(ToggleSummary);
+
+        LoadHeader();
+        _ = LoadDataAsync();
+    }
+
+    private void ToggleSummary()
+    {
+        IsSummaryExpanded = !IsSummaryExpanded;
+    }
+
+    private void ShowInfo(InfoBarSeverity severity, string title, string message)
+    {
+        InfoBarSeverity = severity;
+        InfoBarTitle = title;
+        InfoBarMessage = message;
+        IsInfoBarOpen = true;
+    }
 
     private static bool IsIncompleteCurseForgeData(CurseForgeMod cf)
     {
@@ -94,22 +147,6 @@ public partial class ModDetailViewModel : ViewModelBase
     private static bool IsIncompleteModrinthData(ModrinthSearchHit hit)
     {
         return string.IsNullOrEmpty(hit.IconUrl) || string.IsNullOrEmpty(hit.Author);
-    }
-
-    public ModDetailViewModel(object rawData, string selectedVersionId, string resourceType, Action? onBack = null)
-    {
-        RawData = rawData;
-        SelectedVersionId = selectedVersionId;
-        ResourceType = resourceType;
-        _onBack = onBack;
-
-        BackCommand = new RelayCommand(Back);
-        OpenWebsiteCommand = new RelayCommand(OpenWebsite, () => !string.IsNullOrEmpty(WebsiteUrl));
-        DownloadVersionCommand = new AsyncRelayCommand<VersionEntryViewModel>(DownloadVersionAsync);
-        NavigateToDependencyCommand = new RelayCommand<DependencyItemViewModel>(NavigateToDependency);
-
-        LoadHeader();
-        _ = LoadDataAsync();
     }
 
     private async Task LoadDataAsync()
@@ -146,10 +183,10 @@ public partial class ModDetailViewModel : ViewModelBase
                 DisplayName = ModTranslationService.Instance.GetDisplayName(fullMod.Name, translation);
                 Summary = fullMod.Summary;
                 AuthorDisplay = fullMod.Authors.Count > 0
-                    ? $"作者: {string.Join(", ", fullMod.Authors.Select(a => a.Name))}"
-                    : "作者: 未知";
-                DownloadsDisplay = $"下载量: {CurseForgeService.FormatDownloadCount(fullMod.DownloadCount)}";
-                LastUpdateDisplay = $"更新: {fullMod.DateModified:yyyy-MM-dd}";
+                    ? string.Join(", ", fullMod.Authors.Select(a => a.Name))
+                    : "未知";
+                DownloadsDisplay = CurseForgeService.FormatDownloadCount(fullMod.DownloadCount);
+                LastUpdateDisplay = fullMod.DateModified.ToString("yyyy-MM-dd");
                 WebsiteUrl = fullMod.Links?.WebsiteUrl ?? "";
                 WebsiteButtonText = "访问curseforge";
                 await LoadIconAsync(fullMod.Logo?.Url);
@@ -168,9 +205,9 @@ public partial class ModDetailViewModel : ViewModelBase
                 var translation = ModTranslationService.Instance.GetTranslationByCurseForgeId(project.Id);
                 DisplayName = ModTranslationService.Instance.GetDisplayName(project.Title, translation);
                 Summary = project.Description ?? string.Empty;
-                AuthorDisplay = !string.IsNullOrEmpty(project.Author) ? $"作者: {project.Author}" : "作者: 未知";
-                DownloadsDisplay = $"下载量: {CurseForgeService.FormatDownloadCount(project.Downloads)}";
-                LastUpdateDisplay = project.DateModified != default ? $"更新: {project.DateModified:yyyy-MM-dd}" : string.Empty;
+                AuthorDisplay = !string.IsNullOrEmpty(project.Author) ? project.Author : "未知";
+                DownloadsDisplay = CurseForgeService.FormatDownloadCount(project.Downloads);
+                LastUpdateDisplay = project.DateModified != default ? project.DateModified.ToString("yyyy-MM-dd") : string.Empty;
                 WebsiteUrl = $"https://modrinth.com/project/{project.Id}";
                 WebsiteButtonText = "访问modrinth";
                 await LoadIconAsync(project.IconUrl);
@@ -229,10 +266,10 @@ public partial class ModDetailViewModel : ViewModelBase
             DisplayName = ModTranslationService.Instance.GetDisplayName(cf.Name, translation);
             Summary = cf.Summary;
             AuthorDisplay = cf.Authors.Count > 0
-                ? $"作者: {string.Join(", ", cf.Authors.Select(a => a.Name))}"
-                : "作者: 未知";
-            DownloadsDisplay = $"下载量: {CurseForgeService.FormatDownloadCount(cf.DownloadCount)}";
-            LastUpdateDisplay = $"更新: {cf.DateModified:yyyy-MM-dd}";
+                ? string.Join(", ", cf.Authors.Select(a => a.Name))
+                : "未知";
+            DownloadsDisplay = CurseForgeService.FormatDownloadCount(cf.DownloadCount);
+            LastUpdateDisplay = cf.DateModified.ToString("yyyy-MM-dd");
             WebsiteUrl = cf.Links?.WebsiteUrl ?? "";
             WebsiteButtonText = "访问curseforge";
 
@@ -243,8 +280,8 @@ public partial class ModDetailViewModel : ViewModelBase
             var translation = ModTranslationService.Instance.GetTranslationByCurseForgeId(hit.ProjectId);
             DisplayName = ModTranslationService.Instance.GetDisplayName(hit.Title, translation);
             Summary = hit.Description ?? string.Empty;
-            AuthorDisplay = $"作者: {hit.Author ?? "未知"}";
-            DownloadsDisplay = $"下载量: {CurseForgeService.FormatDownloadCount(hit.Downloads)}";
+            AuthorDisplay = hit.Author ?? "未知";
+            DownloadsDisplay = CurseForgeService.FormatDownloadCount(hit.Downloads);
             LastUpdateDisplay = string.Empty;
             WebsiteUrl = $"https://modrinth.com/project/{hit.ProjectId}";
             WebsiteButtonText = "访问modrinth";
@@ -989,21 +1026,30 @@ SelectedLoaderFilter = string.IsNullOrEmpty(previousSelection)
 
     private async Task DownloadVersionAsync(VersionEntryViewModel? entry)
     {
-        if (entry == null) return;
+        if (entry == null || entry.IsDownloading) return;
 
-        if (ResourceType == "Modpacks")
+        entry.IsDownloading = true;
+        entry.IsDownloaded = false;
+        try
         {
-            await HandleModpackInstallation(entry);
-            return;
-        }
+            if (ResourceType == "Modpacks")
+            {
+                await HandleModpackInstallation(entry);
+                return;
+            }
 
-        if (entry.BackendType == VersionBackendType.CurseForge && entry.CurseForgeFile != null)
-        {
-            await DownloadCurseForgeAsync(entry.CurseForgeFile);
+            if (entry.BackendType == VersionBackendType.CurseForge && entry.CurseForgeFile != null)
+            {
+                await DownloadCurseForgeAsync(entry.CurseForgeFile, entry);
+            }
+            else if (entry.BackendType == VersionBackendType.Modrinth && entry.ModrinthVersion != null && entry.ModrinthFile != null)
+            {
+                await DownloadModrinthAsync(entry.ModrinthVersion, entry.ModrinthFile, entry);
+            }
         }
-        else if (entry.BackendType == VersionBackendType.Modrinth && entry.ModrinthVersion != null && entry.ModrinthFile != null)
+        finally
         {
-            await DownloadModrinthAsync(entry.ModrinthVersion, entry.ModrinthFile);
+            entry.IsDownloading = false;
         }
     }
 
@@ -1020,7 +1066,11 @@ SelectedLoaderFilter = string.IsNullOrEmpty(previousSelection)
             defaultName,
             "版本名称");
 
-        if (dialogResult != DialogResult.OK || string.IsNullOrWhiteSpace(versionName)) return;
+        if (dialogResult != DialogResult.OK || string.IsNullOrWhiteSpace(versionName))
+        {
+            ShowInfo(InfoBarSeverity.Informational, "已取消", "未安装整合包");
+            return;
+        }
 
         CancellationTokenSource? cts = null;
         string? taskId = null;
@@ -1082,6 +1132,7 @@ SelectedLoaderFilter = string.IsNullOrEmpty(previousSelection)
             {
                 if (File.Exists(savePath)) try { File.Delete(savePath); } catch { }
                 Core.Services.Download.DownloadTaskManager.Instance.FailTask(taskId, "下载中断或失败");
+                ShowInfo(InfoBarSeverity.Error, "整合包下载失败", "下载中断或失败，请检查网络后重试");
                 return;
             }
 
@@ -1101,11 +1152,14 @@ SelectedLoaderFilter = string.IsNullOrEmpty(previousSelection)
             );
 
             Core.Services.Download.DownloadTaskManager.Instance.CompleteTask(taskId);
+            entry.IsDownloaded = true;
+            ShowInfo(InfoBarSeverity.Success, "安装完成", $"整合包「{versionName}」已安装成功");
         }
         catch (Exception ex)
         {
             if (taskId != null)
                 Core.Services.Download.DownloadTaskManager.Instance.FailTask(taskId, ex.Message);
+            ShowInfo(InfoBarSeverity.Error, "整合包安装失败", ex.Message);
         }
         finally
         {
@@ -1154,7 +1208,7 @@ SelectedLoaderFilter = string.IsNullOrEmpty(previousSelection)
         return null;
     }
 
-    private async Task DownloadCurseForgeAsync(CurseForgeFile file)
+    private async Task<bool> DownloadCurseForgeAsync(CurseForgeFile file, VersionEntryViewModel entry)
     {
         CancellationTokenSource? cts = null;
         string? taskId = null;
@@ -1164,7 +1218,11 @@ SelectedLoaderFilter = string.IsNullOrEmpty(previousSelection)
             var defaultDir = GetTargetDirectory(config);
             
             var savePath = await ShowSaveFileDialogAsync(defaultDir, file.FileName);
-            if (string.IsNullOrEmpty(savePath)) return;
+            if (string.IsNullOrEmpty(savePath))
+            {
+                ShowInfo(InfoBarSeverity.Informational, "已取消下载", "未选择保存位置");
+                return false;
+            }
 
             var finalDir = Path.GetDirectoryName(savePath)!;
 
@@ -1196,24 +1254,32 @@ SelectedLoaderFilter = string.IsNullOrEmpty(previousSelection)
                 {
                     try { File.Delete(savePath); } catch { }
                 }
-                return;
+                ShowInfo(InfoBarSeverity.Informational, "已取消下载", $"{file.FileName} 已取消");
+                return false;
             }
 
             if (success)
             {
                 if (taskId != null)
                     Core.Services.Download.DownloadTaskManager.Instance.CompleteTask(taskId);
+                entry.IsDownloaded = true;
+                ShowInfo(InfoBarSeverity.Success, "下载完成", $"{file.FileName} 已保存到 {finalDir}");
+                return true;
             }
             else
             {
                 if (taskId != null)
                     Core.Services.Download.DownloadTaskManager.Instance.FailTask(taskId, "下载失败");
+                ShowInfo(InfoBarSeverity.Error, "下载失败", "下载未完成，请检查网络后重试");
+                return false;
             }
         }
-        catch
+        catch (Exception ex)
         {
             if (taskId != null)
                 Core.Services.Download.DownloadTaskManager.Instance.FailTask(taskId, "下载失败");
+            ShowInfo(InfoBarSeverity.Error, "下载失败", ex.Message);
+            return false;
         }
         finally
         {
@@ -1245,7 +1311,7 @@ SelectedLoaderFilter = string.IsNullOrEmpty(previousSelection)
         }
     }
 
-    private async Task DownloadModrinthAsync(ModrinthVersion version, ModrinthVersionFile file)
+    private async Task<bool> DownloadModrinthAsync(ModrinthVersion version, ModrinthVersionFile file, VersionEntryViewModel entry)
     {
         CancellationTokenSource? cts = null;
         string? taskId = null;
@@ -1255,7 +1321,11 @@ SelectedLoaderFilter = string.IsNullOrEmpty(previousSelection)
             var defaultDir = GetTargetDirectory(config);
 
             var savePath = await ShowSaveFileDialogAsync(defaultDir, file.Filename);
-            if (string.IsNullOrEmpty(savePath)) return;
+            if (string.IsNullOrEmpty(savePath))
+            {
+                ShowInfo(InfoBarSeverity.Informational, "已取消下载", "未选择保存位置");
+                return false;
+            }
 
             var finalDir = Path.GetDirectoryName(savePath)!;
 
@@ -1287,24 +1357,32 @@ SelectedLoaderFilter = string.IsNullOrEmpty(previousSelection)
                 {
                     try { File.Delete(savePath); } catch { }
                 }
-                return;
+                ShowInfo(InfoBarSeverity.Informational, "已取消下载", $"{file.Filename} 已取消");
+                return false;
             }
 
             if (success)
             {
                 if (taskId != null)
                     Core.Services.Download.DownloadTaskManager.Instance.CompleteTask(taskId);
+                entry.IsDownloaded = true;
+                ShowInfo(InfoBarSeverity.Success, "下载完成", $"{file.Filename} 已保存到 {finalDir}");
+                return true;
             }
             else
             {
                 if (taskId != null)
                     Core.Services.Download.DownloadTaskManager.Instance.FailTask(taskId, "下载失败");
+                ShowInfo(InfoBarSeverity.Error, "下载失败", "下载未完成，请检查网络后重试");
+                return false;
             }
         }
-        catch
+        catch (Exception ex)
         {
             if (taskId != null)
                 Core.Services.Download.DownloadTaskManager.Instance.FailTask(taskId, "下载失败");
+            ShowInfo(InfoBarSeverity.Error, "下载失败", ex.Message);
+            return false;
         }
         finally
         {
@@ -1435,6 +1513,8 @@ public partial class VersionEntryViewModel : ObservableObject
     [ObservableProperty] private bool _hasDependencies;
     [ObservableProperty] private string _dependenciesDisplay = string.Empty;
     [ObservableProperty] private string _loader = string.Empty;
+    [ObservableProperty] private bool _isDownloading;
+    [ObservableProperty] private bool _isDownloaded;
 
     public ObservableCollection<DependencyItemViewModel> Dependencies { get; } = new();
 }

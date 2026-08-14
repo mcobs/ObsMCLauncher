@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using ObsMCLauncher.Desktop.ViewModels;
 
 namespace ObsMCLauncher.Desktop.Views;
@@ -25,6 +26,24 @@ public partial class ResourcesView : UserControl
             vm?.LoadMoreResourcesCommand.Execute(null);
             _isScrollLoading = false;
         }
+    }
+
+    /// <summary>点击结果卡片任意位置打开详情（操作按钮已自行拦截点击）</summary>
+    private void OnResourceRowTapped(object? sender, TappedEventArgs e)
+    {
+        if (e.Source is Button) return;
+
+        if (sender is Control { DataContext: ResourceItemViewModel item } &&
+            DataContext is ResourcesViewModel vm)
+        {
+            vm.OpenDetailCommand.Execute(item);
+        }
+    }
+
+    /// <summary>拦截操作按钮的点击冒泡，避免同时触发行点击</summary>
+    private void OnActionTapped(object? sender, TappedEventArgs e)
+    {
+        e.Handled = true;
     }
 
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)

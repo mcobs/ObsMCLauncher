@@ -4,6 +4,7 @@
              xmlns:views="using:ObsMCLauncher.Desktop.Views"
              xmlns:mc="using:ObsMCLauncher.Core.Services.Minecraft"
              xmlns:converters="using:ObsMCLauncher.Desktop.Converters"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
              x:Class="ObsMCLauncher.Desktop.Views.VersionDownloadView"
              x:DataType="vm:VersionDownloadViewModel"
              x:Name="Root">
@@ -150,9 +151,13 @@
         </Button>
       </Grid>
 
-      <TabControl Grid.Row="1">
+      <ui:TabView Grid.Row="1"
+                  Background="Transparent"
+                  IsAddTabButtonVisible="False"
+                  CanDragTabs="False"
+                  CanReorderTabs="False">
 
-        <TabItem Header="已安装版本">
+        <ui:TabViewItem Header="已安装版本" IsClosable="False">
           <Grid Margin="0,8,0,0" RowDefinitions="Auto,Auto,*">
 
             <!-- 信息栏 -->
@@ -210,9 +215,9 @@
                      Classes="flat-list"/>
 
           </Grid>
-        </TabItem>
+        </ui:TabViewItem>
 
-        <TabItem Header="下载新版本">
+        <ui:TabViewItem Header="下载新版本" IsClosable="False">
           <Grid Margin="0,8,0,0" RowDefinitions="Auto,Auto,*">
 
             <Grid Grid.Row="0" Margin="0,0,0,8" ColumnDefinitions="*,Auto,Auto">
@@ -335,9 +340,9 @@
             </Grid>
 
           </Grid>
-        </TabItem>
+        </ui:TabViewItem>
 
-      </TabControl>
+      </ui:TabView>
 
     </Grid>
 
