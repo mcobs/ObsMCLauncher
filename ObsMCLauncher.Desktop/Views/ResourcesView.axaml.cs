@@ -1,3 +1,4 @@
+using System;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -44,6 +45,26 @@ public partial class ResourcesView : UserControl
     private void OnActionTapped(object? sender, TappedEventArgs e)
     {
         e.Handled = true;
+    }
+
+    /// <summary>
+    /// 标题行：让来源标签紧跟资源名，同时按剩余空间动态限制标题宽度（省略号截断），
+    /// 保证长标题也不会横向挤压右侧的"详情"按钮。
+    /// </summary>
+    private void OnTitleRowSizeChanged(object? sender, SizeChangedEventArgs e)
+    {
+        if (sender is not StackPanel panel) return;
+        if (panel.Children.Count == 0 || panel.Children[0] is not TextBlock title) return;
+
+        // 计算来源标签占用的宽度（含间距），标题使用剩余空间
+        double reserved = 0;
+        for (var i = 1; i < panel.Children.Count; i++)
+        {
+            if (panel.Children[i] is Control child && child.IsVisible)
+                reserved += child.Bounds.Width + 6;
+        }
+
+        title.MaxWidth = Math.Max(60, e.NewSize.Width - reserved - 2);
     }
 
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)

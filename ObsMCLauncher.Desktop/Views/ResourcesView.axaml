@@ -213,19 +213,19 @@
                   <Image Source="{Binding Icon}" Width="48" Height="48" />
                 </Border>
 
-                <!-- 标题行：标题在 * 列内收缩省略，来源标签保持自身宽度 -->
-                <Grid Grid.Column="1" Grid.Row="0" ColumnDefinitions="*,Auto" Margin="12,0,0,0">
-                  <TextBlock Grid.Column="0" Text="{Binding DisplayName}" FontSize="14" FontWeight="Medium"
+                <!-- 标题行：来源标签紧跟资源名（SizeChanged 动态限制标题宽度，保证省略且不挤压） -->
+                <StackPanel Grid.Column="1" Grid.Row="0" Orientation="Horizontal" Spacing="6"
+                            Margin="12,0,0,0" VerticalAlignment="Center"
+                            SizeChanged="OnTitleRowSizeChanged">
+                  <TextBlock Text="{Binding DisplayName}" FontSize="14" FontWeight="Medium"
                              TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-                  <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" Margin="8,0,0,0" VerticalAlignment="Center">
-                    <Border Classes="tag" Background="#F16436" IsVisible="{Binding IsCurseForge}">
-                      <TextBlock Text="CurseForge" />
-                    </Border>
-                    <Border Classes="tag" Background="#1BD96A" IsVisible="{Binding IsModrinth}">
-                      <TextBlock Text="Modrinth" />
-                    </Border>
-                  </StackPanel>
-                </Grid>
+                  <Border Classes="tag" Background="#F16436" IsVisible="{Binding IsCurseForge}">
+                    <TextBlock Text="CurseForge" />
+                  </Border>
+                  <Border Classes="tag" Background="#1BD96A" IsVisible="{Binding IsModrinth}">
+                    <TextBlock Text="Modrinth" />
+                  </Border>
+                </StackPanel>
 
                 <!-- 元信息行：描述在 * 列内收缩省略，作者/下载量/版本保持自身宽度 -->
                 <Grid Grid.Column="1" Grid.Row="1" ColumnDefinitions="*,Auto,Auto,Auto" Margin="12,0,0,0">
