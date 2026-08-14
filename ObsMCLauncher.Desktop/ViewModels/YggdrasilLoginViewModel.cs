@@ -96,6 +96,7 @@ public partial class YggdrasilLoginViewModel : ViewModelBase
                 return;
             }
 
+            Password = string.Empty; // 登录成功后立即清空密码，避免敏感信息残留
             OnLoginCompleted?.Invoke(account);
             StatusMessage = "登录成功";
         }
@@ -147,6 +148,7 @@ public partial class YggdrasilLoginViewModel : ViewModelBase
                     _pendingClientToken);
 
                 ShowProfileSelection = false;
+                Password = string.Empty; // 完成登录后清空密码
                 OnLoginCompleted?.Invoke(account);
                 StatusMessage = "登录成功";
             });
@@ -169,6 +171,7 @@ public partial class YggdrasilLoginViewModel : ViewModelBase
         SelectedProfile = null;
         _pendingAccessToken = null;
         _pendingClientToken = null;
+        Password = string.Empty; // 取消选择角色时同样清空密码
         StatusMessage = "已取消选择";
     }
 

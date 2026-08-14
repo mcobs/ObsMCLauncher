@@ -3,16 +3,16 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
-using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Avalonia.Platform;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FluentAvalonia.UI.Controls;
 using ObsMCLauncher.Core.Models;
 using ObsMCLauncher.Core.Services.Accounts;
+using ObsMCLauncher.Desktop.Services;
 using ObsMCLauncher.Desktop.ViewModels.Dialogs;
 using ObsMCLauncher.Desktop.ViewModels.Notifications;
 using ObsMCLauncher.Core.Services;
@@ -178,16 +178,6 @@ public partial class AccountManagementViewModel : ViewModelBase
                 return;
             }
 
-            // 方案A：显式检查重复并提示
-            var existing = AccountService.Instance.GetAllAccounts()
-                .FirstOrDefault(a => a.Type == AccountType.Offline && a.Username.Equals(username, StringComparison.OrdinalIgnoreCase));
-            
-            if (existing != null)
-            {
-                SetStatus($"已存在名为 '{username}' 的离线账号", InfoBarSeverity.Warning);
-                return;
-            }
-
             try
             {
                 var acc = AccountService.Instance.AddOfflineAccount(username);
@@ -196,16 +186,18 @@ public partial class AccountManagementViewModel : ViewModelBase
                 Load();
                 SetStatus("已添加离线账号", InfoBarSeverity.Success);
                 
-                // 通知主页刷新账号列表
-                if (NavigationStore.MainWindow?.NavItems.FirstOrDefault(x => x.Title == "主页")?.Page is HomeViewModel homeVm)
-                {
-                    homeVm.RefreshAccounts();
-                }
+                // 通知主页等订阅方刷新账号列表
+                AccountEvents.NotifyAccountsChanged();
                 
                 // 添加后自动刷新头像
                 var newItem = Items.FirstOrDefault(w => w.Account.Id == acc.Id);
                 if (newItem != null) _ = RefreshAccountAsync(newItem);
                 HighlightNewAccount(acc); // 滚动到新账号并短暂高亮
+            }
+            catch (InvalidOperationException ex)
+            {
+                // 服务层业务校验（如用户名重复）直接展示其消息
+                SetStatus(ex.Message, InfoBarSeverity.Warning);
             }
             catch (Exception ex)
             {
@@ -245,11 +237,8 @@ public partial class AccountManagementViewModel : ViewModelBase
                     SetStatus("已删除账号", InfoBarSeverity.Success);
                 }
                 
-                // 通知主页刷新账号列表
-                if (NavigationStore.MainWindow?.NavItems.FirstOrDefault(x => x.Title == "主页")?.Page is HomeViewModel homeVm)
-                {
-                    homeVm.RefreshAccounts();
-                }
+                // 通知主页等订阅方刷新账号列表
+                AccountEvents.NotifyAccountsChanged();
             }
             catch (Exception ex)
             {
@@ -321,17 +310,13 @@ public partial class AccountManagementViewModel : ViewModelBase
                 await AccountService.Instance.RefreshYggdrasilAccountAsync(acc.Id);
             }
 
-            var skinPath = await SkinService.Instance.GetSkinPathAsync(acc, true);
-            if (!string.IsNullOrEmpty(skinPath) && File.Exists(skinPath))
+            var bitmap = await AccountAvatarService.LoadHeadAsync(acc, true);
+            if (bitmap != null)
             {
-                var bitmap = SkinHeadRenderer.GetHeadFromSkin(skinPath);
-                if (bitmap != null)
+                await Dispatcher.UIThread.InvokeAsync(() =>
                 {
-                    await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
-                    {
-                        acc.Avatar = bitmap;
-                    });
-                }
+                    acc.Avatar = bitmap;
+                });
             }
             SetStatus($"账号 {acc.Username} 刷新成功", InfoBarSeverity.Success);
         }
@@ -415,10 +400,8 @@ public partial class AccountManagementViewModel : ViewModelBase
                     Load();
                     HighlightNewAccount(account);
 
-                    if (NavigationStore.MainWindow?.NavItems.FirstOrDefault(x => x.Title == "主页")?.Page is HomeViewModel homeVm)
-                    {
-                        homeVm.RefreshAccounts();
-                    }
+                    // 通知主页等订阅方刷新账号列表
+                    AccountEvents.NotifyAccountsChanged();
 
                     main.Notifications.Show(
                         "登录成功",
@@ -445,6 +428,8 @@ public partial class AccountManagementViewModel : ViewModelBase
     [RelayCommand]
     private void CancelYggdrasilLogin()
     {
+        // 关闭对话框时清空密码，避免敏感信息残留在 ViewModel 中
+        YggdrasilLoginDialog.Password = string.Empty;
         IsYggdrasilLoginDialogOpen = false;
     }
 
@@ -522,11 +507,8 @@ public partial class AccountManagementViewModel : ViewModelBase
             Load();
             HighlightNewAccount(account);
 
-            // 通知主页刷新账号列表
-            if (NavigationStore.MainWindow?.NavItems.FirstOrDefault(x => x.Title == "主页")?.Page is HomeViewModel homeVm)
-            {
-                homeVm.RefreshAccounts();
-            }
+            // 通知主页等订阅方刷新账号列表
+            AccountEvents.NotifyAccountsChanged();
 
             // 确保关闭授权对话框
             try
@@ -592,32 +574,35 @@ public partial class AccountManagementViewModel : ViewModelBase
             }
 
             // 同步包装列表：按 Id 复用包装器（保留每项的刷新/操作状态），并始终使用服务端最新实例
-            var toRemove = Items.Where(w => !list.Any(l => l.Id == w.Account.Id)).ToList();
-            foreach (var w in toRemove) Items.Remove(w);
+            var listById = list.ToDictionary(l => l.Id);
+            var existingById = Items.ToDictionary(w => w.Account.Id);
+
+            foreach (var w in Items.Where(w => !listById.ContainsKey(w.Account.Id)).ToList())
+            {
+                Items.Remove(w);
+            }
 
             for (var i = 0; i < list.Count; i++)
             {
                 var model = list[i];
-                var existing = Items.FirstOrDefault(w => w.Account.Id == model.Id);
-                if (existing == null)
+                if (!existingById.TryGetValue(model.Id, out var existing))
                 {
                     var insertIndex = Items.Count > i ? i : Items.Count;
                     Items.Insert(insertIndex, new AccountItemViewModel(model));
                     LoadSingleAccountAvatar(model);
+                    continue;
                 }
-                else
-                {
-                    // 复用包装器但替换为最新模型实例（令牌等字段以服务端为准）
-                    model.Avatar ??= existing.Account.Avatar;
-                    existing.Account = model;
-                    if (existing.Account.Avatar == null) LoadSingleAccountAvatar(existing.Account);
 
-                    var currentIndex = Items.IndexOf(existing);
-                    if (currentIndex != i)
-                    {
-                        Items.Remove(existing);
-                        Items.Insert(i, existing);
-                    }
+                // 复用包装器但替换为最新模型实例（令牌等字段以服务端为准）
+                model.Avatar ??= existing.Account.Avatar;
+                existing.Account = model;
+                if (existing.Account.Avatar == null) LoadSingleAccountAvatar(existing.Account);
+
+                var currentIndex = Items.IndexOf(existing);
+                if (currentIndex != i)
+                {
+                    Items.Remove(existing);
+                    Items.Insert(i, existing);
                 }
             }
 
@@ -630,38 +615,37 @@ public partial class AccountManagementViewModel : ViewModelBase
         }
     }
 
+    /// <summary>正在加载头像的账号 Id（避免重复触发加载任务）</summary>
+    private readonly HashSet<string> _avatarLoadingIds = new();
+
     private void LoadSingleAccountAvatar(GameAccount acc)
     {
+        if (!_avatarLoadingIds.Add(acc.Id)) return;
+
         _ = Task.Run(async () =>
         {
             try
             {
-                var skinPath = await SkinService.Instance.GetSkinPathAsync(acc);
-                if (!string.IsNullOrEmpty(skinPath) && File.Exists(skinPath))
+                var bitmap = await AccountAvatarService.LoadHeadAsync(acc);
+                if (bitmap != null)
                 {
-                    var bitmap = SkinHeadRenderer.GetHeadFromSkin(skinPath);
-                    if (bitmap != null)
-                    {
-                        await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
-                        {
-                            acc.Avatar = bitmap;
-                        });
-                        return;
-                    }
+                    await Dispatcher.UIThread.InvokeAsync(() => acc.Avatar = bitmap);
+                    return;
                 }
 
                 // 离线/默认头像回退
-                await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+                await Dispatcher.UIThread.InvokeAsync(() =>
                 {
-                    try
-                    {
-                        using var defaultAvatar = AssetLoader.Open(new Uri("avares://ObsMCLauncher.Desktop/Assets/logo.png"));
-                        acc.Avatar = new Avalonia.Media.Imaging.Bitmap(defaultAvatar);
-                    }
-                    catch { }
+                    acc.Avatar = AccountAvatarService.LoadFallbackAvatar();
                 });
             }
-            catch { }
+            catch
+            {
+            }
+            finally
+            {
+                _avatarLoadingIds.Remove(acc.Id);
+            }
         });
     }
 

@@ -207,7 +207,8 @@
                             CommandParameter="{Binding}"
                             Classes="ghost"
                             IsEnabled="{Binding CanRefresh}"
-                            ToolTip.Tip="刷新账号">
+                            ToolTip.Tip="刷新账号"
+                            AutomationProperties.Name="刷新账号">
                       <Panel Width="18" Height="18">
                         <Path Data="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"
                               Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource TextBrush}"
@@ -303,13 +304,10 @@
                 </StackPanel>
               </Border>
 
-              <Border Background="#1010B981" CornerRadius="8" Padding="12" BorderThickness="1" BorderBrush="#3010B981">
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                  <Path Data="M12 2C6.48 2 2 6.48 2 12S6.48 22 12 22 22 17.52 22 12 17.52 2 12 2M13 17H11V15H13V17M13 13H11V7H13V13Z" Width="16" Height="16" Stretch="Uniform" Fill="{DynamicResource PrimaryBrush}" VerticalAlignment="Top"/>
-                  <TextBlock Text="外置登录需要在第三方认证服务器注册账号。推荐使用 LittleSkin 服务。"
-                             FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap"/>
-                </StackPanel>
-              </Border>
+              <ui:InfoBar IsOpen="True"
+                          IsClosable="False"
+                          Severity="Informational"
+                          Message="外置登录需要在第三方认证服务器注册账号。推荐使用 LittleSkin 服务。"/>
             </StackPanel>
           </ScrollViewer>
 

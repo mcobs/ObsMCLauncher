@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
@@ -6,6 +7,7 @@ using Avalonia;
 using Avalonia.Data.Converters;
 using Avalonia.Media;
 using Avalonia.Platform;
+using Avalonia.Styling;
 using Avalonia.Svg.Skia;
 using ObsMCLauncher.Core.Models;
 
@@ -15,6 +17,12 @@ public class EnumToChineseTextConverter : IValueConverter, IMultiValueConverter
 {
     public static readonly EnumToChineseTextConverter Instance = new();
     private static readonly string IconBase = "avares://ObsMCLauncher.Desktop/Assets/AccountIcons/";
+
+    /// <summary>
+    /// 账号类型图标源缓存：SvgSource 按 (类型, 主题) 缓存，
+    /// 避免每次绑定求值都重新读取资源并做主题换色（列表项/菜单项/主题切换时高频触发）。
+    /// </summary>
+    private static readonly ConcurrentDictionary<(AccountType Type, ThemeVariant Theme), SvgSource?> IconSourceCache = new();
 
     public object? Convert(object? value, Type targetType, object? parameter, System.Globalization.CultureInfo culture)
     {
@@ -115,6 +123,18 @@ public class EnumToChineseTextConverter : IValueConverter, IMultiValueConverter
 
     private static object? LoadAccountIcon(AccountType at)
     {
+        var theme = Application.Current?.ActualThemeVariant ?? ThemeVariant.Dark;
+        var source = IconSourceCache.GetOrAdd((at, theme), key => LoadIconSource(key.Type, key.Theme));
+        if (source == null)
+        {
+            return GetFallbackIcon(at);
+        }
+
+        return new SvgImage { Source = source };
+    }
+
+    private static SvgSource? LoadIconSource(AccountType at, ThemeVariant theme)
+    {
         var path = at switch
         {
             AccountType.Microsoft => IconBase + "microsoft.svg",
@@ -130,18 +150,14 @@ public class EnumToChineseTextConverter : IValueConverter, IMultiValueConverter
             {
                 using var reader = new StreamReader(AssetLoader.Open(uri));
                 var svgContent = reader.ReadToEnd();
-                svgContent = SvgThemeHelper.ReplaceCurrentColor(svgContent, Avalonia.Application.Current?.ActualThemeVariant);
+                svgContent = SvgThemeHelper.ReplaceCurrentColor(svgContent, theme);
 
                 using var ms = new MemoryStream(Encoding.UTF8.GetBytes(svgContent));
-                var svgSource = SvgSource.LoadFromStream(ms);
-                if (svgSource != null)
-                    return new SvgImage { Source = svgSource };
+                return SvgSource.LoadFromStream(ms);
             }
             else
             {
-                var svgSource = SvgSource.LoadFromStream(AssetLoader.Open(uri));
-                if (svgSource != null)
-                    return new SvgImage { Source = svgSource };
+                return SvgSource.LoadFromStream(AssetLoader.Open(uri));
             }
         }
         catch
@@ -149,7 +165,7 @@ public class EnumToChineseTextConverter : IValueConverter, IMultiValueConverter
             // fallback
         }
 
-        return GetFallbackIcon(at);
+        return null;
     }
 
     private static string GetFallbackIcon(AccountType at)

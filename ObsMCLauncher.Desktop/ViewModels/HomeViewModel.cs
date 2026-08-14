@@ -208,6 +208,9 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
         _notificationService = notificationService;
         _dialogService = new DialogService();
 
+        // 账号管理页新增/删除账号后刷新主页账号列表（事件解耦，不再通过导航项查找）
+        AccountEvents.AccountsChanged += OnAccountsChanged;
+
         InstanceViewModel = new InstanceViewModel(notificationService);
 
         RefreshCommand = new AsyncRelayCommand(LoadAsync, () => !IsLoading);
@@ -243,8 +246,14 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
 
     public void Dispose()
     {
+        AccountEvents.AccountsChanged -= OnAccountsChanged;
         HomeCards.CollectionChanged -= _homeCardsChangedHandler;
         GC.SuppressFinalize(this);
+    }
+
+    private void OnAccountsChanged()
+    {
+        RefreshAccounts();
     }
 
     private void InitializeHomeData()
