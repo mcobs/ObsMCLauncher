@@ -27,6 +27,9 @@ public partial class InstanceView : UserControl
 
     private async void OnGroupManagerRequested()
     {
+        // ContentDialog 内容在弹出层中渲染，会丢失 DataContext 继承（回退到 MainWindow 的 DataContext），
+        // 故在显示前显式绑定到当前 InstanceViewModel。
+        GroupManagerDialog.DataContext = DataContext;
         await GroupManagerDialog.ShowAsync();
     }
 }

@@ -253,6 +253,8 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
             {
                 _config.MaxMemory = value;
                 OnPropertyChanged(new PropertyChangedEventArgs(nameof(MaxMemory)));
+                OnPropertyChanged(new PropertyChangedEventArgs(nameof(MemoryHint)));
+                OnPropertyChanged(new PropertyChangedEventArgs(nameof(IsMemoryHintWarning)));
                 AutoSave();
             }
         }
@@ -267,10 +269,22 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
             {
                 _config.MinMemory = value;
                 OnPropertyChanged(new PropertyChangedEventArgs(nameof(MinMemory)));
+                OnPropertyChanged(new PropertyChangedEventArgs(nameof(MemoryHint)));
+                OnPropertyChanged(new PropertyChangedEventArgs(nameof(IsMemoryHintWarning)));
                 AutoSave();
             }
         }
     }
+
+    /// <summary>
+    /// 全局内存配置联动提示
+    /// </summary>
+    public string MemoryHint =>
+        MaxMemory <= MinMemory
+            ? $"最大内存应大于最小内存（当前最小内存 {MinMemory} MB）"
+            : "建议最大内存不超过系统可用内存的 70%";
+
+    public bool IsMemoryHintWarning => MaxMemory <= MinMemory;
 
     public DownloadSource DownloadSource
     {

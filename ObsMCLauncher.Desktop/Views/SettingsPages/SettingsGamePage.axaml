@@ -39,10 +39,18 @@
 
         <ui:SettingsExpanderItem Content="最大内存分配" Description="最小内存固定为 512MB">
           <ui:SettingsExpanderItem.Footer>
-            <StackPanel Orientation="Horizontal" Spacing="8">
-              <Slider Minimum="1024" Maximum="65536" Value="{Binding MaxMemory}" Width="220"/>
-              <TextBox Text="{Binding MaxMemory}" Width="70" HorizontalContentAlignment="Right" Watermark="MB"/>
-              <TextBlock Text="MB" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}"/>
+            <StackPanel Spacing="4">
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <Slider Minimum="1024" Maximum="65536" Value="{Binding MaxMemory}" Width="220"/>
+                <TextBox Text="{Binding MaxMemory}" Width="70" HorizontalContentAlignment="Right" Watermark="MB"/>
+                <TextBlock Text="MB" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}"/>
+              </StackPanel>
+              <TextBlock Text="{Binding MemoryHint}" FontSize="11" TextWrapping="Wrap"
+                         Foreground="{DynamicResource TextTertiaryBrush}"
+                         IsVisible="{Binding !IsMemoryHintWarning}"/>
+              <TextBlock Text="{Binding MemoryHint}" FontSize="11" TextWrapping="Wrap"
+                         Foreground="{DynamicResource WarningBrush}"
+                         IsVisible="{Binding IsMemoryHintWarning}"/>
             </StackPanel>
           </ui:SettingsExpanderItem.Footer>
         </ui:SettingsExpanderItem>
