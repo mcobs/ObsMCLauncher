@@ -388,6 +388,16 @@ public partial class InstanceViewModel : ViewModelBase
     private static readonly string ModIconCacheDir = Path.Combine(AppContext.BaseDirectory, "OMCL", "cache", "mod_icons");
 
     /// <summary>
+    /// 生成稳定的十六进制哈希（SHA256 前 4 字节），用于图标缓存文件名。
+    /// 避免 string.GetHashCode 跨进程随机化导致缓存永远失效、每次打开实例都重新解压图标。
+    /// </summary>
+    private static string StableHash(string input)
+    {
+        var hash = System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(input));
+        return Convert.ToHexString(hash.AsSpan(0, 4)).ToLowerInvariant();
+    }
+
+    /// <summary>
     /// 从 JAR 中提取 Mod 图标，返回缓存文件路径，未找到则返回 null
     /// </summary>
     private static string? ExtractModIcon(string jarPath)
@@ -403,7 +413,7 @@ public partial class InstanceViewModel : ViewModelBase
                 if (entry != null)
                 {
                     Directory.CreateDirectory(ModIconCacheDir);
-                    var hash = Math.Abs(jarPath.GetHashCode()).ToString("x8");
+                    var hash = StableHash(jarPath);
                     var tmpPath = Path.Combine(ModIconCacheDir, $"{hash}.png");
                     if (!File.Exists(tmpPath) || new FileInfo(tmpPath).Length != entry.Length)
                         entry.ExtractToFile(tmpPath, true);
@@ -419,7 +429,7 @@ public partial class InstanceViewModel : ViewModelBase
                     name.EndsWith("/icon.png", StringComparison.OrdinalIgnoreCase))
                 {
                     Directory.CreateDirectory(ModIconCacheDir);
-                    var hash = Math.Abs(jarPath.GetHashCode()).ToString("x8");
+                    var hash = StableHash(jarPath);
                     var tmpPath = Path.Combine(ModIconCacheDir, $"{hash}.png");
                     if (!File.Exists(tmpPath) || new FileInfo(tmpPath).Length != entry.Length)
                         entry.ExtractToFile(tmpPath, true);
@@ -668,7 +678,7 @@ public partial class InstanceViewModel : ViewModelBase
                     if (entry != null)
                     {
                         Directory.CreateDirectory(ShaderIconCacheDir);
-                        var hash = Math.Abs(zipPath.GetHashCode()).ToString("x8");
+                        var hash = StableHash(zipPath);
                         var tmpPath = Path.Combine(ShaderIconCacheDir, $"{hash}.png");
                         if (!File.Exists(tmpPath) || new FileInfo(tmpPath).Length != entry.Length)
                             entry.ExtractToFile(tmpPath, true);
@@ -794,7 +804,7 @@ public partial class InstanceViewModel : ViewModelBase
                 if (entry != null)
                 {
                     Directory.CreateDirectory(ResourcePackIconCacheDir);
-                    var hash = Math.Abs(zipPath.GetHashCode()).ToString("x8");
+                    var hash = StableHash(zipPath);
                     var tmpPath = Path.Combine(ResourcePackIconCacheDir, $"{hash}.png");
                     if (!File.Exists(tmpPath) || new FileInfo(tmpPath).Length != entry.Length)
                         entry.ExtractToFile(tmpPath, true);
@@ -1204,7 +1214,7 @@ public partial class InstanceViewModel : ViewModelBase
                 var iconEntry = archive.GetEntry(meta.IconPath);
                 if (iconEntry != null)
                 {
-                    var cacheName = $"{Math.Abs(jarPath.GetHashCode()):x8}_{meta.ModId}.png";
+                    var cacheName = $"{StableHash(jarPath)}_{meta.ModId}.png";
                     var tmpPath = Path.Combine(ModIconCacheDir, cacheName);
                     if (!File.Exists(tmpPath) || new FileInfo(tmpPath).Length != iconEntry.Length)
                         iconEntry.ExtractToFile(tmpPath, true);
@@ -1219,7 +1229,7 @@ public partial class InstanceViewModel : ViewModelBase
                 var entry = archive.GetEntry(candidate);
                 if (entry != null)
                 {
-                    var cacheName = $"{Math.Abs(jarPath.GetHashCode()):x8}_{candidate}";
+                    var cacheName = $"{StableHash(jarPath)}_{candidate}";
                     var tmpPath = Path.Combine(ModIconCacheDir, cacheName);
                     if (!File.Exists(tmpPath) || new FileInfo(tmpPath).Length != entry.Length)
                         entry.ExtractToFile(tmpPath, true);
@@ -1236,7 +1246,7 @@ public partial class InstanceViewModel : ViewModelBase
                     name.StartsWith($"assets/{modId}/", StringComparison.OrdinalIgnoreCase) &&
                     name.EndsWith("/icon.png", StringComparison.OrdinalIgnoreCase))
                 {
-                    var cacheName = $"{Math.Abs(jarPath.GetHashCode()):x8}_{modId}.png";
+                    var cacheName = $"{StableHash(jarPath)}_{modId}.png";
                     var tmpPath = Path.Combine(ModIconCacheDir, cacheName);
                     if (!File.Exists(tmpPath) || new FileInfo(tmpPath).Length != entry.Length)
                         entry.ExtractToFile(tmpPath, true);
@@ -1250,7 +1260,7 @@ public partial class InstanceViewModel : ViewModelBase
                 if (entry.FullName.StartsWith("assets/", StringComparison.OrdinalIgnoreCase) &&
                     entry.FullName.EndsWith("/icon.png", StringComparison.OrdinalIgnoreCase))
                 {
-                    var cacheName = $"{Math.Abs(jarPath.GetHashCode()):x8}_asset.png";
+                    var cacheName = $"{StableHash(jarPath)}_asset.png";
                     var tmpPath = Path.Combine(ModIconCacheDir, cacheName);
                     if (!File.Exists(tmpPath) || new FileInfo(tmpPath).Length != entry.Length)
                         entry.ExtractToFile(tmpPath, true);

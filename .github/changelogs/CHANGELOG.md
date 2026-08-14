@@ -7,6 +7,7 @@
 - 版本实例界面迁移到 FluentAvalonia 组件：顶部导航标签栏改用 TabView（图标改用 PathIconSource），内存配置输入框改用 NumberBox，分组管理弹窗改用 ContentDialog，OptiFine 兼容性警告改用 InfoBar
 - 版本实例页标签栏禁止拖动与重排序，避免误操作改变标签顺序
 - 版本实例界面统一危险色语义：硬编码红色（#FF5252/#E74C3C 等）改用主题 DangerBrush / DangerSoftBrush 资源
+- 版本实例页图标缓存改用稳定哈希（SHA256）生成文件名，修复 string.GetHashCode 跨进程随机化导致缓存失效、每次打开实例都重新解压图标的问题
 
 ## [v1.0.1-pre.1] - 2026-08-14
 
