@@ -13,6 +13,7 @@
 
 ### 新增
 - 插件 API 新增目录获取接口：`LauncherBaseDirectory`（启动器基础目录，自动跳出 current）、`LauncherDataDirectory`（OMCL 数据目录）、`GameDirectory`（当前游戏目录），均已正确处理 Velopack 部署路径
+- 账号管理页新增功能：登录令牌过期提示（即将过期/已过期/状态未知，按状态着色），打开页面时自动刷新过期令牌；账号卡片展示最近使用时间、邮箱、认证服务器信息；支持按用户名搜索筛选账号；删除默认账号时提示自动接任的默认账号；新增账号后自动滚动定位并短暂高亮
 
 ### 优化
 - 版本实例界面迁移到 FluentAvalonia 组件：顶部导航标签栏改用 TabView（图标改用 PathIconSource），内存配置输入框改用 NumberBox，分组管理弹窗改用 ContentDialog，OptiFine 兼容性警告改用 InfoBar

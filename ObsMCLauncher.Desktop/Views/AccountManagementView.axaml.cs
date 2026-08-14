@@ -2,7 +2,9 @@ using System;
 using System.ComponentModel;
 using System.Threading.Tasks;
 using Avalonia.Controls;
+using Avalonia.Interactivity;
 using FluentAvalonia.UI.Controls;
+using ObsMCLauncher.Core.Models;
 using ObsMCLauncher.Core.Utils;
 using ObsMCLauncher.Desktop.ViewModels;
 
@@ -16,18 +18,42 @@ public partial class AccountManagementView : UserControl
     public AccountManagementView()
     {
         InitializeComponent();
+        Loaded += OnLoaded;
         DataContextChanged += OnDataContextChanged;
     }
 
     private void OnDataContextChanged(object? sender, EventArgs e)
     {
         if (_vm != null)
+        {
             _vm.PropertyChanged -= OnViewModelPropertyChanged;
+            _vm.ScrollToAccountRequested -= OnScrollToAccountRequested;
+        }
 
         _vm = DataContext as AccountManagementViewModel;
 
         if (_vm != null)
+        {
             _vm.PropertyChanged += OnViewModelPropertyChanged;
+            _vm.ScrollToAccountRequested += OnScrollToAccountRequested;
+
+            // DataContext 就绪时视图可能已加载（如页面缓存复用），补一次自动刷新
+            if (IsLoaded)
+            {
+                _ = _vm.AutoRefreshExpiredTokensAsync();
+            }
+        }
+    }
+
+    private void OnLoaded(object? sender, RoutedEventArgs e)
+    {
+        // 页面打开时自动刷新已过期/状态未知的登录令牌
+        _ = _vm?.AutoRefreshExpiredTokensAsync();
+    }
+
+    private void OnScrollToAccountRequested(GameAccount account)
+    {
+        AccountList.ScrollIntoView(account);
     }
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)

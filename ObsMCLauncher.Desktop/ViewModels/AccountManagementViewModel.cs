@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -118,6 +119,29 @@ public partial class AccountManagementViewModel : ViewModelBase
     [ObservableProperty]
     private bool _isRefreshing;
 
+    /// <summary>账号搜索关键词</summary>
+    [ObservableProperty]
+    private string _searchText = string.Empty;
+
+    /// <summary>是否存在账号（区分"无账号"与"搜索无结果"两种空状态）</summary>
+    [ObservableProperty]
+    private bool _hasAccounts;
+
+    [ObservableProperty]
+    private bool _showNoAccountsEmpty;
+
+    [ObservableProperty]
+    private bool _showNoSearchResultsEmpty;
+
+    /// <summary>过滤后的账号列表（绑定到界面）</summary>
+    public ObservableCollection<ObsMCLauncher.Core.Models.GameAccount> FilteredAccounts { get; } = new();
+
+    /// <summary>请求视图滚动到指定账号（新增账号后定位用）</summary>
+    public event Action<ObsMCLauncher.Core.Models.GameAccount>? ScrollToAccountRequested;
+
+    private readonly HashSet<string> _autoRefreshAttempted = new();
+    private bool _autoRefreshing;
+
     public IRelayCommand LoadCommand { get; }
 
     public IRelayCommand ShowAddOfflinePanelCommand { get; }
@@ -176,6 +200,7 @@ public partial class AccountManagementViewModel : ViewModelBase
                 }
                 
                 _ = RefreshAccountAsync(acc); // 添加后自动刷新头像
+                HighlightNewAccount(acc); // 滚动到新账号并短暂高亮
             }
             catch (Exception ex)
             {
@@ -196,9 +221,22 @@ public partial class AccountManagementViewModel : ViewModelBase
 
             try
             {
+                var wasDefault = acc.IsDefault;
                 AccountService.Instance.DeleteAccount(acc.Id);
                 Load();
-                Status = "已删除账号";
+
+                if (wasDefault)
+                {
+                    // 服务层会自动把第一个账号设为默认，这里向用户说明
+                    var newDefault = Accounts.FirstOrDefault(a => a.IsDefault);
+                    Status = newDefault != null
+                        ? $"已删除默认账号，已自动将「{newDefault.Username}」设为默认账号"
+                        : "已删除默认账号，当前没有可用账号";
+                }
+                else
+                {
+                    Status = "已删除账号";
+                }
                 
                 // 通知主页刷新账号列表
                 if (NavigationStore.MainWindow?.NavItems.FirstOrDefault(x => x.Title == "主页")?.Page is HomeViewModel homeVm)
@@ -279,8 +317,7 @@ public partial class AccountManagementViewModel : ViewModelBase
                     await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
                     {
                         acc.Avatar = bitmap;
-                        var index = Accounts.IndexOf(acc);
-                        if (index >= 0) Accounts[index] = acc;
+                        ReplaceInList(acc);
                     });
                 }
             }
@@ -364,6 +401,7 @@ public partial class AccountManagementViewModel : ViewModelBase
 
                     AccountService.Instance.AddYggdrasilAccount(account);
                     Load();
+                    HighlightNewAccount(account);
 
                     if (NavigationStore.MainWindow?.NavItems.FirstOrDefault(x => x.Title == "主页")?.Page is HomeViewModel homeVm)
                     {
@@ -470,6 +508,7 @@ public partial class AccountManagementViewModel : ViewModelBase
 
             AccountService.Instance.AddOrUpdateMicrosoftAccount(account);
             Load();
+            HighlightNewAccount(account);
 
             // 通知主页刷新账号列表
             if (NavigationStore.MainWindow?.NavItems.FirstOrDefault(x => x.Title == "主页")?.Page is HomeViewModel homeVm)
@@ -560,6 +599,17 @@ public partial class AccountManagementViewModel : ViewModelBase
                 }
             }
 
+            // 填充外置登录服务器显示名（用于详情行展示）
+            var servers = YggdrasilServerService.Instance.GetAllServers();
+            foreach (var a in Accounts)
+            {
+                if (a.Type == AccountType.Yggdrasil && !string.IsNullOrEmpty(a.YggdrasilServerId))
+                {
+                    a.ServerName = servers.FirstOrDefault(s => s.Id == a.YggdrasilServerId)?.Name;
+                }
+            }
+
+            ApplyFilter();
             Status = $"已加载 {Accounts.Count} 个账号";
         }
         catch (Exception ex)
@@ -583,8 +633,7 @@ public partial class AccountManagementViewModel : ViewModelBase
                         await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
                         {
                             acc.Avatar = bitmap;
-                            var index = Accounts.IndexOf(acc);
-                            if (index >= 0) Accounts[index] = acc;
+                            ReplaceInList(acc);
                         });
                         return;
                     }
@@ -597,13 +646,131 @@ public partial class AccountManagementViewModel : ViewModelBase
                     {
                         using var defaultAvatar = AssetLoader.Open(new Uri("avares://ObsMCLauncher.Desktop/Assets/logo.png"));
                         acc.Avatar = new Avalonia.Media.Imaging.Bitmap(defaultAvatar);
-                        var index = Accounts.IndexOf(acc);
-                        if (index >= 0) Accounts[index] = acc;
+                        ReplaceInList(acc);
                     }
                     catch { }
                 });
             }
             catch { }
         });
+    }
+
+    /// <summary>
+    /// 在完整列表与过滤列表中同步替换账号实例（头像加载完成后触发绑定刷新）。
+    /// </summary>
+    private void ReplaceInList(GameAccount acc)
+    {
+        var index = Accounts.IndexOf(acc);
+        if (index >= 0) Accounts[index] = acc;
+
+        var filteredIndex = FilteredAccounts.IndexOf(acc);
+        if (filteredIndex >= 0) FilteredAccounts[filteredIndex] = acc;
+    }
+
+    /// <summary>
+    /// 按搜索关键词过滤账号列表，并更新空状态显示。
+    /// </summary>
+    private void ApplyFilter()
+    {
+        FilteredAccounts.Clear();
+        var query = SearchText.Trim();
+        foreach (var a in Accounts)
+        {
+            if (string.IsNullOrEmpty(query) ||
+                a.Username.Contains(query, StringComparison.OrdinalIgnoreCase))
+            {
+                FilteredAccounts.Add(a);
+            }
+        }
+
+        HasAccounts = Accounts.Count > 0;
+        ShowNoAccountsEmpty = FilteredAccounts.Count == 0 && !HasAccounts;
+        ShowNoSearchResultsEmpty = FilteredAccounts.Count == 0 && HasAccounts;
+    }
+
+    partial void OnSearchTextChanged(string value)
+    {
+        ApplyFilter();
+    }
+
+    /// <summary>
+    /// 滚动到新添加的账号并短暂高亮，引导用户注意。
+    /// </summary>
+    private void HighlightNewAccount(GameAccount? account)
+    {
+        if (account == null) return;
+
+        // Load() 会从服务重新加载账号实例，需按 Id 找到当前列表中的实例
+        var current = Accounts.FirstOrDefault(a => a.Id == account.Id);
+        if (current == null) return;
+
+        current.IsHighlighted = true;
+        ScrollToAccountRequested?.Invoke(current);
+        _ = ClearHighlightAsync(current);
+    }
+
+    private static async Task ClearHighlightAsync(GameAccount acc)
+    {
+        try
+        {
+            await Task.Delay(2500);
+            acc.IsHighlighted = false;
+        }
+        catch
+        {
+        }
+    }
+
+    /// <summary>
+    /// 页面可见时自动刷新已过期/状态未知的登录令牌（每个账号每会话只尝试一次）。
+    /// </summary>
+    public async Task AutoRefreshExpiredTokensAsync()
+    {
+        if (_autoRefreshing) return;
+        _autoRefreshing = true;
+
+        try
+        {
+            var expired = Accounts
+                .Where(a => a.Type != AccountType.Offline &&
+                            a.IsTokenExpired() &&
+                            !_autoRefreshAttempted.Contains(a.Id))
+                .ToList();
+
+            if (expired.Count == 0) return;
+
+            _autoRefreshAttempted.UnionWith(expired.Select(a => a.Id));
+            SetStatus($"正在自动刷新 {expired.Count} 个账号的登录令牌...");
+
+            foreach (var acc in expired)
+            {
+                try
+                {
+                    if (acc.Type == AccountType.Microsoft)
+                    {
+                        await AccountService.Instance.RefreshMicrosoftAccountAsync(acc.Id);
+                    }
+                    else if (acc.Type == AccountType.Yggdrasil)
+                    {
+                        await AccountService.Instance.RefreshYggdrasilAccountAsync(acc.Id);
+                    }
+                }
+                catch
+                {
+                    // 单个账号刷新失败不阻断其余账号
+                }
+            }
+
+            SetStatus($"已自动刷新 {expired.Count} 个账号的登录令牌");
+        }
+        finally
+        {
+            _autoRefreshing = false;
+        }
+    }
+
+    private void SetStatus(string message)
+    {
+        Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() => Status = message);
     }
 }
