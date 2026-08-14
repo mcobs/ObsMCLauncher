@@ -722,8 +722,8 @@ public partial class AccountManagementViewModel : ViewModelBase
             if (expired.Count == 0) return;
 
             _autoRefreshAttempted.UnionWith(expired.Select(w => w.Account.Id));
-            SetStatus($"正在自动刷新 {expired.Count} 个账号的登录令牌...", InfoBarSeverity.Informational);
 
+            // 自动刷新为后台维护操作，不弹状态提示（账号卡片上的刷新转圈即为反馈）
             foreach (var item in expired)
             {
                 item.IsRefreshing = true;
@@ -747,8 +747,6 @@ public partial class AccountManagementViewModel : ViewModelBase
                     item.IsRefreshing = false;
                 }
             }
-
-            SetStatus($"已自动刷新 {expired.Count} 个账号的登录令牌", InfoBarSeverity.Success);
         }
         finally
         {
