@@ -3,107 +3,148 @@
              xmlns:vm="using:ObsMCLauncher.Desktop.ViewModels"
              xmlns:converters="using:ObsMCLauncher.Desktop.Converters"
              xmlns:models="using:ObsMCLauncher.Core.Models"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
              x:Class="ObsMCLauncher.Desktop.Views.AccountManagementView"
              x:DataType="vm:AccountManagementViewModel"
              x:Name="AccountPage">
 
-  <Grid>
-    <ScrollViewer VerticalScrollBarVisibility="Auto">
-      <Grid Margin="24" RowDefinitions="Auto,Auto,Auto,Auto">
+  <Grid Margin="24" RowDefinitions="Auto,Auto,Auto,*">
 
-      <StackPanel Grid.Row="0">
-        <TextBlock Text="账号管理" FontSize="26" FontWeight="SemiBold" Margin="0,0,0,6" />
-        <TextBlock Text="管理您的 Minecraft 账号，支持微软账户和离线模式" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,16" />
-      </StackPanel>
+    <!-- ===== 页头 ===== -->
+    <StackPanel Grid.Row="0">
+      <TextBlock Text="账号管理" FontSize="26" FontWeight="SemiBold" Margin="0,0,0,6" />
+      <TextBlock Text="管理您的 Minecraft 账号，支持微软账户和离线模式" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,16" />
+    </StackPanel>
 
-      <Border Grid.Row="1" Background="{DynamicResource SurfaceBrush}" CornerRadius="12" Padding="24" Margin="0,0,0,16" BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
-        <Grid ColumnDefinitions="*,Auto,Auto,Auto">
-          <StackPanel Grid.Column="0" VerticalAlignment="Center">
-            <TextBlock Text="添加新账号" FontSize="16" FontWeight="Medium" Margin="0,0,0,4" />
-            <TextBlock Text="登录微软账户、外置登录或创建离线账号" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" />
-          </StackPanel>
-
-          <Button Grid.Column="1" Classes="accent" Margin="0,0,12,0" Padding="16,12" MinWidth="120" Height="44" Command="{Binding StartMicrosoftLoginCommand}" IsEnabled="{Binding !IsMicrosoftLoginRunning}">
-            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-              <Image Width="16" Height="16" Stretch="Uniform" VerticalAlignment="Center">
-                <Image.Source>
-                  <MultiBinding Converter="{x:Static converters:EnumToChineseTextConverter.Instance}" ConverterParameter="IconPath">
-                    <Binding Source="{x:Static models:AccountType.Microsoft}" />
-                    <Binding Path="ActualThemeVariant" RelativeSource="{RelativeSource AncestorType=Window}" />
-                  </MultiBinding>
-                </Image.Source>
-              </Image>
-              <TextBlock Text="微软账户" FontSize="13" VerticalAlignment="Center" />
-            </StackPanel>
-          </Button>
-
-          <Button Grid.Column="2" Margin="0,0,12,0" Padding="16,12" MinWidth="120" Height="44" Command="{Binding AddYggdrasilAccountCommand}" IsEnabled="{Binding !IsYggdrasilLoginRunning}">
-            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-              <Image Width="16" Height="16" Stretch="Uniform" VerticalAlignment="Center">
-                <Image.Source>
-                  <MultiBinding Converter="{x:Static converters:EnumToChineseTextConverter.Instance}" ConverterParameter="IconPath">
-                    <Binding Source="{x:Static models:AccountType.Yggdrasil}" />
-                    <Binding Path="ActualThemeVariant" RelativeSource="{RelativeSource AncestorType=Window}" />
-                  </MultiBinding>
-                </Image.Source>
-              </Image>
-              <TextBlock Text="外置登录" FontSize="13" VerticalAlignment="Center" />
-            </StackPanel>
-          </Button>
-
-          <Button Grid.Column="3" Padding="16,12" MinWidth="120" Height="44" Command="{Binding ShowAddOfflinePanelCommand}" IsEnabled="{Binding !IsAddOfflinePanelVisible}">
-            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-              <Image Width="16" Height="16" Stretch="Uniform" VerticalAlignment="Center">
-                <Image.Source>
-                  <MultiBinding Converter="{x:Static converters:EnumToChineseTextConverter.Instance}" ConverterParameter="IconPath">
-                    <Binding Source="{x:Static models:AccountType.Offline}" />
-                    <Binding Path="ActualThemeVariant" RelativeSource="{RelativeSource AncestorType=Window}" />
-                  </MultiBinding>
-                </Image.Source>
-              </Image>
-              <TextBlock Text="离线账户" FontSize="13" VerticalAlignment="Center" />
-            </StackPanel>
-          </Button>
-        </Grid>
-      </Border>
-
-      <Border Grid.Row="2" Background="{DynamicResource SurfaceElevatedBrush}" CornerRadius="12" Padding="24" Margin="0,0,0,20" IsVisible="{Binding IsAddOfflinePanelVisible}" BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
-        <StackPanel>
-          <TextBlock Text="添加离线账户" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,16" />
-          <TextBlock Text="用户名" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,6" />
-          <TextBox Watermark="请输入用户名（3-16个字符）" Text="{Binding UsernameInput}" FontSize="13" MaxLength="16" Margin="0,0,0,16" />
-          <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="12">
-            <Button Content="取消" Command="{Binding CancelAddOfflineCommand}" />
-            <Button Content="确认添加" Classes="accent" Command="{Binding AddOfflineCommand}" />
-          </StackPanel>
+    <!-- ===== 添加账号 ===== -->
+    <Border Grid.Row="1" Background="{DynamicResource SurfaceBrush}" CornerRadius="12" Padding="24" Margin="0,0,0,16" BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
+      <Grid ColumnDefinitions="*,Auto">
+        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+          <TextBlock Text="添加新账号" FontSize="16" FontWeight="Medium" Margin="0,0,0,4" />
+          <TextBlock Text="登录微软账户、外置登录或创建离线账号" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" />
         </StackPanel>
-      </Border>
 
-      <StackPanel Grid.Row="3">
-        <TextBlock Text="我的账号" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,12" />
-        <ItemsControl ItemsSource="{Binding Accounts}" >
-          <ItemsControl.ItemTemplate>
-            <DataTemplate>
+        <DropDownButton Grid.Column="1" Classes="accent" MinWidth="140" Height="44" Padding="16,10"
+                        VerticalAlignment="Center">
+          <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+            <Path Data="M19 13H13V19H11V13H5V11H11V5H13V11H19V13Z"
+                  Width="16" Height="16" Stretch="Uniform" Fill="White" VerticalAlignment="Center"/>
+            <TextBlock Text="添加账号" FontSize="13" VerticalAlignment="Center"/>
+          </StackPanel>
+          <DropDownButton.Flyout>
+            <MenuFlyout>
+              <MenuItem Header="微软账户"
+                        Command="{Binding StartMicrosoftLoginCommand}"
+                        IsEnabled="{Binding !IsMicrosoftLoginRunning}">
+                <MenuItem.Icon>
+                  <Image Width="16" Height="16" Stretch="Uniform" VerticalAlignment="Center">
+                    <Image.Source>
+                      <MultiBinding Converter="{x:Static converters:EnumToChineseTextConverter.Instance}" ConverterParameter="IconPath">
+                        <Binding Source="{x:Static models:AccountType.Microsoft}" />
+                        <Binding Path="ActualThemeVariant" RelativeSource="{RelativeSource Self}" />
+                      </MultiBinding>
+                    </Image.Source>
+                  </Image>
+                </MenuItem.Icon>
+              </MenuItem>
+              <MenuItem Header="外置登录"
+                        Command="{Binding AddYggdrasilAccountCommand}"
+                        IsEnabled="{Binding !IsYggdrasilLoginRunning}">
+                <MenuItem.Icon>
+                  <Image Width="16" Height="16" Stretch="Uniform" VerticalAlignment="Center">
+                    <Image.Source>
+                      <MultiBinding Converter="{x:Static converters:EnumToChineseTextConverter.Instance}" ConverterParameter="IconPath">
+                        <Binding Source="{x:Static models:AccountType.Yggdrasil}" />
+                        <Binding Path="ActualThemeVariant" RelativeSource="{RelativeSource Self}" />
+                      </MultiBinding>
+                    </Image.Source>
+                  </Image>
+                </MenuItem.Icon>
+              </MenuItem>
+              <MenuItem Header="离线账户"
+                        Command="{Binding ShowAddOfflinePanelCommand}"
+                        IsEnabled="{Binding !IsAddOfflinePanelVisible}">
+                <MenuItem.Icon>
+                  <Image Width="16" Height="16" Stretch="Uniform" VerticalAlignment="Center">
+                    <Image.Source>
+                      <MultiBinding Converter="{x:Static converters:EnumToChineseTextConverter.Instance}" ConverterParameter="IconPath">
+                        <Binding Source="{x:Static models:AccountType.Offline}" />
+                        <Binding Path="ActualThemeVariant" RelativeSource="{RelativeSource Self}" />
+                      </MultiBinding>
+                    </Image.Source>
+                  </Image>
+                </MenuItem.Icon>
+              </MenuItem>
+            </MenuFlyout>
+          </DropDownButton.Flyout>
+        </DropDownButton>
+      </Grid>
+    </Border>
+
+    <!-- ===== 添加离线账号面板 ===== -->
+    <Border Grid.Row="2" Background="{DynamicResource SurfaceElevatedBrush}" CornerRadius="12" Padding="24" Margin="0,0,0,20" IsVisible="{Binding IsAddOfflinePanelVisible}" BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
+      <StackPanel>
+        <TextBlock Text="添加离线账户" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,16" />
+        <TextBlock Text="用户名" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,6" />
+        <TextBox Watermark="请输入用户名（3-16个字符）" Text="{Binding UsernameInput}" FontSize="13" MaxLength="16" Margin="0,0,0,16" />
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="12">
+          <Button Content="取消" Command="{Binding CancelAddOfflineCommand}" />
+          <Button Content="确认添加" Classes="accent" Command="{Binding AddOfflineCommand}" />
+        </StackPanel>
+      </StackPanel>
+    </Border>
+
+    <!-- ===== 账号列表（虚拟化 ListBox + 状态 InfoBar + 空状态） ===== -->
+    <Grid Grid.Row="3" RowDefinitions="Auto,Auto,*">
+      <TextBlock Text="我的账号" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,12" />
+
+      <ui:InfoBar Grid.Row="1"
+                  IsOpen="{Binding Status, Converter={x:Static converters:StringNotEqualsConverter.Instance}, ConverterParameter=''}"
+                  Message="{Binding Status}"
+                  IsClosable="False"
+                  IsIconVisible="True"
+                  Margin="0,0,0,10"/>
+
+      <Panel Grid.Row="2">
+        <ListBox ItemsSource="{Binding Accounts}"
+                 Background="Transparent"
+                 BorderThickness="0">
+          <ListBox.ItemContainerTheme>
+            <ControlTheme TargetType="ListBoxItem">
+              <Setter Property="Padding" Value="0"/>
+              <Setter Property="Background" Value="Transparent"/>
+              <Setter Property="Focusable" Value="False"/>
+              <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+              <Style Selector="^:pointerover">
+                <Setter Property="Background" Value="Transparent"/>
+              </Style>
+              <Style Selector="^:selected">
+                <Setter Property="Background" Value="Transparent"/>
+              </Style>
+            </ControlTheme>
+          </ListBox.ItemContainerTheme>
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="models:GameAccount">
               <Border Background="{DynamicResource SurfaceElevatedBrush}" CornerRadius="12" Padding="20" Margin="0,0,0,10" BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
                 <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
                   <Panel Margin="0,0,16,0">
                     <Border Width="52" Height="52" CornerRadius="10" Background="{DynamicResource SurfaceBrush}" ClipToBounds="True">
                       <Image Source="{Binding Avatar}" Stretch="Uniform" />
                     </Border>
-                    <Border Width="22" Height="22" 
-                            CornerRadius="11" 
+                    <Border Width="22" Height="22"
+                            CornerRadius="11"
                             Background="{DynamicResource SurfaceElevatedBrush}"
                             BorderThickness="2"
                             BorderBrush="{DynamicResource SurfaceBrush}"
-                            HorizontalAlignment="Right" 
+                            HorizontalAlignment="Right"
                             VerticalAlignment="Bottom"
                             Margin="0,0,-4,-4">
                       <Image Width="14" Height="14" Stretch="Uniform"
-                                 HorizontalAlignment="Center" VerticalAlignment="Center">
+                             HorizontalAlignment="Center" VerticalAlignment="Center">
                         <Image.Source>
                           <MultiBinding Converter="{x:Static converters:EnumToChineseTextConverter.Instance}" ConverterParameter="IconPath">
                             <Binding Path="Type" />
-                            <Binding Path="ActualThemeVariant" RelativeSource="{RelativeSource AncestorType=Window}" />
+                            <Binding Path="ActualThemeVariant" RelativeSource="{RelativeSource Self}" />
                           </MultiBinding>
                         </Image.Source>
                       </Image>
@@ -140,18 +181,19 @@
                         <Path Data="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"
                               Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource TextBrush}"
                               IsVisible="{Binding #AccountPage.DataContext.IsRefreshing, Converter={x:Static converters:NotConverter.Instance}}"/>
-                        <ProgressBar IsIndeterminate="True" Width="14" Height="14"
-                                     IsVisible="{Binding #AccountPage.DataContext.IsRefreshing}"/>
+                        <ui:ProgressRing IsIndeterminate="True" Width="16" Height="16"
+                                         Foreground="{DynamicResource AccentBrush}"
+                                         IsVisible="{Binding #AccountPage.DataContext.IsRefreshing}"/>
                       </Panel>
                     </Button>
-                    <Button Content="设为默认" 
+                    <Button Content="设为默认"
                             Classes="ghost"
-                            Command="{Binding #AccountPage.DataContext.SetDefaultSelectedCommand}" 
+                            Command="{Binding #AccountPage.DataContext.SetDefaultSelectedCommand}"
                             CommandParameter="{Binding}"
                             IsEnabled="{Binding !IsDefault, FallbackValue=False}"
                             FontSize="12"/>
                     <Button Classes="danger"
-                            Command="{Binding #AccountPage.DataContext.DeleteSelectedCommand}" 
+                            Command="{Binding #AccountPage.DataContext.DeleteSelectedCommand}"
                             CommandParameter="{Binding}"
                             FontSize="12">
                       <StackPanel Orientation="Horizontal" Spacing="4">
@@ -164,39 +206,36 @@
                 </Grid>
               </Border>
             </DataTemplate>
-          </ItemsControl.ItemTemplate>
-        </ItemsControl>
+          </ListBox.ItemTemplate>
+        </ListBox>
 
-        <TextBlock Text="{Binding Status}" Foreground="{DynamicResource TextTertiaryBrush}" Margin="0,8,0,0" FontSize="12" />
-      </StackPanel>
-
-    </Grid>
-  </ScrollViewer>
-
-  <Border Background="#80000000"
-          IsVisible="{Binding IsYggdrasilLoginDialogOpen}"
-          HorizontalAlignment="Stretch"
-          VerticalAlignment="Stretch">
-    <Border Background="{DynamicResource SurfaceElevatedBrush}"
-            CornerRadius="12" Padding="24"
-            Width="500" MaxHeight="600"
-            HorizontalAlignment="Center" VerticalAlignment="Center"
-            BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
-      <Grid RowDefinitions="Auto,*,Auto">
-        <StackPanel Grid.Row="0" Margin="0,0,0,20">
-          <TextBlock Text="外置登录" FontSize="22" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"/>
-          <TextBlock Text="使用 Yggdrasil 认证服务器登录" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,4,0,0"/>
+        <!-- 空状态 -->
+        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8"
+                    IsVisible="{Binding Accounts.Count, Converter={x:Static converters:IsZeroToIsVisibleConverter.Instance}}">
+          <Path Data="M12 12C14.21 12 16 10.21 16 8C16 5.79 14.21 4 12 4C9.79 4 8 5.79 8 8C8 10.21 9.79 12 12 12M12 14C9.33 14 4 15.34 4 18V20H20V18C20 15.34 14.67 14 12 14Z"
+                Width="48" Height="48" Stretch="Uniform" Fill="{DynamicResource TextTertiaryBrush}" Opacity="0.5" HorizontalAlignment="Center"/>
+          <TextBlock Text="还没有账号" FontSize="15" FontWeight="Medium" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center"/>
+          <TextBlock Text="点击右上角「添加账号」添加你的第一个账号" FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}" HorizontalAlignment="Center"/>
         </StackPanel>
+      </Panel>
+    </Grid>
 
-        <Panel Grid.Row="1">
-          <ScrollViewer IsVisible="{Binding !YggdrasilLoginDialog.ShowServerManagement}">
+    <!-- ===== 外置登录对话框（FluentAvalonia ContentDialog） ===== -->
+    <ui:ContentDialog x:Name="YggdrasilDialog"
+                      Title="外置登录"
+                      DefaultButton="None">
+      <Grid RowDefinitions="*,Auto" Width="460">
+        <Panel Grid.Row="0">
+
+          <!-- 登录表单 -->
+          <ScrollViewer IsVisible="{Binding !YggdrasilLoginDialog.ShowServerManagement}" VerticalScrollBarVisibility="Auto">
             <StackPanel Spacing="14">
               <TextBlock Text="认证服务器" FontSize="13" FontWeight="Medium"/>
-              <ComboBox HorizontalAlignment="Stretch" 
-                        ItemsSource="{Binding YggdrasilLoginDialog.Servers}" 
+              <ComboBox HorizontalAlignment="Stretch"
+                        ItemsSource="{Binding YggdrasilLoginDialog.Servers}"
                         SelectedItem="{Binding YggdrasilLoginDialog.SelectedServer}">
                 <ComboBox.ItemTemplate>
-                  <DataTemplate>
+                  <DataTemplate x:DataType="models:YggdrasilServer">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                       <TextBlock Text="🛡" VerticalAlignment="Center"/>
                       <TextBlock Text="{Binding Name}" VerticalAlignment="Center"/>
@@ -205,12 +244,12 @@
                 </ComboBox.ItemTemplate>
               </ComboBox>
 
-              <Button Content="管理服务器" Command="{Binding YggdrasilLoginDialog.ToggleServerManagementCommand}" Classes="ghost"/>
+              <Button Content="管理服务器" Classes="ghost" Command="{Binding YggdrasilLoginDialog.ToggleServerManagementCommand}"/>
 
               <Border Background="{DynamicResource SurfaceBrush}" CornerRadius="8" Padding="16" BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
                 <StackPanel Spacing="10">
                   <TextBlock Text="账号信息" FontSize="13" FontWeight="SemiBold"/>
-                  
+
                   <StackPanel Spacing="4">
                     <TextBlock Text="用户名/邮箱" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}"/>
                     <TextBox Text="{Binding YggdrasilLoginDialog.Username}" Watermark="请输入用户名或邮箱"/>
@@ -226,45 +265,44 @@
               <Border Background="#1010B981" CornerRadius="8" Padding="12" BorderThickness="1" BorderBrush="#3010B981">
                 <StackPanel Orientation="Horizontal" Spacing="8">
                   <Path Data="M12 2C6.48 2 2 6.48 2 12S6.48 22 12 22 22 17.52 22 12 17.52 2 12 2M13 17H11V15H13V17M13 13H11V7H13V13Z" Width="16" Height="16" Stretch="Uniform" Fill="{DynamicResource PrimaryBrush}" VerticalAlignment="Top"/>
-                  <TextBlock Text="外置登录需要在第三方认证服务器注册账号。推荐使用 LittleSkin 服务。" 
+                  <TextBlock Text="外置登录需要在第三方认证服务器注册账号。推荐使用 LittleSkin 服务。"
                              FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap"/>
                 </StackPanel>
               </Border>
             </StackPanel>
           </ScrollViewer>
 
-          <ScrollViewer IsVisible="{Binding YggdrasilLoginDialog.ShowServerManagement}">
+          <!-- 服务器管理 -->
+          <ScrollViewer IsVisible="{Binding YggdrasilLoginDialog.ShowServerManagement}" VerticalScrollBarVisibility="Auto">
             <StackPanel Spacing="14">
-              <Button Content="返回登录" Command="{Binding YggdrasilLoginDialog.ToggleServerManagementCommand}" Classes="ghost">
-                <Button.Content>
-                  <StackPanel Orientation="Horizontal" Spacing="6">
-                    <Path Data="M20 11H7.83L13.42 5.41L12 4L4 12L12 20L13.41 18.59L7.83 13H20V11Z" Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource TextBrush}" VerticalAlignment="Center"/>
-                    <TextBlock Text="返回登录" VerticalAlignment="Center"/>
-                  </StackPanel>
-                </Button.Content>
+              <Button Classes="ghost" Command="{Binding YggdrasilLoginDialog.ToggleServerManagementCommand}">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <Path Data="M20 11H7.83L13.42 5.41L12 4L4 12L12 20L13.41 18.59L7.83 13H20V11Z" Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource TextBrush}" VerticalAlignment="Center"/>
+                  <TextBlock Text="返回登录" VerticalAlignment="Center"/>
+                </StackPanel>
               </Button>
               <TextBlock Text="管理认证服务器" FontSize="18" FontWeight="Bold"/>
-              
+
               <Border Background="{DynamicResource SurfaceBrush}" CornerRadius="8" Padding="16" BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
                 <StackPanel Spacing="10">
                   <TextBlock Text="添加新服务器" FontWeight="Medium"/>
                   <TextBox Text="{Binding YggdrasilLoginDialog.NewServerName}" Watermark="服务器名称"/>
                   <TextBox Text="{Binding YggdrasilLoginDialog.NewServerUrl}" Watermark="服务器地址 (如 littleskin.cn)"/>
-                  <Button Content="添加" Command="{Binding YggdrasilLoginDialog.AddServerCommand}" HorizontalAlignment="Right" Classes="accent"/>
+                  <Button Content="添加" Classes="accent" HorizontalAlignment="Right" Command="{Binding YggdrasilLoginDialog.AddServerCommand}"/>
                 </StackPanel>
               </Border>
 
               <ItemsControl ItemsSource="{Binding YggdrasilLoginDialog.Servers}">
                 <ItemsControl.ItemTemplate>
-                  <DataTemplate>
+                  <DataTemplate x:DataType="models:YggdrasilServer">
                     <Border Background="{DynamicResource SurfaceBrush}" CornerRadius="8" Padding="12" Margin="0,0,0,8" BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
                       <Grid ColumnDefinitions="*,Auto">
                         <StackPanel>
                           <TextBlock Text="{Binding Name}" FontWeight="Medium"/>
                           <TextBlock Text="{Binding ApiUrl}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
                         </StackPanel>
-                        <Button Grid.Column="1" Content="删除" 
-                                Command="{Binding $parent[UserControl].((vm:AccountManagementViewModel)DataContext).YggdrasilLoginDialog.DeleteServerCommand}" 
+                        <Button Grid.Column="1" Content="删除"
+                                Command="{Binding $parent[ItemsControl].((vm:AccountManagementViewModel)DataContext).YggdrasilLoginDialog.DeleteServerCommand}"
                                 CommandParameter="{Binding}"
                                 IsVisible="{Binding !IsBuiltIn}" Classes="danger" FontSize="12"/>
                       </Grid>
@@ -275,6 +313,7 @@
             </StackPanel>
           </ScrollViewer>
 
+          <!-- 登录中遮罩 -->
           <Border Background="{DynamicResource BackgroundBrush}" Opacity="0.85" IsVisible="{Binding YggdrasilLoginDialog.IsLoggingIn}" CornerRadius="8">
             <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="10">
               <ProgressBar IsIndeterminate="True" Width="100"/>
@@ -282,17 +321,18 @@
             </StackPanel>
           </Border>
 
+          <!-- 角色选择遮罩 -->
           <Border Background="{DynamicResource BackgroundBrush}" Opacity="0.95" IsVisible="{Binding YggdrasilLoginDialog.ShowProfileSelection}" CornerRadius="8">
             <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="14" MaxWidth="350">
               <TextBlock Text="选择角色" FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center"/>
               <TextBlock Text="此账号有多个游戏角色，请选择一个" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" TextWrapping="Wrap"/>
-              
+
               <ItemsControl ItemsSource="{Binding YggdrasilLoginDialog.AvailableProfiles}">
                 <ItemsControl.ItemTemplate>
-                  <DataTemplate>
+                  <DataTemplate x:DataType="vm:ProfileItem">
                     <Border Background="{DynamicResource SurfaceBrush}" CornerRadius="8" Padding="12" Margin="0,0,0,8"
                             BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
-                      <RadioButton GroupName="ProfileGroup" 
+                      <RadioButton GroupName="ProfileGroup"
                                    Content="{Binding Name}"
                                    IsChecked="{Binding IsSelected}"
                                    FontSize="13" FontWeight="Medium"/>
@@ -300,22 +340,24 @@
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
-              
+
               <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="12" Margin="0,8,0,0">
-                <Button Content="取消" Command="{Binding YggdrasilLoginDialog.CancelProfileSelectionCommand}" MinWidth="80"/>
-                <Button Content="确认" Command="{Binding YggdrasilLoginDialog.ConfirmProfileCommand}" Classes="accent" MinWidth="80"/>
+                <Button Content="取消" MinWidth="80" Command="{Binding YggdrasilLoginDialog.CancelProfileSelectionCommand}"/>
+                <Button Content="确认" MinWidth="80" Classes="accent" Command="{Binding YggdrasilLoginDialog.ConfirmProfileCommand}"/>
               </StackPanel>
             </StackPanel>
           </Border>
         </Panel>
 
-        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="12" Margin="0,20,0,0">
+        <!-- 底部操作 -->
+        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="12" Margin="0,20,0,0">
           <Button Content="取消" Width="100" Command="{Binding CancelYggdrasilLoginCommand}"/>
-          <Button Content="登录" Width="100" Command="{Binding YggdrasilLoginDialog.LoginCommand}" IsVisible="{Binding !YggdrasilLoginDialog.ShowServerManagement}" Classes="accent"/>
+          <Button Content="登录" Width="100" Classes="accent"
+                  Command="{Binding YggdrasilLoginDialog.LoginCommand}"
+                  IsVisible="{Binding !YggdrasilLoginDialog.ShowServerManagement}"/>
         </StackPanel>
       </Grid>
-    </Border>
-  </Border>
+    </ui:ContentDialog>
   </Grid>
 
 </UserControl>

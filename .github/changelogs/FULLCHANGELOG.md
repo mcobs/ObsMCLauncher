@@ -5,9 +5,14 @@
 ## [v1.1.0-beta.1] - 2026-08-14
 
 ### 修复
+- 修复生产环境下数据目录落在 current 内的问题：Velopack 部署的 current 目录在解压部署或文件系统不支持 junction 时是普通文件夹，原逻辑只识别 junction/symlink 导致 OMCL 与 .minecraft 数据目录写入 current 内、更新时被整体覆盖；现只要运行目录名为 current 即自动向上退一层
+- 修复插件目录、图标缓存、MciLm-link 二进制目录等仍写入 current 内的问题：这些调用点绕过基础目录解析直接使用 AppContext.BaseDirectory，统一改用 VersionInfo.GetAppBaseDirectory()
 - 修复更新服务无法检测不同通道更新（正式版/测试版/预发布版/预览版）的问题：客户端请求的 Velopack 通道名缺少 RID 前缀，与发布端生成的 feed 文件名（如 releases.win-x64-pre.json）不匹配，导致检查更新永远返回"已是最新版本"
 - 修复分组管理弹窗（ContentDialog）内绑定错误：弹窗内容在弹出层中渲染丢失 DataContext 继承，改为显示前显式绑定到当前版本实例 ViewModel
 - 修复分组管理弹窗内重命名/删除操作无响应的问题：自绘对话框在 FluentAvalonia ContentDialog 弹出层下方渲染导致交互失效，统一改用 ContentDialog 后解决
+
+### 新增
+- 插件 API 新增目录获取接口：`LauncherBaseDirectory`（启动器基础目录，自动跳出 current）、`LauncherDataDirectory`（OMCL 数据目录）、`GameDirectory`（当前游戏目录），均已正确处理 Velopack 部署路径
 
 ### 优化
 - 版本实例界面迁移到 FluentAvalonia 组件：顶部导航标签栏改用 TabView（图标改用 PathIconSource），内存配置输入框改用 NumberBox，分组管理弹窗改用 ContentDialog，OptiFine 兼容性警告改用 InfoBar
@@ -19,6 +24,7 @@
 - 内存配置新增联动提示：最小内存不小于最大内存或超过最大内存 1/4 时显示警告
 - 版本实例页加载态改用骨架屏占位，替代全屏遮罩
 - 设置页全局内存配置新增联动提示：最大内存不大于最小内存时显示警告
+- 账号管理页 UI 迁移到 FluentAvalonia：外置登录弹窗改用 ContentDialog（真正的模态对话框，支持 ESC/点击遮罩关闭），账号列表改用虚拟化 ListBox，添加账号改为 DropDownButton 下拉菜单，刷新指示改用 ProgressRing，状态提示改用 InfoBar，新增无账号空状态引导，并移除未使用的 YggdrasilLoginWindow 死代码
 
 ## [v1.0.1-pre.1] - 2026-08-14
 
