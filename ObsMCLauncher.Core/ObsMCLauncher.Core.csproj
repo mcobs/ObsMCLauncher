@@ -13,6 +13,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- MOD 翻译数据作为嵌入资源，保证打包/生产环境可用 -->
+    <EmbeddedResource Include="Assets\mod_translations.txt" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Markdig" Version="0.38.0" />
     <PackageReference Include="Avalonia" Version="11.3.11" />
     <PackageReference Include="Velopack" Version="1.1.1" />

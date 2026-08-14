@@ -202,7 +202,7 @@ public partial class ModDetailViewModel : ViewModelBase
             var project = await _modrinth.GetProjectAsync(hit.ProjectId, OperationToken);
             if (project != null)
             {
-                var translation = ModTranslationService.Instance.GetTranslationByCurseForgeId(project.Id);
+                var translation = ModTranslationService.Instance.GetTranslationById(project.Id);
                 DisplayName = ModTranslationService.Instance.GetDisplayName(project.Title, translation);
                 Summary = project.Description ?? string.Empty;
                 AuthorDisplay = !string.IsNullOrEmpty(project.Author) ? project.Author : "未知";
@@ -277,7 +277,7 @@ public partial class ModDetailViewModel : ViewModelBase
         }
         else if (RawData is ModrinthSearchHit hit)
         {
-            var translation = ModTranslationService.Instance.GetTranslationByCurseForgeId(hit.ProjectId);
+            var translation = ModTranslationService.Instance.GetTranslationById(hit.ProjectId);
             DisplayName = ModTranslationService.Instance.GetDisplayName(hit.Title, translation);
             Summary = hit.Description ?? string.Empty;
             AuthorDisplay = hit.Author ?? "未知";

@@ -7,6 +7,8 @@
 - 修复分组管理弹窗（ContentDialog）内绑定错误：弹窗内容在弹出层中渲染丢失 DataContext 继承，改为显示前显式绑定到当前版本实例 ViewModel
 - 修复分组管理弹窗内重命名/删除操作无响应的问题：自绘对话框在 FluentAvalonia ContentDialog 弹出层下方渲染导致交互失效，统一改用 ContentDialog 后解决
 - 修复插件相关单元测试偶发失败的问题：多个测试类共享 PluginContext 静态回调（OnTabRegistered 等），xUnit 默认跨测试类并行执行导致回调被并发覆盖、断言随机失败，现禁用测试程序集并行执行保证确定性
+- 修复资源中心中文搜索失效的问题：MOD 翻译数据此前仅作为 Avalonia 资源打包进 Desktop 程序集，Core 翻译服务在打包/生产环境读取不到，现改为嵌入 Core 程序集；Modrinth 条目的翻译查找改用兼容双来源的 ID 索引，中文名/缩写搜索结果在混合源模式下不再被模糊过滤误删
+- 修复资源详情页点击依赖跳转后无法返回上级模组的问题：详情页改为导航栈管理，返回时逐级退回上级模组，退回列表时才清空
 
 ### 新增
 - 插件 API 新增目录获取接口：`LauncherBaseDirectory`（启动器基础目录，自动跳出 current）、`LauncherDataDirectory`（OMCL 数据目录）、`GameDirectory`（当前游戏目录），均已正确处理 Velopack 部署路径
@@ -27,8 +29,10 @@
 - 版本实例页加载态改用骨架屏占位，替代全屏遮罩
 - 设置页全局内存配置新增联动提示：最大内存不大于最小内存时显示警告
 - 账号管理页 UI 迁移到 FluentAvalonia：外置登录弹窗改用 ContentDialog（真正的模态对话框，支持 ESC/点击遮罩关闭），账号列表改用虚拟化 ListBox，添加账号改为 DropDownButton 下拉菜单，刷新指示改用 ProgressRing，状态提示改用 InfoBar，新增无账号空状态引导，并移除未使用的 YggdrasilLoginWindow 死代码
-- 资源下载页 UI 迁移到 FluentAvalonia：资源类型/来源切换改为分段选择按钮，搜索框支持回车触发与一键清除，结果列表改为卡片式且整行可点击，条目新增来源徽标（CurseForge/Modrinth）与快捷下载按钮，新增空状态引导，搜索失败/超时改用 InfoBar 提示
+- 资源下载页 UI 迁移到 FluentAvalonia：资源类型/来源切换改为分段选择按钮，搜索框支持回车触发与一键清除，结果列表改为卡片式且整行可点击，条目新增来源徽标（CurseForge/Modrinth），新增空状态引导，搜索失败/超时改用 InfoBar 提示
 - 资源详情页 UI 迁移到 FluentAvalonia：头部元信息图标化并标注资源来源，摘要支持展开/收起，加载器筛选改为胶囊式选中态，公共依赖改用 InfoBar 展示，版本文件条目统一卡片样式并新增下载中/已下载状态反馈，加载态改用 ProgressRing，下载/安装结果改用 InfoBar 分级提示
+- 资源中心列表细节优化：移除列表项快捷下载按钮，仅保留"详情"操作；列表卡片固定高度保证各行按钮对齐；顶部筛选下拉框缩小尺寸
+- 资源中心混合源（全部）搜索结果按匹配度归并排序：高分条目聚在一起，同分时 CurseForge 与 Modrinth 轮流穿插，不再按来源分块堆叠
 
 ## [v1.0.1-pre.1] - 2026-08-14
 

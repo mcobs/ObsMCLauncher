@@ -141,6 +141,14 @@ public class ModTranslationService
         return translation;
     }
 
+    /// <summary>
+    /// 同时按 CurseForge ID/slug 与 Modrinth 项目 ID 查找翻译（兼容两个来源的条目）。
+    /// </summary>
+    public ModTranslation? GetTranslationById(string id)
+    {
+        return GetTranslationByCurseForgeId(id) ?? GetTranslationByModId(id);
+    }
+
     public string GetDisplayName(string originalName, ModTranslation? translation)
     {
         if (translation == null || string.IsNullOrWhiteSpace(translation.ChineseName))
@@ -195,6 +203,7 @@ public class ModTranslationService
 
             var resourceNames = new[]
             {
+                "ObsMCLauncher.Core.Assets.mod_translations.txt",
                 "ObsMCLauncher.Assets.mod_translations.txt",
                 "Assets.mod_translations.txt",
                 "mod_translations.txt"

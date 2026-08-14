@@ -332,21 +332,47 @@ public partial class ResourcesViewModel : ViewModelBase
         state.CachedResults = Results.ToList();
     }
 
+    /// <summary>详情页导航栈：依赖跳转会压栈，返回时逐级弹出，回到列表才清空</summary>
+    private readonly Stack<ModDetailViewModel> _detailStack = new();
+
     public void OpenDetail(ResourceItemViewModel? item)
     {
         if (item?.RawData == null) return;
-        var selectedVersion = SelectedVersionId ?? LauncherConfig.Load().SelectedVersion ?? string.Empty;
-        var detailVm = new ModDetailViewModel(item.RawData, selectedVersion, CurrentResourceType, () => DetailViewModel = null);
-        detailVm.DependencyNavigationRequested += rawDep => OpenDetailByRawData(rawDep);
-        DetailViewModel = detailVm;
+        PushDetail(CreateDetailViewModel(item.RawData));
     }
 
     private void OpenDetailByRawData(object rawData)
     {
+        PushDetail(CreateDetailViewModel(rawData));
+    }
+
+    private ModDetailViewModel CreateDetailViewModel(object rawData)
+    {
         var selectedVersion = SelectedVersionId ?? LauncherConfig.Load().SelectedVersion ?? string.Empty;
-        var detailVm = new ModDetailViewModel(rawData, selectedVersion, CurrentResourceType, () => DetailViewModel = null);
+        var detailVm = new ModDetailViewModel(rawData, selectedVersion, CurrentResourceType, GoBack);
         detailVm.DependencyNavigationRequested += rawDep => OpenDetailByRawData(rawDep);
-        DetailViewModel = detailVm;
+        return detailVm;
+    }
+
+    private void PushDetail(ModDetailViewModel vm)
+    {
+        _detailStack.Push(vm);
+        DetailViewModel = vm;
+    }
+
+    /// <summary>返回上一级：依赖详情 → 上级模组详情 → 列表</summary>
+    private void GoBack()
+    {
+        if (_detailStack.Count > 1)
+        {
+            _detailStack.Pop();
+            DetailViewModel = _detailStack.Peek();
+        }
+        else
+        {
+            _detailStack.Clear();
+            DetailViewModel = null;
+        }
     }
 
     private async Task SearchAsync()
@@ -400,6 +426,8 @@ public partial class ResourcesViewModel : ViewModelBase
             }
 
             ApplyFuzzyFilter();
+            if (CurrentSource == ResourceSource.Both)
+                MergeResultsByRelevance(0);
 
             Status = Results.Count > 0 ? $"找到 {Results.Count} 个资源" : "未找到匹配资源";
             IsInfoBarOpen = false;
@@ -510,7 +538,7 @@ public partial class ResourcesViewModel : ViewModelBase
                     foreach (var project in projects.Values)
                     {
                         if (existingIds.Contains(project.Id)) continue;
-                        var translation = _translation.GetTranslationByCurseForgeId(project.Id);
+                        var translation = _translation.GetTranslationById(project.Id);
                         var hit = new ModrinthSearchHit
                         {
                             ProjectId = project.Id,
@@ -541,6 +569,8 @@ public partial class ResourcesViewModel : ViewModelBase
     {
         if (IsLoadingMore || IsLoading || string.IsNullOrWhiteSpace(Query)) return;
         IsLoadingMore = true;
+
+        var chunkStart = Results.Count;
 
         try
         {
@@ -575,6 +605,9 @@ public partial class ResourcesViewModel : ViewModelBase
             await Task.WhenAll(tasks);
 
             ApplyFuzzyFilter();
+            if (CurrentSource == ResourceSource.Both)
+                MergeResultsByRelevance(chunkStart);
+
             Status = Results.Count > 0 ? $"找到 {Results.Count} 个资源" : "未找到匹配资源";
         }
         catch (OperationCanceledException) { }
@@ -601,7 +634,7 @@ public partial class ResourcesViewModel : ViewModelBase
 
         foreach (var item in Results)
         {
-            var translation = _translation.GetTranslationByCurseForgeId(item.Id);
+            var translation = _translation.GetTranslationById(item.Id);
             if (translation == null && item.RawData is CurseForgeMod cf)
                 translation = _translation.GetTranslationByCurseForgeId(cf.Slug)
                            ?? _translation.GetTranslationByCurseForgeId(cf.Id);
@@ -636,6 +669,93 @@ public partial class ResourcesViewModel : ViewModelBase
 
         foreach (var item in toRemove)
             Results.Remove(item);
+    }
+
+    /// <summary>
+    /// 混合源模式下按匹配度归并排序：高匹配度条目聚在一起，同分时两个来源轮流穿插，
+    /// 避免"先全部 CurseForge 再全部 Modrinth"的块状分布。
+    /// </summary>
+    private void MergeResultsByRelevance(int startIndex)
+    {
+        if (startIndex < 0 || startIndex >= Results.Count) return;
+
+        var chunk = Results.Skip(startIndex).ToList();
+        if (chunk.Count <= 1) return;
+
+        var merged = MergeByRelevance(chunk);
+        for (var i = 0; i < merged.Count; i++)
+            Results[startIndex + i] = merged[i];
+    }
+
+    private List<ResourceItemViewModel> MergeByRelevance(List<ResourceItemViewModel> items)
+    {
+        var cf = items.Where(i => i.IsCurseForge).ToList();
+        var mr = items.Where(i => i.IsModrinth).ToList();
+
+        // 浏览模式（无关键词）：两个来源轮流穿插
+        if (string.IsNullOrWhiteSpace(Query))
+        {
+            var merged = new List<ResourceItemViewModel>(items.Count);
+            var ci = 0;
+            var mi = 0;
+            while (ci < cf.Count || mi < mr.Count)
+            {
+                if (ci < cf.Count) merged.Add(cf[ci++]);
+                if (mi < mr.Count) merged.Add(mr[mi++]);
+            }
+            return merged;
+        }
+
+        // 搜索模式：按匹配度降序；同分条目内两来源轮流穿插
+        var scored = items
+            .Select(item => (Item: item, Score: ComputeRelevance(item)))
+            .OrderByDescending(x => x.Score)
+            .ToList();
+
+        var result = new List<ResourceItemViewModel>(items.Count);
+        foreach (var group in scored.GroupBy(x => x.Score))
+        {
+            var cfQueue = new Queue<ResourceItemViewModel>(group.Where(x => x.Item.IsCurseForge).Select(x => x.Item));
+            var mrQueue = new Queue<ResourceItemViewModel>(group.Where(x => x.Item.IsModrinth).Select(x => x.Item));
+            while (cfQueue.Count > 0 || mrQueue.Count > 0)
+            {
+                if (cfQueue.Count > 0) result.Add(cfQueue.Dequeue());
+                if (mrQueue.Count > 0) result.Add(mrQueue.Dequeue());
+            }
+        }
+        return result;
+    }
+
+    private int ComputeRelevance(ResourceItemViewModel item)
+    {
+        var q = Query.Trim();
+        if (q.Length == 0) return 0;
+
+        var lower = q.ToLowerInvariant();
+        var title = item.Title.ToLowerInvariant();
+        var display = item.DisplayName.ToLowerInvariant();
+
+        if (string.Equals(title, lower, StringComparison.Ordinal) ||
+            string.Equals(display, lower, StringComparison.Ordinal))
+            return 100;
+        if (title.StartsWith(lower, StringComparison.Ordinal) ||
+            display.StartsWith(lower, StringComparison.Ordinal))
+            return 90;
+        if (title.Contains(lower, StringComparison.Ordinal) ||
+            display.Contains(lower, StringComparison.Ordinal))
+            return 80;
+
+        var translation = _translation.GetTranslationById(item.Id);
+        if (translation != null &&
+            (translation.ChineseName.Contains(q, StringComparison.OrdinalIgnoreCase) ||
+             (!string.IsNullOrWhiteSpace(translation.Abbreviation) &&
+              translation.Abbreviation.Contains(q, StringComparison.OrdinalIgnoreCase))))
+            return 75;
+
+        if (item.Description.Contains(lower, StringComparison.OrdinalIgnoreCase))
+            return 60;
+
+        return 10;
     }
 
     private static string ExtractGameVersion(string versionId)
@@ -716,7 +836,7 @@ public partial class ResourcesViewModel : ViewModelBase
         foreach (var hit in response.Hits)
         {
             ct.ThrowIfCancellationRequested();
-            var translation = _translation.GetTranslationByCurseForgeId(hit.ProjectId);
+            var translation = _translation.GetTranslationById(hit.ProjectId);
 
             var item = new ResourceItemViewModel(hit, translation);
             items.Add(item);

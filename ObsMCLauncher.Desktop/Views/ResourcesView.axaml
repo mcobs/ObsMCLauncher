@@ -105,22 +105,22 @@
                        Command="{Binding ChangeSourceCommand}" CommandParameter="2" />
         </StackPanel>
 
-        <ComboBox Grid.Column="1" Width="118"
+        <ComboBox Grid.Column="1" Width="96" Height="34" FontSize="12"
                   ItemsSource="{Binding VersionFilters}"
                   SelectedItem="{Binding VersionFilter}" />
 
-        <ComboBox Grid.Column="2" Width="118"
+        <ComboBox Grid.Column="2" Width="96" Height="34" FontSize="12"
                   ItemsSource="{Binding AvailableSortOptions}"
                   SelectedIndex="{Binding SortFieldIndex}">
           <ComboBox.ItemTemplate>
             <DataTemplate>
-              <TextBlock Text="{Binding Name}" />
+              <TextBlock Text="{Binding Name}" FontSize="12" />
             </DataTemplate>
           </ComboBox.ItemTemplate>
         </ComboBox>
 
         <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-          <ComboBox Width="132"
+          <ComboBox Width="108" Height="34" FontSize="12"
                     ItemsSource="{Binding InstalledVersions}"
                     SelectedItem="{Binding SelectedVersionId}"
                     IsEnabled="{Binding HasInstalledVersions}"
@@ -205,7 +205,8 @@
         <ListBox.ItemTemplate>
           <DataTemplate>
             <Border Classes="resource-row" Tapped="OnResourceRowTapped">
-              <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
+              <!-- 固定高度保证各行"详情"按钮垂直对齐 -->
+              <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto" Height="56">
 
                 <Border Grid.RowSpan="2" Width="48" Height="48" CornerRadius="8"
                         Background="{DynamicResource SurfaceHoverBrush}" VerticalAlignment="Center">
@@ -240,15 +241,10 @@
                              Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" />
                 </StackPanel>
 
-                <StackPanel Grid.Column="2" Grid.RowSpan="2" Orientation="Horizontal" Spacing="8"
-                            VerticalAlignment="Center" Margin="8,0,0,0">
-                  <Button Content="下载" Classes="accent" FontSize="12" Padding="14,6"
-                          Command="{Binding #Root.((vm:ResourcesViewModel)DataContext).DownloadCommand}"
-                          CommandParameter="{Binding}" Tapped="OnActionTapped" />
-                  <Button Content="详情" Classes="ghost" FontSize="12" Padding="14,6"
-                          Command="{Binding #Root.((vm:ResourcesViewModel)DataContext).OpenDetailCommand}"
-                          CommandParameter="{Binding}" Tapped="OnActionTapped" />
-                </StackPanel>
+                <Button Grid.Column="2" Grid.RowSpan="2" Content="详情" Classes="accent" FontSize="12" Padding="14,6"
+                        VerticalAlignment="Center" Margin="8,0,0,0"
+                        Command="{Binding #Root.((vm:ResourcesViewModel)DataContext).OpenDetailCommand}"
+                        CommandParameter="{Binding}" Tapped="OnActionTapped" />
 
               </Grid>
             </Border>
