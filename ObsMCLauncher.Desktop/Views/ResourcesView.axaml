@@ -205,7 +205,7 @@
         <ListBox.ItemTemplate>
           <DataTemplate>
             <Border Classes="resource-row" Tapped="OnResourceRowTapped">
-              <!-- 固定高度保证各行"详情"按钮垂直对齐 -->
+              <!-- 固定高度保证各行"详情"按钮垂直对齐；中间内容用 * 列自适应收缩，避免横向挤压按钮 -->
               <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto" Height="56">
 
                 <Border Grid.RowSpan="2" Width="48" Height="48" CornerRadius="8"
@@ -213,33 +213,37 @@
                   <Image Source="{Binding Icon}" Width="48" Height="48" />
                 </Border>
 
-                <StackPanel Grid.Column="1" Grid.Row="0" Orientation="Horizontal" Spacing="8"
-                            Margin="12,0,0,0" VerticalAlignment="Center">
-                  <TextBlock Text="{Binding DisplayName}" FontSize="14" FontWeight="Medium"
+                <!-- 标题行：标题在 * 列内收缩省略，来源标签保持自身宽度 -->
+                <Grid Grid.Column="1" Grid.Row="0" ColumnDefinitions="*,Auto" Margin="12,0,0,0">
+                  <TextBlock Grid.Column="0" Text="{Binding DisplayName}" FontSize="14" FontWeight="Medium"
                              TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-                  <Border Classes="tag" Background="#F16436" IsVisible="{Binding IsCurseForge}">
-                    <TextBlock Text="CurseForge" />
-                  </Border>
-                  <Border Classes="tag" Background="#1BD96A" IsVisible="{Binding IsModrinth}">
-                    <TextBlock Text="Modrinth" />
-                  </Border>
-                </StackPanel>
-
-                <StackPanel Grid.Column="1" Grid.Row="1" Orientation="Horizontal" Spacing="12"
-                            Margin="12,0,0,0" VerticalAlignment="Center">
-                  <TextBlock Text="{Binding Description}" Foreground="{DynamicResource TextSecondaryBrush}"
-                             TextTrimming="CharacterEllipsis" FontSize="12" MaxWidth="360" />
-                  <StackPanel Orientation="Horizontal" Spacing="4">
-                    <ui:SymbolIcon Symbol="People" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" />
-                    <TextBlock Text="{Binding Author}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" />
+                  <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" Margin="8,0,0,0" VerticalAlignment="Center">
+                    <Border Classes="tag" Background="#F16436" IsVisible="{Binding IsCurseForge}">
+                      <TextBlock Text="CurseForge" />
+                    </Border>
+                    <Border Classes="tag" Background="#1BD96A" IsVisible="{Binding IsModrinth}">
+                      <TextBlock Text="Modrinth" />
+                    </Border>
                   </StackPanel>
-                  <StackPanel Orientation="Horizontal" Spacing="4">
+                </Grid>
+
+                <!-- 元信息行：描述在 * 列内收缩省略，作者/下载量/版本保持自身宽度 -->
+                <Grid Grid.Column="1" Grid.Row="1" ColumnDefinitions="*,Auto,Auto,Auto" Margin="12,0,0,0">
+                  <TextBlock Grid.Column="0" Text="{Binding Description}" Foreground="{DynamicResource TextSecondaryBrush}"
+                             TextTrimming="CharacterEllipsis" FontSize="12" VerticalAlignment="Center" />
+                  <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" Margin="12,0,0,0">
+                    <ui:SymbolIcon Symbol="People" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding Author}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}"
+                               VerticalAlignment="Center" MaxWidth="120" TextTrimming="CharacterEllipsis" />
+                  </StackPanel>
+                  <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4" Margin="12,0,0,0">
                     <ui:SymbolIcon Symbol="Download" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" />
                     <TextBlock Text="{Binding Downloads}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" />
                   </StackPanel>
-                  <TextBlock Text="{Binding VersionDisplay, StringFormat=v{0}}" FontSize="11"
-                             Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" />
-                </StackPanel>
+                  <TextBlock Grid.Column="3" Text="{Binding VersionDisplay, StringFormat=v{0}}" FontSize="11"
+                             Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center"
+                             Margin="12,0,0,0" MaxWidth="150" TextTrimming="CharacterEllipsis" />
+                </Grid>
 
                 <Button Grid.Column="2" Grid.RowSpan="2" Content="详情" Classes="accent" FontSize="12" Padding="14,6"
                         VerticalAlignment="Center" Margin="8,0,0,0"
