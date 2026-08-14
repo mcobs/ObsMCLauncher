@@ -10,6 +10,7 @@
 - 修复更新服务无法检测不同通道更新（正式版/测试版/预发布版/预览版）的问题：客户端请求的 Velopack 通道名缺少 RID 前缀，与发布端生成的 feed 文件名（如 releases.win-x64-pre.json）不匹配，导致检查更新永远返回"已是最新版本"
 - 修复分组管理弹窗（ContentDialog）内绑定错误：弹窗内容在弹出层中渲染丢失 DataContext 继承，改为显示前显式绑定到当前版本实例 ViewModel
 - 修复分组管理弹窗内重命名/删除操作无响应的问题：自绘对话框在 FluentAvalonia ContentDialog 弹出层下方渲染导致交互失效，统一改用 ContentDialog 后解决
+- 修复插件相关单元测试偶发失败的问题：多个测试类共享 PluginContext 静态回调（OnTabRegistered 等），xUnit 默认跨测试类并行执行导致回调被并发覆盖、断言随机失败，现禁用测试程序集并行执行保证确定性
 
 ### 新增
 - 插件 API 新增目录获取接口：`LauncherBaseDirectory`（启动器基础目录，自动跳出 current）、`LauncherDataDirectory`（OMCL 数据目录）、`GameDirectory`（当前游戏目录），均已正确处理 Velopack 部署路径
