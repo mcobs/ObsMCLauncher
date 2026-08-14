@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:ObsMCLauncher.Desktop.ViewModels"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
              xmlns:converters="using:ObsMCLauncher.Desktop.Converters"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -181,18 +182,12 @@
             </Grid>
 
             <!-- OptiFine 兼容性警告 -->
-            <Border IsVisible="{Binding ShowOptiFineWarning}"
-                    Background="#33F59E0B"
-                    BorderBrush="#F59E0B"
-                    BorderThickness="1"
-                    CornerRadius="6"
-                    Padding="10,6"
-                    Margin="0,4,0,0">
-              <StackPanel Orientation="Horizontal" Spacing="8">
-                <TextBlock Text="!" FontSize="14" FontWeight="Bold" Foreground="#F59E0B" VerticalAlignment="Center"/>
-                <TextBlock Text="{Binding OptiFineWarningMessage}" FontSize="12" VerticalAlignment="Center" TextWrapping="Wrap"/>
-              </StackPanel>
-            </Border>
+            <ui:InfoBar IsOpen="{Binding ShowOptiFineWarning}"
+                        Severity="Warning"
+                        Title="兼容性警告"
+                        Message="{Binding OptiFineWarningMessage}"
+                        IsClosable="False"
+                        Margin="0,4,0,0"/>
           </StackPanel>
         </StackPanel>
 

@@ -83,44 +83,16 @@ public partial class InstanceViewModel : ViewModelBase
     [ObservableProperty]
     private GroupListItem? _selectedGroupItem;
 
-    [ObservableProperty]
-    private bool _isGroupManagerOpen;
+    /// <summary>
+    /// 请求打开分组管理对话框（由视图订阅并显示 ContentDialog）。
+    /// </summary>
+    public event Action? GroupManagerRequested;
 
     [ObservableProperty]
     private string _newGroupName = string.Empty;
 
     [ObservableProperty]
     private ObservableCollection<VersionGroup> _managedGroups = new();
-
-    // 导航栏相关
-    [ObservableProperty]
-    private int _selectedNavIndex = 0;
-
-    public bool IsBasicTab => SelectedNavIndex == 0;
-    public bool IsSettingsTab => SelectedNavIndex == 1;
-    public bool IsWorldsTab => SelectedNavIndex == 2;
-    public bool IsModsTab => SelectedNavIndex == 3;
-    public bool IsShaderTab => SelectedNavIndex == 4;
-    public bool IsResourcePacksTab => SelectedNavIndex == 5;
-
-    partial void OnSelectedNavIndexChanged(int value)
-    {
-        OnPropertyChanged(nameof(IsBasicTab));
-        OnPropertyChanged(nameof(IsSettingsTab));
-        OnPropertyChanged(nameof(IsWorldsTab));
-        OnPropertyChanged(nameof(IsModsTab));
-        OnPropertyChanged(nameof(IsShaderTab));
-        OnPropertyChanged(nameof(IsResourcePacksTab));
-    }
-
-    [RelayCommand]
-    private void SelectNav(object? parameter)
-    {
-        if (parameter is int index)
-            SelectedNavIndex = index;
-        else if (parameter is string s && int.TryParse(s, out var parsed))
-            SelectedNavIndex = parsed;
-    }
 
     // 内存配置
     [ObservableProperty]
@@ -472,9 +444,9 @@ public partial class InstanceViewModel : ViewModelBase
 
         if (value.IsManageEntry)
         {
-            IsGroupManagerOpen = true;
             var currentGroupId = Core.Services.VersionGroupService.GetEffectiveGroupId(_version);
             SelectedGroupItem = GroupListItems.FirstOrDefault(g => g.Id == currentGroupId);
+            GroupManagerRequested?.Invoke();
             return;
         }
 
@@ -526,12 +498,6 @@ public partial class InstanceViewModel : ViewModelBase
         LoadGroupInfo();
         SelectedGroupItem = GroupListItems.FirstOrDefault();
         _notificationService.Show("分组已删除", $"分组 \"{group.Name}\" 已删除", NotificationType.Success);
-    }
-
-    [RelayCommand]
-    private void CloseGroupManager()
-    {
-        IsGroupManagerOpen = false;
     }
 
     private string GetGameDirectory()

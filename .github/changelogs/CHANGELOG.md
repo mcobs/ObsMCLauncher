@@ -3,6 +3,9 @@
 ### 修复
 - 修复更新服务无法检测不同通道更新（正式版/测试版/预发布版/预览版）的问题：客户端请求的 Velopack 通道名缺少 RID 前缀，与发布端生成的 feed 文件名（如 releases.win-x64-pre.json）不匹配，导致检查更新永远返回"已是最新版本"
 
+### 优化
+- 版本实例界面迁移到 FluentAvalonia 组件：顶部导航标签栏改用 TabView（图标改用 PathIconSource），内存配置输入框改用 NumberBox，分组管理弹窗改用 ContentDialog，OptiFine 兼容性警告改用 InfoBar
+
 ## [v1.0.1-pre.1] - 2026-08-14
 
 ### 修复
