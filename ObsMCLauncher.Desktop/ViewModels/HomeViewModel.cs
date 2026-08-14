@@ -69,9 +69,9 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
 
                     if (NavigationStore.MainWindow?.NavItems.FirstOrDefault(x => x.Title == "账号管理")?.Page is AccountManagementViewModel accountVm)
                     {
-                        foreach (var a in accountVm.Accounts)
+                        foreach (var w in accountVm.Items)
                         {
-                            a.IsDefault = a.Id == value.Id;
+                            w.Account.IsDefault = w.Account.Id == value.Id;
                         }
                     }
                 }

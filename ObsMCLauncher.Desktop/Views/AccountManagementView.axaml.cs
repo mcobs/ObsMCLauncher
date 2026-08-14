@@ -4,7 +4,6 @@ using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using FluentAvalonia.UI.Controls;
-using ObsMCLauncher.Core.Models;
 using ObsMCLauncher.Core.Utils;
 using ObsMCLauncher.Desktop.ViewModels;
 
@@ -51,9 +50,9 @@ public partial class AccountManagementView : UserControl
         _ = _vm?.AutoRefreshExpiredTokensAsync();
     }
 
-    private void OnScrollToAccountRequested(GameAccount account)
+    private void OnScrollToAccountRequested(AccountItemViewModel item)
     {
-        AccountList.ScrollIntoView(account);
+        AccountList.ScrollIntoView(item);
     }
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)

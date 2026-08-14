@@ -121,13 +121,14 @@
       <ui:InfoBar Grid.Row="1"
                   IsOpen="{Binding Status, Converter={x:Static converters:StringNotEqualsConverter.Instance}, ConverterParameter=''}"
                   Message="{Binding Status}"
+                  Severity="{Binding StatusSeverity}"
                   IsClosable="False"
                   IsIconVisible="True"
                   Margin="0,0,0,10"/>
 
       <Panel Grid.Row="2">
         <ListBox x:Name="AccountList"
-                 ItemsSource="{Binding FilteredAccounts}"
+                 ItemsSource="{Binding FilteredItems}"
                  Background="Transparent"
                  BorderThickness="0">
           <ListBox.ItemContainerTheme>
@@ -145,14 +146,14 @@
             </ControlTheme>
           </ListBox.ItemContainerTheme>
           <ListBox.ItemTemplate>
-            <DataTemplate x:DataType="models:GameAccount">
+            <DataTemplate x:DataType="vm:AccountItemViewModel">
               <Border Classes="account-card"
-                      Classes.highlighted="{Binding IsHighlighted}"
+                      Classes.highlighted="{Binding Account.IsHighlighted}"
                       Background="{DynamicResource SurfaceElevatedBrush}" CornerRadius="12" Padding="20" Margin="0,0,0,10" BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
                 <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
                   <Panel Margin="0,0,16,0">
                     <Border Width="52" Height="52" CornerRadius="10" Background="{DynamicResource SurfaceBrush}" ClipToBounds="True">
-                      <Image Source="{Binding Avatar}" Stretch="Uniform" />
+                      <Image Source="{Binding Account.Avatar}" Stretch="Uniform" />
                     </Border>
                     <Border Width="22" Height="22"
                             CornerRadius="11"
@@ -166,7 +167,7 @@
                              HorizontalAlignment="Center" VerticalAlignment="Center">
                         <Image.Source>
                           <MultiBinding Converter="{x:Static converters:EnumToChineseTextConverter.Instance}" ConverterParameter="IconPath">
-                            <Binding Path="Type" />
+                            <Binding Path="Account.Type" />
                             <Binding Path="ActualThemeVariant" RelativeSource="{RelativeSource Self}" />
                           </MultiBinding>
                         </Image.Source>
@@ -176,11 +177,11 @@
 
                   <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="3">
                     <StackPanel Orientation="Horizontal" Spacing="6">
-                      <TextBlock Text="{Binding Username}" FontSize="15" FontWeight="Medium"/>
+                      <TextBlock Text="{Binding Account.Username}" FontSize="15" FontWeight="Medium" TextTrimming="CharacterEllipsis"/>
                       <Border Background="{DynamicResource PrimaryBrush}" CornerRadius="4" Padding="6,1"
                               VerticalAlignment="Center"
-                              Opacity="{Binding IsDefault, Converter={x:Static converters:BoolToDoubleConverter.Instance}, ConverterParameter='1,0'}"
-                              RenderTransform="{Binding IsDefault, Converter={x:Static converters:BoolToTransformConverter.Instance}, ConverterParameter='scale(1)|scale(0.8)'}"
+                              Opacity="{Binding Account.IsDefault, Converter={x:Static converters:BoolToDoubleConverter.Instance}, ConverterParameter='1,0'}"
+                              RenderTransform="{Binding Account.IsDefault, Converter={x:Static converters:BoolToTransformConverter.Instance}, ConverterParameter='scale(1)|scale(0.8)'}"
                               IsHitTestVisible="False">
                         <Border.Transitions>
                           <Transitions>
@@ -192,12 +193,12 @@
                       </Border>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" Spacing="8">
-                      <TextBlock Text="{Binding Type, Converter={x:Static converters:EnumToChineseTextConverter.Instance}}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}"/>
-                      <TextBlock Text="{Binding TokenStatusText}" FontSize="12"
-                                 Foreground="{Binding TokenState, Converter={x:Static converters:TokenStateToBrushConverter.Instance}}"
-                                 IsVisible="{Binding HasTokenStatus}"/>
+                      <TextBlock Text="{Binding Account.Type, Converter={x:Static converters:EnumToChineseTextConverter.Instance}}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                      <TextBlock Text="{Binding Account.TokenStatusText}" FontSize="12"
+                                 Foreground="{Binding Account.TokenState, Converter={x:Static converters:TokenStateToBrushConverter.Instance}}"
+                                 IsVisible="{Binding Account.HasTokenStatus}"/>
                     </StackPanel>
-                    <TextBlock Text="{Binding DetailText}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}"
+                    <TextBlock Text="{Binding Account.DetailText}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}"
                                TextTrimming="CharacterEllipsis"/>
                   </StackPanel>
 
@@ -205,26 +206,27 @@
                     <Button Command="{Binding #AccountPage.DataContext.RefreshAccountCommand}"
                             CommandParameter="{Binding}"
                             Classes="ghost"
-                            IsEnabled="{Binding #AccountPage.DataContext.IsRefreshing, Converter={x:Static converters:NotConverter.Instance}}"
+                            IsEnabled="{Binding CanRefresh}"
                             ToolTip.Tip="刷新账号">
                       <Panel Width="18" Height="18">
                         <Path Data="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"
                               Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource TextBrush}"
-                              IsVisible="{Binding #AccountPage.DataContext.IsRefreshing, Converter={x:Static converters:NotConverter.Instance}}"/>
+                              IsVisible="{Binding !IsRefreshing}"/>
                         <ui:ProgressRing IsIndeterminate="True" Width="16" Height="16"
                                          Foreground="{DynamicResource AccentBrush}"
-                                         IsVisible="{Binding #AccountPage.DataContext.IsRefreshing}"/>
+                                         IsVisible="{Binding IsRefreshing}"/>
                       </Panel>
                     </Button>
                     <Button Content="设为默认"
                             Classes="ghost"
                             Command="{Binding #AccountPage.DataContext.SetDefaultSelectedCommand}"
                             CommandParameter="{Binding}"
-                            IsEnabled="{Binding !IsDefault, FallbackValue=False}"
+                            IsEnabled="{Binding !Account.IsDefault, FallbackValue=False}"
                             FontSize="12"/>
                     <Button Classes="danger"
                             Command="{Binding #AccountPage.DataContext.DeleteSelectedCommand}"
                             CommandParameter="{Binding}"
+                            IsEnabled="{Binding CanDelete}"
                             FontSize="12">
                       <StackPanel Orientation="Horizontal" Spacing="4">
                         <Path Data="M9 3V4H4V6H5V19C5 20.1 5.9 21 7 21H17C18.1 21 19 20.1 19 19V6H20V4H15V3H9M7 6H17V19H7V6M9 8V17H11V8H9M13 8V17H15V8H13Z"

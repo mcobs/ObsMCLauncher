@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using Avalonia.Platform;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using FluentAvalonia.UI.Controls;
 using ObsMCLauncher.Core.Models;
 using ObsMCLauncher.Core.Services.Accounts;
 using ObsMCLauncher.Desktop.ViewModels.Dialogs;
@@ -21,7 +22,8 @@ namespace ObsMCLauncher.Desktop.ViewModels;
 
 public partial class AccountManagementViewModel : ViewModelBase
 {
-    public ObservableCollection<ObsMCLauncher.Core.Models.GameAccount> Accounts { get; } = new();
+    /// <summary>账号列表（每项为包装视图模型，承载独立的刷新/操作状态）</summary>
+    public ObservableCollection<AccountItemViewModel> Items { get; } = new();
 
     private ObsMCLauncher.Core.Models.GameAccount? _selectedAccount;
     public ObsMCLauncher.Core.Models.GameAccount? SelectedAccount
@@ -116,8 +118,9 @@ public partial class AccountManagementViewModel : ViewModelBase
     [ObservableProperty]
     private YggdrasilLoginViewModel _yggdrasilLoginDialog = new();
 
+    /// <summary>状态消息分级（InfoBar 展示）</summary>
     [ObservableProperty]
-    private bool _isRefreshing;
+    private InfoBarSeverity _statusSeverity = InfoBarSeverity.Informational;
 
     /// <summary>账号搜索关键词</summary>
     [ObservableProperty]
@@ -134,10 +137,10 @@ public partial class AccountManagementViewModel : ViewModelBase
     private bool _showNoSearchResultsEmpty;
 
     /// <summary>过滤后的账号列表（绑定到界面）</summary>
-    public ObservableCollection<ObsMCLauncher.Core.Models.GameAccount> FilteredAccounts { get; } = new();
+    public ObservableCollection<AccountItemViewModel> FilteredItems { get; } = new();
 
     /// <summary>请求视图滚动到指定账号（新增账号后定位用）</summary>
-    public event Action<ObsMCLauncher.Core.Models.GameAccount>? ScrollToAccountRequested;
+    public event Action<AccountItemViewModel>? ScrollToAccountRequested;
 
     private readonly HashSet<string> _autoRefreshAttempted = new();
     private bool _autoRefreshing;
@@ -148,11 +151,11 @@ public partial class AccountManagementViewModel : ViewModelBase
     public IRelayCommand CancelAddOfflineCommand { get; }
     public IRelayCommand AddOfflineCommand { get; }
 
-    public IAsyncRelayCommand<GameAccount> DeleteSelectedCommand { get; }
+    public IAsyncRelayCommand<AccountItemViewModel> DeleteSelectedCommand { get; }
 
-    public IRelayCommand<GameAccount> SetDefaultSelectedCommand { get; }
+    public IRelayCommand<AccountItemViewModel> SetDefaultSelectedCommand { get; }
 
-    public IAsyncRelayCommand<GameAccount> RefreshAccountCommand { get; }
+    public IAsyncRelayCommand<AccountItemViewModel> RefreshAccountCommand { get; }
 
     public IAsyncRelayCommand StartMicrosoftLoginCommand { get; }
     public IAsyncRelayCommand AddYggdrasilAccountCommand { get; }
@@ -171,7 +174,7 @@ public partial class AccountManagementViewModel : ViewModelBase
             var username = UsernameInput.Trim();
             if (username.Length < 3 || username.Length > 16)
             {
-                Status = "用户名长度必须在 3-16 个字符之间";
+                SetStatus("用户名长度必须在 3-16 个字符之间", InfoBarSeverity.Warning);
                 return;
             }
 
@@ -181,7 +184,7 @@ public partial class AccountManagementViewModel : ViewModelBase
             
             if (existing != null)
             {
-                Status = $"已存在名为 '{username}' 的离线账号";
+                SetStatus($"已存在名为 '{username}' 的离线账号", InfoBarSeverity.Warning);
                 return;
             }
 
@@ -191,7 +194,7 @@ public partial class AccountManagementViewModel : ViewModelBase
                 UsernameInput = "";
                 IsAddOfflinePanelVisible = false;
                 Load();
-                Status = "已添加离线账号";
+                SetStatus("已添加离线账号", InfoBarSeverity.Success);
                 
                 // 通知主页刷新账号列表
                 if (NavigationStore.MainWindow?.NavItems.FirstOrDefault(x => x.Title == "主页")?.Page is HomeViewModel homeVm)
@@ -199,18 +202,21 @@ public partial class AccountManagementViewModel : ViewModelBase
                     homeVm.RefreshAccounts();
                 }
                 
-                _ = RefreshAccountAsync(acc); // 添加后自动刷新头像
+                // 添加后自动刷新头像
+                var newItem = Items.FirstOrDefault(w => w.Account.Id == acc.Id);
+                if (newItem != null) _ = RefreshAccountAsync(newItem);
                 HighlightNewAccount(acc); // 滚动到新账号并短暂高亮
             }
             catch (Exception ex)
             {
-                Status = $"添加失败: {ex.Message}";
+                SetStatus($"添加失败: {ex.Message}", InfoBarSeverity.Error);
             }
         }, () => !string.IsNullOrWhiteSpace(UsernameInput));
 
-        DeleteSelectedCommand = new AsyncRelayCommand<GameAccount>(async acc =>
+        DeleteSelectedCommand = new AsyncRelayCommand<AccountItemViewModel>(async item =>
         {
-            if (acc == null) return;
+            if (item == null || item.IsBusy || item.IsRefreshing) return;
+            var acc = item.Account;
 
             var main = NavigationStore.MainWindow;
             if (main != null)
@@ -219,6 +225,7 @@ public partial class AccountManagementViewModel : ViewModelBase
                 if (downloadConsent != DialogResult.Yes) return;
             }
 
+            item.IsBusy = true;
             try
             {
                 var wasDefault = acc.IsDefault;
@@ -228,14 +235,14 @@ public partial class AccountManagementViewModel : ViewModelBase
                 if (wasDefault)
                 {
                     // 服务层会自动把第一个账号设为默认，这里向用户说明
-                    var newDefault = Accounts.FirstOrDefault(a => a.IsDefault);
-                    Status = newDefault != null
+                    var newDefault = Items.FirstOrDefault(w => w.Account.IsDefault)?.Account;
+                    SetStatus(newDefault != null
                         ? $"已删除默认账号，已自动将「{newDefault.Username}」设为默认账号"
-                        : "已删除默认账号，当前没有可用账号";
+                        : "已删除默认账号，当前没有可用账号", InfoBarSeverity.Success);
                 }
                 else
                 {
-                    Status = "已删除账号";
+                    SetStatus("已删除账号", InfoBarSeverity.Success);
                 }
                 
                 // 通知主页刷新账号列表
@@ -246,24 +253,29 @@ public partial class AccountManagementViewModel : ViewModelBase
             }
             catch (Exception ex)
             {
-                Status = $"删除失败: {ex.Message}";
+                SetStatus($"删除失败: {ex.Message}", InfoBarSeverity.Error);
+            }
+            finally
+            {
+                item.IsBusy = false;
             }
         });
 
-        SetDefaultSelectedCommand = new RelayCommand<GameAccount>(acc =>
+        SetDefaultSelectedCommand = new RelayCommand<AccountItemViewModel>(item =>
         {
-            if (acc == null) return;
+            if (item == null) return;
+            var acc = item.Account;
 
             try
             {
                 AccountService.Instance.SetDefaultAccount(acc.Id);
 
-                foreach (var a in Accounts)
+                foreach (var w in Items)
                 {
-                    a.IsDefault = a.Id == acc.Id;
+                    w.Account.IsDefault = w.Account.Id == acc.Id;
                 }
 
-                Status = "已设置为默认账号";
+                SetStatus("已设置为默认账号", InfoBarSeverity.Success);
 
                 if (NavigationStore.MainWindow?.NavItems.FirstOrDefault(x => x.Title == "主页")?.Page is HomeViewModel homeVm)
                 {
@@ -280,23 +292,24 @@ public partial class AccountManagementViewModel : ViewModelBase
             }
             catch (Exception ex)
             {
-                Status = $"设置失败: {ex.Message}";
+                SetStatus($"设置失败: {ex.Message}", InfoBarSeverity.Error);
             }
         });
 
-        RefreshAccountCommand = new AsyncRelayCommand<GameAccount>(RefreshAccountAsync);
+        RefreshAccountCommand = new AsyncRelayCommand<AccountItemViewModel>(RefreshAccountAsync);
         StartMicrosoftLoginCommand = new AsyncRelayCommand(StartMicrosoftLoginAsync, () => !IsMicrosoftLoginRunning);
         AddYggdrasilAccountCommand = new AsyncRelayCommand(AddYggdrasilAccountAsync, () => !IsYggdrasilLoginRunning);
 
         Load();
     }
 
-    private async Task RefreshAccountAsync(GameAccount? acc)
+    private async Task RefreshAccountAsync(AccountItemViewModel? item)
     {
-        if (acc == null) return;
+        if (item == null || item.IsBusy) return;
+        var acc = item.Account;
 
-        IsRefreshing = true;
-        Status = $"正在刷新账号: {acc.Username}";
+        item.IsRefreshing = true;
+        SetStatus($"正在刷新账号: {acc.Username}", InfoBarSeverity.Informational);
         try
         {
             if (acc.Type == AccountType.Microsoft)
@@ -317,19 +330,18 @@ public partial class AccountManagementViewModel : ViewModelBase
                     await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
                     {
                         acc.Avatar = bitmap;
-                        ReplaceInList(acc);
                     });
                 }
             }
-            Status = $"账号 {acc.Username} 刷新成功";
+            SetStatus($"账号 {acc.Username} 刷新成功", InfoBarSeverity.Success);
         }
         catch (Exception ex)
         {
-            Status = $"刷新失败: {ex.Message}";
+            SetStatus($"刷新失败: {ex.Message}", InfoBarSeverity.Error);
         }
         finally
         {
-            IsRefreshing = false;
+            item.IsRefreshing = false;
         }
     }
 
@@ -444,7 +456,7 @@ public partial class AccountManagementViewModel : ViewModelBase
         var main = NavigationStore.MainWindow;
         if (main == null)
         {
-            Status = "MainWindow 未就绪";
+            SetStatus("MainWindow 未就绪", InfoBarSeverity.Error);
             return;
         }
 
@@ -461,7 +473,7 @@ public partial class AccountManagementViewModel : ViewModelBase
 
             auth.OnProgressUpdate = msg =>
             {
-                Status = msg;
+                SetStatus(msg, InfoBarSeverity.Informational);
 
                 if (progressId == null)
                 {
@@ -501,7 +513,7 @@ public partial class AccountManagementViewModel : ViewModelBase
 
             if (account == null)
             {
-                Status = "微软登录失败或已取消";
+                SetStatus("微软登录失败或已取消", InfoBarSeverity.Warning);
                 main.Notifications.Show("微软账户登录", Status, NotificationType.Warning, 3);
                 return;
             }
@@ -526,17 +538,17 @@ public partial class AccountManagementViewModel : ViewModelBase
             }
             catch { }
 
-            Status = $"已添加微软账号: {account.Username}";
+            SetStatus($"已添加微软账号: {account.Username}", InfoBarSeverity.Success);
             main.Notifications.Show("微软账户登录", $"已添加微软账号: {account.Username}", NotificationType.Success, 3);
         }
         catch (OperationCanceledException)
         {
-            Status = "微软登录已取消";
+            SetStatus("微软登录已取消", InfoBarSeverity.Warning);
             main.Notifications.Show("微软账户登录", Status, NotificationType.Warning, 3);
         }
         catch (Exception ex)
         {
-            Status = $"微软登录失败: {ex.Message}";
+            SetStatus($"微软登录失败: {ex.Message}", InfoBarSeverity.Error);
             main.Notifications.Show("微软账户登录", Status, NotificationType.Error, 5);
         }
         finally
@@ -569,39 +581,9 @@ public partial class AccountManagementViewModel : ViewModelBase
             AccountService.Instance.ReloadAccountsPath();
             var list = AccountService.Instance.GetAllAccounts();
 
-            var toRemove = Accounts.Where(a => !list.Any(l => l.Id == a.Id)).ToList();
-            foreach (var a in toRemove) Accounts.Remove(a);
-
-            for (var i = 0; i < list.Count; i++)
-            {
-                var a = list[i];
-                var existing = Accounts.FirstOrDefault(acc => acc.Id == a.Id);
-                if (existing == null)
-                {
-                    var insertIndex = Accounts.Count > i ? i : Accounts.Count;
-                    Accounts.Insert(insertIndex, a);
-                    LoadSingleAccountAvatar(a);
-                }
-                else
-                {
-                    if (existing.Username != a.Username)
-                        existing.Username = a.Username;
-                    if (existing.IsDefault != a.IsDefault)
-                        existing.IsDefault = a.IsDefault;
-                    if (existing.Avatar == null) LoadSingleAccountAvatar(existing);
-
-                    var currentIndex = Accounts.IndexOf(existing);
-                    if (currentIndex != i)
-                    {
-                        Accounts.Remove(existing);
-                        Accounts.Insert(i, existing);
-                    }
-                }
-            }
-
             // 填充外置登录服务器显示名（用于详情行展示）
             var servers = YggdrasilServerService.Instance.GetAllServers();
-            foreach (var a in Accounts)
+            foreach (var a in list)
             {
                 if (a.Type == AccountType.Yggdrasil && !string.IsNullOrEmpty(a.YggdrasilServerId))
                 {
@@ -609,12 +591,42 @@ public partial class AccountManagementViewModel : ViewModelBase
                 }
             }
 
+            // 同步包装列表：按 Id 复用包装器（保留每项的刷新/操作状态），并始终使用服务端最新实例
+            var toRemove = Items.Where(w => !list.Any(l => l.Id == w.Account.Id)).ToList();
+            foreach (var w in toRemove) Items.Remove(w);
+
+            for (var i = 0; i < list.Count; i++)
+            {
+                var model = list[i];
+                var existing = Items.FirstOrDefault(w => w.Account.Id == model.Id);
+                if (existing == null)
+                {
+                    var insertIndex = Items.Count > i ? i : Items.Count;
+                    Items.Insert(insertIndex, new AccountItemViewModel(model));
+                    LoadSingleAccountAvatar(model);
+                }
+                else
+                {
+                    // 复用包装器但替换为最新模型实例（令牌等字段以服务端为准）
+                    model.Avatar ??= existing.Account.Avatar;
+                    existing.Account = model;
+                    if (existing.Account.Avatar == null) LoadSingleAccountAvatar(existing.Account);
+
+                    var currentIndex = Items.IndexOf(existing);
+                    if (currentIndex != i)
+                    {
+                        Items.Remove(existing);
+                        Items.Insert(i, existing);
+                    }
+                }
+            }
+
             ApplyFilter();
-            Status = $"已加载 {Accounts.Count} 个账号";
+            SetStatus($"已加载 {Items.Count} 个账号", InfoBarSeverity.Informational);
         }
         catch (Exception ex)
         {
-            Status = $"加载失败: {ex.Message}";
+            SetStatus($"加载失败: {ex.Message}", InfoBarSeverity.Error);
         }
     }
 
@@ -633,7 +645,6 @@ public partial class AccountManagementViewModel : ViewModelBase
                         await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
                         {
                             acc.Avatar = bitmap;
-                            ReplaceInList(acc);
                         });
                         return;
                     }
@@ -646,7 +657,6 @@ public partial class AccountManagementViewModel : ViewModelBase
                     {
                         using var defaultAvatar = AssetLoader.Open(new Uri("avares://ObsMCLauncher.Desktop/Assets/logo.png"));
                         acc.Avatar = new Avalonia.Media.Imaging.Bitmap(defaultAvatar);
-                        ReplaceInList(acc);
                     }
                     catch { }
                 });
@@ -656,36 +666,24 @@ public partial class AccountManagementViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// 在完整列表与过滤列表中同步替换账号实例（头像加载完成后触发绑定刷新）。
-    /// </summary>
-    private void ReplaceInList(GameAccount acc)
-    {
-        var index = Accounts.IndexOf(acc);
-        if (index >= 0) Accounts[index] = acc;
-
-        var filteredIndex = FilteredAccounts.IndexOf(acc);
-        if (filteredIndex >= 0) FilteredAccounts[filteredIndex] = acc;
-    }
-
-    /// <summary>
     /// 按搜索关键词过滤账号列表，并更新空状态显示。
     /// </summary>
     private void ApplyFilter()
     {
-        FilteredAccounts.Clear();
+        FilteredItems.Clear();
         var query = SearchText.Trim();
-        foreach (var a in Accounts)
+        foreach (var item in Items)
         {
             if (string.IsNullOrEmpty(query) ||
-                a.Username.Contains(query, StringComparison.OrdinalIgnoreCase))
+                item.Account.Username.Contains(query, StringComparison.OrdinalIgnoreCase))
             {
-                FilteredAccounts.Add(a);
+                FilteredItems.Add(item);
             }
         }
 
-        HasAccounts = Accounts.Count > 0;
-        ShowNoAccountsEmpty = FilteredAccounts.Count == 0 && !HasAccounts;
-        ShowNoSearchResultsEmpty = FilteredAccounts.Count == 0 && HasAccounts;
+        HasAccounts = Items.Count > 0;
+        ShowNoAccountsEmpty = FilteredItems.Count == 0 && !HasAccounts;
+        ShowNoSearchResultsEmpty = FilteredItems.Count == 0 && HasAccounts;
     }
 
     partial void OnSearchTextChanged(string value)
@@ -700,13 +698,13 @@ public partial class AccountManagementViewModel : ViewModelBase
     {
         if (account == null) return;
 
-        // Load() 会从服务重新加载账号实例，需按 Id 找到当前列表中的实例
-        var current = Accounts.FirstOrDefault(a => a.Id == account.Id);
-        if (current == null) return;
+        // Load() 会从服务重新加载账号实例，需按 Id 找到对应的列表项包装器
+        var item = Items.FirstOrDefault(w => w.Account.Id == account.Id);
+        if (item == null) return;
 
-        current.IsHighlighted = true;
-        ScrollToAccountRequested?.Invoke(current);
-        _ = ClearHighlightAsync(current);
+        item.Account.IsHighlighted = true;
+        ScrollToAccountRequested?.Invoke(item);
+        _ = ClearHighlightAsync(item.Account);
     }
 
     private static async Task ClearHighlightAsync(GameAccount acc)
@@ -731,37 +729,42 @@ public partial class AccountManagementViewModel : ViewModelBase
 
         try
         {
-            var expired = Accounts
-                .Where(a => a.Type != AccountType.Offline &&
-                            a.IsTokenExpired() &&
-                            !_autoRefreshAttempted.Contains(a.Id))
+            var expired = Items
+                .Where(w => w.Account.Type != AccountType.Offline &&
+                            w.Account.IsTokenExpired() &&
+                            !_autoRefreshAttempted.Contains(w.Account.Id))
                 .ToList();
 
             if (expired.Count == 0) return;
 
-            _autoRefreshAttempted.UnionWith(expired.Select(a => a.Id));
-            SetStatus($"正在自动刷新 {expired.Count} 个账号的登录令牌...");
+            _autoRefreshAttempted.UnionWith(expired.Select(w => w.Account.Id));
+            SetStatus($"正在自动刷新 {expired.Count} 个账号的登录令牌...", InfoBarSeverity.Informational);
 
-            foreach (var acc in expired)
+            foreach (var item in expired)
             {
+                item.IsRefreshing = true;
                 try
                 {
-                    if (acc.Type == AccountType.Microsoft)
+                    if (item.Account.Type == AccountType.Microsoft)
                     {
-                        await AccountService.Instance.RefreshMicrosoftAccountAsync(acc.Id);
+                        await AccountService.Instance.RefreshMicrosoftAccountAsync(item.Account.Id);
                     }
-                    else if (acc.Type == AccountType.Yggdrasil)
+                    else if (item.Account.Type == AccountType.Yggdrasil)
                     {
-                        await AccountService.Instance.RefreshYggdrasilAccountAsync(acc.Id);
+                        await AccountService.Instance.RefreshYggdrasilAccountAsync(item.Account.Id);
                     }
                 }
                 catch
                 {
                     // 单个账号刷新失败不阻断其余账号
                 }
+                finally
+                {
+                    item.IsRefreshing = false;
+                }
             }
 
-            SetStatus($"已自动刷新 {expired.Count} 个账号的登录令牌");
+            SetStatus($"已自动刷新 {expired.Count} 个账号的登录令牌", InfoBarSeverity.Success);
         }
         finally
         {
@@ -769,8 +772,12 @@ public partial class AccountManagementViewModel : ViewModelBase
         }
     }
 
-    private void SetStatus(string message)
+    /// <summary>
+    /// 设置状态消息及其分级（InfoBar 按分级着色）。
+    /// </summary>
+    private void SetStatus(string message, InfoBarSeverity severity = InfoBarSeverity.Informational)
     {
-        Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() => Status = message);
+        Status = message;
+        StatusSeverity = severity;
     }
 }
