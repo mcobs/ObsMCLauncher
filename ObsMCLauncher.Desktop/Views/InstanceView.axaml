@@ -38,7 +38,9 @@
       <!-- 内容区：FluentAvalonia TabView -->
       <ui:TabView Grid.Row="1"
                   Background="Transparent"
-                  IsAddTabButtonVisible="False">
+                  IsAddTabButtonVisible="False"
+                  CanDragTabs="False"
+                  CanReorderTabs="False">
 
         <!-- ===== 基本信息 ===== -->
         <ui:TabViewItem Header="基本信息" IsClosable="False">
