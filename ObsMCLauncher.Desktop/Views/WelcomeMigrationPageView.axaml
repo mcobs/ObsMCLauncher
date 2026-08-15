@@ -9,10 +9,9 @@
              x:DataType="vm:WelcomeMigrationPageViewModel">
 
     <UserControl.Styles>
-        <!-- 大卡片复选框：图标 + 标题 + 描述 -->
+        <!-- 紧凑复选框：小图标 + 标题 + 描述（仿 ClassIsland） -->
         <Style Selector="CheckBox">
-            <Setter Property="Padding" Value="12 8" />
-            <Setter Property="MinHeight" Value="76" />
+            <Setter Property="Padding" Value="4 6" />
         </Style>
         <Style Selector="CheckBox TextBlock">
             <Setter Property="TextWrapping" Value="Wrap" />
@@ -77,26 +76,26 @@
                     </StackPanel>
 
                     <CheckBox IsChecked="{Binding ImportGameSettings}">
-                        <StackPanel Orientation="Horizontal" Spacing="14">
-                            <ui:FontIcon Glyph="&#xE713;" FontSize="26"
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <ui:FontIcon Glyph="&#xE713;" FontSize="18"
                                          VerticalAlignment="Center" />
-                            <StackPanel Spacing="3" VerticalAlignment="Center">
-                                <TextBlock Text="游戏设置" FontWeight="SemiBold" FontSize="15" />
+                            <StackPanel Spacing="1" VerticalAlignment="Center">
+                                <TextBlock Text="游戏设置" FontWeight="SemiBold" FontSize="13" />
                                 <TextBlock Text="包括各实例的内存、Java 路径、JVM 参数与版本隔离设置。"
-                                           FontSize="12"
+                                           FontSize="11"
                                            Foreground="{DynamicResource TextSecondaryBrush}" />
                             </StackPanel>
                         </StackPanel>
                     </CheckBox>
 
                     <CheckBox IsChecked="{Binding ImportAppSettings}">
-                        <StackPanel Orientation="Horizontal" Spacing="14">
-                            <ui:FontIcon Glyph="&#xEF27;" FontSize="26"
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <ui:FontIcon Glyph="&#xEF27;" FontSize="18"
                                          VerticalAlignment="Center" />
-                            <StackPanel Spacing="3" VerticalAlignment="Center">
-                                <TextBlock Text="应用设置" FontWeight="SemiBold" FontSize="15" />
+                            <StackPanel Spacing="1" VerticalAlignment="Center">
+                                <TextBlock Text="应用设置" FontWeight="SemiBold" FontSize="13" />
                                 <TextBlock Text="包括游戏文件夹、Java、内存、下载与更新等应用首选项。"
-                                           FontSize="12"
+                                           FontSize="11"
                                            Foreground="{DynamicResource TextSecondaryBrush}" />
                             </StackPanel>
                         </StackPanel>

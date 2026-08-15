@@ -32,15 +32,6 @@ public static class PclMigrationService
 
     private static readonly string[] RegistryFolders = ["PlainCraftLauncher", "PCLDebug"];
 
-    /// <summary>判断路径是否指向 PCL 主程序（PCL.exe / Plain Craft Launcher.exe）</summary>
-    public static bool LooksLikePclExecutable(string path)
-    {
-        if (string.IsNullOrWhiteSpace(path)) return false;
-        var name = Path.GetFileName(path);
-        return string.Equals(name, "PCL.exe", StringComparison.OrdinalIgnoreCase)
-               || string.Equals(name, "Plain Craft Launcher.exe", StringComparison.OrdinalIgnoreCase);
-    }
-
     /// <summary>判断目录是否像一个 PCL 安装目录（PCL\Setup.ini 或 PCL.exe 存在）</summary>
     public static bool LooksLikePclDirectory(string dir)
     {

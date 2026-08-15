@@ -131,16 +131,12 @@ public partial class WelcomeMigrationPageViewModel : ViewModelBase
 
     private void ValidatePclPath(string path)
     {
-        var exeOk = PclMigrationService.LooksLikePclExecutable(path);
-        var dir = exeOk ? PclDirectory : "";
-        IsPclDirectoryValid = exeOk && PclMigrationService.LooksLikePclDirectory(dir);
+        IsPclDirectoryValid = PclMigrationService.LooksLikePclDirectory(PclDirectory);
         PclDirectoryHint = string.IsNullOrWhiteSpace(path)
-            ? "请选择 PCL 主程序（PCL.exe）"
-            : !exeOk
-                ? "选择的文件不是 PCL.exe 或 Plain Craft Launcher.exe"
-                : IsPclDirectoryValid
-                    ? "已找到 PCL 数据"
-                    : "该目录中未找到 PCL 数据（PCL\\Setup.ini）";
+            ? "请选择 PCL 主程序"
+            : IsPclDirectoryValid
+                ? "已找到 PCL 数据"
+                : "该目录中未找到 PCL 数据（PCL\\Setup.ini）";
     }
 
     /// <summary>在常见位置自动探测 PCL 主程序，返回 exe 完整路径；未找到返回 null</summary>
