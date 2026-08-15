@@ -18,6 +18,7 @@ public partial class App : Application
 {
     private readonly object _crashLock = new();
     private bool _crashWindowShowing;
+    private bool _crashExitRequested;
 
     public override void Initialize()
     {
@@ -190,6 +191,14 @@ public partial class App : Application
                 lock (_crashLock)
                 {
                     _crashWindowShowing = false;
+                }
+
+                // 崩溃窗口关闭即退出应用（OnExplicitShutdown 不会自动退出）。
+                // 防重入：Shutdown 会再次关闭本窗口，避免重复触发。
+                if (!_crashExitRequested)
+                {
+                    _crashExitRequested = true;
+                    (ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.Shutdown(-1);
                 }
             };
             crashWindow.Show();

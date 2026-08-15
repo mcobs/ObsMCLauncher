@@ -6,14 +6,6 @@ namespace ObsMCLauncher.Desktop.Windows;
 
 public partial class DevConsoleWindow : Window
 {
-    private void TitleBar_PointerPressed(object? sender, PointerPressedEventArgs e)
-    {
-        if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
-        {
-            BeginMoveDrag(e);
-        }
-    }
-
     public DevConsoleWindow()
     {
         InitializeComponent();

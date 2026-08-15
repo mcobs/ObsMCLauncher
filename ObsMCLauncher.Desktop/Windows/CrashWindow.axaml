@@ -7,39 +7,15 @@
         Height="560" Width="860"
         MinHeight="420" MinWidth="640"
         WindowStartupLocation="CenterScreen"
-        ExtendClientAreaToDecorationsHint="True"
-        ExtendClientAreaChromeHints="NoChrome"
-        ExtendClientAreaTitleBarHeightHint="-1"
         Background="{DynamicResource BackgroundBrush}">
 
 <Window.Styles>
   </Window.Styles>
 
-  <Grid RowDefinitions="40,*,Auto">
-    <!-- 标题栏 -->
-    <Border Grid.Row="0"
-            Background="{DynamicResource SurfaceBrush}"
-            BorderBrush="{DynamicResource BorderBrush}"
-            BorderThickness="0,0,0,1"
-            PointerPressed="TitleBar_PointerPressed">
-      <Grid ColumnDefinitions="*,Auto">
-        <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="15,0" VerticalAlignment="Center">
-          <TextBlock Text="⚠" FontSize="18" Foreground="#DC3545" VerticalAlignment="Center"/>
-          <TextBlock Text="程序发生严重错误" FontSize="13" FontWeight="Medium" Margin="10,0,0,0" VerticalAlignment="Center"/>
-        </StackPanel>
-
-        <Button Grid.Column="1" Command="{Binding CloseCommand}"
-                Width="46" Height="40"
-                Background="Transparent"
-                HorizontalContentAlignment="Center"
-                VerticalContentAlignment="Center">
-          <TextBlock Text="✕" FontSize="14"/>
-        </Button>
-      </Grid>
-    </Border>
+  <Grid RowDefinitions="*,Auto">
 
     <!-- 内容区域 -->
-    <Grid Grid.Row="1" Margin="20">
+    <Grid Grid.Row="0" Margin="20">
       <Grid.RowDefinitions>
         <RowDefinition Height="Auto"/>
         <RowDefinition Height="Auto"/>
@@ -91,7 +67,7 @@
     </Grid>
 
     <!-- 底部按钮栏 -->
-    <Border Grid.Row="2"
+    <Border Grid.Row="1"
             Background="{DynamicResource SurfaceBrush}"
             BorderBrush="{DynamicResource BorderBrush}"
             BorderThickness="0,1,0,0"

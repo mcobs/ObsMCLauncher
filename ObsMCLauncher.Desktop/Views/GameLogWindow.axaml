@@ -9,9 +9,6 @@
         Height="600"
         MinWidth="600"
         MinHeight="400"
-        SystemDecorations="None"
-        ExtendClientAreaToDecorationsHint="True"
-        ExtendClientAreaChromeHints="PreferSystemChrome"
         WindowStartupLocation="CenterScreen"
         Closing="GameLogWindow_Closing">
 
@@ -21,32 +18,9 @@
     </Style>
   </Window.Styles>
 
-  <Grid RowDefinitions="40,*,Auto">
+  <Grid RowDefinitions="*,Auto">
 
-    <Border Grid.Row="0"
-            Background="{DynamicResource SurfaceBrush}"
-            BorderBrush="{DynamicResource BorderBrush}"
-            BorderThickness="0,0,0,1"
-            PointerPressed="TitleBar_PointerPressed">
-      <Grid ColumnDefinitions="*,Auto" Height="40">
-        <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="15,0,0,0" VerticalAlignment="Center" Spacing="10">
-          <TextBlock Text="⌘" FontSize="16" Foreground="{DynamicResource PrimaryBrush}" VerticalAlignment="Center" />
-          <TextBlock x:Name="TitleText" Text="游戏日志" FontSize="13" FontWeight="Medium" VerticalAlignment="Center" />
-        </StackPanel>
-
-        <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
-          <Button Width="46" Height="40" Background="Transparent" BorderThickness="0" Click="MinimizeButton_Click">
-            <TextBlock Text="—" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center" />
-          </Button>
-          <Button Width="46" Height="40" Background="Transparent" BorderThickness="0" Click="CloseButton_Click">
-            <TextBlock Text="✕" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center" />
-          </Button>
-        </StackPanel>
-
-      </Grid>
-    </Border>
-
-    <Border Grid.Row="1" Background="{DynamicResource BackgroundBrush}">
+    <Border Grid.Row="0" Background="{DynamicResource BackgroundBrush}">
       <ScrollViewer x:Name="LogScrollViewer"
                     VerticalScrollBarVisibility="Auto"
                     HorizontalScrollBarVisibility="Auto">
@@ -59,7 +33,7 @@
       </ScrollViewer>
     </Border>
 
-    <Border Grid.Row="2"
+    <Border Grid.Row="1"
             Background="{DynamicResource SurfaceBrush}"
             BorderBrush="{DynamicResource BorderBrush}"
             BorderThickness="0,1,0,0"

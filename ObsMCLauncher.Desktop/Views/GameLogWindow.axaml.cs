@@ -17,14 +17,6 @@ namespace ObsMCLauncher.Desktop.Views;
 
 public partial class GameLogWindow : Window
 {
-    private void TitleBar_PointerPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e)
-    {
-        if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
-        {
-            BeginMoveDrag(e);
-        }
-    }
-
     private int _lineCount = 0;
     private readonly List<string> _logMessages = [];
 
@@ -114,7 +106,7 @@ public partial class GameLogWindow : Window
 
     public GameLogWindow(string versionName) : this()
     {
-        TitleText.Text = $"游戏日志 - {versionName}";
+        Title = $"游戏日志 - {versionName}";
 
         AppendLog("游戏日志窗口已启动");
         AppendLog($"版本: {versionName}");
@@ -434,7 +426,4 @@ public partial class GameLogWindow : Window
     {
         return AnsiEscapeRegex().Replace(text, "");
     }
-
-    private void MinimizeButton_Click(object? sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
-    private void CloseButton_Click(object? sender, RoutedEventArgs e) => Close();
 }
