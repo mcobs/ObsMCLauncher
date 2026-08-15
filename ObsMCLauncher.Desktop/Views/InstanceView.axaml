@@ -699,11 +699,13 @@
     </Grid>
     </Border>
 
-    <!-- 分组管理弹窗：FluentAvalonia ContentDialog -->
-    <ui:ContentDialog x:Name="GroupManagerDialog"
-                      Title="分组管理"
-                      CloseButtonText="关闭">
-      <StackPanel Spacing="8" Width="380">
+    <!-- 分组管理弹窗：FluentAvalonia ContentDialog。
+         用始终隐藏的 Panel 包住，避免视图显示时触发主题 :hidden 淡出动画导致弹窗闪现 -->
+    <Panel IsVisible="False">
+      <ui:ContentDialog x:Name="GroupManagerDialog"
+                        Title="分组管理"
+                        CloseButtonText="关闭">
+        <StackPanel Spacing="8" Width="380">
         <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="300">
           <StackPanel>
             <ItemsControl ItemsSource="{Binding ManagedGroups}">
@@ -750,8 +752,9 @@
           <Button Grid.Column="1" Content="创建" Margin="8,0,0,0" Padding="14,0"
                   Command="{Binding CreateGroupCommand}"/>
         </Grid>
-      </StackPanel>
-    </ui:ContentDialog>
+        </StackPanel>
+      </ui:ContentDialog>
+    </Panel>
 
   </Panel>
 </UserControl>

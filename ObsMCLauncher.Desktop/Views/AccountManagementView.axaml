@@ -262,12 +262,14 @@
       </Panel>
     </Grid>
 
-    <!-- ===== 外置登录对话框（FluentAvalonia ContentDialog） ===== -->
-    <ui:ContentDialog x:Name="YggdrasilDialog"
-                      Title="外置登录"
-                      DefaultButton="None">
-      <Grid RowDefinitions="*,Auto" Width="460">
-        <Panel Grid.Row="0">
+    <!-- ===== 外置登录对话框（FluentAvalonia ContentDialog） =====
+         用始终隐藏的 Panel 包住，避免视图显示时触发主题 :hidden 淡出动画导致弹窗闪现 -->
+    <Panel IsVisible="False">
+      <ui:ContentDialog x:Name="YggdrasilDialog"
+                        Title="外置登录"
+                        DefaultButton="None">
+        <Grid RowDefinitions="*,Auto" Width="460">
+          <Panel Grid.Row="0">
 
           <!-- 登录表单 -->
           <ScrollViewer IsVisible="{Binding !YggdrasilLoginDialog.ShowServerManagement}" VerticalScrollBarVisibility="Auto">
@@ -396,7 +398,8 @@
                   IsVisible="{Binding !YggdrasilLoginDialog.ShowServerManagement}"/>
         </StackPanel>
       </Grid>
-    </ui:ContentDialog>
+      </ui:ContentDialog>
+    </Panel>
   </Grid>
 
 </UserControl>
