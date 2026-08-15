@@ -179,6 +179,11 @@ public class LauncherConfig
 
     public bool IsNavCollapsed { get; set; } = false;
 
+    /// <summary>
+    /// 是否已完成欢迎界面流程（false 时启动显示欢迎窗口）
+    /// </summary>
+    public bool WelcomeCompleted { get; set; } = false;
+
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public NotificationPosition NotificationPosition { get; set; } = NotificationPosition.Center;
 

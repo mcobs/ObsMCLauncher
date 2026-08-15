@@ -1,0 +1,131 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:controls="using:ObsMCLauncher.Desktop.Controls"
+             mc:Ignorable="d" d:DesignWidth="700" d:DesignHeight="480"
+             x:Class="ObsMCLauncher.Desktop.Controls.OobeIntroAnimationControl"
+             Loaded="Control_OnLoaded"
+             Opacity="0">
+    <UserControl.RenderTransform>
+        <ScaleTransform />
+    </UserControl.RenderTransform>
+
+    <UserControl.Styles>
+        <!-- 整体缩放入场：1.25 倍缩放 + 淡入 -->
+        <Style Selector="controls|OobeIntroAnimationControl.anim">
+            <Style.Animations>
+                <Animation Duration="0:0:4.8" Easing="0.00, 0.83, 0.17, 0.90" FillMode="Both">
+                    <KeyFrame Cue="0%">
+                        <Setter Property="ScaleTransform.ScaleX" Value="1.25" />
+                        <Setter Property="ScaleTransform.ScaleY" Value="1.25" />
+                        <Setter Property="Opacity" Value="0.0" />
+                    </KeyFrame>
+                    <KeyFrame Cue="100%">
+                        <Setter Property="ScaleTransform.ScaleX" Value="1.0" />
+                        <Setter Property="ScaleTransform.ScaleY" Value="1.0" />
+                        <Setter Property="Opacity" Value="1.0" />
+                    </KeyFrame>
+                </Animation>
+            </Style.Animations>
+        </Style>
+
+        <!-- 字母占位方块：初始在下方 50 偏移处待入场（RenderTransform 由代码逐个创建，避免共享实例） -->
+        <Style Selector="Border.block">
+            <Setter Property="Width" Value="32" />
+            <Setter Property="Height" Value="32" />
+            <Setter Property="Background" Value="{DynamicResource ControlStrongFillColorDefaultBrush}" />
+            <Setter Property="Opacity" Value="0" />
+            <Setter Property="RenderTransformOrigin" Value="0, 12" />
+            <!-- 品牌方块：M 位置，拉宽盖住 M、C 两个位置并变主题绿，压轴才翻走 -->
+            <Style Selector="^.anim.sp-anim">
+                <Setter Property="Panel.ZIndex" Value="33550336" />
+                <Style.Animations>
+                    <Animation Delay="0:0:0.49" Duration="0:0:0.4" Easing="0.76, 0, 0.24, 1" FillMode="Forward">
+                        <KeyFrame Cue="0%">
+                            <Setter Property="ScaleTransform.ScaleX" Value="1" />
+                        </KeyFrame>
+                        <KeyFrame Cue="100%">
+                            <Setter Property="ScaleTransform.ScaleX" Value="2.17" />
+                            <Setter Property="Background" Value="#10B981" />
+                        </KeyFrame>
+                    </Animation>
+                </Style.Animations>
+            </Style>
+            <Style Selector="^.anim.sp-anim2">
+            </Style>
+        </Style>
+
+        <Style Selector="TextBlock">
+            <Setter Property="MinWidth" Value="32" />
+            <Setter Property="FontWeight" Value="Medium" />
+            <Setter Property="Opacity" Value="0" />
+            <Setter Property="TextAlignment" Value="Center" />
+        </Style>
+
+        <!-- 入场完成后字母间距收拢 -->
+        <Style Selector="StackPanel.anim">
+            <Style.Animations>
+                <Animation Duration="0:0:1.1" Easing="0.33, 1, 0.68, 1" FillMode="Both">
+                    <KeyFrame Cue="0%">
+                        <Setter Property="Spacing" Value="4" />
+                    </KeyFrame>
+                    <KeyFrame Cue="100%">
+                        <Setter Property="Spacing" Value="0" />
+                    </KeyFrame>
+                </Animation>
+            </Style.Animations>
+            <Style Selector="^ TextBlock">
+                <Style.Animations>
+                    <Animation Duration="0:0:1.1" Easing="0.33, 1, 0.68, 1" FillMode="Both">
+                        <KeyFrame Cue="0%">
+                            <Setter Property="MinWidth" Value="32" />
+                        </KeyFrame>
+                        <KeyFrame Cue="100%">
+                            <Setter Property="MinWidth" Value="0" />
+                        </KeyFrame>
+                    </Animation>
+                </Style.Animations>
+            </Style>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid>
+        <StackPanel x:Name="Rects" Orientation="Horizontal"
+                    VerticalAlignment="Center" HorizontalAlignment="Center"
+                    TextElement.FontSize="32"
+                    TextElement.FontWeight="Medium"
+                    Spacing="4">
+            <Border Classes="block" />
+            <Border Classes="block" />
+            <Border Classes="block" />
+            <Border Classes="block sp-anim" />
+            <Border Classes="block sp-anim2" />
+            <Border Classes="block" />
+            <Border Classes="block" />
+            <Border Classes="block" />
+            <Border Classes="block" />
+            <Border Classes="block" />
+            <Border Classes="block" />
+            <Border Classes="block" />
+            <Border Classes="block" />
+        </StackPanel>
+        <StackPanel x:Name="Texts" Orientation="Horizontal"
+                    VerticalAlignment="Center" HorizontalAlignment="Center"
+                    TextElement.FontSize="32">
+            <TextBlock Text="O" />
+            <TextBlock Text="b" />
+            <TextBlock Text="s" />
+            <TextBlock Text="M" />
+            <TextBlock Text="C" />
+            <TextBlock Text="L" />
+            <TextBlock Text="a" />
+            <TextBlock Text="u" />
+            <TextBlock Text="n" />
+            <TextBlock Text="c" />
+            <TextBlock Text="h" />
+            <TextBlock Text="e" />
+            <TextBlock Text="r" />
+        </StackPanel>
+    </Grid>
+</UserControl>

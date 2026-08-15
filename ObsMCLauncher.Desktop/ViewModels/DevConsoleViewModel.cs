@@ -38,6 +38,7 @@ public partial class DevConsoleViewModel : ObservableObject
         _commands["crash"] = _ => ShowCrash();
         _commands["throw"] = args => ThrowException(args);
         _commands["update"] = args => ShowUpdateDialog(args);
+        _commands["welcome"] = args => ShowWelcomeCommand(args);
     }
 
     private void ShowHelp()
@@ -49,6 +50,8 @@ public partial class DevConsoleViewModel : ObservableObject
   crash                直接打开崩溃窗口（不抛未处理异常）
   throw <msg>          抛出一个未处理异常（msg 可选）
   update [tag]         测试更新对话框（tag 可选，默认 v9.9.9）
+  welcome              打开欢迎窗口（不影响完成标记）
+  welcome reset        重置欢迎界面完成标记（下次启动重新显示）
 ";
         AppendOutput(help);
     }
@@ -153,6 +156,28 @@ public partial class DevConsoleViewModel : ObservableObject
         catch (Exception ex)
         {
             AppendOutput($"[error] 打开更新对话框失败: {ex.Message}");
+        }
+    }
+
+    private void ShowWelcomeCommand(string[] args)
+    {
+        if (args.Length > 0 && args[0].Equals("reset", StringComparison.OrdinalIgnoreCase))
+        {
+            var config = LauncherConfig.Load();
+            config.WelcomeCompleted = false;
+            config.Save();
+            AppendOutput("[info] 已重置欢迎界面完成标记，下次启动将重新显示欢迎窗口");
+            return;
+        }
+
+        try
+        {
+            App.ShowWelcomeWindow();
+            AppendOutput("[info] 已打开欢迎窗口");
+        }
+        catch (Exception ex)
+        {
+            AppendOutput($"[error] 打开欢迎窗口失败: {ex.Message}");
         }
     }
 

@@ -40,24 +40,80 @@ public partial class App : Application
             // 设置为显式关闭模式，防止异常时应用自动退出
             desktop.ShutdownMode = Avalonia.Controls.ShutdownMode.OnExplicitShutdown;
 
+            SetupExceptionHandling(desktop);
+
             ObsMCLauncher.Core.Bootstrap.LauncherBootstrap.Initialize();
 
             var config = ObsMCLauncher.Core.Models.LauncherConfig.Load();
             ObsMCLauncher.Core.Services.UpdateService.Initialize(config.UpdateChannel);
 
-            desktop.MainWindow = new MainWindow
+            // 首次启动：默认使用深色主题（0=深色），并立即落盘
+            // （必须在创建 MainWindowViewModel 之前，主题由 SettingsViewModel 构造时应用）
+            if (!config.WelcomeCompleted && config.ThemeMode != 0)
+            {
+                config.ThemeMode = 0;
+                config.Save();
+            }
+
+            var mainWindow = new MainWindow
             {
                 DataContext = new MainWindowViewModel(),
             };
 
-            SetupExceptionHandling(desktop);
+            if (!config.WelcomeCompleted)
+            {
+                // 首次启动：只显示欢迎窗口，流程完成后才显示主界面
+                var welcome = new WelcomeWindow(isFirstRun: true);
+                welcome.Closed += (_, _) =>
+                {
+                    if (welcome.IsCompleted)
+                    {
+                        // MainWindow 是普通属性，运行期重新赋值不会自动 Show，需手动显示
+                        desktop.MainWindow = mainWindow;
+                        mainWindow.Show();
+                    }
+                    else if (!IsCrashFlowActive)
+                    {
+                        // 未完成流程即关闭欢迎窗口：视为取消启动
+                        desktop.Shutdown();
+                    }
+                };
+                desktop.MainWindow = welcome;
+            }
+            else
+            {
+                desktop.MainWindow = mainWindow;
+            }
         }
 
         base.OnFrameworkInitializationCompleted();
     }
 
-    private void SetupExceptionHandling(IClassicDesktopStyleApplicationLifetime desktop)
+    /// <summary>
+    /// 开发者控制台 welcome 指令：手动打开欢迎窗口（不影响完成标记）。
+    /// </summary>
+    public static void ShowWelcomeWindow()
     {
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            var welcome = new WelcomeWindow(isFirstRun: false);
+            welcome.Show();
+        });
+    }
+
+    /// <summary>崩溃窗口流程是否激活（此时关闭其他窗口不应触发退出逻辑）</summary>
+    private bool IsCrashFlowActive
+    {
+        get
+        {
+            lock (_crashLock)
+            {
+                return _crashWindowShowing;
+            }
+        }
+    }
+
+    private void SetupExceptionHandling(IClassicDesktopStyleApplicationLifetime desktop)    {
         AppDomain.CurrentDomain.UnhandledException += (s, e) =>
         {
             ShowCrashWindow(e.ExceptionObject as Exception);

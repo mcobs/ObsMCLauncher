@@ -1,0 +1,83 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ObsMCLauncher.Desktop.ViewModels"
+             xmlns:controls="using:ObsMCLauncher.Desktop.Controls"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="700" d:DesignHeight="480"
+             x:Class="ObsMCLauncher.Desktop.Views.WelcomePageView"
+             x:DataType="vm:WelcomePageViewModel">
+
+    <UserControl.Styles>
+        <!-- 开场动画结束后内容区淡入 -->
+        <Style Selector="Grid#ContentRoot.anim">
+            <Style.Animations>
+                <Animation Duration="0:0:0.2" FillMode="Both">
+                    <KeyFrame Cue="0%">
+                        <Setter Property="Opacity" Value="0.0" />
+                    </KeyFrame>
+                    <KeyFrame Cue="100%">
+                        <Setter Property="Opacity" Value="1.0" />
+                    </KeyFrame>
+                </Animation>
+            </Style.Animations>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid>
+        <Grid x:Name="ContentRoot" Opacity="0.0" RowDefinitions="*,Auto,*">
+            <Image Grid.Row="0" VerticalAlignment="Bottom"
+                   HorizontalAlignment="Center"
+                   Margin="0 0 0 8"
+                   Source="/Assets/logo.png"
+                   Height="80" Width="80" />
+
+            <!-- 占位标题行：为开场动画的字母留出居中位置（动画结束后字母停留在原处） -->
+            <StackPanel Grid.Row="1" Orientation="Horizontal"
+                        x:Name="TextsMain"
+                        Opacity="0"
+                        VerticalAlignment="Center" HorizontalAlignment="Center"
+                        TextElement.FontSize="32">
+                <StackPanel.Styles>
+                    <Style Selector="StackPanel">
+                        <Style Selector="^ TextBlock">
+                            <Setter Property="FontWeight" Value="Medium" />
+                            <Setter Property="TextAlignment" Value="Center" />
+                        </Style>
+                    </Style>
+                </StackPanel.Styles>
+                <TextBlock Text="O" />
+                <TextBlock Text="b" />
+                <TextBlock Text="s" />
+                <TextBlock Text="M" />
+                <TextBlock Text="C" />
+                <TextBlock Text="L" />
+                <TextBlock Text="a" />
+                <TextBlock Text="u" />
+                <TextBlock Text="n" />
+                <TextBlock Text="c" />
+                <TextBlock Text="h" />
+                <TextBlock Text="e" />
+                <TextBlock Text="r" />
+            </StackPanel>
+
+            <Button Grid.Row="2"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Top"
+                    Width="48" Height="48"
+                    CornerRadius="24"
+                    Classes="accent"
+                    ToolTip.Tip="开始使用"
+                    Command="{Binding CompleteCommand}"
+                    Margin="0 16 0 0">
+                <ui:SymbolIcon Symbol="ChevronRight" FontSize="18" />
+            </Button>
+        </Grid>
+
+        <!-- 开场动画：方块翻入字母，结束后触发下方内容淡入 -->
+        <controls:OobeIntroAnimationControl x:Name="Intro"
+                                            AnimationEnd="Intro_OnAnimationEnd" />
+    </Grid>
+
+</UserControl>
