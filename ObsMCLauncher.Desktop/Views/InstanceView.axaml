@@ -300,6 +300,39 @@
                                IsVisible="{Binding IsMemoryHintWarning}"/>
                   </StackPanel>
                 </StackPanel>
+
+                <Separator Background="{DynamicResource DividerBrush}"/>
+
+                <!-- Java 与 JVM 参数 -->
+                <StackPanel Spacing="10">
+                  <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel>
+                      <TextBlock Text="Java 路径" FontSize="14" FontWeight="Medium"/>
+                      <TextBlock Text="为此版本指定单独的 Java" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,1,0,0"/>
+                    </StackPanel>
+                    <ToggleSwitch Grid.Column="1" IsChecked="{Binding UseCustomJava}" OnContent="自定义" OffContent="跟随全局"/>
+                  </Grid>
+
+                  <StackPanel Spacing="6" IsVisible="{Binding UseCustomJava}">
+                    <Separator Background="{DynamicResource DividerBrush}"/>
+                    <TextBox Text="{Binding CustomJavaPath}" Watermark="javaw.exe 的完整路径"
+                             FontSize="12" HorizontalAlignment="Stretch"/>
+                  </StackPanel>
+
+                  <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel>
+                      <TextBlock Text="JVM 参数" FontSize="14" FontWeight="Medium"/>
+                      <TextBlock Text="{Binding GlobalJvmText}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,1,0,0" TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+                    <ToggleSwitch Grid.Column="1" IsChecked="{Binding UseCustomJvm}" OnContent="自定义" OffContent="跟随全局"/>
+                  </Grid>
+
+                  <StackPanel Spacing="6" IsVisible="{Binding UseCustomJvm}">
+                    <Separator Background="{DynamicResource DividerBrush}"/>
+                    <TextBox Text="{Binding InstanceJvmArguments}" Watermark="如 -XX:+UseG1GC -Xss1M"
+                             FontSize="12" HorizontalAlignment="Stretch"/>
+                  </StackPanel>
+                </StackPanel>
               </StackPanel>
             </StackPanel>
           </ScrollViewer>

@@ -125,6 +125,19 @@ public static class VersionInitService
     public static void SetDescription(string versionPath, string description) =>
         Update(versionPath, d => d.Description = description ?? "");
 
+    // ===== 实例级 JVM 参数 =====
+    public static string GetJvmArguments(string versionPath) => Load(versionPath).JvmArguments;
+
+    public static void SetJvmArguments(string versionPath, string jvmArguments) =>
+        Update(versionPath, d => d.JvmArguments = jvmArguments ?? "");
+
+    // ===== 实例级 Java 路径 =====
+    public static string GetCustomJavaPath(string versionPath) => Load(versionPath).CustomJavaPath;
+
+    public static void SetCustomJavaPath(string versionPath, string javaPath) =>
+        Update(versionPath, d => d.CustomJavaPath = javaPath ?? "");
+
+
     /// <summary>
     /// 按约定格式生成默认描述：
     /// &lt;版本类型&gt;,&lt;版本&gt;,&lt;加载器&gt;&lt;optifine版本（可选）&gt;，&lt;其他信息（可选）&gt;

@@ -53,7 +53,7 @@ public class GameLauncher
             onProgressUpdate?.Invoke("正在验证Java环境...");
             cancellationToken.ThrowIfCancellationRequested();
 
-            var actualJavaPath = config.GetActualJavaPath(actualMcVersion);
+            var actualJavaPath = ResolveJavaPath(config, versionId, actualMcVersion);
             if (!File.Exists(actualJavaPath))
             {
                 errorMessage = $"Java路径不存在: {actualJavaPath}";
@@ -232,7 +232,7 @@ public class GameLauncher
             onProgressUpdate?.Invoke("正在验证Java环境...");
             cancellationToken.ThrowIfCancellationRequested();
 
-            var actualJavaPath = config.GetActualJavaPath(actualMcVersion);
+            var actualJavaPath = ResolveJavaPath(config, versionId, actualMcVersion);
             if (!File.Exists(actualJavaPath))
             {
                 errorMessage = $"Java可执行文件不存在\n路径: {actualJavaPath}";
@@ -423,6 +423,20 @@ public class GameLauncher
         }
     }
 
+    /// <summary>
+    /// 解析实际使用的 Java 路径：实例级配置优先，未设置时走全局选择逻辑
+    /// </summary>
+    private static string ResolveJavaPath(LauncherConfig config, string versionId, string actualMcVersion)
+    {
+        var versionDir = Path.Combine(config.GameDirectory, "versions", versionId);
+        var instanceJava = VersionInitService.GetCustomJavaPath(versionDir);
+        if (!string.IsNullOrWhiteSpace(instanceJava))
+        {
+            return instanceJava;
+        }
+        return config.GetActualJavaPath(actualMcVersion);
+    }
+
     public static string BuildLaunchArguments(string versionId, GameAccount account, LauncherConfig config, VersionInfo versionInfo, string? serverAddress = null, int serverPort = 25565)
     {
         var args = new StringBuilder();
@@ -453,10 +467,14 @@ public class GameLauncher
             }
         }
 
-        if (!string.IsNullOrWhiteSpace(config.JvmArguments))
+        // 实例级 JVM 参数优先，其次全局配置
+        var instanceJvm = VersionInitService.GetJvmArguments(versionDir);
+        var effectiveJvm = string.IsNullOrWhiteSpace(instanceJvm) ? config.JvmArguments : instanceJvm;
+
+        if (!string.IsNullOrWhiteSpace(effectiveJvm))
         {
             // 对用户自定义JVM参数同样进行过滤，避免不兼容参数导致启动失败
-            var userJvmArgs = config.JvmArguments.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            var userJvmArgs = effectiveJvm.Split(' ', StringSplitOptions.RemoveEmptyEntries);
             foreach (var userArg in userJvmArgs)
             {
                 if (!ShouldSkipJvmArg(userArg))

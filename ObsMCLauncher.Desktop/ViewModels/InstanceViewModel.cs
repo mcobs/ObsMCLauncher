@@ -114,6 +114,22 @@ public partial class InstanceViewModel : ViewModelBase
     [ObservableProperty]
     private bool _isMemoryHintWarning;
 
+    // 实例级 Java 与 JVM 参数
+    [ObservableProperty]
+    private bool _useCustomJava;
+
+    [ObservableProperty]
+    private string _customJavaPath = "";
+
+    [ObservableProperty]
+    private bool _useCustomJvm;
+
+    [ObservableProperty]
+    private string _instanceJvmArguments = "";
+
+    [ObservableProperty]
+    private string _globalJvmText = "";
+
     // 描述
     [ObservableProperty]
     private string _description = "";
@@ -236,6 +252,13 @@ public partial class InstanceViewModel : ViewModelBase
         data.CustomMinMemory = min ?? config.MinMemory;
         data.GlobalMaxMemory = config.MaxMemory;
 
+        // 实例级 Java 与 JVM 参数
+        data.CustomJavaPath = Core.Services.VersionInitService.GetCustomJavaPath(_versionPath);
+        data.UseCustomJava = !string.IsNullOrWhiteSpace(data.CustomJavaPath);
+        data.InstanceJvmArguments = Core.Services.VersionInitService.GetJvmArguments(_versionPath);
+        data.UseCustomJvm = !string.IsNullOrWhiteSpace(data.InstanceJvmArguments);
+        data.GlobalJvmArguments = config.JvmArguments;
+
         // 描述
         data.Description = Core.Services.VersionInitService.GetDescription(_versionPath);
 
@@ -261,6 +284,11 @@ public partial class InstanceViewModel : ViewModelBase
         CustomMaxMemory = data.CustomMaxMemory;
         CustomMinMemory = data.CustomMinMemory;
         GlobalMemoryText = $"全局: {data.GlobalMaxMemory} MB";
+        UseCustomJava = data.UseCustomJava;
+        CustomJavaPath = data.CustomJavaPath;
+        UseCustomJvm = data.UseCustomJvm;
+        InstanceJvmArguments = data.InstanceJvmArguments;
+        GlobalJvmText = $"全局: {data.GlobalJvmArguments}";
         Description = data.Description;
         EditingDescription = data.Description;
 
@@ -951,6 +979,36 @@ public partial class InstanceViewModel : ViewModelBase
         }
     }
 
+    partial void OnUseCustomJavaChanged(bool value)
+    {
+        if (_version == null || _isLoadingConfig) return;
+        Core.Services.VersionInitService.SetCustomJavaPath(_versionPath, value ? CustomJavaPath : "");
+    }
+
+    partial void OnCustomJavaPathChanged(string value)
+    {
+        if (_version == null || _isLoadingConfig) return;
+        if (UseCustomJava)
+        {
+            Core.Services.VersionInitService.SetCustomJavaPath(_versionPath, value ?? "");
+        }
+    }
+
+    partial void OnUseCustomJvmChanged(bool value)
+    {
+        if (_version == null || _isLoadingConfig) return;
+        Core.Services.VersionInitService.SetJvmArguments(_versionPath, value ? InstanceJvmArguments : "");
+    }
+
+    partial void OnInstanceJvmArgumentsChanged(string value)
+    {
+        if (_version == null || _isLoadingConfig) return;
+        if (UseCustomJvm)
+        {
+            Core.Services.VersionInitService.SetJvmArguments(_versionPath, value ?? "");
+        }
+    }
+
     [RelayCommand]
     private void StartEditDescription()
     {
@@ -1312,6 +1370,12 @@ public partial class InstanceViewModel : ViewModelBase
         public int CustomMaxMemory { get; set; }
         public int CustomMinMemory { get; set; }
         public int GlobalMaxMemory { get; set; }
+
+        public bool UseCustomJava { get; set; }
+        public string CustomJavaPath { get; set; } = "";
+        public bool UseCustomJvm { get; set; }
+        public string InstanceJvmArguments { get; set; } = "";
+        public string GlobalJvmArguments { get; set; } = "";
         public string Description { get; set; } = "";
     }
 

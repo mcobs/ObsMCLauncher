@@ -41,4 +41,14 @@ public class VersionInitData
     /// 版本描述
     /// </summary>
     public string Description { get; set; } = "";
+
+    /// <summary>
+    /// 实例级 JVM 参数，空串表示跟随全局设置
+    /// </summary>
+    public string JvmArguments { get; set; } = "";
+
+    /// <summary>
+    /// 实例级 Java 路径，空串表示跟随全局设置
+    /// </summary>
+    public string CustomJavaPath { get; set; } = "";
 }
