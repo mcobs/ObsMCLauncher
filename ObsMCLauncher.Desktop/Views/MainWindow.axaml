@@ -1,6 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:ObsMCLauncher.Desktop.ViewModels"
+        xmlns:views="using:ObsMCLauncher.Desktop.Views"
         xmlns:ui="using:FluentAvalonia.UI.Controls"
         xmlns:converters="using:ObsMCLauncher.Desktop.Converters"
         xmlns:notif="using:ObsMCLauncher.Desktop.ViewModels.Notifications"
@@ -60,16 +61,6 @@
 
         <Style Selector="ui|NavigationView /template/ Button#TogglePaneButton:pressed /template/ Border#LayoutRoot">
             <Setter Property="Background" Value="{DynamicResource SurfaceElevatedBrush}" />
-        </Style>
-
-        <Style Selector="Border.notification-card">
-            <Setter Property="CornerRadius" Value="10" />
-            <Setter Property="ClipToBounds" Value="True" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
-            <Setter Property="Background" Value="{DynamicResource SurfaceElevatedBrush}" />
-            <Setter Property="Padding" Value="16,12" />
-            <Setter Property="BoxShadow" Value="0 8 24 0 #40000000" />
         </Style>
 
         <Style Selector="Border.dialog-card">
@@ -616,71 +607,7 @@
 
             <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="notif:NotificationItemViewModel">
-                    <Border Classes="notification-card" 
-                            Width="{Binding CardWidth}"
-                            IsHitTestVisible="True"
-                            Opacity="{Binding AnimationOpacity}"
-                            RenderTransformOrigin="0.5,0"
-                            Tapped="OnNotificationTapped"
-                            PointerPressed="OnNotificationPointerPressed"
-                            PointerMoved="OnNotificationPointerMoved"
-                            PointerReleased="OnNotificationPointerReleased">
-                        <Border.RenderTransform>
-                            <TransformGroup>
-                                <ScaleTransform ScaleX="{Binding AnimationScale}" ScaleY="{Binding AnimationScale}" />
-                                <TranslateTransform X="{Binding AnimationOffsetX}" Y="{Binding AnimationOffsetY}" />
-                            </TransformGroup>
-                        </Border.RenderTransform>
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
-
-                            <Border Grid.Row="0" Grid.Column="0"
-                                    Width="4" Height="16"
-                                    CornerRadius="2"
-                                    VerticalAlignment="Center"
-                                    Margin="0,0,10,0"
-                                    Background="{Binding TypeAccentColor}" />
-
-                            <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Title}" FontWeight="Medium" FontSize="13"/>
-                            <Button Grid.Row="0" Grid.Column="2"
-                                    Width="24" Height="24"
-                                    Classes="ghost" Padding="0"
-                                    IsVisible="{Binding CanClose}"
-                                    Command="{Binding CloseCommand}">
-                                <Path Data="M6 6L18 18M6 18L18 6" 
-                                      Width="10" Height="10"
-                                      Stretch="Uniform"
-                                      Stroke="{DynamicResource TextSecondaryBrush}" StrokeThickness="2"/>
-                            </Button>
-
-                            <TextBlock Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding Message}" Opacity="0.8" TextWrapping="Wrap" FontSize="12" Margin="0,4,0,0"/>
-
-                            <ProgressBar Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2"
-                                         Height="3"
-                                         Minimum="0" Maximum="100"
-                                         Value="{Binding DisplayProgress}"
-                                         IsIndeterminate="False"
-                                         IsVisible="{Binding IsProgress}"
-                                         Margin="0,8,0,0" />
-
-                            <ProgressBar Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2"
-                                         Height="3"
-                                         Minimum="0" Maximum="100"
-                                         Value="{Binding DisplayCountdownProgress}"
-                                         IsIndeterminate="False"
-                                         IsVisible="{Binding IsCountdown}"
-                                         Margin="0,8,0,0" />
-                        </Grid>
-                    </Border>
+                    <views:NotificationCardView />
                 </DataTemplate>
             </ItemsControl.ItemTemplate>
         </ItemsControl>

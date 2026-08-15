@@ -148,6 +148,11 @@
     <SolidColorBrush x:Key="SubtleFillColorTertiaryBrush" Color="#1C1F26"/>
     <SolidColorBrush x:Key="ControlFillColorDefaultBrush" Color="#141619"/>
 
+    <!-- ===== InfoBar 信息级通知背景 =====
+         Fluent 默认的 Informational 背景为 50% 透明度（#80FFFFFF/#80F6F6F6），
+         通知悬浮在内容上时难以阅读，改为不透明表面色（随深浅色切换）。 -->
+    <SolidColorBrush x:Key="InfoBarInformationalSeverityBackgroundBrush" Color="#1C1F26"/>
+
   </Styles.Resources>
 
   <Style Selector="TextBlock">

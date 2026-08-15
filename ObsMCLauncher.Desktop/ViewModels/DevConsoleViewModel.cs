@@ -10,6 +10,7 @@ using ObsMCLauncher.Core.Services;
 using ObsMCLauncher.Core.Services.Minecraft;
 using ObsMCLauncher.Core.Utils;
 using ObsMCLauncher.Desktop.ViewModels.Dialogs;
+using ObsMCLauncher.Desktop.ViewModels.Notifications;
 
 namespace ObsMCLauncher.Desktop.ViewModels;
 
@@ -39,6 +40,7 @@ public partial class DevConsoleViewModel : ObservableObject
         _commands["throw"] = args => ThrowException(args);
         _commands["update"] = args => ShowUpdateDialog(args);
         _commands["welcome"] = args => ShowWelcomeCommand(args);
+        _commands["notify"] = args => ShowNotifyCommand(args);
     }
 
     private void ShowHelp()
@@ -52,6 +54,7 @@ public partial class DevConsoleViewModel : ObservableObject
   update [tag]         测试更新对话框（tag 可选，默认 v9.9.9）
   welcome              打开欢迎窗口（不影响完成标记）
   welcome reset        重置欢迎界面完成标记（下次启动重新显示）
+  notify [类型]        发送测试通知（info/success/warning/error/progress/countdown，默认全部）
 ";
         AppendOutput(help);
     }
@@ -179,6 +182,58 @@ public partial class DevConsoleViewModel : ObservableObject
         {
             AppendOutput($"[error] 打开欢迎窗口失败: {ex.Message}");
         }
+    }
+
+    /// <summary>notify 命令：发送测试通知，用于验证通知卡片（InfoBar）的样式与动画</summary>
+    private void ShowNotifyCommand(string[] args)
+    {
+        var notif = NavigationStore.MainWindow?.Notifications;
+        if (notif == null)
+        {
+            AppendOutput("[error] 无法获取 NotificationService");
+            return;
+        }
+
+        var type = args.Length > 0 ? args[0].ToLower() : "all";
+        switch (type)
+        {
+            case "info":
+                notif.Show("提示", "这是一条信息通知", NotificationType.Info);
+                break;
+            case "success":
+                notif.Show("成功", "操作已成功完成", NotificationType.Success);
+                break;
+            case "warning":
+                notif.Show("警告", "磁盘空间不足，请及时清理", NotificationType.Warning);
+                break;
+            case "error":
+                notif.Show("错误", "下载失败，请检查网络后重试", NotificationType.Error);
+                break;
+            case "progress":
+            {
+                var id = notif.Show("下载中", "正在下载资源文件... 0%", NotificationType.Progress);
+                double p = 0;
+                var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(300) };
+                timer.Tick += (_, _) =>
+                {
+                    p = Math.Min(100, p + 10);
+                    notif.Update(id, $"正在下载资源文件... {p:0}%", p);
+                    if (p >= 100) timer.Stop();
+                };
+                timer.Start();
+                break;
+            }
+            case "countdown":
+                notif.ShowCountdown("重启生效", "插件已安装，重启启动器后生效", 5);
+                break;
+            default:
+                notif.Show("提示", "这是一条信息通知", NotificationType.Info);
+                notif.Show("成功", "操作已成功完成", NotificationType.Success);
+                notif.Show("警告", "磁盘空间不足，请及时清理", NotificationType.Warning);
+                break;
+        }
+
+        AppendOutput($"[info] 已发送通知: {type}");
     }
 
     private void AppendOutput(string text)

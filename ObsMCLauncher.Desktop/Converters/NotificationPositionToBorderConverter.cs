@@ -23,7 +23,7 @@ public class NotificationPositionToBorderConverter : IValueConverter
         };
 
         return isSelected
-            ? new SolidColorBrush(Color.Parse("#4A90D9"))
+            ? new SolidColorBrush(Color.Parse("#10B981")) // 与启动器强调色一致
             : Brushes.Transparent;
     }
 

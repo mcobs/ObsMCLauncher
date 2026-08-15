@@ -1,0 +1,71 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
+             xmlns:notif="using:ObsMCLauncher.Desktop.ViewModels.Notifications"
+             x:Class="ObsMCLauncher.Desktop.Views.NotificationCardView"
+             x:DataType="notif:NotificationItemViewModel">
+
+    <!-- 通知卡片：FluentAvalonia InfoBar + 进度条，进出场由 XAML 过渡动画驱动 -->
+    <Border x:Name="RootCard"
+            Width="{Binding CardWidth}"
+            CornerRadius="8"
+            ClipToBounds="True"
+            BoxShadow="0 8 24 0 #40000000"
+            Opacity="{Binding AnimationOpacity}"
+            RenderTransformOrigin="0.5,0"
+            PointerEntered="OnPointerEntered"
+            PointerExited="OnPointerExited"
+            PointerPressed="OnPointerPressed"
+            PointerMoved="OnPointerMoved"
+            PointerReleased="OnPointerReleased"
+            Tapped="OnTapped">
+        <Border.RenderTransform>
+            <TransformGroup>
+                <ScaleTransform ScaleX="{Binding AnimationScale}" ScaleY="{Binding AnimationScale}" />
+                <TranslateTransform X="{Binding AnimationOffsetX}" Y="{Binding AnimationOffsetY}" />
+            </TransformGroup>
+        </Border.RenderTransform>
+        <Border.Transitions>
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.2" Easing="CubicEaseOut" />
+                <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.25" Easing="CubicEaseOut" />
+            </Transitions>
+        </Border.Transitions>
+
+        <Grid>
+            <ui:InfoBar Severity="{Binding Severity}"
+                        Title="{Binding Title}"
+                        Message="{Binding Message}"
+                        IsOpen="True"
+                        IsClosable="True"
+                        IsIconVisible="True"
+                        CloseButtonCommand="{Binding CloseCommand}" />
+
+            <!-- 进度条叠在卡片底部边缘，Fluent Toast 惯例位置 -->
+            <ProgressBar IsVisible="{Binding IsProgress}"
+                         Value="{Binding Progress}"
+                         Minimum="0" Maximum="100"
+                         Height="3"
+                         VerticalAlignment="Bottom">
+                <ProgressBar.Transitions>
+                    <Transitions>
+                        <DoubleTransition Property="Value" Duration="0:0:0.25" Easing="CubicEaseOut" />
+                    </Transitions>
+                </ProgressBar.Transitions>
+            </ProgressBar>
+
+            <ProgressBar IsVisible="{Binding IsCountdown}"
+                         Value="{Binding CountdownProgress}"
+                         Minimum="0" Maximum="100"
+                         Height="3"
+                         VerticalAlignment="Bottom">
+                <ProgressBar.Transitions>
+                    <Transitions>
+                        <DoubleTransition Property="Value" Duration="0:0:0.12" Easing="LinearEasing" />
+                    </Transitions>
+                </ProgressBar.Transitions>
+            </ProgressBar>
+        </Grid>
+    </Border>
+
+</UserControl>

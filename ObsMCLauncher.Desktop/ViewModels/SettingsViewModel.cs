@@ -1196,6 +1196,7 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
         resources["SubtleFillColorSecondaryBrush"] = new SolidColorBrush(Color.Parse("#E8ECF1"));
         resources["SubtleFillColorTertiaryBrush"] = new SolidColorBrush(Color.Parse("#F1F5F9"));
         resources["ControlFillColorDefaultBrush"] = new SolidColorBrush(Color.Parse("#FFFFFF"));
+        resources["InfoBarInformationalSeverityBackgroundBrush"] = new SolidColorBrush(Color.Parse("#FFFFFF"));
     }
 
     private void ApplyDarkTheme(IResourceDictionary resources)
@@ -1249,6 +1250,7 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
         resources["SubtleFillColorSecondaryBrush"] = new SolidColorBrush(Color.Parse("#252830"));
         resources["SubtleFillColorTertiaryBrush"] = new SolidColorBrush(Color.Parse("#1C1F26"));
         resources["ControlFillColorDefaultBrush"] = new SolidColorBrush(Color.Parse("#141619"));
+        resources["InfoBarInformationalSeverityBackgroundBrush"] = new SolidColorBrush(Color.Parse("#1C1F26"));
     }
 
     private void OnSystemThemeChanged(object? sender, EventArgs e)
