@@ -19,7 +19,7 @@
         </Style>
     </UserControl.Styles>
 
-    <!-- 仿 ClassIsland 数据迁移向导：Carousel 分步（选来源 → 选数据 → 导入中 → 完成） -->
+    <!-- 仿 ClassIsland 数据迁移向导：Carousel 分步（选来源 → 配置导入 → 导入中 → 完成） -->
     <Grid Width="600" VerticalAlignment="Stretch" HorizontalAlignment="Center">
         <Carousel SelectedIndex="{Binding PageIndex}"
                   VerticalAlignment="Stretch">
@@ -41,7 +41,7 @@
                                HorizontalAlignment="Center"
                                Margin="0 0 0 12" />
                     <ui:SettingsExpander Header="Plain Craft Launcher 2"
-                                         Description="2.13.0.0 及以上版本，导入游戏设置与应用设置"
+                                         Description="导入应用设置与各版本的游戏设置"
                                          IsClickEnabled="True"
                                          MinHeight="72"
                                          Click="SettingsExpanderSource_OnClick">
@@ -52,7 +52,7 @@
                 </StackPanel>
             </Border>
 
-            <!-- 页 1：选择要导入的数据 -->
+            <!-- 页 1：配置导入 -->
             <Border VerticalAlignment="Center">
                 <StackPanel Spacing="4" VerticalAlignment="Center">
                     <TextBlock Text="选择要导入的数据" HorizontalAlignment="Center"
@@ -63,13 +63,26 @@
                                TextAlignment="Center"
                                Margin="0 0 0 12" />
 
+                    <!-- PCL 安装目录 -->
+                    <StackPanel Spacing="6" Margin="0 0 0 8">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Text="PCL 所在文件夹" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            <Button Grid.Column="1" Content="浏览" Click="BrowsePclButton_OnClick" />
+                        </Grid>
+                        <TextBox Text="{Binding PclDirectory}"
+                                 Watermark="PCL.exe 所在的文件夹"
+                                 FontSize="12" />
+                        <TextBlock Text="{Binding PclDirectoryHint}" FontSize="11"
+                                   Foreground="{DynamicResource TextSecondaryBrush}" />
+                    </StackPanel>
+
                     <CheckBox IsChecked="{Binding ImportGameSettings}">
                         <StackPanel Orientation="Horizontal" Spacing="14">
                             <ui:FontIcon Glyph="&#xE713;" FontSize="26"
                                          VerticalAlignment="Center" />
                             <StackPanel Spacing="3" VerticalAlignment="Center">
                                 <TextBlock Text="游戏设置" FontWeight="SemiBold" FontSize="15" />
-                                <TextBlock Text="包括各实例的游戏内存、Java 路径、启动参数等个性化设置。"
+                                <TextBlock Text="包括各实例的内存、Java 路径、JVM 参数与版本隔离设置。"
                                            FontSize="12"
                                            Foreground="{DynamicResource TextSecondaryBrush}" />
                             </StackPanel>
@@ -82,7 +95,7 @@
                                          VerticalAlignment="Center" />
                             <StackPanel Spacing="3" VerticalAlignment="Center">
                                 <TextBlock Text="应用设置" FontWeight="SemiBold" FontSize="15" />
-                                <TextBlock Text="包括下载、外观、更新等应用首选项。"
+                                <TextBlock Text="包括游戏文件夹、Java、内存、下载与更新等应用首选项。"
                                            FontSize="12"
                                            Foreground="{DynamicResource TextSecondaryBrush}" />
                             </StackPanel>
@@ -98,7 +111,7 @@
                             <ui:SymbolIcon Symbol="ChevronLeft" FontSize="18" />
                         </Button>
                         <Button Command="{Binding StartImportCommand}"
-                                ToolTip.Tip="下一步"
+                                ToolTip.Tip="开始导入"
                                 Width="48" Height="48"
                                 CornerRadius="24"
                                 Classes="accent"
@@ -130,14 +143,19 @@
             <!-- 页 3：导入完成 -->
             <Border VerticalAlignment="Center">
                 <StackPanel Spacing="2" VerticalAlignment="Center">
-                    <TextBlock Text="导入完成" HorizontalAlignment="Center"
-                               Margin="0 0 0 4"
-                               FontSize="24" FontWeight="SemiBold" />
-                    <TextBlock Text="已成功完成导入。"
+                    <TextBlock Text="{Binding ResultSummary}"
                                HorizontalAlignment="Center"
                                TextAlignment="Center"
                                TextWrapping="Wrap"
-                               Margin="0 0 0 4" />
+                               FontSize="20" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding ImportError}"
+                               HorizontalAlignment="Center"
+                               TextAlignment="Center"
+                               TextWrapping="Wrap"
+                               MaxWidth="480"
+                               FontSize="12"
+                               Foreground="{DynamicResource WarningBrush}"
+                               IsVisible="{Binding ImportError}" />
                     <Button Command="{Binding FinishCommand}"
                             ToolTip.Tip="完成"
                             Width="48" Height="48"
