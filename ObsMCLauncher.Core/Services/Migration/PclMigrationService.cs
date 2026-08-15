@@ -28,7 +28,18 @@ public class PclMigrationResult
 /// </summary>
 public static class PclMigrationService
 {
+    private const string Tag = "PclMigration";
+
     private static readonly string[] RegistryFolders = ["PlainCraftLauncher", "PCLDebug"];
+
+    /// <summary>判断路径是否指向 PCL 主程序（PCL.exe / Plain Craft Launcher.exe）</summary>
+    public static bool LooksLikePclExecutable(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return false;
+        var name = Path.GetFileName(path);
+        return string.Equals(name, "PCL.exe", StringComparison.OrdinalIgnoreCase)
+               || string.Equals(name, "Plain Craft Launcher.exe", StringComparison.OrdinalIgnoreCase);
+    }
 
     /// <summary>判断目录是否像一个 PCL 安装目录（PCL\Setup.ini 或 PCL.exe 存在）</summary>
     public static bool LooksLikePclDirectory(string dir)
@@ -49,8 +60,13 @@ public static class PclMigrationService
     {
         var result = new PclMigrationResult();
 
-        var setupIni = ReadPclIni(Path.Combine(pclDirectory, "PCL", "Setup.ini"));
+        DebugLogger.Info(Tag, $"开始迁移：目录={pclDirectory}，应用设置={importAppSettings}，游戏设置={importGameSettings}");
+
+        var setupIniPath = Path.Combine(pclDirectory, "PCL", "Setup.ini");
+        var setupIni = ReadPclIni(setupIniPath);
         var registry = ReadPclRegistry();
+
+        DebugLogger.Info(Tag, $"Setup.ini 读取完成：{setupIni.Count} 个键；注册表读取完成：{registry.Count} 个键");
 
         var config = LauncherConfig.Load();
 
@@ -60,14 +76,18 @@ public static class PclMigrationService
         {
             gameDir = MigrateAppSettings(setupIni, registry, pclDirectory, config, result);
             config.Save();
+            DebugLogger.Info(Tag, $"应用设置导入完成：{result.AppSettingsImported} 项，配置已保存");
         }
 
         if (importGameSettings)
         {
             // 优先使用迁移过来的游戏目录，否则用 OMCL 当前游戏目录
             gameDir ??= config.GameDirectory;
+            DebugLogger.Info(Tag, $"游戏设置导入使用游戏目录：{gameDir}");
             MigrateInstances(gameDir, result);
         }
+
+        DebugLogger.Info(Tag, $"迁移结束：应用设置 {result.AppSettingsImported} 项，版本 {result.VersionsImported} 个，警告 {result.Warnings.Count} 条");
 
         return result;
     }
@@ -88,6 +108,7 @@ public static class PclMigrationService
         {
             config.JvmArguments = jvm.Trim();
             imported++;
+            DebugLogger.Info(Tag, $"导入 JVM 参数：{config.JvmArguments}");
         }
 
         // 内存：仅在 PCL 使用“自定义”模式时迁移，单位 GB → MB
@@ -98,6 +119,12 @@ public static class PclMigrationService
         {
             config.MaxMemory = Math.Min(ramGb * 1024, 65536);
             imported++;
+            DebugLogger.Info(Tag, $"导入最大内存：{ramGb} GB → {config.MaxMemory} MB");
+        }
+        else if (ini.TryGetValue("LaunchRamType", out var rtRaw))
+        {
+            // 0=自动 2=动态调整，OMCL 无法对应，跳过
+            DebugLogger.Info(Tag, $"跳过内存设置：LaunchRamType={rtRaw}（非自定义模式）");
         }
 
         // 全局版本隔离：0=关闭，其余（1~4 各种隔离策略）OMCL 统一映射为版本隔离
@@ -106,6 +133,7 @@ public static class PclMigrationService
         {
             config.GameDirectoryType = indie == 0 ? GameDirectoryType.RootFolder : GameDirectoryType.VersionFolder;
             imported++;
+            DebugLogger.Info(Tag, $"导入全局版本隔离：LaunchArgumentIndieV2={indie} → {config.GameDirectoryType}");
         }
 
         // 下载源策略：0=尽量镜像，1/2=偏向官方
@@ -113,6 +141,7 @@ public static class PclMigrationService
         {
             config.MirrorSourceMode = src == 0 ? MirrorSourceMode.PreferMirror : MirrorSourceMode.OfficialOnly;
             imported++;
+            DebugLogger.Info(Tag, $"导入下载源策略：ToolDownloadSource={src} → {config.MirrorSourceMode}");
         }
 
         // 下载线程数
@@ -121,6 +150,7 @@ public static class PclMigrationService
         {
             config.MaxDownloadThreads = Math.Min(threads, 64);
             imported++;
+            DebugLogger.Info(Tag, $"导入下载线程数：{threads} → {config.MaxDownloadThreads}");
         }
 
         // Java 路径：值为具体路径时迁移（“使用全局设置”等非路径值跳过）
@@ -130,6 +160,11 @@ public static class PclMigrationService
             config.JavaSelectionMode = 2;
             config.CustomJavaPath = ExpandPclPath(javaSel, pclDirectory);
             imported++;
+            DebugLogger.Info(Tag, $"导入全局 Java：{javaSel} → {config.CustomJavaPath}");
+        }
+        else if (registry.TryGetValue("LaunchArgumentJavaSelect", out var jsRaw))
+        {
+            DebugLogger.Info(Tag, $"跳过全局 Java：LaunchArgumentJavaSelect=\"{jsRaw}\"（非路径值）");
         }
 
         // SSL 验证（PCL 默认不验证，取反映射）
@@ -137,6 +172,7 @@ public static class PclMigrationService
         {
             config.SkipSslValidation = !cert;
             imported++;
+            DebugLogger.Info(Tag, $"导入 SSL 设置：ToolDownloadCert={cert} → SkipSslValidation={config.SkipSslValidation}");
         }
 
         // 更新通道偏好
@@ -149,6 +185,7 @@ public static class PclMigrationService
                 config.AutoCheckUpdate = true;
                 config.UpdateChannel = snap ? UpdateChannel.Beta : UpdateChannel.Stable;
                 imported++;
+                DebugLogger.Info(Tag, $"导入更新通道：Release={rel}，Snapshot={snap} → {config.UpdateChannel}");
             }
         }
 
@@ -162,6 +199,7 @@ public static class PclMigrationService
                 config.GameDirectoryLocation = DirectoryLocation.Custom;
                 config.CustomGameDirectory = selected;
                 imported++;
+                DebugLogger.Info(Tag, $"导入游戏目录：{selectRaw} → {selected}");
 
                 // LaunchFolders 格式：名称>路径|名称>路径
                 if (registry.TryGetValue("LaunchFolders", out var foldersRaw))
@@ -176,12 +214,18 @@ public static class PclMigrationService
                             && !string.Equals(path, selected, StringComparison.OrdinalIgnoreCase))
                         {
                             config.CustomGameDirectories.Add(path);
+                            DebugLogger.Info(Tag, $"导入附加游戏文件夹：{entry[..idx]} → {path}");
+                        }
+                        else if (path.Length > 0 && !Directory.Exists(path))
+                        {
+                            DebugLogger.Info(Tag, $"跳过附加游戏文件夹（不存在）：{path}");
                         }
                     }
                 }
             }
             else
             {
+                DebugLogger.Warn(Tag, $"PCL 记录的游戏目录不存在：{selected}");
                 result.Warnings.Add($"PCL 记录的游戏目录不存在：{selected}");
             }
         }
@@ -194,7 +238,11 @@ public static class PclMigrationService
     private static void MigrateInstances(string gameDir, PclMigrationResult result)
     {
         var versionsDir = Path.Combine(gameDir, "versions");
-        if (!Directory.Exists(versionsDir)) return;
+        if (!Directory.Exists(versionsDir))
+        {
+            DebugLogger.Warn(Tag, $"versions 目录不存在，跳过游戏设置导入：{versionsDir}");
+            return;
+        }
 
         foreach (var versionDir in Directory.EnumerateDirectories(versionsDir))
         {
@@ -216,6 +264,7 @@ public static class PclMigrationService
                 {
                     data.MaxMemory = Math.Min(gb * 1024, 65536);
                     changed = true;
+                    DebugLogger.Info(Tag, $"[{Path.GetFileName(versionDir)}] 导入实例内存：{gb} GB → {data.MaxMemory} MB");
                 }
 
                 // 版本隔离：V2 为布尔（True=隔离），旧版 Indie 1=开启 2=关闭；均未保存则跟随全局
@@ -225,12 +274,14 @@ public static class PclMigrationService
                     {
                         data.IsolationMode = indieV2 ? "enabled" : "disabled";
                         changed = true;
+                        DebugLogger.Info(Tag, $"[{Path.GetFileName(versionDir)}] 导入版本隔离：IndieV2={indieV2} → {data.IsolationMode}");
                     }
                     else if (ini.TryGetValue("VersionArgumentIndie", out var v1) && int.TryParse(v1, out var indieV1)
                              && indieV1 is 1 or 2)
                     {
                         data.IsolationMode = indieV1 == 1 ? "enabled" : "disabled";
                         changed = true;
+                        DebugLogger.Info(Tag, $"[{Path.GetFileName(versionDir)}] 导入版本隔离：旧版 Indie={indieV1} → {data.IsolationMode}");
                     }
                 }
 
@@ -241,6 +292,7 @@ public static class PclMigrationService
                 {
                     data.CustomJavaPath = vJava.Trim();
                     changed = true;
+                    DebugLogger.Info(Tag, $"[{Path.GetFileName(versionDir)}] 导入实例 Java：{data.CustomJavaPath}");
                 }
 
                 // 实例级 JVM 参数
@@ -250,6 +302,7 @@ public static class PclMigrationService
                 {
                     data.JvmArguments = vJvm.Trim();
                     changed = true;
+                    DebugLogger.Info(Tag, $"[{Path.GetFileName(versionDir)}] 导入实例 JVM 参数：{data.JvmArguments}");
                 }
 
                 // 自定义标题 → 版本描述
@@ -259,6 +312,7 @@ public static class PclMigrationService
                 {
                     data.Description = vTitle.Trim();
                     changed = true;
+                    DebugLogger.Info(Tag, $"[{Path.GetFileName(versionDir)}] 导入自定义标题为描述：{data.Description}");
                 }
 
                 if (changed)
@@ -266,9 +320,14 @@ public static class PclMigrationService
                     VersionInitService.Save(versionDir, data);
                     result.VersionsImported++;
                 }
+                else
+                {
+                    DebugLogger.Info(Tag, $"[{Path.GetFileName(versionDir)}] 无可迁移项，跳过");
+                }
             }
             catch (Exception ex)
             {
+                DebugLogger.Warn(Tag, $"导入版本 {Path.GetFileName(versionDir)} 失败：{ex.Message}");
                 result.Warnings.Add($"导入版本 {Path.GetFileName(versionDir)} 失败：{ex.Message}");
             }
         }
@@ -278,7 +337,11 @@ public static class PclMigrationService
     private static Dictionary<string, string> ReadPclIni(string path)
     {
         var dict = new Dictionary<string, string>(StringComparer.Ordinal);
-        if (!File.Exists(path)) return dict;
+        if (!File.Exists(path))
+        {
+            DebugLogger.Info(Tag, $"ini 文件不存在：{path}");
+            return dict;
+        }
 
         try
         {
@@ -291,7 +354,7 @@ public static class PclMigrationService
         }
         catch (Exception ex)
         {
-            DebugLogger.Warn("PclMigration", $"读取 ini 失败 [{path}]: {ex.Message}");
+            DebugLogger.Warn(Tag, $"读取 ini 失败 [{path}]: {ex.Message}");
         }
 
         return dict;
@@ -308,18 +371,25 @@ public static class PclMigrationService
             try
             {
                 using var key = Registry.CurrentUser.OpenSubKey($"Software\\{folder}");
-                if (key == null) continue;
+                if (key == null)
+                {
+                    DebugLogger.Info(Tag, $"注册表项不存在：HKCU\\Software\\{folder}");
+                    continue;
+                }
+                var count = 0;
                 foreach (var name in key.GetValueNames())
                 {
                     if (key.GetValue(name) is string value && !dict.ContainsKey(name))
                     {
                         dict[name] = value;
+                        count++;
                     }
                 }
+                DebugLogger.Info(Tag, $"注册表 HKCU\\Software\\{folder} 读取到 {count} 个值");
             }
             catch (Exception ex)
             {
-                DebugLogger.Warn("PclMigration", $"读取注册表 Software\\{folder} 失败: {ex.Message}");
+                DebugLogger.Warn(Tag, $"读取注册表 Software\\{folder} 失败: {ex.Message}");
             }
         }
 

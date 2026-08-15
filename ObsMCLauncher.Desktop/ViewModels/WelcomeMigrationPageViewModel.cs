@@ -15,6 +15,9 @@ public partial class WelcomeMigrationPageViewModel : ViewModelBase
 {
     private readonly WelcomeViewModel _owner;
 
+    /// <summary>导入中页面的最短展示时长：即便导入瞬间完成，动画也完整播放</summary>
+    private static readonly TimeSpan MinimumProgressDuration = TimeSpan.FromSeconds(1.5);
+
     /// <summary>导入来源名称</summary>
     public string SourceName { get; } = "Plain Craft Launcher 2";
 
@@ -22,15 +25,19 @@ public partial class WelcomeMigrationPageViewModel : ViewModelBase
     [ObservableProperty]
     private int pageIndex;
 
-    /// <summary>PCL 安装目录</summary>
+    /// <summary>PCL 主程序路径（PCL.exe）</summary>
     [ObservableProperty]
-    private string pclDirectory = "";
+    private string pclExecutablePath = "";
 
-    /// <summary>PCL 目录是否有效（找到 PCL\Setup.ini 或 PCL.exe）</summary>
+    /// <summary>从 exe 路径推导的 PCL 安装目录</summary>
+    public string PclDirectory =>
+        string.IsNullOrWhiteSpace(PclExecutablePath) ? "" : Path.GetDirectoryName(PclExecutablePath) ?? "";
+
+    /// <summary>PCL 路径是否有效（exe 文件名匹配且目录里有 PCL 数据）</summary>
     [ObservableProperty]
     private bool isPclDirectoryValid;
 
-    /// <summary>目录校验提示文本</summary>
+    /// <summary>路径校验提示文本</summary>
     [ObservableProperty]
     private string pclDirectoryHint = "";
 
@@ -55,8 +62,11 @@ public partial class WelcomeMigrationPageViewModel : ViewModelBase
     public WelcomeMigrationPageViewModel(WelcomeViewModel owner)
     {
         _owner = owner;
-        PclDirectory = AutoDetectPclDirectory();
-        ValidatePclDirectory(PclDirectory);
+        var detected = AutoDetectPclDirectory();
+        if (detected != null)
+        {
+            PclExecutablePath = detected;
+        }
     }
 
     /// <summary>选定导入来源，进入配置页</summary>
@@ -79,10 +89,13 @@ public partial class WelcomeMigrationPageViewModel : ViewModelBase
 
         try
         {
-            await Task.Run(() =>
+            // 导入与最短展示时长并行：即便导入瞬间完成，动画也完整播放
+            var migrationTask = Task.Run(() =>
             {
                 _result = PclMigrationService.Migrate(PclDirectory, ImportAppSettings, ImportGameSettings);
             });
+            var animationTask = Task.Delay(MinimumProgressDuration);
+            await Task.WhenAll(migrationTask, animationTask);
 
             var r = _result!;
             ResultSummary = $"已导入 {r.AppSettingsImported} 项应用设置、{r.VersionsImported} 个游戏版本";
@@ -93,6 +106,7 @@ public partial class WelcomeMigrationPageViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
+            await Task.Delay(MinimumProgressDuration);
             ImportError = ex.Message;
             ResultSummary = "导入失败";
         }
@@ -104,26 +118,33 @@ public partial class WelcomeMigrationPageViewModel : ViewModelBase
     [RelayCommand]
     private void Finish() => _owner.Complete();
 
-    /// <summary>浏览选择 PCL 目录（由视图调用文件夹选择器后回填）</summary>
-    public void SetPclDirectory(string path)
+    /// <summary>浏览选择 PCL.exe（由视图调用文件选择器后回填）</summary>
+    public void SetPclExecutable(string path)
     {
-        PclDirectory = path;
+        PclExecutablePath = path;
     }
 
-    partial void OnPclDirectoryChanged(string value) => ValidatePclDirectory(value);
-
-    private void ValidatePclDirectory(string path)
+    partial void OnPclExecutablePathChanged(string value)
     {
-        IsPclDirectoryValid = PclMigrationService.LooksLikePclDirectory(path);
+        ValidatePclPath(value);
+    }
+
+    private void ValidatePclPath(string path)
+    {
+        var exeOk = PclMigrationService.LooksLikePclExecutable(path);
+        var dir = exeOk ? PclDirectory : "";
+        IsPclDirectoryValid = exeOk && PclMigrationService.LooksLikePclDirectory(dir);
         PclDirectoryHint = string.IsNullOrWhiteSpace(path)
-            ? "请选择 PCL 所在的文件夹"
-            : IsPclDirectoryValid
-                ? "已找到 PCL 数据"
-                : "该文件夹中未找到 PCL 的数据文件，请确认选择的是 PCL.exe 所在文件夹";
+            ? "请选择 PCL 主程序（PCL.exe）"
+            : !exeOk
+                ? "选择的文件不是 PCL.exe 或 Plain Craft Launcher.exe"
+                : IsPclDirectoryValid
+                    ? "已找到 PCL 数据"
+                    : "该目录中未找到 PCL 数据（PCL\\Setup.ini）";
     }
 
-    /// <summary>在常见位置自动探测 PCL 安装目录</summary>
-    private static string AutoDetectPclDirectory()
+    /// <summary>在常见位置自动探测 PCL 主程序，返回 exe 完整路径；未找到返回 null</summary>
+    private static string? AutoDetectPclDirectory()
     {
         var candidates = new[]
         {
@@ -134,6 +155,7 @@ public partial class WelcomeMigrationPageViewModel : ViewModelBase
         };
 
         var subNames = new[] { "", "PCL", "Plain Craft Launcher", "PCL2" };
+        var exeNames = new[] { "PCL.exe", "Plain Craft Launcher.exe" };
 
         foreach (var baseDir in candidates)
         {
@@ -141,13 +163,17 @@ public partial class WelcomeMigrationPageViewModel : ViewModelBase
             foreach (var sub in subNames)
             {
                 var dir = string.IsNullOrEmpty(sub) ? baseDir : Path.Combine(baseDir, sub);
-                if (PclMigrationService.LooksLikePclDirectory(dir))
+                foreach (var exe in exeNames)
                 {
-                    return dir;
+                    var exePath = Path.Combine(dir, exe);
+                    if (File.Exists(exePath))
+                    {
+                        return exePath;
+                    }
                 }
             }
         }
 
-        return "";
+        return null;
     }
 }

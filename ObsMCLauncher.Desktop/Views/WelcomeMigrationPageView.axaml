@@ -63,14 +63,14 @@
                                TextAlignment="Center"
                                Margin="0 0 0 12" />
 
-                    <!-- PCL 安装目录 -->
+                    <!-- PCL 主程序路径 -->
                     <StackPanel Spacing="6" Margin="0 0 0 8">
                         <Grid ColumnDefinitions="*,Auto">
-                            <TextBlock Text="PCL 所在文件夹" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            <TextBlock Text="PCL 主程序" FontWeight="SemiBold" VerticalAlignment="Center" />
                             <Button Grid.Column="1" Content="浏览" Click="BrowsePclButton_OnClick" />
                         </Grid>
-                        <TextBox Text="{Binding PclDirectory}"
-                                 Watermark="PCL.exe 所在的文件夹"
+                        <TextBox Text="{Binding PclExecutablePath}"
+                                 Watermark="PCL.exe 的完整路径"
                                  FontSize="12" />
                         <TextBlock Text="{Binding PclDirectoryHint}" FontSize="11"
                                    Foreground="{DynamicResource TextSecondaryBrush}" />

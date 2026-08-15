@@ -25,15 +25,23 @@ public partial class WelcomeMigrationPageView : UserControl
         var storageProvider = TopLevel.GetTopLevel(this)?.StorageProvider;
         if (storageProvider == null) return;
 
-        var folders = await storageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+        var files = await storageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "选择 PCL 所在的文件夹",
-            AllowMultiple = false
+            Title = "选择 PCL 主程序",
+            AllowMultiple = false,
+            FileTypeFilter =
+            [
+                new FilePickerFileType("PCL 主程序")
+                {
+                    Patterns = ["*.exe"]
+                },
+                new FilePickerFileType("所有文件") { Patterns = ["*"] }
+            ]
         });
 
-        if (folders.Count > 0 && folders[0].TryGetLocalPath() is { } path)
+        if (files.Count > 0 && files[0].TryGetLocalPath() is { } path)
         {
-            vm.SetPclDirectory(path);
+            vm.SetPclExecutable(path);
         }
     }
 }
