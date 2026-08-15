@@ -62,7 +62,7 @@ public class PluginContext : IPluginContext
         );
     }
 
-    public string LauncherVersion => "1.1.0-beta.2";
+    public string LauncherVersion => "1.1.0-beta.3";
 
     public string PluginDataDirectory => _pluginDataDir;
 
