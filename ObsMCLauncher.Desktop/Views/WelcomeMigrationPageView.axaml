@@ -40,10 +40,28 @@
                                HorizontalAlignment="Center"
                                Margin="0 0 0 12" />
                     <ui:SettingsExpander Header="Plain Craft Launcher 2"
-                                         Description="导入应用设置与各版本的游戏设置"
+                                         Description="导入应用设置、各版本游戏设置与外置登录服务器数据的位置见 PCL 目录"
                                          IsClickEnabled="True"
-                                         MinHeight="72"
-                                         Click="SettingsExpanderSource_OnClick">
+                                         MinHeight="64"
+                                         Click="SourcePcl_OnClick">
+                        <ui:SettingsExpander.IconSource>
+                            <ui:FontIconSource Glyph="&#xE896;" />
+                        </ui:SettingsExpander.IconSource>
+                    </ui:SettingsExpander>
+                    <ui:SettingsExpander Header="Hello Minecraft! Launcher (3.16+)"
+                                         Description="新版配置格式（config 目录下的 JSON 文件）"
+                                         IsClickEnabled="True"
+                                         MinHeight="64"
+                                         Click="SourceHmclNew_OnClick">
+                        <ui:SettingsExpander.IconSource>
+                            <ui:FontIconSource Glyph="&#xE713;" />
+                        </ui:SettingsExpander.IconSource>
+                    </ui:SettingsExpander>
+                    <ui:SettingsExpander Header="Hello Minecraft! Launcher (≤3.15.x)"
+                                         Description="旧版 hmcl.json 配置格式"
+                                         IsClickEnabled="True"
+                                         MinHeight="64"
+                                         Click="SourceHmclLegacy_OnClick">
                         <ui:SettingsExpander.IconSource>
                             <ui:FontIconSource Glyph="&#xE896;" />
                         </ui:SettingsExpander.IconSource>
@@ -57,21 +75,21 @@
                     <TextBlock Text="选择要导入的数据" HorizontalAlignment="Center"
                                Margin="0 0 0 4"
                                FontSize="24" FontWeight="SemiBold" />
-                    <TextBlock Text="来自 Plain Craft Launcher 2。选择要导入的信息："
+                    <TextBlock Text="{Binding SourceDescription}"
                                HorizontalAlignment="Center"
                                TextAlignment="Center"
                                Margin="0 0 0 12" />
 
-                    <!-- PCL 主程序路径 -->
+                    <!-- 来源主程序路径 -->
                     <StackPanel Spacing="6" Margin="0 0 0 8">
                         <Grid ColumnDefinitions="*,Auto">
-                            <TextBlock Text="PCL 主程序" FontWeight="SemiBold" VerticalAlignment="Center" />
-                            <Button Grid.Column="1" Content="浏览" Click="BrowsePclButton_OnClick" />
+                            <TextBlock Text="启动器主程序" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            <Button Grid.Column="1" Content="浏览" Click="BrowseSourceButton_OnClick" />
                         </Grid>
-                        <TextBox Text="{Binding PclExecutablePath}"
-                                 Watermark="PCL.exe 的完整路径"
+                        <TextBox Text="{Binding SourceExecutablePath}"
+                                 Watermark="{Binding ExecutableHint}"
                                  FontSize="12" />
-                        <TextBlock Text="{Binding PclDirectoryHint}" FontSize="11"
+                        <TextBlock Text="{Binding SourceHint}" FontSize="11"
                                    Foreground="{DynamicResource TextSecondaryBrush}" />
                     </StackPanel>
 

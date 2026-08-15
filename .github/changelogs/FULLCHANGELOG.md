@@ -18,7 +18,14 @@
 ### 新增（PCL2 数据迁移）
 - 数据迁移接入 Plain Craft Launcher 2 真实导入：解析 PCL 目录 Setup.ini 与注册表（正式版/开源版两个位置）迁移应用设置（游戏文件夹列表、Java、内存、JVM 参数、下载源策略、线程数、SSL、更新通道等），扫描各版本 PCL 实例设置迁移游戏设置（内存、版本隔离、实例级 Java/JVM、自定义标题）
 - 迁移页支持自动探测 PCL 目录、手动浏览选择与目录有效性校验，完成后展示导入统计；仅导入 PCL 中显式保存过的设置，未保存项保持默认值
-- PCL 迁移优化：迁移关键解析处输出详细日志便于排查导入失败；导入中动画保证最短播放时长（导入秒完成也不跳过动画）；改为选择 PCL.exe 文件（自动从 exe 推导数据目录，校验文件名与数据存在性）
+- PCL 迁移优化：迁移关键解析处输出详细日志便于排查导入失败；导入中动画保证最短播放时长（导入秒完成也不跳过动画）；改为选择 PCL.exe 文件并自动从 exe 推导数据目录；移除 PCL.exe 文件名检测逻辑与相关提示（不再强制校验文件名，仅检查数据存在性）
+- 迁移页选择框样式优化（仿 ClassIsland）：游戏设置/应用设置选择项缩小尺寸，来源列表调整布局密度
+
+### 新增（HMCL 数据迁移）
+- 数据迁移新增 Hello Minecraft! Launcher (3.16+) 导入：解析 config 目录下 launcher-settings.json（下载源、线程数）、game-directories.json（游戏目录列表与当前选中目录）、authlib-injector-servers.json（认证服务器），实例设置读取 versions\<id>\.hmcl\config\instance-game-settings.json（内存、JVM 参数、Java 路径、版本隔离）
+- 数据迁移新增 Hello Minecraft! Launcher (≤3.15.x) 导入：解析 hmcl.json（便携目录与 %APPDATA%\hmcl 两个候选位置），导入 config 节（下载源、线程）、configurations 节（profile 游戏目录、global 全局游戏设置）与 authlibInjectorServers 数组，实例设置读取 versions\<id>\hmclversion.cfg（跟随全局设置的版本自动跳过）
+- authlib-injector 服务器迁移：按 URL 去重导入 Yggdrasil 服务器列表，名称自动取 URL 主机名
+- 文件选择器按操作系统与来源适配：HMCL 来源在 Windows 下可选 .exe/.jar，其他系统仅 .jar；PCL 来源仍为 .exe
 
 ### 优化
 - 主窗口改用系统原生标题栏：移除自绘标题栏与自绘窗口按钮，使用系统原生窗口按钮与拖拽；关闭主窗口现在会正确退出应用（适配显式关闭模式，修复"启动后关闭启动器"只关窗不退出进程的问题，崩溃流程不受影响）
