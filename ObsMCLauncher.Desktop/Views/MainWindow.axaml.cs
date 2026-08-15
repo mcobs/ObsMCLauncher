@@ -26,12 +26,14 @@ public partial class MainWindow : Window
     private readonly Dictionary<string, Point> _swipeStartPoints = new();
     private readonly HashSet<string> _swipeActive = new();
     private bool _navInitialized;
+    private bool _shutdownRequested;
 
     public MainWindow()
     {
         InitializeComponent();
 
         PropertyChanged += OnWindowPropertyChanged;
+        Closing += MainWindow_Closing;
         DataContextChanged += (_, _) => HookVm();
         HookVm();
 
@@ -189,33 +191,21 @@ public partial class MainWindow : Window
         }
     }
 
-    private void TitleBar_PointerPressed(object? sender, PointerPressedEventArgs e)
+    private void MainWindow_Closing(object? sender, WindowClosingEventArgs e)
     {
-        if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
-        {
-            BeginMoveDrag(e);
-        }
-    }
+        // 防重入：desktop.Shutdown() 会再次对本窗口 CloseCore 并再次触发 Closing，
+        // 不拦截会形成 关闭→Shutdown→再关闭 的无限递归，最终栈溢出。
+        if (_shutdownRequested) return;
 
-    private void MinimizeButton_Click(object? sender, RoutedEventArgs e)
-    {
-        WindowState = WindowState.Minimized;
-    }
+        // 崩溃流程会主动关闭主窗口：此时不能触发退出，否则崩溃窗口来不及显示
+        if (Application.Current is App app && app.IsCrashFlowActive) return;
 
-    private void MaximizeButton_Click(object? sender, RoutedEventArgs e)
-    {
-        WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
-    }
-
-    private void CloseButton_Click(object? sender, RoutedEventArgs e)
-    {
+        // ShutdownMode 为 OnExplicitShutdown：关闭主窗口即视为退出应用。
+        // 系统标题栏的关闭按钮与“启动后关闭启动器”设置都走这里，避免进程残留。
         if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
+            _shutdownRequested = true;
             desktop.Shutdown();
-        }
-        else
-        {
-            Close();
         }
     }
 
