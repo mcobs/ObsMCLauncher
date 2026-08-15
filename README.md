@@ -188,13 +188,13 @@ dotnet run --project ObsMCLauncher.Desktop
 
 ```bash
 # Windows
-dotnet publish ObsMCLauncher.Desktop -c Release -r win-x64 -p:PublishSingleFile=true
+dotnet publish ObsMCLauncher.Desktop -c Release -r win-x64
 
 # Linux
-dotnet publish ObsMCLauncher.Desktop -c Release -r linux-x64 -p:PublishSingleFile=true
+dotnet publish ObsMCLauncher.Desktop -c Release -r linux-x64
 
 # macOS
-dotnet publish ObsMCLauncher.Desktop -c Release -r osx-x64 -p:PublishSingleFile=true
+dotnet publish ObsMCLauncher.Desktop -c Release -r osx-x64
 ```
 
 ### 运行测试

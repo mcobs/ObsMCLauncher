@@ -92,9 +92,9 @@ jobs:
         echo "version=$version" >> $GITHUB_OUTPUT
         echo "当前版本: $version"
 
-    - name: Publish single-file executable
+    - name: Publish application
       run: |
-        dotnet publish ${{ env.Project_Path }} -c Release -r ${{ matrix.rid }} --self-contained false -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=none -p:DebugSymbols=false -o ./publish/${{ matrix.rid }}
+        dotnet publish ${{ env.Project_Path }} -c Release -r ${{ matrix.rid }} --self-contained false -p:DebugType=none -p:DebugSymbols=false -o ./publish/${{ matrix.rid }}
 
     - name: Set executable permission (Linux/macOS)
       if: runner.os != 'Windows'

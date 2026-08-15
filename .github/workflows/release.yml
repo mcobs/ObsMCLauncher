@@ -147,7 +147,7 @@ jobs:
 
     - name: Publish ${{ matrix.rid }}
       run: |
-        dotnet publish ${{ env.Project_Path }} -c Release -r ${{ matrix.rid }} --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=none -p:DebugSymbols=false -p:Version=${{ steps.version.outputs.version_number }} -o ./publish/${{ matrix.rid }}
+        dotnet publish ${{ env.Project_Path }} -c Release -r ${{ matrix.rid }} --self-contained true -p:DebugType=none -p:DebugSymbols=false -p:Version=${{ steps.version.outputs.version_number }} -o ./publish/${{ matrix.rid }}
 
     - name: Download previous release for delta
       shell: bash
