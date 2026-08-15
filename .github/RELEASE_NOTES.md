@@ -1,7 +1,4 @@
 ## 更新公告
 
-> [!WARNING]
-> 因更新服务问题，此版本暂时无法通过启动器内的「检查更新」自动获取，请**手动下载**对应平台的安装包进行更新。
-
 > [!NOTE]
-> v1.1.0-beta.1 重点修复了生产环境数据目录落入 `current` 目录被更新整体覆盖、更新通道检测失效（检查更新始终提示"已是最新版本"）、资源中心中文搜索失效等问题，并对账号管理页、版本实例页进行了大量优化。如遇异常请前往 [Issues](https://github.com/mcobs/ObsMCLauncher/issues) 反馈。
+> v1.1.0-beta.2 新增首次启动欢迎窗口（OOBE 流程，含开场动画与数据迁移向导），支持导入 PCL2 与 Hello Minecraft! Launcher 数据；版本实例支持单独设置 JVM 参数与 Java 路径；通知系统迁移至 FluentAvalonia InfoBar 并重构了进出场动画，主窗口及各子窗口统一改用系统原生标题栏。如遇异常请前往 [Issues](https://github.com/mcobs/ObsMCLauncher/issues) 反馈。
