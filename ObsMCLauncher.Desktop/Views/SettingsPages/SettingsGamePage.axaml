@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:ObsMCLauncher.Desktop.ViewModels"
+             xmlns:views="using:ObsMCLauncher.Desktop.Views"
              xmlns:ui="using:FluentAvalonia.UI.Controls"
              xmlns:converters="using:ObsMCLauncher.Desktop.Converters"
              x:Class="ObsMCLauncher.Desktop.Views.SettingsPages.SettingsGamePage"
@@ -76,10 +77,9 @@
           </ui:SettingsExpanderItem.Footer>
         </ui:SettingsExpanderItem>
 
-        <ui:SettingsExpanderItem Content="JVM 参数" Description="自定义游戏启动参数（高级选项）">
+        <ui:SettingsExpanderItem Content="JVM 参数" Description="自定义游戏启动参数（高级选项），支持预设方案与常用参数快捷开关">
           <ui:SettingsExpanderItem.Footer>
-            <TextBox Text="{Binding JvmArguments}" AcceptsReturn="True" TextWrapping="Wrap"
-                     Width="360" MinHeight="60" MaxHeight="140" Watermark="-Xmx2G -XX:+UseG1GC"/>
+            <views:JvmArgumentsEditorView DataContext="{Binding JvmArgumentsEditor}" Width="380"/>
           </ui:SettingsExpanderItem.Footer>
         </ui:SettingsExpanderItem>
       </ui:SettingsExpander>

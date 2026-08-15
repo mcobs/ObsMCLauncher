@@ -148,6 +148,25 @@
     <SolidColorBrush x:Key="SubtleFillColorTertiaryBrush" Color="#1C1F26"/>
     <SolidColorBrush x:Key="ControlFillColorDefaultBrush" Color="#141619"/>
 
+    <!-- ===== FluentAvalonia TabView（版本实例页 tab 栏）主题资源 =====
+         tab 条与顶部标题栏同色（SurfaceBrush），选中 tab 与内容区共用页面底色（BackgroundBrush），
+         选中态文字用主题绿 + 加粗，与全局导航激活样式一致。
+         浅色模式由 SettingsViewModel.ApplyTabViewTheme 动态切换。 -->
+    <SolidColorBrush x:Key="TabViewBackground" Color="#141619"/>
+    <SolidColorBrush x:Key="TabViewBorderBrush" Color="#1E2128"/>
+    <SolidColorBrush x:Key="TabViewItemHeaderBackground" Color="#00FFFFFF"/>
+    <SolidColorBrush x:Key="TabViewItemHeaderBackgroundSelected" Color="#0B0D10"/>
+    <SolidColorBrush x:Key="TabViewItemHeaderBackgroundPointerOver" Color="#10B981" Opacity="0.08"/>
+    <SolidColorBrush x:Key="TabViewItemHeaderBackgroundPressed" Color="#1C1F26"/>
+    <SolidColorBrush x:Key="TabViewItemHeaderForeground" Color="#94A3B8"/>
+    <SolidColorBrush x:Key="TabViewItemHeaderForegroundSelected" Color="#10B981"/>
+    <SolidColorBrush x:Key="TabViewItemHeaderForegroundPointerOver" Color="#F1F5F9"/>
+    <SolidColorBrush x:Key="TabViewItemHeaderForegroundPressed" Color="#64748B"/>
+    <SolidColorBrush x:Key="TabViewItemIconForeground" Color="#94A3B8"/>
+    <SolidColorBrush x:Key="TabViewItemIconForegroundSelected" Color="#10B981"/>
+    <SolidColorBrush x:Key="TabViewItemIconForegroundPointerOver" Color="#F1F5F9"/>
+    <SolidColorBrush x:Key="TabViewItemIconForegroundPressed" Color="#64748B"/>
+
     <!-- ===== InfoBar 信息级通知背景 =====
          Fluent 默认的 Informational 背景为 50% 透明度（#80FFFFFF/#80F6F6F6），
          通知悬浮在内容上时难以阅读，改为不透明表面色（随深浅色切换）。 -->

@@ -1,0 +1,70 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ObsMCLauncher.Desktop.ViewModels"
+             x:Class="ObsMCLauncher.Desktop.Views.JvmArgumentsEditorView"
+             x:DataType="vm:JvmArgumentsEditorViewModel">
+
+  <StackPanel Spacing="10">
+
+    <!-- 预设方案 -->
+    <Grid ColumnDefinitions="*,Auto">
+      <StackPanel>
+        <TextBlock Text="预设方案" FontSize="12" FontWeight="SemiBold"/>
+        <TextBlock Text="选择后自动填入参数，可继续手动修改" FontSize="10"
+                   Foreground="{DynamicResource TextTertiaryBrush}" Margin="0,1,0,0"/>
+      </StackPanel>
+      <Button Grid.Column="1" Classes="ghost" Content="清空" FontSize="11" Padding="8,4"
+              Command="{Binding ClearCommand}" IsVisible="{Binding HasArguments}"/>
+    </Grid>
+
+    <ComboBox ItemsSource="{Binding Presets}"
+              SelectedItem="{Binding SelectedPreset}"
+              PlaceholderText="选择预设方案..."
+              HorizontalAlignment="Stretch"
+              FontSize="12">
+      <ComboBox.ItemTemplate>
+        <DataTemplate x:DataType="vm:JvmPreset">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <TextBlock Text="{Binding Name}" FontSize="12" VerticalAlignment="Center"/>
+            <TextBlock Text="{Binding Description}" FontSize="10"
+                       Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center"/>
+          </StackPanel>
+        </DataTemplate>
+      </ComboBox.ItemTemplate>
+    </ComboBox>
+
+    <!-- 常用参数 chips -->
+    <TextBlock Text="常用参数（点击开关）" FontSize="12" FontWeight="SemiBold"/>
+    <ItemsControl ItemsSource="{Binding Chips}">
+      <ItemsControl.ItemsPanel>
+        <ItemsPanelTemplate>
+          <WrapPanel/>
+        </ItemsPanelTemplate>
+      </ItemsControl.ItemsPanel>
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="vm:JvmFlagChip">
+          <ToggleButton Classes="chip"
+                        IsChecked="{Binding IsEnabled}"
+                        Content="{Binding Display}"
+                        ToolTip.Tip="{Binding Tooltip}"
+                        Margin="0,0,6,6"/>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+
+    <!-- 自由编辑 -->
+    <StackPanel Spacing="4">
+      <TextBlock Text="参数内容" FontSize="12" FontWeight="SemiBold"/>
+      <TextBox Text="{Binding Arguments}"
+               AcceptsReturn="True"
+               TextWrapping="Wrap"
+               MinHeight="76"
+               MaxHeight="160"
+               FontFamily="Consolas"
+               FontSize="11"
+               Watermark="-XX:+UseG1GC -Xss1M"
+               HorizontalAlignment="Stretch"/>
+    </StackPanel>
+
+  </StackPanel>
+</UserControl>

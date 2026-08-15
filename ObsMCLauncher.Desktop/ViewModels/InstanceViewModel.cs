@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
@@ -17,6 +18,7 @@ using ObsMCLauncher.Core.Services;
 using ObsMCLauncher.Core.Services.Accounts;
 using ObsMCLauncher.Core.Services.Minecraft;
 using ObsMCLauncher.Core.Utils;
+using ObsMCLauncher.Desktop.Services;
 using ObsMCLauncher.Desktop.ViewModels.Notifications;
 using ObsMCLauncher.Desktop.ViewModels.Dialogs;
 
@@ -121,14 +123,34 @@ public partial class InstanceViewModel : ViewModelBase
     [ObservableProperty]
     private string _customJavaPath = "";
 
+    /// <summary>自定义模式下的 Java 下拉列表（已探测列表 + 自定义路径）。</summary>
+    [ObservableProperty]
+    private ObservableCollection<JavaOption> _javaOptions = new();
+
+    [ObservableProperty]
+    private JavaOption? _selectedJavaOption;
+
+    [ObservableProperty]
+    private string _globalJavaText = "";
+
+    /// <summary>Java 选择下方的提示/校验信息。</summary>
+    [ObservableProperty]
+    private string _javaPathHint = "";
+
+    [ObservableProperty]
+    private bool _isJavaPathWarning;
+
+    /// <summary>当前选中的是否为「自定义路径」选项。</summary>
+    public bool IsCustomJavaPath => SelectedJavaOption?.Type == JavaOptionType.Custom;
+
     [ObservableProperty]
     private bool _useCustomJvm;
 
     [ObservableProperty]
-    private string _instanceJvmArguments = "";
-
-    [ObservableProperty]
     private string _globalJvmText = "";
+
+    /// <summary>实例级 JVM 参数编辑器（chips + 预设 + 自由编辑），供「版本设置」页使用。</summary>
+    public JvmArgumentsEditorViewModel JvmArgumentsEditor { get; }
 
     // 描述
     [ObservableProperty]
@@ -146,6 +168,18 @@ public partial class InstanceViewModel : ViewModelBase
     {
         _notificationService = notificationService;
         _dialogService = NavigationStore.MainWindow?.Dialogs ?? new DialogService();
+
+        JvmArgumentsEditor = new JvmArgumentsEditorViewModel
+        {
+            ArgumentsCommit = args =>
+            {
+                if (_version == null || _isLoadingConfig) return;
+                if (UseCustomJvm)
+                {
+                    Core.Services.VersionInitService.SetJvmArguments(_versionPath, args ?? "");
+                }
+            }
+        };
     }
 
     public void SetVersion(ObsMCLauncher.Core.Services.Minecraft.InstalledVersion version)
@@ -166,9 +200,21 @@ public partial class InstanceViewModel : ViewModelBase
         {
             var data = await Task.Run(() => CollectLoadData());
 
+            // 扫描 Java 列表（与设置页共用缓存，设置页扫过后此处几乎无耗时）
+            List<JavaOption> javaList = new();
+            try
+            {
+                javaList = await JavaOptionsProvider.ScanAsync().ConfigureAwait(false);
+            }
+            catch
+            {
+                // 扫描失败时仍可手动填写自定义路径
+            }
+
             Dispatcher.UIThread.Post(() =>
             {
                 ApplyVersionData(data);
+                ApplyJavaOptions(javaList, data.CustomJavaPath);
                 ApplyWorlds(data.Worlds);
                 ApplyMods(data.Mods);
                 LoadShaderPacks();
@@ -255,6 +301,7 @@ public partial class InstanceViewModel : ViewModelBase
         // 实例级 Java 与 JVM 参数
         data.CustomJavaPath = Core.Services.VersionInitService.GetCustomJavaPath(_versionPath);
         data.UseCustomJava = !string.IsNullOrWhiteSpace(data.CustomJavaPath);
+        data.GlobalJavaText = $"全局: {config.GetActualJavaPath(data.ActualVersion)}";
         data.InstanceJvmArguments = Core.Services.VersionInitService.GetJvmArguments(_versionPath);
         data.UseCustomJvm = !string.IsNullOrWhiteSpace(data.InstanceJvmArguments);
         data.GlobalJvmArguments = config.JvmArguments;
@@ -286,8 +333,9 @@ public partial class InstanceViewModel : ViewModelBase
         GlobalMemoryText = $"全局: {data.GlobalMaxMemory} MB";
         UseCustomJava = data.UseCustomJava;
         CustomJavaPath = data.CustomJavaPath;
+        GlobalJavaText = data.GlobalJavaText;
         UseCustomJvm = data.UseCustomJvm;
-        InstanceJvmArguments = data.InstanceJvmArguments;
+        JvmArgumentsEditor.SetArguments(data.InstanceJvmArguments);
         GlobalJvmText = $"全局: {data.GlobalJvmArguments}";
         Description = data.Description;
         EditingDescription = data.Description;
@@ -982,30 +1030,162 @@ public partial class InstanceViewModel : ViewModelBase
     partial void OnUseCustomJavaChanged(bool value)
     {
         if (_version == null || _isLoadingConfig) return;
-        Core.Services.VersionInitService.SetCustomJavaPath(_versionPath, value ? CustomJavaPath : "");
+
+        var path = value
+            ? (SelectedJavaOption?.Type == JavaOptionType.Detected ? SelectedJavaOption.Path : CustomJavaPath)
+            : "";
+        Core.Services.VersionInitService.SetCustomJavaPath(_versionPath, path ?? "");
+        UpdateJavaPathHint();
     }
 
     partial void OnCustomJavaPathChanged(string value)
     {
         if (_version == null || _isLoadingConfig) return;
-        if (UseCustomJava)
+
+        if (UseCustomJava && SelectedJavaOption?.Type == JavaOptionType.Custom)
         {
             Core.Services.VersionInitService.SetCustomJavaPath(_versionPath, value ?? "");
         }
+        UpdateJavaPathHint();
+    }
+
+    partial void OnSelectedJavaOptionChanged(JavaOption? value)
+    {
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(IsCustomJavaPath)));
+        if (_version == null || _isLoadingConfig) return;
+
+        if (value?.Type == JavaOptionType.Detected && UseCustomJava)
+        {
+            CustomJavaPath = value.Path;
+            Core.Services.VersionInitService.SetCustomJavaPath(_versionPath, value.Path);
+        }
+        UpdateJavaPathHint();
     }
 
     partial void OnUseCustomJvmChanged(bool value)
     {
         if (_version == null || _isLoadingConfig) return;
-        Core.Services.VersionInitService.SetJvmArguments(_versionPath, value ? InstanceJvmArguments : "");
+        Core.Services.VersionInitService.SetJvmArguments(_versionPath, value ? JvmArgumentsEditor.Arguments : "");
     }
 
-    partial void OnInstanceJvmArgumentsChanged(string value)
+    /// <summary>加载 Java 下拉列表并恢复选中项（实例已存路径优先匹配探测结果）。</summary>
+    private void ApplyJavaOptions(List<JavaOption> found, string customPath)
     {
-        if (_version == null || _isLoadingConfig) return;
-        if (UseCustomJvm)
+        var list = new ObservableCollection<JavaOption>();
+        foreach (var j in found)
+            list.Add(j);
+        list.Add(JavaOption.Custom());
+        JavaOptions = list;
+
+        JavaOption? selection = null;
+        if (!string.IsNullOrWhiteSpace(customPath))
         {
-            Core.Services.VersionInitService.SetJvmArguments(_versionPath, value ?? "");
+            selection = found.FirstOrDefault(j =>
+                            string.Equals(j.Path, customPath, StringComparison.OrdinalIgnoreCase))
+                        ?? JavaOptions.FirstOrDefault(x => x.Type == JavaOptionType.Custom);
+        }
+
+        _isLoadingConfig = true;
+        SelectedJavaOption = selection;
+        _isLoadingConfig = false;
+        UpdateJavaPathHint();
+    }
+
+    /// <summary>刷新 Java 选择区下方的提示信息（版本详情 / 路径校验警告）。</summary>
+    private void UpdateJavaPathHint()
+    {
+        if (!UseCustomJava)
+        {
+            JavaPathHint = "";
+            IsJavaPathWarning = false;
+            return;
+        }
+
+        if (SelectedJavaOption?.Type == JavaOptionType.Detected)
+        {
+            var o = SelectedJavaOption;
+            JavaPathHint = $"Java {o.MajorVersion} · {o.Architecture} · {o.Source}";
+            IsJavaPathWarning = false;
+            return;
+        }
+
+        var path = CustomJavaPath;
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            JavaPathHint = "请选择或输入 Java 可执行文件路径（留空则按全局设置）";
+            IsJavaPathWarning = false;
+            return;
+        }
+
+        if (!File.Exists(path))
+        {
+            JavaPathHint = "该路径不存在或不是有效的 Java 可执行文件，启动时将失败";
+            IsJavaPathWarning = true;
+            return;
+        }
+
+        JavaPathHint = "";
+        IsJavaPathWarning = false;
+    }
+
+    [RelayCommand]
+    private async Task BrowseJavaAsync()
+    {
+        try
+        {
+            var storageProvider = (Avalonia.Application.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow?.StorageProvider;
+            if (storageProvider == null) return;
+
+            var patterns = OperatingSystem.IsWindows()
+                ? new[] { "javaw.exe", "java.exe" }
+                : new[] { "java" };
+
+            var files = await storageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+            {
+                Title = "选择 Java 可执行文件",
+                AllowMultiple = false,
+                FileTypeFilter = new[] { new FilePickerFileType("Java 可执行文件") { Patterns = patterns } }
+            });
+
+            var file = files.FirstOrDefault();
+            if (file == null) return;
+
+            var path = file.Path.LocalPath;
+
+            // 尝试读取版本信息用于展示（失败则仅按自定义路径处理）
+            var info = await Task.Run(() => JavaOptionsProvider.Inspect(path)).ConfigureAwait(false);
+
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                // 若恰好命中已探测的 Java，直接选中对应条目，版本信息更完整
+                var detected = JavaOptions.FirstOrDefault(x =>
+                    x.Type == JavaOptionType.Detected &&
+                    string.Equals(x.Path, path, StringComparison.OrdinalIgnoreCase));
+
+                UseCustomJava = true;
+                CustomJavaPath = path;
+
+                if (detected != null)
+                {
+                    SelectedJavaOption = detected;
+                }
+                else
+                {
+                    // 构造新的 Custom 实例（Equals 按 Type 匹配，仍会高亮列表中的「自定义路径...」条目）
+                    var custom = new JavaOption
+                    {
+                        Type = JavaOptionType.Custom,
+                        Display = info != null
+                            ? $"自定义: Java {info.MajorVersion} ({info.Architecture}) - {info.Source}"
+                            : "自定义路径..."
+                    };
+                    SelectedJavaOption = custom;
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            _notificationService.Show("浏览失败", ex.Message, NotificationType.Error);
         }
     }
 
@@ -1373,6 +1553,7 @@ public partial class InstanceViewModel : ViewModelBase
 
         public bool UseCustomJava { get; set; }
         public string CustomJavaPath { get; set; } = "";
+        public string GlobalJavaText { get; set; } = "";
         public bool UseCustomJvm { get; set; }
         public string InstanceJvmArguments { get; set; } = "";
         public string GlobalJvmArguments { get; set; } = "";

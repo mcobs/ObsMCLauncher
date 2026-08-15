@@ -449,4 +449,34 @@
     <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
   </Style>
 
+  <!-- ===== JVM 快捷参数 chip（ToggleButton 胶囊开关） ===== -->
+  <Style Selector="ToggleButton.chip">
+    <Setter Property="Background" Value="{DynamicResource SurfaceElevatedBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="14" />
+    <Setter Property="Padding" Value="10,5" />
+    <Setter Property="FontSize" Value="11" />
+    <Setter Property="Cursor" Value="Hand" />
+  </Style>
+  <Style Selector="ToggleButton.chip:checked">
+    <Setter Property="Background" Value="{DynamicResource NavItemSelectedBackgroundBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector="ToggleButton.chip:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
+  </Style>
+  <Style Selector="ToggleButton.chip:checked:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource NavItemSelectedBackgroundBrush}" />
+  </Style>
+  <Style Selector="ToggleButton.chip:pressed /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource SurfaceElevatedBrush}" />
+  </Style>
+  <Style Selector="ToggleButton.chip:checked:pressed /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource NavItemSelectedBackgroundBrush}" />
+  </Style>
+
 </Styles>

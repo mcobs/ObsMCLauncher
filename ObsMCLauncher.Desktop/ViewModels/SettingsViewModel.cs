@@ -22,6 +22,7 @@ using ObsMCLauncher.Core.Models;
 using ObsMCLauncher.Core.Services;
 using ObsMCLauncher.Core.Services.Mirror;
 using ObsMCLauncher.Core.Utils;
+using ObsMCLauncher.Desktop.Services;
 using ObsMCLauncher.Desktop.ViewModels.Notifications;
 
 namespace ObsMCLauncher.Desktop.ViewModels;
@@ -79,6 +80,7 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(CustomJavaPath)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(IsCustomJava)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(JvmArguments)));
+        JvmArgumentsEditor.SetArguments(_config.JvmArguments);
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(IsNavCollapsed)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(NotificationPosition)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(NotificationAutoCloseSeconds)));
@@ -111,6 +113,17 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
 
         _isInitializing = true;
         _config = LauncherConfig.Load();
+
+        JvmArgumentsEditor = new JvmArgumentsEditorViewModel
+        {
+            ArgumentsCommit = args =>
+            {
+                if (_isInitializing) return;
+                _config.JvmArguments = args ?? "";
+                OnPropertyChanged(new PropertyChangedEventArgs(nameof(JvmArguments)));
+                AutoSave();
+            }
+        };
 
         // 应用保存的主题模式
         ApplyThemeMode(_config.ThemeMode);
@@ -567,6 +580,9 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
         }
     }
 
+    /// <summary>全局 JVM 参数编辑器（快捷参数 + 预设 + 自由编辑），供「游戏设置」页使用。</summary>
+    public JvmArgumentsEditorViewModel JvmArgumentsEditor { get; }
+
     public bool IsNavCollapsed
     {
         get => _config.IsNavCollapsed;
@@ -710,23 +726,17 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
         {
             Status = "正在扫描 Java...";
 
-            var found = await Task.Run(DetectAllJavaOptions).ConfigureAwait(false);
+            var found = await JavaOptionsProvider.ScanAsync().ConfigureAwait(false);
 
             await Dispatcher.UIThread.InvokeAsync(() =>
             {
                 JavaOptions.Clear();
 
-                var auto = JavaOption.Auto();
-                JavaOptions.Add(auto);
-
-                foreach (var j in found)
+                foreach (var j in JavaOptionsProvider.BuildOptionList(found))
                     JavaOptions.Add(j);
 
-                var custom = JavaOption.Custom();
-                JavaOptions.Add(custom);
-
                 // 根据配置选中（直接设置字段，避免触发AutoSave）
-                _selectedJavaOption = PickSelectedJavaOption(found, auto, custom);
+                _selectedJavaOption = PickSelectedJavaOption(found);
                 OnPropertyChanged(new PropertyChangedEventArgs(nameof(SelectedJavaOption)));
 
                 Status = $"Java 扫描完成：{found.Count} 个";
@@ -738,8 +748,11 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
         }
     }
 
-    private JavaOption PickSelectedJavaOption(List<JavaOption> found, JavaOption auto, JavaOption custom)
+    private JavaOption PickSelectedJavaOption(List<JavaOption> found)
     {
+        var auto = JavaOption.Auto();
+        var custom = JavaOption.Custom();
+
         return JavaSelectionMode switch
         {
             0 => auto,
@@ -750,240 +763,6 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
         };
     }
 
-    private static List<JavaOption> DetectAllJavaOptions()
-    {
-        var candidates = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-        void AddIfExists(string path)
-        {
-            try
-            {
-                if (File.Exists(path))
-                {
-                    var normalized = Path.GetFullPath(path);
-                    candidates.Add(normalized);
-                }
-            }
-            catch
-            {
-            }
-        }
-
-        // PATH
-        var pathEnv = Environment.GetEnvironmentVariable("PATH") ?? "";
-        foreach (var dir in pathEnv.Split(Path.PathSeparator))
-        {
-            if (string.IsNullOrWhiteSpace(dir)) continue;
-            var d = dir.Trim();
-            if (OperatingSystem.IsWindows())
-            {
-                AddIfExists(Path.Combine(d, "javaw.exe"));
-            }
-            else
-            {
-                AddIfExists(Path.Combine(d, "java"));
-            }
-        }
-
-        // JAVA_HOME
-        var javaHome = Environment.GetEnvironmentVariable("JAVA_HOME");
-        if (!string.IsNullOrWhiteSpace(javaHome))
-        {
-            if (OperatingSystem.IsWindows())
-            {
-                AddIfExists(Path.Combine(javaHome, "bin", "javaw.exe"));
-            }
-            else
-            {
-                AddIfExists(Path.Combine(javaHome, "bin", "java"));
-            }
-        }
-
-        // 常见目录
-        if (OperatingSystem.IsWindows())
-        {
-            var programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
-            var programFilesX86 = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
-
-            foreach (var root in new[] { programFiles, programFilesX86 })
-            {
-                if (string.IsNullOrWhiteSpace(root) || !Directory.Exists(root)) continue;
-
-                foreach (var baseDir in new[] { "Java", "Eclipse Adoptium", "Eclipse Foundation", "Microsoft", "Zulu", "BellSoft", "Amazon Corretto", "Alibaba", "GraalVM", "SapMachine" })
-                {
-                    var dir = Path.Combine(root, baseDir);
-                    if (!Directory.Exists(dir)) continue;
-
-                    foreach (var sub in Directory.GetDirectories(dir))
-                    {
-                        AddIfExists(Path.Combine(sub, "bin", "javaw.exe"));
-                    }
-                }
-            }
-
-            // 用户级JDK目录
-            var homeDir = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-            var userJdksDir = Path.Combine(homeDir, ".jdks");
-            if (Directory.Exists(userJdksDir))
-            {
-                foreach (var sub in Directory.GetDirectories(userJdksDir))
-                {
-                    AddIfExists(Path.Combine(sub, "bin", "javaw.exe"));
-                }
-            }
-        }
-        else if (OperatingSystem.IsMacOS())
-        {
-            var macDirs = new[]
-            {
-                "/Library/Java/JavaVirtualMachines",
-                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Library", "Java", "JavaVirtualMachines"),
-            };
-            foreach (var baseDir in macDirs)
-            {
-                if (!Directory.Exists(baseDir)) continue;
-                foreach (var sub in Directory.GetDirectories(baseDir))
-                {
-                    AddIfExists(Path.Combine(sub, "Contents", "Home", "bin", "java"));
-                }
-            }
-        }
-        else if (OperatingSystem.IsLinux())
-        {
-            var linuxDirs = new[] { "/usr/lib/jvm", "/usr/java", "/opt/jdk", "/opt/jre", "/opt/java" };
-            var homeDir = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-            var userDirs = new[]
-            {
-                Path.Combine(homeDir, ".sdkman", "candidates", "java"),
-                Path.Combine(homeDir, ".jdks"),
-            };
-            foreach (var baseDir in linuxDirs.Concat(userDirs))
-            {
-                if (!Directory.Exists(baseDir)) continue;
-                foreach (var sub in Directory.GetDirectories(baseDir))
-                {
-                    AddIfExists(Path.Combine(sub, "bin", "java"));
-                }
-            }
-            AddIfExists("/usr/bin/java");
-        }
-
-        var result = new List<JavaOption>();
-        foreach (var exe in candidates)
-        {
-            var info = TryGetJavaVersion(exe);
-            if (info != null)
-                result.Add(info);
-        }
-
-        // 优先高版本
-        result = result
-            .OrderByDescending(x => x.MajorVersion)
-            .ThenByDescending(x => x.Version)
-            .ToList();
-
-        return result;
-    }
-
-    private static JavaOption? TryGetJavaVersion(string javaExePath)
-    {
-        try
-        {
-            var psi = new ProcessStartInfo
-            {
-                FileName = javaExePath,
-                Arguments = "-version",
-                UseShellExecute = false,
-                RedirectStandardError = true,
-                RedirectStandardOutput = true,
-                CreateNoWindow = true
-            };
-
-            using var p = Process.Start(psi);
-            if (p == null) return null;
-
-            var stderr = p.StandardError.ReadToEnd();
-            var stdout = p.StandardOutput.ReadToEnd();
-            p.WaitForExit(2000);
-
-            var text = (stderr + "\n" + stdout).Trim();
-
-            var m = Regex.Match(text, "version\\s+\"(?<ver>[^\"]+)\"");
-            if (!m.Success) return null;
-
-            var ver = m.Groups["ver"].Value;
-            var major = ParseMajor(ver);
-
-            var arch = text.Contains("64-Bit", StringComparison.OrdinalIgnoreCase) ? "x64" : "x86";
-            var vendor = DetectVendor(text);
-
-            return new JavaOption(JavaOptionType.Detected, javaExePath)
-            {
-                Version = ver,
-                MajorVersion = major,
-                Architecture = arch,
-                Source = vendor,
-                Display = $"Java {major} ({arch}) - {vendor}"
-            };
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
-    private static string DetectVendor(string output)
-    {
-        if (output.Contains("Dragonwell", StringComparison.OrdinalIgnoreCase))
-            return "Alibaba Dragonwell";
-        if (output.Contains("Zulu", StringComparison.OrdinalIgnoreCase))
-            return "Azul Zulu";
-        if (output.Contains("BellSoft", StringComparison.OrdinalIgnoreCase) ||
-            output.Contains("Liberica", StringComparison.OrdinalIgnoreCase))
-            return "Liberica";
-        if (output.Contains("Temurin", StringComparison.OrdinalIgnoreCase))
-            return "Eclipse Temurin";
-        if (output.Contains("Adoptium", StringComparison.OrdinalIgnoreCase))
-            return "Eclipse Adoptium";
-        if (output.Contains("Corretto", StringComparison.OrdinalIgnoreCase))
-            return "Amazon Corretto";
-        if (output.Contains("Microsoft", StringComparison.OrdinalIgnoreCase))
-            return "Microsoft";
-        if (output.Contains("GraalVM", StringComparison.OrdinalIgnoreCase))
-            return "GraalVM";
-        if (output.Contains("SapMachine", StringComparison.OrdinalIgnoreCase))
-            return "SapMachine";
-        if (output.Contains("Red Hat", StringComparison.OrdinalIgnoreCase))
-            return "Red Hat";
-        if (output.Contains("IBM", StringComparison.OrdinalIgnoreCase))
-            return "IBM";
-        if (output.Contains("Java(TM) SE", StringComparison.OrdinalIgnoreCase))
-            return "Oracle";
-        if (output.Contains("OpenJDK", StringComparison.OrdinalIgnoreCase))
-            return "OpenJDK";
-        return "Unknown";
-    }
-
-    private static int ParseMajor(string version)
-    {
-        // 1.8.x => 8
-        // 17.0.10 => 17
-        try
-        {
-            var parts = version.Split('.');
-            if (parts.Length >= 2 && parts[0] == "1" && int.TryParse(parts[1], out var legacy))
-                return legacy;
-
-            if (int.TryParse(parts[0], out var major))
-                return major;
-
-            return 0;
-        }
-        catch
-        {
-            return 0;
-        }
-    }
 
     private async Task BrowseGameDirectoryAsync()
     {
@@ -1197,6 +976,8 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
         resources["SubtleFillColorTertiaryBrush"] = new SolidColorBrush(Color.Parse("#F1F5F9"));
         resources["ControlFillColorDefaultBrush"] = new SolidColorBrush(Color.Parse("#FFFFFF"));
         resources["InfoBarInformationalSeverityBackgroundBrush"] = new SolidColorBrush(Color.Parse("#FFFFFF"));
+
+        ApplyTabViewTheme(resources, isLight: true);
     }
 
     private void ApplyDarkTheme(IResourceDictionary resources)
@@ -1251,6 +1032,35 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
         resources["SubtleFillColorTertiaryBrush"] = new SolidColorBrush(Color.Parse("#1C1F26"));
         resources["ControlFillColorDefaultBrush"] = new SolidColorBrush(Color.Parse("#141619"));
         resources["InfoBarInformationalSeverityBackgroundBrush"] = new SolidColorBrush(Color.Parse("#1C1F26"));
+
+        ApplyTabViewTheme(resources, isLight: false);
+    }
+
+    /// <summary>
+    /// FluentAvalonia TabView 主题资源：让 tab 选择栏跟随应用三级表面色阶，
+    /// 避免 Fluent 默认暖灰（#282828 等）与冷色系主题产生隔阂。
+    /// 选中 tab 与内容区共用「页面底色」，tab 条与顶部标题栏同色。
+    /// </summary>
+    private static void ApplyTabViewTheme(IResourceDictionary resources, bool isLight)
+    {
+        var accent = new SolidColorBrush(Color.Parse("#10B981"));
+
+        resources["TabViewBackground"] = new SolidColorBrush(Color.Parse(isLight ? "#FFFFFF" : "#141619"));
+        resources["TabViewBorderBrush"] = new SolidColorBrush(Color.Parse(isLight ? "#F1F5F9" : "#1E2128"));
+        resources["TabViewItemHeaderBackground"] = Brushes.Transparent;
+        resources["TabViewItemHeaderBackgroundSelected"] = new SolidColorBrush(Color.Parse(isLight ? "#F8FAFC" : "#0B0D10"));
+        resources["TabViewItemHeaderBackgroundPointerOver"] = new SolidColorBrush(Color.Parse("#10B981")) { Opacity = isLight ? 0.10 : 0.08 };
+        resources["TabViewItemHeaderBackgroundPressed"] = new SolidColorBrush(Color.Parse(isLight ? "#F1F5F9" : "#1C1F26"));
+
+        resources["TabViewItemHeaderForeground"] = new SolidColorBrush(Color.Parse(isLight ? "#475569" : "#94A3B8"));
+        resources["TabViewItemHeaderForegroundSelected"] = accent;
+        resources["TabViewItemHeaderForegroundPointerOver"] = new SolidColorBrush(Color.Parse(isLight ? "#0F172A" : "#F1F5F9"));
+        resources["TabViewItemHeaderForegroundPressed"] = new SolidColorBrush(Color.Parse(isLight ? "#94A3B8" : "#64748B"));
+
+        resources["TabViewItemIconForeground"] = new SolidColorBrush(Color.Parse(isLight ? "#475569" : "#94A3B8"));
+        resources["TabViewItemIconForegroundSelected"] = accent;
+        resources["TabViewItemIconForegroundPointerOver"] = new SolidColorBrush(Color.Parse(isLight ? "#0F172A" : "#F1F5F9"));
+        resources["TabViewItemIconForegroundPressed"] = new SolidColorBrush(Color.Parse(isLight ? "#94A3B8" : "#64748B"));
     }
 
     private void OnSystemThemeChanged(object? sender, EventArgs e)
@@ -1271,35 +1081,6 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
         _saveNotifyCts?.Cancel();
         _saveNotifyCts?.Dispose();
         GC.SuppressFinalize(this);
-    }
-
-    public sealed record JavaOption(JavaOptionType Type, string Path)
-    {
-        public string Display { get; init; } = "";
-        public string Version { get; init; } = "";
-        public int MajorVersion { get; init; }
-        public string Architecture { get; init; } = "";
-        public string Source { get; init; } = "";
-        public bool IsPathVisible => Type == JavaOptionType.Detected && !string.IsNullOrWhiteSpace(Path);
-
-        public override string ToString() => string.IsNullOrWhiteSpace(Display) ? Path : Display;
-
-        public static JavaOption Auto() => new(JavaOptionType.Auto, "")
-        {
-            Display = "自动选择（根据游戏版本自动匹配）"
-        };
-
-        public static JavaOption Custom() => new(JavaOptionType.Custom, "")
-        {
-            Display = "自定义路径..."
-        };
-    }
-
-    public enum JavaOptionType
-    {
-        Auto,
-        Detected,
-        Custom
     }
 
     #region 主页卡片管理

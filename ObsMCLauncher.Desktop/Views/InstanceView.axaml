@@ -1,6 +1,8 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:ObsMCLauncher.Desktop.ViewModels"
+             xmlns:views="using:ObsMCLauncher.Desktop.Views"
+             xmlns:services="using:ObsMCLauncher.Desktop.Services"
              xmlns:ui="using:FluentAvalonia.UI.Controls"
              xmlns:converters="using:ObsMCLauncher.Desktop.Converters"
              x:Class="ObsMCLauncher.Desktop.Views.InstanceView"
@@ -37,7 +39,7 @@
 
       <!-- 内容区：FluentAvalonia TabView -->
       <ui:TabView Grid.Row="1"
-                  Background="Transparent"
+                  Background="{DynamicResource TabViewBackground}"
                   IsAddTabButtonVisible="False"
                   CanDragTabs="False"
                   CanReorderTabs="False"
@@ -308,15 +310,43 @@
                   <Grid ColumnDefinitions="*,Auto">
                     <StackPanel>
                       <TextBlock Text="Java 路径" FontSize="14" FontWeight="Medium"/>
-                      <TextBlock Text="为此版本指定单独的 Java" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,1,0,0"/>
+                      <TextBlock Text="{Binding GlobalJavaText}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,1,0,0" TextTrimming="CharacterEllipsis"/>
                     </StackPanel>
                     <ToggleSwitch Grid.Column="1" IsChecked="{Binding UseCustomJava}" OnContent="自定义" OffContent="跟随全局"/>
                   </Grid>
 
                   <StackPanel Spacing="6" IsVisible="{Binding UseCustomJava}">
                     <Separator Background="{DynamicResource DividerBrush}"/>
-                    <TextBox Text="{Binding CustomJavaPath}" Watermark="javaw.exe 的完整路径"
-                             FontSize="12" HorizontalAlignment="Stretch"/>
+                    <ComboBox ItemsSource="{Binding JavaOptions}"
+                              SelectedItem="{Binding SelectedJavaOption}"
+                              PlaceholderText="请选择 Java（扫描系统已安装的运行时）..."
+                              HorizontalAlignment="Stretch"
+                              FontSize="12">
+                      <ComboBox.ItemTemplate>
+                        <DataTemplate x:DataType="services:JavaOption">
+                          <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                            <TextBlock Grid.Column="0" Text="{Binding Display}" VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="1" Text="{Binding Path}" VerticalAlignment="Center"
+                                       IsVisible="{Binding IsPathVisible}"
+                                       Foreground="{DynamicResource TextTertiaryBrush}" FontSize="11"
+                                       TextTrimming="CharacterEllipsis"/>
+                          </Grid>
+                        </DataTemplate>
+                      </ComboBox.ItemTemplate>
+                    </ComboBox>
+
+                    <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding IsCustomJavaPath}">
+                      <TextBox Grid.Column="0" Text="{Binding CustomJavaPath}" Watermark="javaw.exe / java 的完整路径"
+                               FontSize="12" Margin="0,0,8,0"/>
+                      <Button Grid.Column="1" Content="浏览" Width="72" Command="{Binding BrowseJavaCommand}"/>
+                    </Grid>
+
+                    <TextBlock Text="{Binding JavaPathHint}"
+                               FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" TextWrapping="Wrap"
+                               IsVisible="{Binding !IsJavaPathWarning}"/>
+                    <TextBlock Text="{Binding JavaPathHint}"
+                               FontSize="11" Foreground="{DynamicResource WarningBrush}" TextWrapping="Wrap"
+                               IsVisible="{Binding IsJavaPathWarning}"/>
                   </StackPanel>
 
                   <Grid ColumnDefinitions="*,Auto">
@@ -329,8 +359,8 @@
 
                   <StackPanel Spacing="6" IsVisible="{Binding UseCustomJvm}">
                     <Separator Background="{DynamicResource DividerBrush}"/>
-                    <TextBox Text="{Binding InstanceJvmArguments}" Watermark="如 -XX:+UseG1GC -Xss1M"
-                             FontSize="12" HorizontalAlignment="Stretch"/>
+                    <TextBlock Text="自定义参数将完整替换全局参数" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}"/>
+                    <views:JvmArgumentsEditorView DataContext="{Binding JvmArgumentsEditor}" HorizontalAlignment="Stretch"/>
                   </StackPanel>
                 </StackPanel>
               </StackPanel>
