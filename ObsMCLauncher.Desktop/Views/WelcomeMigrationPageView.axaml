@@ -58,7 +58,7 @@
                     <TextBlock Text="选择要导入的数据" HorizontalAlignment="Center"
                                Margin="0 0 0 4"
                                FontSize="24" FontWeight="SemiBold" />
-                    <TextBlock Text="来自 Plain Craft Launcher 2（2.13.0.0+）。选择要导入的信息："
+                    <TextBlock Text="来自 Plain Craft Launcher 2。选择要导入的信息："
                                HorizontalAlignment="Center"
                                TextAlignment="Center"
                                Margin="0 0 0 12" />
