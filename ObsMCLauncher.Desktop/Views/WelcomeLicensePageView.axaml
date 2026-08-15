@@ -1,0 +1,59 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ObsMCLauncher.Desktop.ViewModels"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="700" d:DesignHeight="480"
+             x:Class="ObsMCLauncher.Desktop.Views.WelcomeLicensePageView"
+             x:DataType="vm:WelcomeLicensePageViewModel">
+
+    <UserControl.Styles>
+        <!-- 许可链接：蓝色下划线 -->
+        <Style Selector="HyperlinkButton.license-link">
+            <Setter Property="Foreground" Value="#0078D4" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Margin" Value="0 -2 0 0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+        <Style Selector="HyperlinkButton.license-link TextBlock">
+            <Setter Property="TextDecorations" Value="Underline" />
+        </Style>
+    </UserControl.Styles>
+
+    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="520">
+        <TextBlock Text="同意许可条款"
+                   HorizontalAlignment="Center"
+                   Margin="0 0 0 4"
+                   FontSize="24" FontWeight="SemiBold" />
+        <TextBlock Text="要继续使用 ObsMCLauncher，您必须阅读并同意以下许可条款。"
+                   HorizontalAlignment="Center"
+                   TextWrapping="Wrap" />
+
+        <CheckBox IsChecked="{Binding Agreed}"
+                  HorizontalAlignment="Center"
+                  Margin="0 16 0 0">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="我已阅读并同意" VerticalAlignment="Center" />
+                <HyperlinkButton Classes="license-link"
+                                 Click="ButtonShowOssLicense_OnClick">
+                    <TextBlock Text="《ObsMCLauncher 开源许可》" />
+                </HyperlinkButton>
+                <TextBlock Text="。" VerticalAlignment="Center" />
+            </StackPanel>
+        </CheckBox>
+
+        <Button Command="{Binding ContinueCommand}"
+                IsEnabled="{Binding Agreed}"
+                ToolTip.Tip="下一步"
+                Width="48" Height="48"
+                CornerRadius="24"
+                Classes="accent"
+                HorizontalAlignment="Center"
+                Margin="0 16 0 0">
+            <ui:SymbolIcon Symbol="ChevronRight" FontSize="18" />
+        </Button>
+    </StackPanel>
+
+</UserControl>

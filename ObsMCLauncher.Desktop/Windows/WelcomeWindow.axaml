@@ -99,21 +99,12 @@
             <!-- 内容区 -->
             <Grid Grid.Row="1" Background="{DynamicResource BackgroundBrush}">
 
-                <!-- 主内容区：窗口打开后加 anim 类淡入，内部 Frame 做分页导航（开场字母动画在欢迎首页内） -->
+                <!-- 主内容区：窗口打开后加 anim 类淡入，内部 Frame 做分页导航（开场字母动画、版本号与数据迁移入口都在欢迎首页内） -->
                 <Border x:Name="ContentRoot" Classes="welcome-content">
-                    <Grid RowDefinitions="*,Auto">
-                        <ui:Frame x:Name="WelcomeFrame"
-                                  Grid.Row="0"
-                                  IsNavigationStackEnabled="False"
-                                  Margin="24"
-                                  Background="Transparent" />
-                        <TextBlock x:Name="VersionText"
-                                   Grid.Row="1"
-                                   FontSize="11"
-                                   Foreground="{DynamicResource TextTertiaryBrush}"
-                                   HorizontalAlignment="Center"
-                                   Margin="0,0,0,12" />
-                    </Grid>
+                    <ui:Frame x:Name="WelcomeFrame"
+                              IsNavigationStackEnabled="False"
+                              Margin="24"
+                              Background="Transparent" />
                 </Border>
             </Grid>
         </Grid>

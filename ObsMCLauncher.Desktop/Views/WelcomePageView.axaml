@@ -23,6 +23,17 @@
                 </Animation>
             </Style.Animations>
         </Style>
+
+        <!-- 底部数据迁移入口：链接样式（主题绿），下划线 -->
+        <Style Selector="HyperlinkButton.migration-link">
+            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Padding" Value="4" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+        <Style Selector="HyperlinkButton.migration-link TextBlock">
+            <Setter Property="TextDecorations" Value="Underline" />
+        </Style>
     </UserControl.Styles>
 
     <Grid>
@@ -68,11 +79,26 @@
                     Width="48" Height="48"
                     CornerRadius="24"
                     Classes="accent"
-                    ToolTip.Tip="开始使用"
-                    Command="{Binding CompleteCommand}"
+                    ToolTip.Tip="下一步"
+                    Command="{Binding NextCommand}"
                     Margin="0 16 0 0">
                 <ui:SymbolIcon Symbol="ChevronRight" FontSize="18" />
             </Button>
+
+            <!-- 底部：版本号 + 数据迁移入口（动画结束后显示，翻页后随页面隐藏） -->
+            <StackPanel Grid.Row="2"
+                        VerticalAlignment="Bottom" HorizontalAlignment="Center"
+                        Margin="8" Spacing="2"
+                        IsVisible="{Binding IntroCompleted}">
+                <TextBlock Text="{Binding Version}"
+                           HorizontalAlignment="Center"
+                           Opacity="0.75" FontSize="12" />
+                <HyperlinkButton Classes="migration-link"
+                                 Command="{Binding MigrationCommand}"
+                                 HorizontalAlignment="Center">
+                    <TextBlock Text="数据迁移" />
+                </HyperlinkButton>
+            </StackPanel>
         </Grid>
 
         <!-- 开场动画：方块翻入字母，结束后触发下方内容淡入 -->

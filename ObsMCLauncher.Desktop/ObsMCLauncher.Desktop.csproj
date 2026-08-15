@@ -22,6 +22,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- 开源许可文本嵌入程序集，供欢迎流程的许可页读取 -->
+    <EmbeddedResource Include="..\LICENSE" LogicalName="ObsMCLauncher.Desktop.LICENSE.txt" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Avalonia" Version="11.3.11" />
     <PackageReference Include="Avalonia.Controls.DataGrid" Version="11.3.11" />
     <PackageReference Include="Avalonia.Desktop" Version="11.3.11" />

@@ -1,0 +1,155 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ObsMCLauncher.Desktop.ViewModels"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="700" d:DesignHeight="480"
+             x:Class="ObsMCLauncher.Desktop.Views.WelcomeMigrationPageView"
+             x:DataType="vm:WelcomeMigrationPageViewModel">
+
+    <UserControl.Styles>
+        <!-- 大卡片复选框：图标 + 标题 + 描述 -->
+        <Style Selector="CheckBox">
+            <Setter Property="Padding" Value="12 8" />
+            <Setter Property="MinHeight" Value="76" />
+        </Style>
+        <Style Selector="CheckBox TextBlock">
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+    </UserControl.Styles>
+
+    <!-- 仿 ClassIsland 数据迁移向导：Carousel 分步（选来源 → 选数据 → 导入中 → 完成） -->
+    <Grid Width="600" VerticalAlignment="Stretch" HorizontalAlignment="Center">
+        <Carousel SelectedIndex="{Binding PageIndex}"
+                  VerticalAlignment="Stretch">
+
+            <Carousel.PageTransition>
+                <CompositePageTransition>
+                    <PageSlide Duration="0:0:0.3" Orientation="Horizontal" />
+                    <CrossFade Duration="0:0:0.3" />
+                </CompositePageTransition>
+            </Carousel.PageTransition>
+
+            <!-- 页 0：选择导入来源 -->
+            <Border VerticalAlignment="Center">
+                <StackPanel Spacing="2">
+                    <TextBlock Text="数据迁移" HorizontalAlignment="Center"
+                               Margin="0 0 0 4"
+                               FontSize="24" FontWeight="SemiBold" />
+                    <TextBlock Text="向 ObsMCLauncher 导入数据。"
+                               HorizontalAlignment="Center"
+                               Margin="0 0 0 12" />
+                    <ui:SettingsExpander Header="Plain Craft Launcher 2"
+                                         Description="2.13.0.0 及以上版本，导入游戏设置与应用设置"
+                                         IsClickEnabled="True"
+                                         MinHeight="72"
+                                         Click="SettingsExpanderSource_OnClick">
+                        <ui:SettingsExpander.IconSource>
+                            <ui:FontIconSource Glyph="&#xE896;" />
+                        </ui:SettingsExpander.IconSource>
+                    </ui:SettingsExpander>
+                </StackPanel>
+            </Border>
+
+            <!-- 页 1：选择要导入的数据 -->
+            <Border VerticalAlignment="Center">
+                <StackPanel Spacing="4" VerticalAlignment="Center">
+                    <TextBlock Text="选择要导入的数据" HorizontalAlignment="Center"
+                               Margin="0 0 0 4"
+                               FontSize="24" FontWeight="SemiBold" />
+                    <TextBlock Text="来自 Plain Craft Launcher 2（2.13.0.0+）。选择要导入的信息："
+                               HorizontalAlignment="Center"
+                               TextAlignment="Center"
+                               Margin="0 0 0 12" />
+
+                    <CheckBox IsChecked="{Binding ImportGameSettings}">
+                        <StackPanel Orientation="Horizontal" Spacing="14">
+                            <ui:FontIcon Glyph="&#xE713;" FontSize="26"
+                                         VerticalAlignment="Center" />
+                            <StackPanel Spacing="3" VerticalAlignment="Center">
+                                <TextBlock Text="游戏设置" FontWeight="SemiBold" FontSize="15" />
+                                <TextBlock Text="包括各实例的游戏内存、Java 路径、启动参数等个性化设置。"
+                                           FontSize="12"
+                                           Foreground="{DynamicResource TextSecondaryBrush}" />
+                            </StackPanel>
+                        </StackPanel>
+                    </CheckBox>
+
+                    <CheckBox IsChecked="{Binding ImportAppSettings}">
+                        <StackPanel Orientation="Horizontal" Spacing="14">
+                            <ui:FontIcon Glyph="&#xEF27;" FontSize="26"
+                                         VerticalAlignment="Center" />
+                            <StackPanel Spacing="3" VerticalAlignment="Center">
+                                <TextBlock Text="应用设置" FontWeight="SemiBold" FontSize="15" />
+                                <TextBlock Text="包括下载、外观、更新等应用首选项。"
+                                           FontSize="12"
+                                           Foreground="{DynamicResource TextSecondaryBrush}" />
+                            </StackPanel>
+                        </StackPanel>
+                    </CheckBox>
+
+                    <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Center">
+                        <Button Command="{Binding BackCommand}"
+                                ToolTip.Tip="上一步"
+                                Width="48" Height="48"
+                                CornerRadius="24"
+                                Margin="0 12 0 0">
+                            <ui:SymbolIcon Symbol="ChevronLeft" FontSize="18" />
+                        </Button>
+                        <Button Command="{Binding StartImportCommand}"
+                                ToolTip.Tip="下一步"
+                                Width="48" Height="48"
+                                CornerRadius="24"
+                                Classes="accent"
+                                Margin="0 12 0 0">
+                            <ui:SymbolIcon Symbol="ChevronRight" FontSize="18" />
+                        </Button>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- 页 2：导入中 -->
+            <Border VerticalAlignment="Center">
+                <StackPanel Spacing="2" VerticalAlignment="Center">
+                    <TextBlock Text="正在导入" HorizontalAlignment="Center"
+                               Margin="0 0 0 4"
+                               FontSize="24" FontWeight="SemiBold" />
+                    <TextBlock Text="请坐和放宽，导入很快就能完成。"
+                               HorizontalAlignment="Center"
+                               TextAlignment="Center"
+                               TextWrapping="Wrap"
+                               Margin="0 0 0 4" />
+                    <ui:ProgressRing IsIndeterminate="True"
+                                     Width="48" Height="48"
+                                     Margin="0 8 0 0"
+                                     HorizontalAlignment="Center" />
+                </StackPanel>
+            </Border>
+
+            <!-- 页 3：导入完成 -->
+            <Border VerticalAlignment="Center">
+                <StackPanel Spacing="2" VerticalAlignment="Center">
+                    <TextBlock Text="导入完成" HorizontalAlignment="Center"
+                               Margin="0 0 0 4"
+                               FontSize="24" FontWeight="SemiBold" />
+                    <TextBlock Text="已成功完成导入。"
+                               HorizontalAlignment="Center"
+                               TextAlignment="Center"
+                               TextWrapping="Wrap"
+                               Margin="0 0 0 4" />
+                    <Button Command="{Binding FinishCommand}"
+                            ToolTip.Tip="完成"
+                            Width="48" Height="48"
+                            CornerRadius="24"
+                            Classes="accent"
+                            HorizontalAlignment="Center"
+                            Margin="0 8 0 0">
+                        <ui:FontIcon Glyph="&#xE73E;" FontSize="18" />
+                    </Button>
+                </StackPanel>
+            </Border>
+        </Carousel>
+    </Grid>
+
+</UserControl>

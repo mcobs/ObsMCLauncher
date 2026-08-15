@@ -102,7 +102,7 @@ public partial class App : Application
     }
 
     /// <summary>崩溃窗口流程是否激活（此时关闭其他窗口不应触发退出逻辑）</summary>
-    private bool IsCrashFlowActive
+    public bool IsCrashFlowActive
     {
         get
         {
