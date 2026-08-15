@@ -12,38 +12,9 @@
         Width="760"
         Height="560"
         CanResize="False"
-        SystemDecorations="None"
-        ExtendClientAreaToDecorationsHint="True"
-        ExtendClientAreaChromeHints="PreferSystemChrome"
         WindowStartupLocation="CenterScreen">
 
     <Window.Styles>
-        <!-- 标题栏按钮样式（与主窗口一致） -->
-        <Style Selector="Button.titlebar-btn">
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Width" Value="46" />
-            <Setter Property="Height" Value="40" />
-            <Setter Property="CornerRadius" Value="0" />
-            <Setter Property="Transitions">
-                <Transitions>
-                    <BrushTransition Property="Background" Duration="0:0:0.1" />
-                </Transitions>
-            </Setter>
-        </Style>
-
-        <Style Selector="Button.titlebar-btn:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
-        </Style>
-
-        <Style Selector="Button.titlebar-close:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="#E81123" />
-        </Style>
-
-        <Style Selector="Button.titlebar-close:pointerover TextBlock">
-            <Setter Property="Foreground" Value="White" />
-        </Style>
-
         <!-- 主内容区：初始不可见不可点击，添加 anim 类后淡入 -->
         <Style Selector="Border.welcome-content">
             <Setter Property="Opacity" Value="0" />
@@ -66,38 +37,10 @@
             BoxShadow="{DynamicResource WindowShadow}"
             CornerRadius="0"
             ClipToBounds="True">
-        <Grid RowDefinitions="40,*">
-
-            <!-- 标题栏 -->
-            <Border Grid.Row="0"
-                    Background="{DynamicResource TitleBarBackgroundBrush}"
-                    BorderBrush="{DynamicResource TitleBarBorderBrush}"
-                    BorderThickness="0,0,0,1"
-                    BoxShadow="{DynamicResource ChromeShadow}">
-                <Grid ColumnDefinitions="Auto,*,Auto" Height="40">
-                    <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="16,0,0,0" VerticalAlignment="Center">
-                        <Image Source="/Assets/logo.png" Width="20" Height="20" Stretch="Uniform" VerticalAlignment="Center" />
-                        <TextBlock Text="ObsMCLauncher" FontSize="13" FontWeight="Medium" Margin="10,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource TextBrush}" />
-                    </StackPanel>
-
-                    <Panel Grid.Column="1" Background="Transparent">
-                        <Border Height="40" Background="Transparent" PointerPressed="TitleBar_PointerPressed" />
-                    </Panel>
-
-                    <Button Grid.Column="2"
-                            Classes="titlebar-btn titlebar-close"
-                            HorizontalAlignment="Right"
-                            Click="CloseButton_Click">
-                        <Canvas Width="14" Height="14">
-                            <Line StartPoint="1,1" EndPoint="13,13" Stroke="{DynamicResource TextBrush}" StrokeThickness="1.5"/>
-                            <Line StartPoint="13,1" EndPoint="1,13" Stroke="{DynamicResource TextBrush}" StrokeThickness="1.5"/>
-                        </Canvas>
-                    </Button>
-                </Grid>
-            </Border>
+        <Grid RowDefinitions="*">
 
             <!-- 内容区 -->
-            <Grid Grid.Row="1" Background="{DynamicResource BackgroundBrush}">
+            <Grid Grid.Row="0" Background="{DynamicResource BackgroundBrush}">
 
                 <!-- 主内容区：窗口打开后加 anim 类淡入，内部 Frame 做分页导航（开场字母动画、版本号与数据迁移入口都在欢迎首页内） -->
                 <Border x:Name="ContentRoot" Classes="welcome-content">

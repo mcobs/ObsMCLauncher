@@ -2,8 +2,6 @@ using System;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Input;
-using Avalonia.Interactivity;
 using Avalonia.Media;
 using FluentAvalonia.UI.Controls;
 using FluentAvalonia.UI.Media.Animation;
@@ -74,19 +72,6 @@ public partial class WelcomeWindow : Window
                 TransitionInfoOverride = new EntranceNavigationTransitionInfo()
             });
         }
-    }
-
-    private void TitleBar_PointerPressed(object? sender, PointerPressedEventArgs e)
-    {
-        if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
-        {
-            BeginMoveDrag(e);
-        }
-    }
-
-    private void CloseButton_Click(object? sender, RoutedEventArgs e)
-    {
-        Close();
     }
 
     protected override void OnClosing(WindowClosingEventArgs e)
