@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -11,6 +12,7 @@ namespace ObsMCLauncher.Core.Services.Migration;
 /// <summary>
 /// 从 Hello Minecraft! Launcher (HMCL) 导入数据，支持两代格式：
 /// - 3.16+ 新格式：HMCL 目录下 config\launcher-settings.json、config\game-directories.json、
+///   config\user-game-directories.json、config\game-settings.json（全局游戏设置预设）、
 ///   config\authlib-injector-servers.json，实例设置在 versions\&lt;id&gt;\.hmcl\config\instance-game-settings.json
 /// - ≤3.15.x 旧格式：HMCL 目录（或 %APPDATA%\hmcl）下 hmcl.json（含 config/configurations/authlibInjectorServers），
 ///   实例设置在 versions\&lt;id&gt;\hmclversion.cfg
@@ -100,8 +102,7 @@ public static partial class HmclMigrationService
             var hmclJsonPath = Array.Find(GetLegacyConfigCandidates(hmclDirectory), p => !string.IsNullOrEmpty(p) && File.Exists(p));
             if (hmclJsonPath == null)
             {
-                result.Warnings.Add("未找到 hmcl.json");
-                DebugLogger.Warn(Tag, "未找到 hmcl.json，中止迁移");
+                result.AddItem("应用设置", "hmcl.json", "未找到旧版配置文件", MigrationItemState.Warning);
                 return result;
             }
 
@@ -132,17 +133,26 @@ public static partial class HmclMigrationService
         var settingsOpt = ReadJsonFile(Path.Combine(hmclDirectory, "config", "launcher-settings.json"));
         if (settingsOpt == null)
         {
-            DebugLogger.Warn(Tag, "launcher-settings.json 读取失败");
+            result.AddItem("应用设置", "launcher-settings.json", "读取失败", MigrationItemState.Warning);
             return null;
         }
         var settings = settingsOpt.Value;
 
-        // 下载源：mojang=官方，bmclapi=镜像
+        // 下载源：新格式枚举 DEFAULT / OFFICIAL / MIRROR
         if (TryGetString(settings, "fileDownloadSource", out var source) && !string.IsNullOrEmpty(source))
         {
-            config.MirrorSourceMode = source == "bmclapi" ? MirrorSourceMode.PreferMirror : MirrorSourceMode.OfficialOnly;
-            imported++;
-            DebugLogger.Info(Tag, $"导入下载源：{source} → {config.MirrorSourceMode}");
+            if (source.Equals("MIRROR", StringComparison.OrdinalIgnoreCase))
+            {
+                config.MirrorSourceMode = MirrorSourceMode.PreferMirror;
+                imported++;
+                result.AddItem("应用设置", "下载源", "优先镜像源");
+            }
+            else if (source.Equals("OFFICIAL", StringComparison.OrdinalIgnoreCase))
+            {
+                config.MirrorSourceMode = MirrorSourceMode.OfficialOnly;
+                imported++;
+                result.AddItem("应用设置", "下载源", "官方源");
+            }
         }
 
         // 下载线程数（自动模式下跳过）
@@ -151,26 +161,37 @@ public static partial class HmclMigrationService
         {
             config.MaxDownloadThreads = Math.Min(threads, 64);
             imported++;
-            DebugLogger.Info(Tag, $"导入下载线程数：{threads}");
-        }
-        else if (settings.TryGetProperty("autoDownloadThreads", out var autoEl) && autoEl.GetBoolean())
-        {
-            DebugLogger.Info(Tag, "跳过下载线程数：HMCL 为自动模式");
+            result.AddItem("应用设置", "下载线程数", $"{Math.Min(threads, 64)}");
         }
 
-        // 游戏目录列表：selectedGameDirectory 指向的为当前目录，其余加入自定义列表
-        var directories = ReadJsonFile(Path.Combine(hmclDirectory, "config", "game-directories.json"));
-        if (directories != null && directories.Value.TryGetProperty("directories", out var listEl) && listEl.ValueKind == JsonValueKind.Array)
+        // 全局游戏设置：launcher-settings.json 的 defaultGameSettingsPreset 指向 game-settings.json 中的预设
+        imported += MigrateNewGlobalGameSettings(hmclDirectory, settings, config, result);
+
+        // 游戏目录列表：本地 game-directories.json 与用户级 user-game-directories.json，
+        // selectedGameDirectory 指向的为当前目录，其余加入自定义列表
+        TryGetString(settings, "selectedGameDirectory", out var selectedId);
+        var dirFiles = new[]
         {
-            TryGetString(settings, "selectedGameDirectory", out var selectedId);
+            Path.Combine(hmclDirectory, "config", "game-directories.json"),
+            Path.Combine(hmclDirectory, "config", "user-game-directories.json")
+        };
+
+        var foundAnyDir = false;
+        foreach (var dirFile in dirFiles)
+        {
+            var directories = ReadJsonFile(dirFile);
+            if (directories == null || !directories.Value.TryGetProperty("directories", out var listEl) || listEl.ValueKind != JsonValueKind.Array)
+                continue;
+
             foreach (var entry in listEl.EnumerateArray())
             {
                 if (!TryGetString(entry, "path", out var path) || string.IsNullOrWhiteSpace(path)) continue;
                 if (!Directory.Exists(path))
                 {
-                    DebugLogger.Info(Tag, $"跳过游戏目录（不存在）：{path}");
+                    result.AddItem("应用设置", "游戏目录", $"路径不存在：{path}", MigrationItemState.Skipped);
                     continue;
                 }
+                foundAnyDir = true;
 
                 var isSelected = TryGetString(entry, "id", out var id) && id == selectedId;
                 if (isSelected && gameDir == null)
@@ -179,16 +200,19 @@ public static partial class HmclMigrationService
                     config.GameDirectoryLocation = DirectoryLocation.Custom;
                     config.CustomGameDirectory = path;
                     imported++;
-                    DebugLogger.Info(Tag, $"导入当前游戏目录：{path}");
+                    result.AddItem("应用设置", "当前游戏文件夹", path);
                 }
                 else if (!config.CustomGameDirectories.Contains(path, StringComparer.OrdinalIgnoreCase)
                          && !string.Equals(path, gameDir, StringComparison.OrdinalIgnoreCase))
                 {
                     config.CustomGameDirectories.Add(path);
-                    DebugLogger.Info(Tag, $"导入附加游戏目录：{path}");
+                    result.AddItem("应用设置", "附加游戏文件夹", path);
                 }
             }
         }
+
+        if (!foundAnyDir)
+            result.AddItem("应用设置", "游戏目录", "配置中未保存任何游戏目录", MigrationItemState.Skipped);
 
         // authlib-injector 服务器
         imported += MigrateAuthlibServers(Path.Combine(hmclDirectory, "config", "authlib-injector-servers.json"), result);
@@ -197,13 +221,44 @@ public static partial class HmclMigrationService
         return gameDir;
     }
 
+    /// <summary>导入新格式的全局游戏设置预设（内存 / JVM / Java）</summary>
+    private static int MigrateNewGlobalGameSettings(string hmclDirectory, JsonElement settings, LauncherConfig config, PclMigrationResult result)
+    {
+        var presetsFile = ReadJsonFile(Path.Combine(hmclDirectory, "config", "game-settings.json"));
+        if (presetsFile == null || !presetsFile.Value.TryGetProperty("presets", out var presetsEl) || presetsEl.ValueKind != JsonValueKind.Array)
+        {
+            result.AddItem("应用设置", "全局游戏设置", "未找到 config\\game-settings.json", MigrationItemState.Skipped);
+            return 0;
+        }
+
+        // 默认预设由 launcher-settings.json 的 defaultGameSettingsPreset 指定，找不到就取第一个
+        TryGetString(settings, "defaultGameSettingsPreset", out var defaultPresetId);
+        JsonElement? preset = null;
+        foreach (var p in presetsEl.EnumerateArray())
+        {
+            if (TryGetString(p, "id", out var pid) && pid == defaultPresetId)
+            {
+                preset = p;
+                break;
+            }
+        }
+        preset ??= presetsEl.GetArrayLength() > 0 ? presetsEl[0] : null;
+        if (preset == null)
+        {
+            result.AddItem("应用设置", "全局游戏设置", "预设列表为空", MigrationItemState.Skipped);
+            return 0;
+        }
+
+        return ApplyGlobalGameSettings(preset.Value, config, result, "全局游戏设置");
+    }
+
     /// <summary>扫描新格式实例设置 versions\&lt;id&gt;\.hmcl\config\instance-game-settings.json</summary>
     private static void MigrateNewInstances(string gameDir, PclMigrationResult result)
     {
         var versionsDir = Path.Combine(gameDir, "versions");
         if (!Directory.Exists(versionsDir))
         {
-            DebugLogger.Warn(Tag, $"versions 目录不存在，跳过游戏设置导入：{versionsDir}");
+            result.AddItem("游戏设置", "版本扫描", $"versions 目录不存在：{versionsDir}", MigrationItemState.Warning);
             return;
         }
 
@@ -218,21 +273,33 @@ public static partial class HmclMigrationService
                 if (json == null) continue;
 
                 var data = VersionInitService.Load(versionDir);
-                var changed = ApplyGameSettings(json.Value, data, $"[{Path.GetFileName(versionDir)}]");
+                var parts = new List<string>();
+
+                // 新格式实例只覆盖 overrideProperties 中列出的属性，未列出的跟随预设
+                var overrides = new HashSet<string>(StringComparer.Ordinal);
+                if (json.Value.TryGetProperty("overrideProperties", out var overrideEl) && overrideEl.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var o in overrideEl.EnumerateArray())
+                    {
+                        if (o.ValueKind == JsonValueKind.String) overrides.Add(o.GetString()!);
+                    }
+                }
+
+                var changed = ApplyGameSettings(json.Value, data, overrides, parts, newFormat: true);
                 if (changed)
                 {
                     VersionInitService.Save(versionDir, data);
                     result.VersionsImported++;
+                    result.AddItem("游戏设置", Path.GetFileName(versionDir), string.Join("、", parts));
                 }
                 else
                 {
-                    DebugLogger.Info(Tag, $"[{Path.GetFileName(versionDir)}] 无可迁移项，跳过");
+                    result.AddItem("游戏设置", Path.GetFileName(versionDir), "未覆盖任何全局设置", MigrationItemState.Skipped);
                 }
             }
             catch (Exception ex)
             {
-                DebugLogger.Warn(Tag, $"导入版本 {Path.GetFileName(versionDir)} 失败：{ex.Message}");
-                result.Warnings.Add($"导入版本 {Path.GetFileName(versionDir)} 失败：{ex.Message}");
+                result.AddItem("游戏设置", Path.GetFileName(versionDir), $"导入失败：{ex.Message}", MigrationItemState.Warning);
             }
         }
     }
@@ -247,7 +314,7 @@ public static partial class HmclMigrationService
         var rootOpt = ReadJsonFile(hmclJsonPath);
         if (rootOpt == null)
         {
-            result.Warnings.Add("hmcl.json 解析失败");
+            result.AddItem("应用设置", "hmcl.json", "解析失败", MigrationItemState.Warning);
             return null;
         }
         var root = rootOpt.Value;
@@ -257,9 +324,21 @@ public static partial class HmclMigrationService
         {
             if (TryGetString(configEl, "downloadType", out var source) && !string.IsNullOrEmpty(source))
             {
-                config.MirrorSourceMode = source == "bmclapi" ? MirrorSourceMode.PreferMirror : MirrorSourceMode.OfficialOnly;
-                imported++;
-                DebugLogger.Info(Tag, $"导入下载源：{source} → {config.MirrorSourceMode}");
+                // 旧格式值为 mojang / bmclapi，新版本可能是 official / mirror
+                if (source.Equals("bmclapi", StringComparison.OrdinalIgnoreCase)
+                    || source.Equals("mirror", StringComparison.OrdinalIgnoreCase))
+                {
+                    config.MirrorSourceMode = MirrorSourceMode.PreferMirror;
+                    imported++;
+                    result.AddItem("应用设置", "下载源", "优先镜像源 (BMCLAPI)");
+                }
+                else if (source.Equals("mojang", StringComparison.OrdinalIgnoreCase)
+                         || source.Equals("official", StringComparison.OrdinalIgnoreCase))
+                {
+                    config.MirrorSourceMode = MirrorSourceMode.OfficialOnly;
+                    imported++;
+                    result.AddItem("应用设置", "下载源", "官方源");
+                }
             }
 
             if (TryGetBool(configEl, "autoDownloadThreads", out var auto) && !auto
@@ -267,7 +346,7 @@ public static partial class HmclMigrationService
             {
                 config.MaxDownloadThreads = Math.Min(threads, 64);
                 imported++;
-                DebugLogger.Info(Tag, $"导入下载线程数：{threads}");
+                result.AddItem("应用设置", "下载线程数", $"{Math.Min(threads, 64)}");
             }
         }
 
@@ -292,7 +371,7 @@ public static partial class HmclMigrationService
                 if (!TryGetString(profile.Value, "gameDir", out var path) || string.IsNullOrWhiteSpace(path)) continue;
                 if (!Directory.Exists(path))
                 {
-                    DebugLogger.Info(Tag, $"跳过游戏目录（不存在）：{path}");
+                    result.AddItem("应用设置", $"目录 {profile.Name}", $"路径不存在：{path}", MigrationItemState.Skipped);
                     continue;
                 }
 
@@ -302,13 +381,13 @@ public static partial class HmclMigrationService
                     config.GameDirectoryLocation = DirectoryLocation.Custom;
                     config.CustomGameDirectory = path;
                     imported++;
-                    DebugLogger.Info(Tag, $"导入当前游戏目录（profile {profile.Name}）：{path}");
+                    result.AddItem("应用设置", "当前游戏文件夹", $"{path}（配置 {profile.Name}）");
                 }
                 else if (!config.CustomGameDirectories.Contains(path, StringComparer.OrdinalIgnoreCase)
                          && !string.Equals(path, gameDir, StringComparison.OrdinalIgnoreCase))
                 {
                     config.CustomGameDirectories.Add(path);
-                    DebugLogger.Info(Tag, $"导入附加游戏目录（profile {profile.Name}）：{path}");
+                    result.AddItem("应用设置", "附加游戏文件夹", $"{path}（配置 {profile.Name}）");
                 }
             }
 
@@ -318,7 +397,7 @@ public static partial class HmclMigrationService
                 && selected.TryGetProperty("global", out var global)
                 && global.ValueKind == JsonValueKind.Object)
             {
-                imported += ApplyGlobalGameSettings(global, config);
+                imported += ApplyGlobalGameSettings(global, config, result, $"全局游戏设置（{selectedName}）");
             }
         }
 
@@ -338,7 +417,7 @@ public static partial class HmclMigrationService
         var versionsDir = Path.Combine(gameDir, "versions");
         if (!Directory.Exists(versionsDir))
         {
-            DebugLogger.Warn(Tag, $"versions 目录不存在，跳过游戏设置导入：{versionsDir}");
+            result.AddItem("游戏设置", "版本扫描", $"versions 目录不存在：{versionsDir}", MigrationItemState.Warning);
             return;
         }
 
@@ -356,148 +435,204 @@ public static partial class HmclMigrationService
                 // usesGlobal=true 表示该版本完全跟随全局设置，无需迁移
                 if (TryGetBool(versionJson, "usesGlobal", out var usesGlobal) && usesGlobal)
                 {
-                    DebugLogger.Info(Tag, $"[{Path.GetFileName(versionDir)}] 跟随全局设置，跳过");
+                    result.AddItem("游戏设置", Path.GetFileName(versionDir), "跟随全局设置，跳过", MigrationItemState.Skipped);
                     continue;
                 }
 
                 var data = VersionInitService.Load(versionDir);
-                var changed = ApplyGameSettings(versionJson, data, $"[{Path.GetFileName(versionDir)}]");
+                var parts = new List<string>();
+                var changed = ApplyGameSettings(versionJson, data, null, parts, newFormat: false);
                 if (changed)
                 {
                     VersionInitService.Save(versionDir, data);
                     result.VersionsImported++;
+                    result.AddItem("游戏设置", Path.GetFileName(versionDir), string.Join("、", parts));
                 }
                 else
                 {
-                    DebugLogger.Info(Tag, $"[{Path.GetFileName(versionDir)}] 无可迁移项，跳过");
+                    result.AddItem("游戏设置", Path.GetFileName(versionDir), "无实例级设置", MigrationItemState.Skipped);
                 }
             }
             catch (Exception ex)
             {
-                DebugLogger.Warn(Tag, $"导入版本 {Path.GetFileName(versionDir)} 失败：{ex.Message}");
-                result.Warnings.Add($"导入版本 {Path.GetFileName(versionDir)} 失败：{ex.Message}");
+                result.AddItem("游戏设置", Path.GetFileName(versionDir), $"导入失败：{ex.Message}", MigrationItemState.Warning);
             }
         }
     }
 
     // ==================== 共用逻辑 ====================
 
-    /// <summary>把 HMCL 的游戏设置 JSON（新格式 instance-game-settings / 旧格式 global、hmclversion.cfg 字段名一致）写入 init.json，返回是否有变更</summary>
-    private static bool ApplyGameSettings(JsonElement json, VersionInitData data, string logPrefix)
+    /// <summary>
+    /// 把 HMCL 的游戏设置 JSON 写入 init.json，返回是否有变更。
+    /// 新格式（overrideProperties 机制）需传入 overrides，仅覆盖列出的属性；
+    /// 旧格式传 null，字段存在即生效。
+    /// </summary>
+    private static bool ApplyGameSettings(JsonElement json, VersionInitData data, HashSet<string>? overrides, List<string> parts, bool newFormat)
     {
         var changed = false;
 
+        bool IsOverridden(string prop) => overrides == null || overrides.Contains(prop);
+
         // 内存：autoMemory=false 时才导入自定义值（单位 MB）
-        if (TryGetBool(json, "autoMemory", out var autoMemory) && !autoMemory)
+        if (IsOverridden("autoMemory") && TryGetBool(json, "autoMemory", out var autoMemory) && !autoMemory)
         {
-            if (TryGetInt(json, "maxMemory", out var max) && max > 0 && data.MaxMemory == null)
+            if (IsOverridden("maxMemory") && TryGetInt(json, "maxMemory", out var max) && max > 0 && data.MaxMemory == null)
             {
                 data.MaxMemory = Math.Min(max, 65536);
                 changed = true;
-                DebugLogger.Info(Tag, $"{logPrefix} 导入最大内存：{max} MB");
+                parts.Add($"内存 {data.MaxMemory / 1024.0:0.#} GB");
             }
 
-            if (TryGetInt(json, "minMemory", out var min) && min > 0 && data.MinMemory == null)
+            if (IsOverridden("minMemory") && TryGetInt(json, "minMemory", out var min) && min > 0 && data.MinMemory == null)
             {
                 data.MinMemory = Math.Min(min, 65536);
                 changed = true;
-                DebugLogger.Info(Tag, $"{logPrefix} 导入最小内存：{min} MB");
             }
         }
 
-        // JVM 参数（旧字段名 javaArgs，新字段名 jvmOptions）
+        // JVM 参数：新字段名 jvmOptions，旧字段名 javaArgs
         var jvmArgs = "";
         if (!TryGetString(json, "jvmOptions", out jvmArgs))
         {
             TryGetString(json, "javaArgs", out jvmArgs);
         }
 
-        if (!string.IsNullOrWhiteSpace(jvmArgs) && string.IsNullOrWhiteSpace(data.JvmArguments))
+        if (IsOverridden("jvmOptions") && !string.IsNullOrWhiteSpace(jvmArgs) && string.IsNullOrWhiteSpace(data.JvmArguments))
         {
-            data.JvmArguments = jvmArgs.Trim();
+            data.JvmArguments = jvmArgs!.Trim();
             changed = true;
-            DebugLogger.Info(Tag, $"{logPrefix} 导入 JVM 参数：{data.JvmArguments}");
+            parts.Add("JVM 参数");
         }
 
-        // Java 路径：javaType=CUSTOM 时 customJavaPath 有效（旧格式 javaDir）
-        var javaType = "";
-        TryGetString(json, "javaType", out javaType);
+        // Java 路径
+        // 新格式：javaType=CUSTOM 时 customJavaPath 有效
+        // 旧格式：java 字段为 "Custom"（或 javaVersionType=CUSTOM），javaDir 为路径
         var customPath = "";
-        if (!TryGetString(json, "customJavaPath", out customPath))
-        {
+        TryGetString(json, "customJavaPath", out customPath);
+        if (string.IsNullOrWhiteSpace(customPath))
             TryGetString(json, "javaDir", out customPath);
-        }
 
-        // 旧格式没有 javaType 字段，javaDir 非空即自定义
-        var isCustomJava = string.IsNullOrEmpty(javaType)
-            ? !string.IsNullOrWhiteSpace(customPath)
-            : javaType == "CUSTOM" && !string.IsNullOrWhiteSpace(customPath);
+        var isCustomJava = false;
+        if (newFormat)
+        {
+            var javaType = "";
+            TryGetString(json, "javaType", out javaType);
+            isCustomJava = string.Equals(javaType, "CUSTOM", StringComparison.OrdinalIgnoreCase)
+                           && !string.IsNullOrWhiteSpace(customPath);
+        }
+        else
+        {
+            var javaMode = "";
+            TryGetString(json, "java", out javaMode);
+            var javaVersionType = "";
+            TryGetString(json, "javaVersionType", out javaVersionType);
+            isCustomJava = (string.Equals(javaMode, "Custom", StringComparison.OrdinalIgnoreCase)
+                            || string.Equals(javaVersionType, "CUSTOM", StringComparison.OrdinalIgnoreCase))
+                           && !string.IsNullOrWhiteSpace(customPath);
+        }
 
         if (isCustomJava && string.IsNullOrWhiteSpace(data.CustomJavaPath))
         {
             data.CustomJavaPath = customPath!.Trim();
             changed = true;
-            DebugLogger.Info(Tag, $"{logPrefix} 导入实例 Java：{data.CustomJavaPath}");
+            parts.Add("自定义 Java");
         }
 
-        // 版本隔离：gameDirType=VERSION_FOLDER 或 runningDirectory 非空（新格式）
+        // 版本隔离
         if (data.IsolationMode == "global")
         {
-            var gameDirType = "";
-            if (TryGetString(json, "gameDirType", out gameDirType))
+            // 旧格式：gameDirType 枚举（ROOT_FOLDER/VERSION_FOLDER/CUSTOM，旧版本可能存数字 0/1/2）
+            if (json.TryGetProperty("gameDirType", out var gameDirTypeEl))
             {
-                if (gameDirType == "VERSION_FOLDER")
+                var isolated = false;
+                if (gameDirTypeEl.ValueKind == JsonValueKind.String)
+                {
+                    var gameDirType = gameDirTypeEl.GetString()!;
+                    isolated = gameDirType is "VERSION_FOLDER" or "CUSTOM";
+                }
+                else if (gameDirTypeEl.ValueKind == JsonValueKind.Number && gameDirTypeEl.TryGetInt32(out var typeNum))
+                {
+                    isolated = typeNum is 1 or 2;
+                }
+
+                if (isolated)
                 {
                     data.IsolationMode = "enabled";
                     changed = true;
-                    DebugLogger.Info(Tag, $"{logPrefix} 导入版本隔离：{gameDirType}");
+                    parts.Add("版本隔离");
+                }
+                else if (overrides != null)
+                {
+                    // 显式设为 ROOT_FOLDER 时记录为不隔离
+                    data.IsolationMode = "disabled";
+                    changed = true;
+                    parts.Add("不隔离");
                 }
             }
-            else if (json.TryGetProperty("runningDirectory", out var runEl)
+            // 新格式：runningDirectory 非空表示自定义运行目录（视为隔离）
+            else if (newFormat && IsOverridden("runningDirectory")
+                     && json.TryGetProperty("runningDirectory", out var runEl)
                      && runEl.ValueKind == JsonValueKind.String
                      && !string.IsNullOrWhiteSpace(runEl.GetString()))
             {
                 data.IsolationMode = "enabled";
                 changed = true;
-                DebugLogger.Info(Tag, $"{logPrefix} 导入版本隔离：runningDirectory 非空");
+                parts.Add("版本隔离");
             }
         }
 
         return changed;
     }
 
-    /// <summary>把旧格式 profile 的 global 节写入全局配置（内存/JVM/Java）</summary>
-    private static int ApplyGlobalGameSettings(JsonElement global, LauncherConfig config)
+    /// <summary>把全局游戏设置（旧格式 profile.global / 新格式 preset）写入全局配置</summary>
+    private static int ApplyGlobalGameSettings(JsonElement global, LauncherConfig config, PclMigrationResult result, string label)
     {
         var imported = 0;
+        var parts = new List<string>();
 
         if (TryGetBool(global, "autoMemory", out var autoMemory) && !autoMemory
             && TryGetInt(global, "maxMemory", out var max) && max > 0)
         {
             config.MaxMemory = Math.Min(max, 65536);
             imported++;
-            DebugLogger.Info(Tag, $"导入全局最大内存：{max} MB");
+            parts.Add($"最大内存 {config.MaxMemory / 1024.0:0.#} GB");
         }
 
-        if (!TryGetString(global, "javaArgs", out var jvmArgs) || string.IsNullOrWhiteSpace(jvmArgs))
+        var jvmArgs = "";
+        if (!TryGetString(global, "javaArgs", out jvmArgs) || string.IsNullOrWhiteSpace(jvmArgs))
         {
             TryGetString(global, "jvmOptions", out jvmArgs);
         }
 
         if (!string.IsNullOrWhiteSpace(jvmArgs))
         {
-            config.JvmArguments = jvmArgs.Trim();
+            config.JvmArguments = jvmArgs!.Trim();
             imported++;
-            DebugLogger.Info(Tag, $"导入全局 JVM 参数：{config.JvmArguments}");
+            parts.Add("JVM 参数");
         }
 
-        if (TryGetString(global, "javaDir", out var javaDir) && !string.IsNullOrWhiteSpace(javaDir))
+        // Java：新格式 javaType=CUSTOM + customJavaPath；旧格式 javaDir 直接为路径
+        var javaDir = "";
+        TryGetString(global, "customJavaPath", out javaDir);
+        if (string.IsNullOrWhiteSpace(javaDir))
+            TryGetString(global, "javaDir", out javaDir);
+
+        var javaType = "";
+        TryGetString(global, "javaType", out javaType);
+        var isCustom = string.IsNullOrWhiteSpace(javaType) || javaType.Equals("CUSTOM", StringComparison.OrdinalIgnoreCase);
+
+        if (isCustom && !string.IsNullOrWhiteSpace(javaDir))
         {
             config.JavaSelectionMode = 2;
-            config.CustomJavaPath = javaDir.Trim();
+            config.CustomJavaPath = javaDir!.Trim();
             imported++;
-            DebugLogger.Info(Tag, $"导入全局 Java：{config.CustomJavaPath}");
+            parts.Add("自定义 Java");
         }
+
+        if (parts.Count > 0)
+            result.AddItem("应用设置", label, string.Join("、", parts));
+        else
+            result.AddItem("应用设置", label, "均为默认值", MigrationItemState.Skipped);
 
         return imported;
     }
@@ -507,20 +642,21 @@ public static partial class HmclMigrationService
     {
         if (!File.Exists(path))
         {
-            DebugLogger.Info(Tag, $"authlib-injector-servers.json 不存在：{path}");
+            result.AddItem("登录服务器", "authlib-injector", "未找到服务器列表文件", MigrationItemState.Skipped);
             return 0;
         }
 
         var json = ReadJsonFile(path);
         if (json == null || !json.Value.TryGetProperty("servers", out var serversEl) || serversEl.ValueKind != JsonValueKind.Array)
         {
+            result.AddItem("登录服务器", "authlib-injector", "服务器列表为空", MigrationItemState.Skipped);
             return 0;
         }
 
         return ImportAuthlibServerUrls(serversEl, result);
     }
 
-    /// <summary>把服务器 URL 数组导入 Yggdrasil 服务器列表（按名称去重，内置 LittleSkin 自动跳过）</summary>
+    /// <summary>把服务器 URL 数组导入 Yggdrasil 服务器列表（按 URL 去重，内置 LittleSkin 自动跳过）</summary>
     private static int ImportAuthlibServerUrls(JsonElement serversEl, PclMigrationResult result)
     {
         var imported = 0;
@@ -533,13 +669,16 @@ public static partial class HmclMigrationService
             {
                 YggdrasilServerService.Instance.AddServer(name, url);
                 imported++;
-                DebugLogger.Info(Tag, $"导入 authlib-injector 服务器：{name} ({url})");
+                result.AddItem("登录服务器", name, url);
             }
             catch (Exception ex)
             {
-                DebugLogger.Info(Tag, $"跳过 authlib-injector 服务器 {url}：{ex.Message}");
+                result.AddItem("登录服务器", name, $"跳过：{ex.Message}", MigrationItemState.Skipped);
             }
         }
+
+        if (imported == 0)
+            result.AddItem("登录服务器", "authlib-injector", "没有可导入的服务器", MigrationItemState.Skipped);
 
         return imported;
     }

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
@@ -19,6 +20,17 @@ public enum MigrationSource
 
     /// <summary>Hello Minecraft! Launcher 3.15.x 及以下（旧 hmcl.json 格式）</summary>
     HmclLegacy,
+}
+
+/// <summary>迁移明细行（完成页展示用）</summary>
+public class MigrationDetailRow
+{
+    public string Category { get; init; } = "";
+    public string Name { get; init; } = "";
+    public string Detail { get; init; } = "";
+    public bool Imported { get; init; }
+    public bool Skipped { get; init; }
+    public bool Warning { get; init; }
 }
 
 /// <summary>
@@ -67,6 +79,13 @@ public partial class WelcomeMigrationPageViewModel : ViewModelBase
     /// <summary>完成页结果摘要</summary>
     [ObservableProperty]
     private string resultSummary = "";
+
+    /// <summary>迁移明细（完成页展开查看）</summary>
+    [ObservableProperty]
+    private IReadOnlyList<MigrationDetailRow> migrationDetails = [];
+
+    /// <summary>是否有可展示的迁移明细</summary>
+    public bool HasMigrationDetails => MigrationDetails.Count > 0;
 
     /// <summary>配置页的来源说明文本</summary>
     public string SourceDescription => SelectedSource switch
@@ -136,15 +155,40 @@ public partial class WelcomeMigrationPageViewModel : ViewModelBase
             {
                 ResultSummary += $"\n{r.Warnings.Count} 个条目被跳过";
             }
+
+            MigrationDetails = BuildDetailRows(r);
         }
         catch (Exception ex)
         {
             await Task.Delay(MinimumProgressDuration);
             ImportError = ex.Message;
             ResultSummary = "导入失败";
+            MigrationDetails = [];
         }
 
         PageIndex = 3;
+    }
+
+    partial void OnMigrationDetailsChanged(IReadOnlyList<MigrationDetailRow> value)
+        => OnPropertyChanged(nameof(HasMigrationDetails));
+
+    /// <summary>把迁移结果条目转成完成页展示行</summary>
+    private static IReadOnlyList<MigrationDetailRow> BuildDetailRows(PclMigrationResult result)
+    {
+        var rows = new List<MigrationDetailRow>(result.Items.Count);
+        foreach (var item in result.Items)
+        {
+            rows.Add(new MigrationDetailRow
+            {
+                Category = item.Category,
+                Name = item.Name,
+                Detail = item.Detail,
+                Imported = item.State == MigrationItemState.Imported,
+                Skipped = item.State == MigrationItemState.Skipped,
+                Warning = item.State == MigrationItemState.Warning,
+            });
+        }
+        return rows;
     }
 
     private PclMigrationResult Migrate() => SelectedSource switch

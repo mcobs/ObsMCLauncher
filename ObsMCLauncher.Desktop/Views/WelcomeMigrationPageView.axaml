@@ -173,6 +173,58 @@
                                FontSize="12"
                                Foreground="{DynamicResource WarningBrush}"
                                IsVisible="{Binding ImportError}" />
+
+                    <!-- 迁移明细：展开查看每一条导入/跳过的内容 -->
+                    <Expander Header="查看迁移详情"
+                              HorizontalAlignment="Stretch"
+                              Margin="12 8"
+                              IsVisible="{Binding HasMigrationDetails}">
+                        <Border Background="{DynamicResource ControlFillColorDefaultBrush}"
+                                CornerRadius="4"
+                                Padding="8"
+                                Margin="0 4 0 0">
+                            <ScrollViewer MaxHeight="200">
+                                <ItemsControl ItemsSource="{Binding MigrationDetails}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:MigrationDetailRow">
+                                            <Grid ColumnDefinitions="Auto,Auto,*" Margin="0 3">
+                                                <Grid.Styles>
+                                                    <Style Selector="TextBlock.detail">
+                                                        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+                                                        <Setter Property="FontSize" Value="11" />
+                                                        <Setter Property="TextWrapping" Value="Wrap" />
+                                                    </Style>
+                                                </Grid.Styles>
+                                                <ui:FontIcon Grid.Column="0" FontSize="13" Margin="0 0 6 0"
+                                                             VerticalAlignment="Top"
+                                                             Glyph="&#xE73E;"
+                                                             Foreground="#10B981"
+                                                             IsVisible="{Binding Imported}" />
+                                                <ui:FontIcon Grid.Column="0" FontSize="13" Margin="0 0 6 0"
+                                                             VerticalAlignment="Top"
+                                                             Glyph="&#xE711;"
+                                                             Foreground="{DynamicResource TextSecondaryBrush}"
+                                                             IsVisible="{Binding Skipped}" />
+                                                <ui:FontIcon Grid.Column="0" FontSize="13" Margin="0 0 6 0"
+                                                             VerticalAlignment="Top"
+                                                             Glyph="&#xE7BA;"
+                                                             Foreground="{DynamicResource WarningBrush}"
+                                                             IsVisible="{Binding Warning}" />
+                                                <TextBlock Grid.Column="1" Text="{Binding Name}"
+                                                           FontSize="12" FontWeight="SemiBold"
+                                                           VerticalAlignment="Top" />
+                                                <TextBlock Grid.Column="2" Text="{Binding Detail}"
+                                                           Classes="detail"
+                                                           Margin="8 0 0 0"
+                                                           VerticalAlignment="Top" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </Border>
+                    </Expander>
+
                     <Button Command="{Binding FinishCommand}"
                             ToolTip.Tip="完成"
                             Width="48" Height="48"
