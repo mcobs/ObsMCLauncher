@@ -1,6 +1,7 @@
 using System;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using ObsMCLauncher.Core.Security;
 
 namespace ObsMCLauncher.Core.Models;
 
@@ -105,8 +106,10 @@ public class GameAccount : INotifyPropertyChanged
         }
     }
 
+    [Sensitive]
     public string? AccessToken { get; set; }
 
+    [Sensitive]
     public string? RefreshToken { get; set; }
 
     private DateTime? _expiresAt;
@@ -127,14 +130,17 @@ public class GameAccount : INotifyPropertyChanged
         }
     }
 
+    [Sensitive]
     public string? MinecraftAccessToken { get; set; }
 
     public string? MinecraftUUID { get; set; }
 
     public string? YggdrasilServerId { get; set; }
 
+    [Sensitive]
     public string? YggdrasilAccessToken { get; set; }
 
+    [Sensitive]
     public string? YggdrasilClientToken { get; set; }
 
     public string? SkinUrl { get; set; }

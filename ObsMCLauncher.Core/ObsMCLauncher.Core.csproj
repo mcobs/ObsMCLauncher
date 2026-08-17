@@ -21,6 +21,8 @@
     <PackageReference Include="Markdig" Version="0.38.0" />
     <PackageReference Include="Avalonia" Version="11.3.11" />
     <PackageReference Include="Velopack" Version="1.1.1" />
+    <!-- Windows DPAPI（ProtectedData）：敏感令牌静态加密；非 Windows 平台调用会抛 PlatformNotSupportedException，由运行时分支保护 -->
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
   </ItemGroup>
 
 </Project>
