@@ -13,8 +13,10 @@ namespace ObsMCLauncher.Core.Security;
 /// 平台策略：
 /// - Windows：DPAPI（<see cref="ProtectedData"/>，CurrentUser 范围），密钥由操作系统 + 当前用户账户管理，
 ///   即使源码公开也无法在其他机器/用户下解密。
-/// - macOS/Linux：AES-256-GCM，密钥由 PBKDF2（600,000 次迭代，OWASP 2023 建议）从机器唯一标识派生，
-///   绑定 用户名 + 机器名 + Home 路径，离开本机即无法解密。
+/// - macOS/Linux：AES-256-GCM，密钥由 <see cref="IKeyStore"/> 提供，经
+///   <see cref="PlatformKeyStoreFactory"/> 按平台降级选择：
+///   macOS 优先登录钥匙串（Keychain），Linux 桌面优先 Secret Service，
+///   其次 0600 权限密钥文件，最终兜底机器标识派生（PBKDF2 600k）。
 /// 存储格式：密文统一带 "OMCL1:" 前缀；无前缀的值视为旧版明文（向后兼容）。
 /// </remarks>
 public static class TokenCryptoService
@@ -22,15 +24,11 @@ public static class TokenCryptoService
     /// <summary>加密载荷版本前缀，用于区分密文与旧版明文，并为未来算法升级预留多版本能力。</summary>
     public const string Prefix = "OMCL1:";
 
-    private const int Iterations = 600_000;
     private const int NonceSize = 12;
     private const int TagSize = 16;
-    private const int KeySize = 32;
 
-    private static readonly byte[] FixedSalt = Encoding.UTF8.GetBytes("ObsMCLauncher-Sensitive-v1");
-
-    /// <summary>PBKDF2 派生密钥（仅非 Windows 分支使用），进程内只派生一次。</summary>
-    private static readonly Lazy<byte[]> MachineKey = new(DeriveMachineKey, isThreadSafe: true);
+    /// <summary>平台密钥存储（仅非 Windows 分支使用），进程内只解析一次。</summary>
+    private static readonly Lazy<IKeyStore> KeyStore = new(PlatformKeyStoreFactory.Create, isThreadSafe: true);
 
     /// <summary>
     /// 加密敏感字段。返回带 <see cref="Prefix"/> 前缀的 Base64 密文；
@@ -49,7 +47,7 @@ public static class TokenCryptoService
             return Prefix + Convert.ToBase64String(protectedData);
         }
 
-        return Prefix + EncryptCore(MachineKey.Value, plaintext);
+        return Prefix + EncryptCore(KeyStore.Value.GetKey(), plaintext);
     }
 
     /// <summary>
@@ -72,7 +70,7 @@ public static class TokenCryptoService
             return Encoding.UTF8.GetString(protectedData);
         }
 
-        return DecryptCore(MachineKey.Value, payload);
+        return DecryptCore(KeyStore.Value.GetKey(), payload);
     }
 
     /// <summary>
@@ -110,30 +108,6 @@ public static class TokenCryptoService
         gcm.Decrypt(nonce, ciphertext, tag, plain, associatedData: null);
 
         return Encoding.UTF8.GetString(plain);
-    }
-
-    private static byte[] DeriveMachineKey()
-    {
-        var machineId = OperatingSystem.IsWindows() ? GetWindowsMachineId() : GetCrossPlatformMachineId();
-        return Rfc2898DeriveBytes.Pbkdf2(
-            machineId,
-            FixedSalt,
-            Iterations,
-            HashAlgorithmName.SHA256,
-            KeySize);
-    }
-
-    /// <summary>Windows 机器标识（用户名 + 机器名 + 用户配置目录）。DPAPI 分支实际不使用该密钥，仅作兜底。</summary>
-    private static string GetWindowsMachineId()
-    {
-        return GetCrossPlatformMachineId();
-    }
-
-    /// <summary>跨平台机器标识：用户名 + 机器名 + Home 目录路径，组合后对本机唯一。</summary>
-    private static string GetCrossPlatformMachineId()
-    {
-        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        return $"{Environment.UserName}|{Environment.MachineName}|{home}";
     }
 
     private static byte[] Concat(byte[] first, byte[] second, byte[] third)
