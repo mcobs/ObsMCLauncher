@@ -554,6 +554,26 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
     // 字形重排，容易出现残影/合成粗体叠加等渲染异常，缓存可显著缓解
     private readonly Dictionary<string, FontFamily> _fontFamilyCache = [];
 
+    // 主字体缺字形时的回退链，末尾的中文字体保证中文不乱码
+    private static readonly string[] CjkFallbackFonts =
+        ["Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC", "Noto Sans SC"];
+
+    // 构造「主字体, 平台默认, 中文字体」复合字体，缺字形时按顺序回退
+    private static FontFamily BuildFontFamily(string primary)
+    {
+        var names = new List<string> { primary };
+        var defaultName = FontManager.Current.DefaultFontFamily?.Name;
+        if (!string.IsNullOrEmpty(defaultName) && !names.Contains(defaultName))
+        {
+            names.Add(defaultName);
+        }
+        foreach (var f in CjkFallbackFonts)
+        {
+            if (!names.Contains(f)) names.Add(f);
+        }
+        return new FontFamily(string.Join(", ", names));
+    }
+
     private void ApplyFont()
     {
         _fontApplyCts?.Cancel();
@@ -567,28 +587,28 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
             FontFamily family;
             if (string.IsNullOrWhiteSpace(_config.CustomFontFamily))
             {
-                family = FontFamily.Default;
-                resources["GlobalFontFamily"] = family;
-                // 恢复 FA 主题默认，让控件字体回到主题字典定义
-                resources.Remove("ContentControlThemeFontFamily");
+                // 恢复默认：显式写回系统默认字体，而不是 Remove。
+                // 移除键时 DynamicResource 不一定重新解析，FA 控件会残留旧字体，
+                // 表现为切回默认后仍是上次字体、反复切换也恢复不了
+                var defaultName = FontManager.Current.DefaultFontFamily?.Name;
+                family = string.IsNullOrEmpty(defaultName)
+                    ? FontFamily.Default
+                    : BuildFontFamily(defaultName);
             }
             else
             {
-                // 追加系统默认字体做 fallback：所选字体缺字形（如纯英文体显示中文）
-                // 时回退，避免出现方框
                 if (!_fontFamilyCache.TryGetValue(_config.CustomFontFamily, out var cached))
                 {
-                    var fallbackName = FontManager.Current.DefaultFontFamily?.Name;
-                    cached = string.IsNullOrEmpty(fallbackName)
-                        ? new FontFamily(_config.CustomFontFamily)
-                        : new FontFamily($"{_config.CustomFontFamily}, {fallbackName}");
+                    cached = BuildFontFamily(_config.CustomFontFamily);
                     _fontFamilyCache[_config.CustomFontFamily] = cached;
                 }
                 family = cached;
-                resources["GlobalFontFamily"] = family;
-                // FA 控件样式显式引用该令牌，不覆盖的话导航栏等不跟随自定义字体
-                resources["ContentControlThemeFontFamily"] = family;
             }
+
+            resources["GlobalFontFamily"] = family;
+            // FA 控件样式显式引用该令牌，不写的话导航栏等不跟随自定义字体；
+            // 恢复默认时也写回同一默认字体，保证彻底还原
+            resources["ContentControlThemeFontFamily"] = family;
             resources["GlobalFontWeight"] = (FontWeight)Math.Clamp(_config.CustomFontWeight, 100, 950);
         });
     }
