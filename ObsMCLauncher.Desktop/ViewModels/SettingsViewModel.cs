@@ -150,7 +150,6 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
 
         // 应用已保存的壁纸配置
         ApplyWallpaper();
-        ApplyNavTransparency();
 
         // 监听系统主题变化
         if (Application.Current != null)
@@ -409,6 +408,7 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
             {
                 _config.WallpaperOpacity = v;
                 OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperOpacity)));
+                ApplyWallpaper();
                 AutoSave();
             }
         }
@@ -424,6 +424,7 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
             {
                 _config.WallpaperStretch = v;
                 OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperStretch)));
+                ApplyWallpaper();
                 AutoSave();
             }
         }
@@ -438,7 +439,7 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
             {
                 _config.WallpaperExtendToNav = value;
                 OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperExtendToNav)));
-                ApplyNavTransparency();
+                ApplyWallpaper();
                 AutoSave();
             }
         }
@@ -454,7 +455,7 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
             {
                 _config.NavBackgroundOpacity = v;
                 OnPropertyChanged(new PropertyChangedEventArgs(nameof(NavBackgroundOpacity)));
-                ApplyNavTransparency();
+                ApplyWallpaper();
                 AutoSave();
             }
         }
@@ -462,60 +463,71 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
 
     public IAsyncRelayCommand BrowseWallpaperCommand { get; }
 
+    // 壁纸位图与画刷缓存：调透明度/拉伸时直接复用，避免反复解码大图
+    private Avalonia.Media.Imaging.Bitmap? _wallpaperBitmap;
+    private string? _wallpaperBitmapPath;
+    private Avalonia.Media.ImageBrush? _wallpaperBrush;
+
     private void ApplyWallpaper()
     {
         Dispatcher.UIThread.Post(() =>
         {
             if (Application.Current?.Resources is not { } resources) return;
+
+            var active = false;
             if (_config.WallpaperEnabled && !string.IsNullOrWhiteSpace(_config.WallpaperPath)
                 && File.Exists(_config.WallpaperPath))
             {
                 try
                 {
-                    var bitmap = new Avalonia.Media.Imaging.Bitmap(_config.WallpaperPath);
-                    resources["MainWallpaperBrush"] = new Avalonia.Media.ImageBrush(bitmap)
+                    if (_wallpaperBitmap is null || _wallpaperBitmapPath != _config.WallpaperPath)
                     {
-                        Stretch = StretchMap(_config.WallpaperStretch),
-                        Opacity = _config.WallpaperOpacity
-                    };
+                        _wallpaperBitmap = new Avalonia.Media.Imaging.Bitmap(_config.WallpaperPath);
+                        _wallpaperBitmapPath = _config.WallpaperPath;
+                    }
+                    _wallpaperBrush ??= new Avalonia.Media.ImageBrush();
+                    _wallpaperBrush.Source = _wallpaperBitmap;
+                    _wallpaperBrush.Stretch = StretchMap(_config.WallpaperStretch);
+                    _wallpaperBrush.Opacity = _config.WallpaperOpacity;
+                    resources["MainWallpaperBrush"] = _wallpaperBrush;
                     resources["IsMainWallpaperVisible"] = true;
+                    active = true;
                 }
                 catch
                 {
-                    resources["MainWallpaperBrush"] = null;
-                    resources["IsMainWallpaperVisible"] = false;
+                    _wallpaperBitmap = null;
+                    _wallpaperBitmapPath = null;
+                    _wallpaperBrush = null;
                 }
             }
-            else
+
+            if (!active)
             {
+                _wallpaperBitmap = null;
+                _wallpaperBitmapPath = null;
+                _wallpaperBrush = null;
                 resources["MainWallpaperBrush"] = null;
                 resources["IsMainWallpaperVisible"] = false;
             }
-        });
-    }
 
-    private void ApplyNavTransparency()
-    {
-        Dispatcher.UIThread.Post(() =>
-        {
-            if (Application.Current?.Resources is not { } resources) return;
-            // 扩展时导航栏也铺壁纸（Pane 背景透明露出底下），否则用原导航背景色
-            if (_config.WallpaperExtendToNav && _config.WallpaperEnabled)
+            // 壁纸生效时主内容区背景让位，否则恢复主题底色
+            resources["NavBackgroundBrush"] = active
+                ? new SolidColorBrush(Colors.Transparent)
+                : new SolidColorBrush(ResolveNavBgColor());
+
+            // 左侧导航栏。FA 展开态实际读取 ExpandedPaneBackground，
+            // DefaultPaneBackground 只覆盖左迷你/顶栏场景，两个键必须同步写
+            var paneOpacity = active && _config.WallpaperExtendToNav
+                ? _config.NavBackgroundOpacity
+                : 1.0;
+            resources["NavigationViewDefaultPaneBackground"] = new SolidColorBrush(ResolveNavBgColor())
             {
-                resources["NavBackgroundOpacity"] = _config.NavBackgroundOpacity;
-                resources["IsNavWallpaperVisible"] = true;
-                resources["NavigationViewDefaultPaneBackground"] = new SolidColorBrush(ResolveNavBgColor())
-                {
-                    Opacity = _config.NavBackgroundOpacity
-                };
-            }
-            else
+                Opacity = paneOpacity
+            };
+            resources["NavigationViewExpandedPaneBackground"] = new SolidColorBrush(ResolveNavBgColor())
             {
-                resources["NavBackgroundOpacity"] = 1.0;
-                resources["IsNavWallpaperVisible"] = false;
-                // 恢复默认导航栏背景（跟随当前主题）
-                resources["NavigationViewDefaultPaneBackground"] = new SolidColorBrush(ResolveNavBgColor());
-            }
+                Opacity = paneOpacity
+            };
         });
     }
 
@@ -1263,7 +1275,6 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
         ApplyDensity();
         ApplyAnimationLevel();
         ApplyWallpaper();
-        ApplyNavTransparency();
 
         AutoSave();
     }
@@ -1316,6 +1327,9 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
         {
             ApplyDarkTheme(resources);
         }
+
+        // 主题资源会重写导航/内容背景，壁纸相关状态需要在其后重新应用
+        ApplyWallpaper();
     }
 
     private void ApplyLightTheme(IResourceDictionary resources)

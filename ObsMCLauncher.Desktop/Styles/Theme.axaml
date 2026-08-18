@@ -17,6 +17,11 @@
     <SolidColorBrush x:Key="LayerFillColorPrimaryBrush" Color="#1C1F26"/>
     <SolidColorBrush x:Key="LayerFillColorSecondaryBrush" Color="#252830"/>
 
+    <!-- 壁纸资源默认值：运行时由 SettingsViewModel 按配置覆盖 -->
+    <sys:Boolean x:Key="IsMainWallpaperVisible">False</sys:Boolean>
+    <!-- FA 左展开态导航栏实际读取的背景键，默认给不透明底色防止透出窗口底 -->
+    <SolidColorBrush x:Key="NavigationViewExpandedPaneBackground" Color="#141619"/>
+
     <!-- ===== 主色：单一 AccentBrush，旧别名全部指向同一色值 ===== -->
     <Color x:Key="AccentColor">#10B981</Color>
     <SolidColorBrush x:Key="AccentBrush" Color="#10B981"/>
