@@ -3,6 +3,7 @@
              xmlns:vm="using:ObsMCLauncher.Desktop.ViewModels"
              xmlns:ui="using:FluentAvalonia.UI.Controls"
              xmlns:converters="using:ObsMCLauncher.Desktop.Converters"
+             xmlns:a="using:Avalonia.Media"
              x:Class="ObsMCLauncher.Desktop.Views.SettingsPages.SettingsAppearancePage"
              x:DataType="vm:SettingsViewModel">
 
@@ -60,6 +61,42 @@
               <ComboBoxItem Content="禁用"/>
               <ComboBoxItem Content="标准"/>
               <ComboBoxItem Content="华丽"/>
+            </ComboBox>
+          </ui:SettingsExpanderItem.Footer>
+        </ui:SettingsExpanderItem>
+      </ui:SettingsExpander>
+
+      <!-- 字体 -->
+      <ui:SettingsExpander Header="字体" IsExpanded="True" Description="自定义启动器界面显示的字体">
+        <ui:SettingsExpanderItem Content="自定义字体" Description="界面文字使用的字体，下拉列表按字体本身预览">
+          <ui:SettingsExpanderItem.Footer>
+            <ComboBox Width="220" MaxDropDownHeight="360"
+                      ItemsSource="{Binding FontFamilies}"
+                      SelectedItem="{Binding SelectedFontItem, Mode=TwoWay}"
+                      HorizontalAlignment="Left">
+              <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:FontFamilyItem">
+                  <TextBlock Text="{Binding Display}" FontFamily="{Binding Family}"
+                             ToolTip.Tip="{Binding Display}"
+                             MaxWidth="200" TextTrimming="CharacterEllipsis"
+                             VerticalAlignment="Center"/>
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+          </ui:SettingsExpanderItem.Footer>
+        </ui:SettingsExpanderItem>
+
+        <ui:SettingsExpanderItem Content="自定义字重" Description="界面文字的粗细，需要所选字体支持对应字重">
+          <ui:SettingsExpanderItem.Footer>
+            <ComboBox Width="150"
+                      ItemsSource="{x:Static vm:SettingsViewModel.FontWeightOptions}"
+                      SelectedItem="{Binding SelectedFontWeight, Mode=TwoWay}"
+                      HorizontalAlignment="Left">
+              <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="a:FontWeight">
+                  <TextBlock Text="{Binding}" FontWeight="{Binding}" ToolTip.Tip="{Binding}"/>
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
             </ComboBox>
           </ui:SettingsExpanderItem.Footer>
         </ui:SettingsExpanderItem>

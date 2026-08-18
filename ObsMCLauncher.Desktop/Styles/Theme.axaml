@@ -1,6 +1,7 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:sys="clr-namespace:System;assembly=System.Runtime">
+        xmlns:sys="clr-namespace:System;assembly=System.Runtime"
+        xmlns:a="using:Avalonia.Media">
 
   <Styles.Resources>
 
@@ -16,6 +17,9 @@
     <SolidColorBrush x:Key="LayerFillColorAltBrush" Color="#141619"/>
     <SolidColorBrush x:Key="LayerFillColorPrimaryBrush" Color="#1C1F26"/>
     <SolidColorBrush x:Key="LayerFillColorSecondaryBrush" Color="#252830"/>
+
+    <!-- 全局字体：默认跟随系统，运行时由 SettingsViewModel 按配置覆盖 -->
+    <FontWeight x:Key="GlobalFontWeight">Normal</FontWeight>
 
     <!-- 壁纸资源默认值：运行时由 SettingsViewModel 按配置覆盖 -->
     <sys:Boolean x:Key="IsMainWallpaperVisible">False</sys:Boolean>
@@ -188,9 +192,15 @@
 
   </Styles.Resources>
 
+  <!-- 字体从 Window 级继承，TextBlock 不应锁死 Normal，否则自定义字重失效 -->
+  <Style Selector="Window">
+    <Setter Property="FontFamily" Value="{DynamicResource GlobalFontFamily}" />
+    <Setter Property="FontWeight" Value="{DynamicResource GlobalFontWeight}" />
+  </Style>
+
   <Style Selector="TextBlock">
     <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
-    <Setter Property="FontWeight" Value="Normal" />
+    <Setter Property="FontWeight" Value="{DynamicResource GlobalFontWeight}" />
   </Style>
 
   <Style Selector="ScrollViewer">

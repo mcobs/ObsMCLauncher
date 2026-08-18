@@ -211,6 +211,12 @@ public class LauncherConfig
     /// <summary>导航栏背景透明度（0-1，越小越透出壁纸），仅扩展时生效</summary>
     public double NavBackgroundOpacity { get; set; } = 0.7;
 
+    /// <summary>自定义字体名称，空表示使用系统默认字体</summary>
+    public string? CustomFontFamily { get; set; }
+
+    /// <summary>自定义字重（100-950，400=Normal）</summary>
+    public int CustomFontWeight { get; set; } = 400;
+
     public string? SelectedVersion { get; set; }
 
     public string? SelectedAccountId { get; set; }

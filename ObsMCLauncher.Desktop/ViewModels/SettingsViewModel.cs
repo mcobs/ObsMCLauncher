@@ -27,6 +27,9 @@ using ObsMCLauncher.Desktop.ViewModels.Notifications;
 
 namespace ObsMCLauncher.Desktop.ViewModels;
 
+/// <summary>字体下拉项：Family 供预览渲染，Display 供显示，IsDefault 标记默认字体</summary>
+public sealed record FontFamilyItem(Avalonia.Media.FontFamily Family, string Display, bool IsDefault);
+
 public partial class SettingsViewModel : ViewModelBase, IDisposable
 {
     private readonly NotificationService _notificationService;
@@ -69,6 +72,8 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperStretch)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperExtendToNav)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(NavBackgroundOpacity)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(SelectedFontItem)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(SelectedFontWeight)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(MaxMemory)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(MinMemory)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(DownloadSource)));
@@ -150,6 +155,10 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
 
         // 应用已保存的壁纸配置
         ApplyWallpaper();
+
+        // 字体列表与应用已保存的字体设置
+        LoadFontFamilies();
+        ApplyFont();
 
         // 监听系统主题变化
         if (Application.Current != null)
@@ -462,6 +471,94 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
     }
 
     public IAsyncRelayCommand BrowseWallpaperCommand { get; }
+
+    // ===== 字体 =====
+
+    /// <summary>可选字重，与 ClassIsland 一致去掉别名项（100-950）</summary>
+    public static Avalonia.Media.FontWeight[] FontWeightOptions { get; } =
+    [
+        Avalonia.Media.FontWeight.Thin,
+        Avalonia.Media.FontWeight.ExtraLight,
+        Avalonia.Media.FontWeight.Light,
+        Avalonia.Media.FontWeight.Normal,
+        Avalonia.Media.FontWeight.Medium,
+        Avalonia.Media.FontWeight.SemiBold,
+        Avalonia.Media.FontWeight.Bold,
+        Avalonia.Media.FontWeight.ExtraBold,
+        Avalonia.Media.FontWeight.Black,
+        Avalonia.Media.FontWeight.ExtraBlack
+    ];
+
+    /// <summary>系统字体列表，首项为默认字体</summary>
+    public ObservableCollection<FontFamilyItem> FontFamilies { get; } = [];
+
+    public FontFamilyItem? SelectedFontItem
+    {
+        get
+        {
+            var name = _config.CustomFontFamily;
+            return FontFamilies.FirstOrDefault(f =>
+                string.IsNullOrEmpty(name) ? f.IsDefault : (!f.IsDefault && f.Family.Name == name));
+        }
+        set
+        {
+            if (value is null) return;
+            var name = value.IsDefault ? null : value.Family.Name;
+            if (_config.CustomFontFamily != name)
+            {
+                _config.CustomFontFamily = name;
+                OnPropertyChanged(new PropertyChangedEventArgs(nameof(SelectedFontItem)));
+                ApplyFont();
+                AutoSave();
+            }
+        }
+    }
+
+    public Avalonia.Media.FontWeight SelectedFontWeight
+    {
+        get => (Avalonia.Media.FontWeight)Math.Clamp(_config.CustomFontWeight, 100, 950);
+        set
+        {
+            if (_config.CustomFontWeight != (int)value)
+            {
+                _config.CustomFontWeight = (int)value;
+                OnPropertyChanged(new PropertyChangedEventArgs(nameof(SelectedFontWeight)));
+                ApplyFont();
+                AutoSave();
+            }
+        }
+    }
+
+    private void LoadFontFamilies()
+    {
+        try
+        {
+            var defaultFont = FontManager.Current.DefaultFontFamily ?? FontFamily.Default;
+            var defaultName = string.IsNullOrEmpty(defaultFont.Name) ? "默认字体" : defaultFont.Name;
+            FontFamilies.Add(new FontFamilyItem(defaultFont, $"{defaultName}（默认）", true));
+            foreach (var f in FontManager.Current.SystemFonts.OrderBy(x => x.Name, StringComparer.CurrentCulture))
+            {
+                if (string.IsNullOrEmpty(f.Name) || f.Name == defaultFont.Name) continue;
+                FontFamilies.Add(new FontFamilyItem(f, f.Name, false));
+            }
+        }
+        catch
+        {
+            // 拿不到系统字体列表时仅保留空列表，默认字体仍可用
+        }
+    }
+
+    private void ApplyFont()
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (Application.Current?.Resources is not { } resources) return;
+            resources["GlobalFontFamily"] = string.IsNullOrWhiteSpace(_config.CustomFontFamily)
+                ? FontFamily.Default
+                : new FontFamily(_config.CustomFontFamily);
+            resources["GlobalFontWeight"] = (FontWeight)Math.Clamp(_config.CustomFontWeight, 100, 950);
+        });
+    }
 
     // 壁纸位图与画刷缓存：调透明度/拉伸时直接复用，避免反复解码大图
     private Avalonia.Media.Imaging.Bitmap? _wallpaperBitmap;
@@ -1237,6 +1334,8 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperStretch)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperExtendToNav)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(NavBackgroundOpacity)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(SelectedFontItem)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(SelectedFontWeight)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(MaxMemory)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(MinMemory)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(DownloadSource)));
@@ -1275,6 +1374,7 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
         ApplyDensity();
         ApplyAnimationLevel();
         ApplyWallpaper();
+        ApplyFont();
 
         AutoSave();
     }
