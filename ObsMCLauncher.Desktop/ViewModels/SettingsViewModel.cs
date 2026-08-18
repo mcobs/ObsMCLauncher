@@ -60,6 +60,9 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(AccentColor)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(AccentColorValue)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(AccentColorPreview)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(CornerRadius)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(Density)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(AnimationLevel)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(MaxMemory)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(MinMemory)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(DownloadSource)));
@@ -133,6 +136,11 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
 
         // 启动时应用已保存的自定义强调色
         ApplyAccentColor();
+
+        // 应用已保存的圆角 / 密度 / 动画
+        ApplyCornerRadius();
+        ApplyDensity();
+        ApplyAnimationLevel();
 
         // 监听系统主题变化
         if (Application.Current != null)
@@ -297,6 +305,57 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
     /// <summary>当前强调色的预览画刷</summary>
     public IBrush AccentColorPreview => new SolidColorBrush(ResolveAccentColor());
 
+    /// <summary>圆角半径（0-28），应用到主要容器</summary>
+    public int CornerRadius
+    {
+        get => _config.CornerRadius;
+        set
+        {
+            var clamped = Math.Clamp(value, 0, 28);
+            if (_config.CornerRadius != clamped)
+            {
+                _config.CornerRadius = clamped;
+                OnPropertyChanged(new PropertyChangedEventArgs(nameof(CornerRadius)));
+                ApplyCornerRadius();
+                AutoSave();
+            }
+        }
+    }
+
+    /// <summary>密度：0=紧凑 1=标准 2=宽松，影响主要界面留白</summary>
+    public int Density
+    {
+        get => _config.Density;
+        set
+        {
+            var clamped = Math.Clamp(value, 0, 2);
+            if (_config.Density != clamped)
+            {
+                _config.Density = clamped;
+                OnPropertyChanged(new PropertyChangedEventArgs(nameof(Density)));
+                ApplyDensity();
+                AutoSave();
+            }
+        }
+    }
+
+    /// <summary>动画级别：0=禁用 1=标准 2=华丽</summary>
+    public int AnimationLevel
+    {
+        get => _config.AnimationLevel;
+        set
+        {
+            var clamped = Math.Clamp(value, 0, 2);
+            if (_config.AnimationLevel != clamped)
+            {
+                _config.AnimationLevel = clamped;
+                OnPropertyChanged(new PropertyChangedEventArgs(nameof(AnimationLevel)));
+                ApplyAnimationLevel();
+                AutoSave();
+            }
+        }
+    }
+
     private Color ResolveAccentColor()
         => Color.TryParse(ResolveAccentHex(), out var c) ? c : Color.Parse("#10B981");
 
@@ -328,6 +387,44 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
                 faTheme.CustomAccentColor = ResolveAccentColor();
             }
             UpdateThemeResources(_config.ThemeMode);
+        });
+    }
+
+    /// <summary>圆角半径应用到全局圆角资源（主要容器读取）</summary>
+    private void ApplyCornerRadius()
+    {
+        if (Application.Current?.Resources is not { } resources) return;
+        var r = _config.CornerRadius;
+        // 柔和的层级差异：控件略小、浮层适中、卡片取设定值
+        resources["ControlCornerRadius"] = new CornerRadius(Math.Max(0, r - 4));
+        resources["OverlayCornerRadius"] = new CornerRadius(r);
+        resources["CardCornerRadius"] = new CornerRadius(r);
+    }
+
+    /// <summary>密度应用到主要界面留白资源（紧凑=小、宽松=大）</summary>
+    private void ApplyDensity()
+    {
+        if (Application.Current?.Resources is not { } resources) return;
+        var baseMargin = _config.Density switch
+        {
+            0 => 12,
+            1 => 20,
+            _ => 28
+        };
+        resources["ContentMargin"] = new Thickness(baseMargin);
+        resources["InnerSpacing"] = _config.Density switch { 0 => 8, 1 => 12, _ => 16 };
+    }
+
+    /// <summary>动画级别应用到全局动画开关（主要过渡读取）</summary>
+    private void ApplyAnimationLevel()
+    {
+        if (Application.Current?.Resources is not { } resources) return;
+        resources["EnabledAnimations"] = _config.AnimationLevel != 0;
+        // 华丽与标准共用动画时长，禁用时由 EnabledAnimations 关闭
+        resources["DefaultTransitionDuration"] = TimeSpan.FromSeconds(_config.AnimationLevel switch
+        {
+            2 => 0.45,
+            _ => 0.25
         });
     }
 
@@ -914,6 +1011,9 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(AccentColor)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(AccentColorValue)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(AccentColorPreview)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(CornerRadius)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(Density)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(AnimationLevel)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(MaxMemory)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(MinMemory)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(DownloadSource)));
@@ -947,6 +1047,10 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
             NavigationStore.MainWindow.NotificationPosition = NotificationPosition.Center;
             NavigationStore.MainWindow.Notifications.AutoCloseSeconds = 5;
         }
+
+        ApplyCornerRadius();
+        ApplyDensity();
+        ApplyAnimationLevel();
 
         AutoSave();
     }

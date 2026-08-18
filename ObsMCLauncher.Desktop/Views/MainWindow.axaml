@@ -64,7 +64,7 @@
         </Style>
 
         <Style Selector="Border.dialog-card">
-            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="CornerRadius" Value="{DynamicResource OverlayCornerRadius}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseLowBrush}" />
             <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundAltHighBrush}" />
@@ -74,8 +74,8 @@
             <Setter Property="Opacity" Value="0" />
             <Setter Property="Transitions">
                 <Transitions>
-                    <DoubleTransition Property="Opacity" Duration="0:0:0.25" Easing="CircularEaseOut" />
-                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.25" Easing="CircularEaseOut" />
+                    <DoubleTransition Property="Opacity" Duration="{DynamicResource DefaultTransitionDuration}" Easing="CircularEaseOut" />
+                    <TransformOperationsTransition Property="RenderTransform" Duration="{DynamicResource DefaultTransitionDuration}" Easing="CircularEaseOut" />
                 </Transitions>
             </Setter>
         </Style>
@@ -86,7 +86,7 @@
         </Style>
 
         <Style Selector="Border.authurl-card">
-            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="CornerRadius" Value="{DynamicResource OverlayCornerRadius}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseLowBrush}" />
             <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundAltHighBrush}" />
@@ -96,8 +96,8 @@
             <Setter Property="Opacity" Value="0" />
             <Setter Property="Transitions">
                 <Transitions>
-                    <DoubleTransition Property="Opacity" Duration="0:0:0.25" Easing="CircularEaseOut" />
-                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.25" Easing="CircularEaseOut" />
+                    <DoubleTransition Property="Opacity" Duration="{DynamicResource DefaultTransitionDuration}" Easing="CircularEaseOut" />
+                    <TransformOperationsTransition Property="RenderTransform" Duration="{DynamicResource DefaultTransitionDuration}" Easing="CircularEaseOut" />
                 </Transitions>
             </Setter>
         </Style>
@@ -112,8 +112,8 @@
             <Setter Property="Opacity" Value="0" />
             <Setter Property="Transitions">
                 <Transitions>
-                    <DoubleTransition Property="Opacity" Duration="0:0:0.25" Easing="CircularEaseOut" />
-                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.25" Easing="CircularEaseOut" />
+                    <DoubleTransition Property="Opacity" Duration="{DynamicResource DefaultTransitionDuration}" Easing="CircularEaseOut" />
+                    <TransformOperationsTransition Property="RenderTransform" Duration="{DynamicResource DefaultTransitionDuration}" Easing="CircularEaseOut" />
                 </Transitions>
             </Setter>
         </Style>
@@ -126,8 +126,8 @@
         <Style Selector="Border.download-panel">
             <Setter Property="Transitions">
                 <Transitions>
-                    <DoubleTransition Property="Opacity" Duration="0:0:0.25" Easing="CircularEaseOut" />
-                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.25" Easing="CircularEaseOut" />
+                    <DoubleTransition Property="Opacity" Duration="{DynamicResource DefaultTransitionDuration}" Easing="CircularEaseOut" />
+                    <TransformOperationsTransition Property="RenderTransform" Duration="{DynamicResource DefaultTransitionDuration}" Easing="CircularEaseOut" />
                 </Transitions>
             </Setter>
         </Style>
@@ -171,7 +171,7 @@
                     BorderThickness="1,0,0,0">
                 <ui:Frame x:Name="MainFrame"
                           IsNavigationStackEnabled="False"
-                          Margin="24"
+                          Margin="{DynamicResource ContentMargin}"
                           Background="Transparent"/>
             </Border>
         </ui:NavigationView>
@@ -182,7 +182,7 @@
                 IsHitTestVisible="{Binding Dialogs.IsAnyModalOpen}">
             <Border.Transitions>
                 <Transitions>
-                    <DoubleTransition Property="Opacity" Duration="0:0:0.2" Easing="CircularEaseOut" />
+                    <DoubleTransition Property="Opacity" Duration="{DynamicResource DefaultTransitionDuration}" Easing="CircularEaseOut" />
                 </Transitions>
             </Border.Transitions>
         </Border>
@@ -199,7 +199,7 @@
                 VerticalAlignment="Center"
                 IsVisible="{Binding Dialogs.IsAuthUrlOpen}"
                 IsHitTestVisible="True"
-                CornerRadius="12"
+                CornerRadius="{DynamicResource OverlayCornerRadius}"
                 BorderThickness="1"
                 BorderBrush="{DynamicResource BorderBrush}"
                 Background="{DynamicResource SurfaceElevatedBrush}"

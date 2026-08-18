@@ -30,6 +30,41 @@
         </ui:SettingsExpanderItem>
       </ui:SettingsExpander>
 
+      <!-- 个性：圆角 / 密度 / 动画 -->
+      <ui:SettingsExpander Header="个性" IsExpanded="True" Description="调整界面的观感细节">
+        <ui:SettingsExpanderItem Content="圆角半径" Description="控制主要容器与卡片的圆角大小">
+          <ui:SettingsExpanderItem.Footer>
+            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+              <Slider Width="160" Minimum="0" Maximum="28" TickFrequency="1"
+                      IsSnapToTickEnabled="True"
+                      Value="{Binding CornerRadius, Mode=TwoWay}"/>
+              <TextBlock Text="{Binding CornerRadius}" FontSize="12"
+                         Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+            </StackPanel>
+          </ui:SettingsExpanderItem.Footer>
+        </ui:SettingsExpanderItem>
+
+        <ui:SettingsExpanderItem Content="密度" Description="控制主要界面的留白与间距">
+          <ui:SettingsExpanderItem.Footer>
+            <ComboBox Width="140" SelectedIndex="{Binding Density}">
+              <ComboBoxItem Content="紧凑"/>
+              <ComboBoxItem Content="标准"/>
+              <ComboBoxItem Content="宽松"/>
+            </ComboBox>
+          </ui:SettingsExpanderItem.Footer>
+        </ui:SettingsExpanderItem>
+
+        <ui:SettingsExpanderItem Content="动画级别" Description="控制主要过渡动画的启用与强度">
+          <ui:SettingsExpanderItem.Footer>
+            <ComboBox Width="140" SelectedIndex="{Binding AnimationLevel}">
+              <ComboBoxItem Content="禁用"/>
+              <ComboBoxItem Content="标准"/>
+              <ComboBoxItem Content="华丽"/>
+            </ComboBox>
+          </ui:SettingsExpanderItem.Footer>
+        </ui:SettingsExpanderItem>
+      </ui:SettingsExpander>
+
       <!-- 通知 -->
       <ui:SettingsExpander Header="通知" IsExpanded="True">
         <ui:SettingsExpanderItem Content="通知样式" Description="选择通知消息的显示位置和样式">

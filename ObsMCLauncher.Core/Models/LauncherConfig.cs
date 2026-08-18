@@ -178,6 +178,21 @@ public class LauncherConfig
     /// </summary>
     public string AccentColor { get; set; } = "#10B981";
 
+    /// <summary>
+    /// 圆角半径（0-28），0 为直角，默认 12
+    /// </summary>
+    public int CornerRadius { get; set; } = 12;
+
+    /// <summary>
+    /// 密度：0=紧凑 1=标准 2=宽松
+    /// </summary>
+    public int Density { get; set; } = 1;
+
+    /// <summary>
+    /// 动画级别：0=禁用 1=标准 2=华丽
+    /// </summary>
+    public int AnimationLevel { get; set; } = 1;
+
     public string? SelectedVersion { get; set; }
 
     public string? SelectedAccountId { get; set; }

@@ -1,5 +1,6 @@
 <Styles xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:sys="clr-namespace:System;assembly=System.Runtime">
 
   <Styles.Resources>
 
@@ -109,6 +110,14 @@
     <CornerRadius x:Key="ControlCornerRadius">8</CornerRadius>
     <CornerRadius x:Key="OverlayCornerRadius">12</CornerRadius>
     <CornerRadius x:Key="CardCornerRadius">12</CornerRadius>
+
+    <!-- ===== 布局：密度/边距（由设置页按密度覆盖） ===== -->
+    <Thickness x:Key="ContentMargin">20,20,20,20</Thickness>
+    <x:Double x:Key="InnerSpacing">12</x:Double>
+
+    <!-- ===== 动画：时长与开关（由设置页按级别覆盖） ===== -->
+    <sys:TimeSpan x:Key="DefaultTransitionDuration">00:00:00.2500000</sys:TimeSpan>
+    <x:Boolean x:Key="EnabledAnimations">true</x:Boolean>
 
     <!-- ===== 输入框聚焦光晕色 ===== -->
     <SolidColorBrush x:Key="InputFocusGlowBrush" Color="#10B981" Opacity="0.15"/>
