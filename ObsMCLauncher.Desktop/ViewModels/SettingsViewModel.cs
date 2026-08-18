@@ -58,6 +58,7 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
 
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(ThemeMode)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(AccentColor)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(AccentColorValue)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(AccentColorPreview)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(MaxMemory)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(MinMemory)));
@@ -152,8 +153,6 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
             if (int.TryParse(tab, out var index))
                 SelectedSettingsTab = index;
         });
-
-        SetAccentColorCommand = new RelayCommand<string>(hex => AccentColor = hex ?? "");
 
         TestDialogCommand = new AsyncRelayCommand(async () =>
         {
@@ -272,28 +271,31 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
         {
             var hex = NormalizeHex(value);
             if (hex == null) return;
-            if (!string.Equals(_config.AccentColor, hex, StringComparison.OrdinalIgnoreCase))
-            {
-                _config.AccentColor = hex;
-                OnPropertyChanged(new PropertyChangedEventArgs(nameof(AccentColor)));
-                OnPropertyChanged(new PropertyChangedEventArgs(nameof(AccentColorPreview)));
-                ApplyAccentColor();
-                AutoSave();
-            }
+            SetAccentHex(hex);
         }
     }
 
-    /// <summary>预设色板（hex 列表），供设置页快速选择</summary>
-    public ObservableCollection<string> PresetAccentColors { get; } = new()
+    /// <summary>强调色（Color 类型），供取色器绑定</summary>
+    public Color AccentColorValue
     {
-        "#10B981", "#3B82F6", "#8B5CF6", "#EC4899",
-        "#EF4444", "#F59E0B", "#06B6D4", "#F97316", "#6366F1", "#14B8A6"
-    };
+        get => ResolveAccentColor();
+        set => SetAccentHex($"#{value.R:X2}{value.G:X2}{value.B:X2}");
+    }
+
+    /// <summary>写入配置并应用到全局</summary>
+    private void SetAccentHex(string hex)
+    {
+        if (string.Equals(_config.AccentColor, hex, StringComparison.OrdinalIgnoreCase)) return;
+        _config.AccentColor = hex;
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(AccentColor)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(AccentColorValue)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(AccentColorPreview)));
+        ApplyAccentColor();
+        AutoSave();
+    }
 
     /// <summary>当前强调色的预览画刷</summary>
     public IBrush AccentColorPreview => new SolidColorBrush(ResolveAccentColor());
-
-    public IRelayCommand<string> SetAccentColorCommand { get; }
 
     private Color ResolveAccentColor()
         => Color.TryParse(ResolveAccentHex(), out var c) ? c : Color.Parse("#10B981");
@@ -910,6 +912,7 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
 
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(ThemeMode)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(AccentColor)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(AccentColorValue)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(AccentColorPreview)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(MaxMemory)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(MinMemory)));
