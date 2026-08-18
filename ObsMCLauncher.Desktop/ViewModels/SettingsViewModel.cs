@@ -548,14 +548,47 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
         }
     }
 
+    private CancellationTokenSource? _fontApplyCts;
+
+    // 同名字体复用同一实例：频繁切换时反复 new FontFamily 会触发全界面
+    // 字形重排，容易出现残影/合成粗体叠加等渲染异常，缓存可显著缓解
+    private readonly Dictionary<string, FontFamily> _fontFamilyCache = [];
+
     private void ApplyFont()
     {
+        _fontApplyCts?.Cancel();
+        _fontApplyCts = new CancellationTokenSource();
+        var token = _fontApplyCts.Token;
         Dispatcher.UIThread.Post(() =>
         {
+            if (token.IsCancellationRequested) return;
             if (Application.Current?.Resources is not { } resources) return;
-            resources["GlobalFontFamily"] = string.IsNullOrWhiteSpace(_config.CustomFontFamily)
-                ? FontFamily.Default
-                : new FontFamily(_config.CustomFontFamily);
+
+            FontFamily family;
+            if (string.IsNullOrWhiteSpace(_config.CustomFontFamily))
+            {
+                family = FontFamily.Default;
+                resources["GlobalFontFamily"] = family;
+                // 恢复 FA 主题默认，让控件字体回到主题字典定义
+                resources.Remove("ContentControlThemeFontFamily");
+            }
+            else
+            {
+                // 追加系统默认字体做 fallback：所选字体缺字形（如纯英文体显示中文）
+                // 时回退，避免出现方框
+                if (!_fontFamilyCache.TryGetValue(_config.CustomFontFamily, out var cached))
+                {
+                    var fallbackName = FontManager.Current.DefaultFontFamily?.Name;
+                    cached = string.IsNullOrEmpty(fallbackName)
+                        ? new FontFamily(_config.CustomFontFamily)
+                        : new FontFamily($"{_config.CustomFontFamily}, {fallbackName}");
+                    _fontFamilyCache[_config.CustomFontFamily] = cached;
+                }
+                family = cached;
+                resources["GlobalFontFamily"] = family;
+                // FA 控件样式显式引用该令牌，不覆盖的话导航栏等不跟随自定义字体
+                resources["ContentControlThemeFontFamily"] = family;
+            }
             resources["GlobalFontWeight"] = (FontWeight)Math.Clamp(_config.CustomFontWeight, 100, 950);
         });
     }
@@ -1588,6 +1621,8 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
         }
         _saveNotifyCts?.Cancel();
         _saveNotifyCts?.Dispose();
+        _fontApplyCts?.Cancel();
+        _fontApplyCts?.Dispose();
         GC.SuppressFinalize(this);
     }
 
