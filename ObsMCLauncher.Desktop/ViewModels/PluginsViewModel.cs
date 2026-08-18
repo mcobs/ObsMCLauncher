@@ -39,6 +39,18 @@ public partial class PluginsViewModel : ViewModelBase
     public bool IsInstalled => CurrentTab == PluginSubTab.Installed;
 
     [ObservableProperty]
+    private int _currentTabIndex;
+
+    partial void OnCurrentTabIndexChanged(int value)
+    {
+        if (value < 0) value = 0;
+        if ((int)CurrentTab != value)
+        {
+            CurrentTab = (PluginSubTab)value;
+        }
+    }
+
+    [ObservableProperty]
     private ObservableCollection<PluginListItemViewModel> _leftItems = new();
 
     [ObservableProperty]
@@ -60,6 +72,9 @@ public partial class PluginsViewModel : ViewModelBase
     private PluginDetailViewModel _detail = new();
 
     [ObservableProperty]
+    private int _selectedDetailTabIndex;
+
+    [ObservableProperty]
     private ObservableCollection<PluginCategory> _categories = new();
 
     [ObservableProperty]
@@ -70,6 +85,9 @@ public partial class PluginsViewModel : ViewModelBase
 
     [ObservableProperty]
     private PlatformFilterItem? _selectedPlatformFilter;
+
+    [ObservableProperty]
+    private string _emptyStateText = string.Empty;
 
     private ObservableCollection<MarketPlugin>? _allMarketPlugins;
 
@@ -126,6 +144,7 @@ public partial class PluginsViewModel : ViewModelBase
     partial void OnSelectedItemChanged(PluginListItemViewModel? value)
     {
         Detail = value?.ToDetail(_pluginLoader) ?? new PluginDetailViewModel();
+        SelectedDetailTabIndex = 0;
         _ = LoadReadmeForDetailAsync(value);
     }
 
@@ -133,6 +152,10 @@ public partial class PluginsViewModel : ViewModelBase
     {
         OnPropertyChanged(nameof(IsMarket));
         OnPropertyChanged(nameof(IsInstalled));
+        if (CurrentTabIndex != (int)value)
+        {
+            CurrentTabIndex = (int)value;
+        }
         _ = RefreshLeftAsync();
     }
 
@@ -170,8 +193,8 @@ public partial class PluginsViewModel : ViewModelBase
                 }
                 else
                 {
-                    Detail.Markdown = "";
-                    Detail.MarkdownVisible = false;
+                    Detail.Markdown = item.Installed.Description ?? string.Empty;
+                    Detail.MarkdownVisible = !string.IsNullOrWhiteSpace(Detail.Markdown);
                 }
             }
             else if (item.Source == PluginItemSource.Market && item.MarketPlugin != null)
@@ -243,12 +266,11 @@ public partial class PluginsViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private async Task RefreshMarketAsync()
+    private async Task RefreshAsync()
     {
         await RefreshLeftAsync();
     }
 
-    [RelayCommand]
     private Task RefreshInstalledAsync()
     {
         return RefreshLeftAsync();
@@ -263,17 +285,13 @@ public partial class PluginsViewModel : ViewModelBase
 
         if (CurrentTab == PluginSubTab.Installed)
         {
-            var installed = _pluginLoader.LoadedPlugins;
-            foreach (var p in installed)
-            {
-                LeftItems.Add(PluginListItemViewModel.FromInstalled(p));
-            }
-            IsEmptyHintVisible = LeftItems.Count == 0;
+            LoadInstalledItems();
         }
         else
         {
             IsMarketLoading = true;
             MarketError = null;
+            IsEmptyHintVisible = false;
 
             try
             {
@@ -286,11 +304,15 @@ public partial class PluginsViewModel : ViewModelBase
                 else
                 {
                     MarketError = "无法加载插件市场数据";
+                    IsEmptyHintVisible = true;
+                    EmptyStateText = "无法加载插件市场数据";
                 }
             }
             catch (Exception ex)
             {
                 MarketError = $"加载失败: {ex.Message}";
+                IsEmptyHintVisible = true;
+                EmptyStateText = MarketError;
             }
             finally
             {
@@ -299,6 +321,20 @@ public partial class PluginsViewModel : ViewModelBase
         }
 
         TryRestoreSelection(previousSelected);
+    }
+
+    private void LoadInstalledItems()
+    {
+        var installed = _pluginLoader.LoadedPlugins;
+        foreach (var p in installed)
+        {
+            LeftItems.Add(PluginListItemViewModel.FromInstalled(p));
+        }
+        IsEmptyHintVisible = LeftItems.Count == 0;
+        if (IsEmptyHintVisible)
+        {
+            EmptyStateText = "还没有安装任何插件，去插件市场看看吧";
+        }
     }
 
     private void TryRestoreSelection(string? title)
@@ -362,6 +398,10 @@ public partial class PluginsViewModel : ViewModelBase
             }
 
             IsEmptyHintVisible = LeftItems.Count == 0;
+            if (IsEmptyHintVisible)
+            {
+                EmptyStateText = "找不到符合条件的插件，请调整筛选条件后重试";
+            }
             TryRestoreSelection(previousSelected);
         }
         catch (OperationCanceledException) { }
@@ -573,21 +613,21 @@ public partial class PluginListItemViewModel : ObservableObject
     {
         if (Source == PluginItemSource.Installed && Installed != null)
         {
-            var status = Installed.IsLoaded ? "已启用" : "未启用";
-            if (!string.IsNullOrEmpty(Installed.ErrorMessage) && !Installed.IsLoaded)
-            {
-                status = $"异常: {Installed.ErrorMessage}";
-            }
-
             var outputText = string.IsNullOrWhiteSpace(Installed.ErrorOutput) ? "运行正常" : Installed.ErrorOutput;
+
+            var hasError = !string.IsNullOrEmpty(Installed.ErrorMessage) && !Installed.IsLoaded;
 
             var detail = new PluginDetailViewModel
             {
                 Title = Installed.Name,
-                Meta = $"v{Installed.Version} | {Installed.Author} | {status}",
+                Meta = $"v{Installed.Version} | {Installed.Author}",
+                IconUrl = Installed.IconPath,
                 Description = Installed.Description ?? string.Empty,
                 Output = outputText,
                 OutputVisible = true,
+                IsEnabledStatus = Installed.IsLoaded,
+                IsErrorStatus = hasError,
+                IsDisabledStatus = !Installed.IsLoaded && !hasError,
                 PrimaryActionText = Installed.IsLoaded ? "禁用" : "启用",
                 PrimaryActionEnabled = true,
                 PrimaryActionVisible = true,
@@ -614,6 +654,7 @@ public partial class PluginListItemViewModel : ObservableObject
             {
                 Title = MarketPlugin.Name,
                 Meta = meta,
+                IconUrl = MarketPlugin.Icon,
                 Description = MarketPlugin.Description,
                 OutputVisible = false,
                 PrimaryActionText = "安装",
@@ -659,6 +700,13 @@ public partial class PluginDetailViewModel : ObservableObject
 
     [ObservableProperty] private string _markdown = string.Empty;
     [ObservableProperty] private bool _markdownVisible;
+
+    [ObservableProperty] private string? _iconUrl;
+
+    // 状态胶囊（用于详情头部的彩色状态标签）
+    [ObservableProperty] private bool _isEnabledStatus;
+    [ObservableProperty] private bool _isErrorStatus;
+    [ObservableProperty] private bool _isDisabledStatus;
 
     public PluginDetailViewModel()
     {
