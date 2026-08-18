@@ -22,6 +22,51 @@
             </ComboBox>
           </ui:SettingsExpanderItem.Footer>
         </ui:SettingsExpanderItem>
+
+        <ui:SettingsExpanderItem Content="强调色" Description="修改全局高亮配色（按钮、选中项、标签页）">
+          <StackPanel Spacing="12">
+            <!-- 预设色板 -->
+            <ItemsControl ItemsSource="{Binding PresetAccentColors}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <WrapPanel/>
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Button Margin="0,0,8,0" Padding="0" Width="28" Height="28" CornerRadius="50"
+                          Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).SetAccentColorCommand}"
+                          CommandParameter="{Binding}">
+                    <Button.Template>
+                      <ControlTemplate>
+                        <Border Width="28" Height="28" CornerRadius="50"
+                                Background="{Binding}"
+                                BorderBrush="{DynamicResource BorderBrush}">
+                          <Border.BorderThickness>
+                            <MultiBinding Converter="{x:Static converters:StringEqualsToThicknessConverter.Instance}">
+                              <Binding Path="$parent[UserControl].((vm:SettingsViewModel)DataContext).AccentColor"/>
+                              <Binding/>
+                            </MultiBinding>
+                          </Border.BorderThickness>
+                        </Border>
+                      </ControlTemplate>
+                    </Button.Template>
+                  </Button>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <!-- 自定义取色：hex 输入 -->
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Border Width="28" Height="28" CornerRadius="6" Background="{Binding AccentColorPreview}"/>
+              <TextBox Width="150" Text="{Binding AccentColor, Mode=TwoWay}"
+                       Watermark="#RRGGBB"
+                       TextAlignment="Center"/>
+              <TextBlock Text="按回车或失焦应用" FontSize="11"
+                         Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+            </StackPanel>
+          </StackPanel>
+        </ui:SettingsExpanderItem>
       </ui:SettingsExpander>
 
       <!-- 通知 -->

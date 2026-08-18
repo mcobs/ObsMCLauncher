@@ -173,6 +173,11 @@ public class LauncherConfig
 
     public int ThemeMode { get; set; } = 0;
 
+    /// <summary>
+    /// 自定义强调色（hex 字符串），默认绿色 #10B981，为空时回退默认
+    /// </summary>
+    public string AccentColor { get; set; } = "#10B981";
+
     public string? SelectedVersion { get; set; }
 
     public string? SelectedAccountId { get; set; }

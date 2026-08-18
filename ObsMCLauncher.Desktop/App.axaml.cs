@@ -31,11 +31,13 @@ public partial class App : Application
         {
             DisableAvaloniaDataAnnotationValidation();
 
-            // 强制 FluentAvalonia 使用绿色强调色，避免回退到系统蓝
+            var config = ObsMCLauncher.Core.Models.LauncherConfig.Load();
+
+            // 强制 FluentAvalonia 使用强调色，避免回退到系统蓝
             var faTheme = Styles.OfType<FluentAvaloniaTheme>().FirstOrDefault();
             if (faTheme != null)
             {
-                faTheme.CustomAccentColor = Color.Parse("#10B981");
+                faTheme.CustomAccentColor = ParseAccentColor(config.AccentColor);
             }
 
             // 设置为显式关闭模式，防止异常时应用自动退出
@@ -45,7 +47,6 @@ public partial class App : Application
 
             ObsMCLauncher.Core.Bootstrap.LauncherBootstrap.Initialize();
 
-            var config = ObsMCLauncher.Core.Models.LauncherConfig.Load();
             ObsMCLauncher.Core.Services.UpdateService.Initialize(config.UpdateChannel);
 
             // 首次启动：默认使用深色主题（0=深色），并立即落盘
@@ -90,9 +91,11 @@ public partial class App : Application
         base.OnFrameworkInitializationCompleted();
     }
 
-    /// <summary>
-    /// 开发者控制台 welcome 指令：手动打开欢迎窗口（不影响完成标记）。
-    /// </summary>
+    /// <summary>把配置中的强调色解析为 Color，非法或为空回退默认绿</summary>
+    private static Color ParseAccentColor(string? hex)
+        => Color.TryParse(hex, out var c) ? c : Color.Parse("#10B981");
+
+    /// <summary>开发者控制台 welcome 指令：手动打开欢迎窗口（不影响完成标记）。</summary>
     public static void ShowWelcomeWindow()
     {
         Avalonia.Threading.Dispatcher.UIThread.Post(() =>

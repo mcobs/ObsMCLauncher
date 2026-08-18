@@ -57,6 +57,8 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
         _config = LauncherConfig.Load();
 
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(ThemeMode)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(AccentColor)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(AccentColorPreview)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(MaxMemory)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(MinMemory)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(DownloadSource)));
@@ -128,6 +130,9 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
         // 应用保存的主题模式
         ApplyThemeMode(_config.ThemeMode);
 
+        // 启动时应用已保存的自定义强调色
+        ApplyAccentColor();
+
         // 监听系统主题变化
         if (Application.Current != null)
         {
@@ -147,6 +152,8 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
             if (int.TryParse(tab, out var index))
                 SelectedSettingsTab = index;
         });
+
+        SetAccentColorCommand = new RelayCommand<string>(hex => AccentColor = hex ?? "");
 
         TestDialogCommand = new AsyncRelayCommand(async () =>
         {
@@ -255,6 +262,71 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
                 AutoSave();
             }
         }
+    }
+
+    /// <summary>强调色十六进制字符串，非法值回退默认绿</summary>
+    public string AccentColor
+    {
+        get => ResolveAccentHex();
+        set
+        {
+            var hex = NormalizeHex(value);
+            if (hex == null) return;
+            if (!string.Equals(_config.AccentColor, hex, StringComparison.OrdinalIgnoreCase))
+            {
+                _config.AccentColor = hex;
+                OnPropertyChanged(new PropertyChangedEventArgs(nameof(AccentColor)));
+                OnPropertyChanged(new PropertyChangedEventArgs(nameof(AccentColorPreview)));
+                ApplyAccentColor();
+                AutoSave();
+            }
+        }
+    }
+
+    /// <summary>预设色板（hex 列表），供设置页快速选择</summary>
+    public ObservableCollection<string> PresetAccentColors { get; } = new()
+    {
+        "#10B981", "#3B82F6", "#8B5CF6", "#EC4899",
+        "#EF4444", "#F59E0B", "#06B6D4", "#F97316", "#6366F1", "#14B8A6"
+    };
+
+    /// <summary>当前强调色的预览画刷</summary>
+    public IBrush AccentColorPreview => new SolidColorBrush(ResolveAccentColor());
+
+    public IRelayCommand<string> SetAccentColorCommand { get; }
+
+    private Color ResolveAccentColor()
+        => Color.TryParse(ResolveAccentHex(), out var c) ? c : Color.Parse("#10B981");
+
+    private string ResolveAccentHex()
+        => string.IsNullOrWhiteSpace(_config.AccentColor) ? "#10B981" : _config.AccentColor;
+
+    /// <summary>把任意输入规整为 #RRGGBB，无法解析返回 null</summary>
+    private static string? NormalizeHex(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return null;
+        var s = value.Trim();
+        if (s.StartsWith("#")) s = s[1..];
+        if (s.Length == 3 && int.TryParse(s, System.Globalization.NumberStyles.HexNumber, null, out _))
+            s = string.Concat(s.Select(ch => new string(ch, 2)));
+        if (s.Length != 6 || !int.TryParse(s, System.Globalization.NumberStyles.HexNumber, null, out _))
+            return null;
+        return $"#{s.ToUpperInvariant()}";
+    }
+
+    /// <summary>应用强调色到主题资源与 FluentAvalonia 控件强调色</summary>
+    private void ApplyAccentColor()
+    {
+        if (Application.Current == null) return;
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (Application.Current?.Styles.OfType<FluentAvalonia.Styling.FluentAvaloniaTheme>().FirstOrDefault()
+                    is { } faTheme)
+            {
+                faTheme.CustomAccentColor = ResolveAccentColor();
+            }
+            UpdateThemeResources(_config.ThemeMode);
+        });
     }
 
     public int MaxMemory
@@ -837,6 +909,8 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
         _config = new LauncherConfig();
 
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(ThemeMode)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(AccentColor)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(AccentColorPreview)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(MaxMemory)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(MinMemory)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(DownloadSource)));
@@ -953,7 +1027,7 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
         resources["SystemControlBackgroundBaseMediumBrush"] = new SolidColorBrush(Color.Parse("#F1F5F9"));
         resources["SystemControlForegroundBaseHighBrush"] = new SolidColorBrush(Color.Parse("#0F172A"));
         resources["SystemControlForegroundBaseLowBrush"] = new SolidColorBrush(Color.Parse("#E2E8F0"));
-        resources["NavItemSelectedBackgroundBrush"] = new SolidColorBrush(Color.Parse("#10B981")) { Opacity = 0.10 };
+        resources["NavItemSelectedBackgroundBrush"] = new SolidColorBrush(ResolveAccentColor()) { Opacity = 0.10 };
 
         // 导航栏 / 标题栏 / 窗口 / 卡片背景，浅色模式下必须同步更新，否则会残留深色底
         resources["NavBackgroundBrush"] = new SolidColorBrush(Color.Parse("#FFFFFF"));
@@ -977,7 +1051,7 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
         resources["ControlFillColorDefaultBrush"] = new SolidColorBrush(Color.Parse("#FFFFFF"));
         resources["InfoBarInformationalSeverityBackgroundBrush"] = new SolidColorBrush(Color.Parse("#FFFFFF"));
 
-        ApplyTabViewTheme(resources, isLight: true);
+        ApplyTabViewTheme(resources, isLight: true, ResolveAccentColor());
     }
 
     private void ApplyDarkTheme(IResourceDictionary resources)
@@ -1009,7 +1083,7 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
         resources["SystemControlBackgroundBaseMediumBrush"] = new SolidColorBrush(Color.Parse("#1C1F26"));
         resources["SystemControlForegroundBaseHighBrush"] = new SolidColorBrush(Color.Parse("#F1F5F9"));
         resources["SystemControlForegroundBaseLowBrush"] = new SolidColorBrush(Color.Parse("#2A2E37"));
-        resources["NavItemSelectedBackgroundBrush"] = new SolidColorBrush(Color.Parse("#10B981")) { Opacity = 0.08 };
+        resources["NavItemSelectedBackgroundBrush"] = new SolidColorBrush(ResolveAccentColor()) { Opacity = 0.08 };
 
         // 导航栏 / 标题栏 / 窗口 / 卡片背景，深色模式下同步恢复
         resources["NavBackgroundBrush"] = new SolidColorBrush(Color.Parse("#141619"));
@@ -1033,7 +1107,7 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
         resources["ControlFillColorDefaultBrush"] = new SolidColorBrush(Color.Parse("#141619"));
         resources["InfoBarInformationalSeverityBackgroundBrush"] = new SolidColorBrush(Color.Parse("#1C1F26"));
 
-        ApplyTabViewTheme(resources, isLight: false);
+        ApplyTabViewTheme(resources, isLight: false, ResolveAccentColor());
     }
 
     /// <summary>
@@ -1041,15 +1115,15 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
     /// 避免 Fluent 默认暖灰（#282828 等）与冷色系主题产生隔阂。
     /// 选中 tab 与内容区共用「页面底色」，tab 条与顶部标题栏同色。
     /// </summary>
-    private static void ApplyTabViewTheme(IResourceDictionary resources, bool isLight)
+    private static void ApplyTabViewTheme(IResourceDictionary resources, bool isLight, Color accentColor)
     {
-        var accent = new SolidColorBrush(Color.Parse("#10B981"));
+        var accent = new SolidColorBrush(accentColor);
 
         resources["TabViewBackground"] = new SolidColorBrush(Color.Parse(isLight ? "#FFFFFF" : "#141619"));
         resources["TabViewBorderBrush"] = new SolidColorBrush(Color.Parse(isLight ? "#F1F5F9" : "#1E2128"));
         resources["TabViewItemHeaderBackground"] = Brushes.Transparent;
         resources["TabViewItemHeaderBackgroundSelected"] = new SolidColorBrush(Color.Parse(isLight ? "#F8FAFC" : "#0B0D10"));
-        resources["TabViewItemHeaderBackgroundPointerOver"] = new SolidColorBrush(Color.Parse("#10B981")) { Opacity = isLight ? 0.10 : 0.08 };
+        resources["TabViewItemHeaderBackgroundPointerOver"] = new SolidColorBrush(accentColor) { Opacity = isLight ? 0.10 : 0.08 };
         resources["TabViewItemHeaderBackgroundPressed"] = new SolidColorBrush(Color.Parse(isLight ? "#F1F5F9" : "#1C1F26"));
 
         resources["TabViewItemHeaderForeground"] = new SolidColorBrush(Color.Parse(isLight ? "#475569" : "#94A3B8"));
