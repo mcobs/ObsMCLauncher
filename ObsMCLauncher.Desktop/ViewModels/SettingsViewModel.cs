@@ -47,10 +47,10 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(IsGeneralTab)));
     }
 
-    public bool IsGameTab => SelectedSettingsTab == 0;
+    public bool IsGeneralTab => SelectedSettingsTab == 0;
     public bool IsAppearanceTab => SelectedSettingsTab == 1;
-    public bool IsDownloadTab => SelectedSettingsTab == 2;
-    public bool IsGeneralTab => SelectedSettingsTab == 3;
+    public bool IsGameTab => SelectedSettingsTab == 2;
+    public bool IsDownloadTab => SelectedSettingsTab == 3;
 
     public void Save() => AutoSave();
 

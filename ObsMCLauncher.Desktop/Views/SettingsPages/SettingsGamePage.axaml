@@ -13,76 +13,122 @@
       <TextBlock Text="游戏设置" FontSize="22" FontWeight="SemiBold"/>
 
       <!-- 运行环境 -->
-      <ui:SettingsExpander Header="运行环境" IsExpanded="True">
-        <ui:SettingsExpanderItem Content="Java 路径" Description="选择游戏启动所使用的 Java 运行时">
-          <ui:SettingsExpanderItem.Footer>
-            <StackPanel Spacing="8" Width="380">
-              <ComboBox ItemsSource="{Binding JavaOptions}" SelectedItem="{Binding SelectedJavaOption}" HorizontalAlignment="Stretch">
-                <ComboBox.ItemTemplate>
-                  <DataTemplate>
-                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
-                      <TextBlock Grid.Column="0" Text="{Binding Display}" VerticalAlignment="Center"/>
-                      <TextBlock Grid.Column="1" Text="{Binding Path}" VerticalAlignment="Center"
-                                 IsVisible="{Binding IsPathVisible}"
-                                 Foreground="{DynamicResource TextTertiaryBrush}" FontSize="11"
-                                 TextTrimming="CharacterEllipsis"/>
-                    </Grid>
-                  </DataTemplate>
-                </ComboBox.ItemTemplate>
-              </ComboBox>
-              <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding IsCustomJava}">
-                <TextBox Grid.Column="0" Text="{Binding CustomJavaPath}" Watermark="自定义Java路径" Margin="0,0,8,0"/>
-                <Button Grid.Column="1" Content="浏览" Width="72" Command="{Binding BrowseJavaPathCommand}"/>
-              </Grid>
-            </StackPanel>
-          </ui:SettingsExpanderItem.Footer>
-        </ui:SettingsExpanderItem>
+      <StackPanel Spacing="6">
+        <StackPanel Orientation="Horizontal" Spacing="6" Margin="4,0,0,2">
+          <ui:SymbolIcon Symbol="Target" FontSize="14" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+          <TextBlock Text="运行环境" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+        </StackPanel>
 
-        <ui:SettingsExpanderItem Content="最大内存分配" Description="最小内存固定为 512MB">
-          <ui:SettingsExpanderItem.Footer>
-            <StackPanel Spacing="4">
-              <StackPanel Orientation="Horizontal" Spacing="8">
-                <Slider Minimum="1024" Maximum="65536" Value="{Binding MaxMemory}" Width="220"/>
-                <TextBox Text="{Binding MaxMemory}" Width="70" HorizontalContentAlignment="Right" Watermark="MB"/>
-                <TextBlock Text="MB" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}"/>
+        <Border Classes="settings-card">
+          <StackPanel>
+            <Grid Classes="settings-row" ColumnDefinitions="Auto,*" MinHeight="0">
+              <ui:SymbolIcon Grid.Column="0" Classes="settings-row-icon" Symbol="Code"/>
+              <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="8">
+                <StackPanel Spacing="2">
+                  <TextBlock Text="Java 路径" FontSize="13" FontWeight="Medium"/>
+                  <TextBlock Text="选择游戏启动所使用的 Java 运行时" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                </StackPanel>
+
+                <StackPanel Spacing="8">
+                  <ComboBox ItemsSource="{Binding JavaOptions}" SelectedItem="{Binding SelectedJavaOption}" HorizontalAlignment="Stretch" MinWidth="380">
+                    <ComboBox.ItemTemplate>
+                      <DataTemplate>
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                          <TextBlock Grid.Column="0" Text="{Binding Display}" VerticalAlignment="Center"/>
+                          <TextBlock Grid.Column="1" Text="{Binding Path}" VerticalAlignment="Center"
+                                     IsVisible="{Binding IsPathVisible}"
+                                     Foreground="{DynamicResource TextTertiaryBrush}" FontSize="11"
+                                     TextTrimming="CharacterEllipsis"/>
+                        </Grid>
+                      </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                  </ComboBox>
+                  <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding IsCustomJava}">
+                    <TextBox Grid.Column="0" Text="{Binding CustomJavaPath}" Watermark="自定义Java路径" Margin="0,0,8,0"/>
+                    <Button Grid.Column="1" Content="浏览" Width="72" Command="{Binding BrowseJavaPathCommand}"/>
+                  </Grid>
+                </StackPanel>
               </StackPanel>
-              <TextBlock Text="{Binding MemoryHint}" FontSize="11" TextWrapping="Wrap"
-                         Foreground="{DynamicResource TextTertiaryBrush}"
-                         IsVisible="{Binding !IsMemoryHintWarning}"/>
-              <TextBlock Text="{Binding MemoryHint}" FontSize="11" TextWrapping="Wrap"
-                         Foreground="{DynamicResource WarningBrush}"
-                         IsVisible="{Binding IsMemoryHintWarning}"/>
-            </StackPanel>
-          </ui:SettingsExpanderItem.Footer>
-        </ui:SettingsExpanderItem>
+            </Grid>
 
-        <ui:SettingsExpanderItem Content="版本隔离" Description="开启后，每个版本将使用独立的 mods、saves、resourcepacks 等文件夹">
-          <ui:SettingsExpanderItem.Footer>
-            <ComboBox ItemsSource="{Binding GameDirectoryTypeOptions}" SelectedItem="{Binding GameDirectoryType}" Width="200">
-              <ComboBox.ItemTemplate>
-                <DataTemplate>
-                  <TextBlock Text="{Binding Converter={x:Static converters:EnumToChineseTextConverter.Instance}}"/>
-                </DataTemplate>
-              </ComboBox.ItemTemplate>
-            </ComboBox>
-          </ui:SettingsExpanderItem.Footer>
-        </ui:SettingsExpanderItem>
-      </ui:SettingsExpander>
+            <Border Classes="settings-divider"/>
+
+            <Grid Classes="settings-row" ColumnDefinitions="Auto,*" MinHeight="0">
+              <ui:SymbolIcon Grid.Column="0" Classes="settings-row-icon" Symbol="Calculator"/>
+              <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="8">
+                <StackPanel Spacing="2">
+                  <TextBlock Text="最大内存分配" FontSize="13" FontWeight="Medium"/>
+                  <TextBlock Text="最小内存固定为 512MB" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                </StackPanel>
+
+                <StackPanel Spacing="4">
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Slider Minimum="1024" Maximum="65536" Value="{Binding MaxMemory}" Width="240"/>
+                    <TextBox Text="{Binding MaxMemory}" Width="70" HorizontalContentAlignment="Right" Watermark="MB"/>
+                    <TextBlock Text="MB" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                  </StackPanel>
+                  <TextBlock Text="{Binding MemoryHint}" FontSize="11" TextWrapping="Wrap"
+                             Foreground="{DynamicResource TextTertiaryBrush}"
+                             IsVisible="{Binding !IsMemoryHintWarning}"/>
+                  <TextBlock Text="{Binding MemoryHint}" FontSize="11" TextWrapping="Wrap"
+                             Foreground="{DynamicResource WarningBrush}"
+                             IsVisible="{Binding IsMemoryHintWarning}"/>
+                </StackPanel>
+              </StackPanel>
+            </Grid>
+
+            <Border Classes="settings-divider"/>
+
+            <Grid Classes="settings-row" ColumnDefinitions="Auto,*,Auto">
+              <ui:SymbolIcon Grid.Column="0" Classes="settings-row-icon" Symbol="FolderLink"/>
+              <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                <TextBlock Text="版本隔离" FontSize="13" FontWeight="Medium"/>
+                <TextBlock Text="开启后，每个版本将使用独立的 mods、saves、resourcepacks 等文件夹" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap"/>
+              </StackPanel>
+              <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+                <RadioButton Classes="segment" GroupName="gameDirType" Content="关闭"
+                             IsChecked="{Binding GameDirectoryType, Mode=TwoWay, Converter={x:Static converters:SegmentCheckedConverter.Instance}, ConverterParameter=RootFolder}"/>
+                <RadioButton Classes="segment" GroupName="gameDirType" Content="开启"
+                             IsChecked="{Binding GameDirectoryType, Mode=TwoWay, Converter={x:Static converters:SegmentCheckedConverter.Instance}, ConverterParameter=VersionFolder}"/>
+              </StackPanel>
+            </Grid>
+          </StackPanel>
+        </Border>
+      </StackPanel>
 
       <!-- 启动选项 -->
-      <ui:SettingsExpander Header="启动选项" IsExpanded="True">
-        <ui:SettingsExpanderItem Content="游戏启动后关闭启动器" Description="减少内存占用">
-          <ui:SettingsExpanderItem.Footer>
-            <ToggleSwitch IsChecked="{Binding CloseAfterLaunch}"/>
-          </ui:SettingsExpanderItem.Footer>
-        </ui:SettingsExpanderItem>
+      <StackPanel Spacing="6">
+        <StackPanel Orientation="Horizontal" Spacing="6" Margin="4,0,0,2">
+          <ui:SymbolIcon Symbol="Play" FontSize="14" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+          <TextBlock Text="启动选项" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+        </StackPanel>
 
-        <ui:SettingsExpanderItem Content="JVM 参数" Description="自定义游戏启动参数（高级选项），支持预设方案与常用参数快捷开关">
-          <ui:SettingsExpanderItem.Footer>
-            <views:JvmArgumentsEditorView DataContext="{Binding JvmArgumentsEditor}" Width="380"/>
-          </ui:SettingsExpanderItem.Footer>
-        </ui:SettingsExpanderItem>
-      </ui:SettingsExpander>
+        <Border Classes="settings-card">
+          <StackPanel>
+            <Grid Classes="settings-row" ColumnDefinitions="Auto,*,Auto">
+              <ui:SymbolIcon Grid.Column="0" Classes="settings-row-icon" Symbol="Dismiss"/>
+              <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                <TextBlock Text="游戏启动后关闭启动器" FontSize="13" FontWeight="Medium"/>
+                <TextBlock Text="减少内存占用" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
+              </StackPanel>
+              <ToggleSwitch Grid.Column="2" IsChecked="{Binding CloseAfterLaunch}" VerticalAlignment="Center"/>
+            </Grid>
+
+            <Border Classes="settings-divider"/>
+
+            <Grid Classes="settings-row" ColumnDefinitions="Auto,*" MinHeight="0">
+              <ui:SymbolIcon Grid.Column="0" Classes="settings-row-icon" Symbol="Edit"/>
+              <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="8">
+                <StackPanel Spacing="2">
+                  <TextBlock Text="JVM 参数" FontSize="13" FontWeight="Medium"/>
+                  <TextBlock Text="自定义游戏启动参数（高级选项），支持预设方案与常用参数快捷开关" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap"/>
+                </StackPanel>
+                <views:JvmArgumentsEditorView DataContext="{Binding JvmArgumentsEditor}" Width="380" HorizontalAlignment="Left"/>
+              </StackPanel>
+            </Grid>
+          </StackPanel>
+        </Border>
+      </StackPanel>
 
     </StackPanel>
   </ScrollViewer>

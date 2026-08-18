@@ -12,100 +12,139 @@
       <TextBlock Text="通用设置" FontSize="22" FontWeight="SemiBold"/>
 
       <!-- 启动器 -->
-      <ui:SettingsExpander Header="启动器" IsExpanded="True">
-        <ui:SettingsExpanderItem Content="自动检查更新" Description="启动时检查启动器更新">
-          <ui:SettingsExpanderItem.Footer>
-            <ToggleSwitch IsChecked="{Binding AutoCheckUpdate}"/>
-          </ui:SettingsExpanderItem.Footer>
-        </ui:SettingsExpanderItem>
+      <StackPanel Spacing="6">
+        <StackPanel Orientation="Horizontal" Spacing="6" Margin="4,0,0,2">
+          <ui:SymbolIcon Symbol="Home" FontSize="14" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+          <TextBlock Text="启动器" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+        </StackPanel>
 
-        <ui:SettingsExpanderItem Content="更新通道" Description="选择要接收的更新类型，切换后立即生效">
-          <ui:SettingsExpanderItem.Footer>
-            <ComboBox Width="140" SelectedItem="{Binding SelectedUpdateChannel}" ItemsSource="{Binding UpdateChannelOptions}">
-              <ComboBox.ItemTemplate>
-                <DataTemplate>
-                  <TextBlock Text="{Binding Converter={x:Static converters:EnumToChineseTextConverter.Instance}}"/>
-                </DataTemplate>
-              </ComboBox.ItemTemplate>
-            </ComboBox>
-          </ui:SettingsExpanderItem.Footer>
-        </ui:SettingsExpanderItem>
-      </ui:SettingsExpander>
+        <Border Classes="settings-card">
+          <StackPanel>
+            <Grid Classes="settings-row" ColumnDefinitions="Auto,*,Auto">
+              <ui:SymbolIcon Grid.Column="0" Classes="settings-row-icon" Symbol="Sync"/>
+              <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                <TextBlock Text="自动检查更新" FontSize="13" FontWeight="Medium"/>
+                <TextBlock Text="启动时检查启动器更新" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
+              </StackPanel>
+              <ToggleSwitch Grid.Column="2" IsChecked="{Binding AutoCheckUpdate}" VerticalAlignment="Center"/>
+            </Grid>
+
+            <Border Classes="settings-divider"/>
+
+            <Grid Classes="settings-row" ColumnDefinitions="Auto,*,Auto">
+              <ui:SymbolIcon Grid.Column="0" Classes="settings-row-icon" Symbol="CloudDownload"/>
+              <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                <TextBlock Text="更新通道" FontSize="13" FontWeight="Medium"/>
+                <TextBlock Text="选择要接收的更新类型，切换后立即生效" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
+              </StackPanel>
+              <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+                <RadioButton Classes="segment" GroupName="updateChannel" Content="正式版"
+                             IsChecked="{Binding SelectedUpdateChannel, Mode=TwoWay, Converter={x:Static converters:SegmentCheckedConverter.Instance}, ConverterParameter=Stable}"/>
+                <RadioButton Classes="segment" GroupName="updateChannel" Content="测试版"
+                             IsChecked="{Binding SelectedUpdateChannel, Mode=TwoWay, Converter={x:Static converters:SegmentCheckedConverter.Instance}, ConverterParameter=Beta}"/>
+                <RadioButton Classes="segment" GroupName="updateChannel" Content="预发布版"
+                             IsChecked="{Binding SelectedUpdateChannel, Mode=TwoWay, Converter={x:Static converters:SegmentCheckedConverter.Instance}, ConverterParameter=RC}"/>
+                <RadioButton Classes="segment" GroupName="updateChannel" Content="预览版"
+                             IsChecked="{Binding SelectedUpdateChannel, Mode=TwoWay, Converter={x:Static converters:SegmentCheckedConverter.Instance}, ConverterParameter=Preview}"/>
+              </StackPanel>
+            </Grid>
+          </StackPanel>
+        </Border>
+      </StackPanel>
 
       <!-- 安全 -->
-      <ui:SettingsExpander Header="安全" IsExpanded="True">
-        <ui:SettingsExpanderItem Content="跳过SSL证书验证" Description="启用后将不验证HTTPS证书，仅建议在网络环境异常时开启">
-          <ui:SettingsExpanderItem.Footer>
-            <ToggleSwitch IsChecked="{Binding SkipSslValidation}"/>
-          </ui:SettingsExpanderItem.Footer>
-        </ui:SettingsExpanderItem>
+      <StackPanel Spacing="6">
+        <StackPanel Orientation="Horizontal" Spacing="6" Margin="4,0,0,2">
+          <ui:SymbolIcon Symbol="Admin" FontSize="14" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+          <TextBlock Text="安全" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+        </StackPanel>
 
-        <ui:SettingsExpanderItem Content="文件哈希校验" Description="下载文件后验证SHA-1/SHA-256哈希，确保文件完整性">
-          <ui:SettingsExpanderItem.Footer>
-            <ToggleSwitch IsChecked="{Binding EnableFileHashVerification}"/>
-          </ui:SettingsExpanderItem.Footer>
-        </ui:SettingsExpanderItem>
-      </ui:SettingsExpander>
+        <Border Classes="settings-card">
+          <StackPanel>
+            <Grid Classes="settings-row" ColumnDefinitions="Auto,*,Auto">
+              <ui:SymbolIcon Grid.Column="0" Classes="settings-row-icon" Symbol="AlertOff"/>
+              <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                <TextBlock Text="跳过SSL证书验证" FontSize="13" FontWeight="Medium"/>
+                <TextBlock Text="启用后将不验证HTTPS证书，仅建议在网络环境异常时开启" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap"/>
+              </StackPanel>
+              <ToggleSwitch Grid.Column="2" IsChecked="{Binding SkipSslValidation}" VerticalAlignment="Center"/>
+            </Grid>
+
+            <Border Classes="settings-divider"/>
+
+            <Grid Classes="settings-row" ColumnDefinitions="Auto,*,Auto">
+              <ui:SymbolIcon Grid.Column="0" Classes="settings-row-icon" Symbol="Checkmark"/>
+              <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                <TextBlock Text="文件哈希校验" FontSize="13" FontWeight="Medium"/>
+                <TextBlock Text="下载文件后验证SHA-1/SHA-256哈希，确保文件完整性" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap"/>
+              </StackPanel>
+              <ToggleSwitch Grid.Column="2" IsChecked="{Binding EnableFileHashVerification}" VerticalAlignment="Center"/>
+            </Grid>
+          </StackPanel>
+        </Border>
+      </StackPanel>
 
       <!-- 主页卡片 -->
-      <Border CornerRadius="8" BorderThickness="1"
-              BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
-              Padding="16,12">
-        <StackPanel Spacing="12">
-          <StackPanel Spacing="2">
-            <TextBlock Text="主页卡片" FontSize="14" FontWeight="SemiBold"/>
-            <TextBlock Text="管理主页显示的卡片，可以启用/禁用和调整顺序" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}"/>
-          </StackPanel>
-
-          <ItemsControl ItemsSource="{Binding HomeCards}">
-            <ItemsControl.ItemTemplate>
-              <DataTemplate>
-                <Border Background="{DynamicResource SurfaceElevatedBrush}"
-                        CornerRadius="6" Padding="12,10" Margin="0,0,0,6"
-                        BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
-                  <Grid ColumnDefinitions="Auto,*,Auto,Auto">
-                    <TextBlock Grid.Column="0" Text="..." FontSize="12"
-                               Foreground="{DynamicResource TextTertiaryBrush}"
-                               VerticalAlignment="Center" Margin="0,0,10,0"/>
-
-                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                      <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="Medium" Margin="0,0,0,2"/>
-                      <TextBlock Text="{Binding Description}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap"/>
-                    </StackPanel>
-
-                    <ToggleSwitch Grid.Column="2" IsChecked="{Binding IsEnabled}"
-                                  VerticalAlignment="Center" Margin="0,0,10,0"
-                                  IsCheckedChanged="CardEnabledChanged"/>
-
-                    <StackPanel Grid.Column="3" Orientation="Horizontal">
-                      <Button Width="28" Height="28" Margin="0,0,3,0" Padding="0"
-                              Classes="ghost"
-                              Command="{Binding $parent[ItemsControl].((vm:SettingsViewModel)DataContext).MoveCardUpCommand}"
-                              CommandParameter="{Binding}">
-                        <Path Data="M4 8L8 4L12 8"
-                              Width="10" Height="10"
-                              Stroke="{DynamicResource TextBrush}"
-                              StrokeThickness="2"
-                              Stretch="Uniform" />
-                      </Button>
-                      <Button Width="28" Height="28" Padding="0"
-                              Classes="ghost"
-                              Command="{Binding $parent[ItemsControl].((vm:SettingsViewModel)DataContext).MoveCardDownCommand}"
-                              CommandParameter="{Binding}">
-                        <Path Data="M12 8L8 12L4 8"
-                              Width="10" Height="10"
-                              Stroke="{DynamicResource TextBrush}"
-                              StrokeThickness="2"
-                              Stretch="Uniform" />
-                      </Button>
-                    </StackPanel>
-                  </Grid>
-                </Border>
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
+      <StackPanel Spacing="6">
+        <StackPanel Orientation="Horizontal" Spacing="6" Margin="4,0,0,2">
+          <ui:SymbolIcon Symbol="Page" FontSize="14" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+          <TextBlock Text="主页卡片" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
         </StackPanel>
-      </Border>
+
+        <Border Classes="settings-card" Padding="16,12">
+          <StackPanel Spacing="12">
+            <TextBlock Text="管理主页显示的卡片，可以启用/禁用和调整顺序" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
+
+            <ItemsControl ItemsSource="{Binding HomeCards}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Border Background="{DynamicResource SurfaceElevatedBrush}"
+                          CornerRadius="6" Padding="12,10" Margin="0,0,0,6"
+                          BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
+                    <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                      <TextBlock Grid.Column="0" Text="..." FontSize="12"
+                                 Foreground="{DynamicResource TextTertiaryBrush}"
+                                 VerticalAlignment="Center" Margin="0,0,10,0"/>
+
+                      <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="Medium" Margin="0,0,0,2"/>
+                        <TextBlock Text="{Binding Description}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap"/>
+                      </StackPanel>
+
+                      <ToggleSwitch Grid.Column="2" IsChecked="{Binding IsEnabled}"
+                                    VerticalAlignment="Center" Margin="0,0,10,0"
+                                    IsCheckedChanged="CardEnabledChanged"/>
+
+                      <StackPanel Grid.Column="3" Orientation="Horizontal">
+                        <Button Width="28" Height="28" Margin="0,0,3,0" Padding="0"
+                                Classes="ghost"
+                                Command="{Binding $parent[ItemsControl].((vm:SettingsViewModel)DataContext).MoveCardUpCommand}"
+                                CommandParameter="{Binding}">
+                          <Path Data="M4 8L8 4L12 8"
+                                Width="10" Height="10"
+                                Stroke="{DynamicResource TextBrush}"
+                                StrokeThickness="2"
+                                Stretch="Uniform" />
+                        </Button>
+                        <Button Width="28" Height="28" Padding="0"
+                                Classes="ghost"
+                                Command="{Binding $parent[ItemsControl].((vm:SettingsViewModel)DataContext).MoveCardDownCommand}"
+                                CommandParameter="{Binding}">
+                          <Path Data="M12 8L8 12L4 8"
+                                Width="10" Height="10"
+                                Stroke="{DynamicResource TextBrush}"
+                                StrokeThickness="2"
+                                Stretch="Uniform" />
+                        </Button>
+                      </StackPanel>
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </Border>
+      </StackPanel>
 
     </StackPanel>
   </ScrollViewer>

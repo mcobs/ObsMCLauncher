@@ -1,6 +1,7 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:dg="using:Avalonia.Controls">
+        xmlns:dg="using:Avalonia.Controls"
+        xmlns:ui="using:FluentAvalonia.UI.Controls">
 
   <!-- ===== 基础按钮 ===== -->
   <Style Selector="Button">
@@ -477,6 +478,39 @@
   </Style>
   <Style Selector="ToggleButton.chip:checked:pressed /template/ ContentPresenter">
     <Setter Property="Background" Value="{DynamicResource NavItemSelectedBackgroundBrush}" />
+  </Style>
+
+  <!-- ===== 设置页分组（ClassIsland 风格） ===== -->
+
+  <!-- 分组卡片：一个分组框包裹若干设置行 -->
+  <Style Selector="Border.settings-card">
+    <Setter Property="Background" Value="{DynamicResource CardBackgroundBrush}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource CardCornerRadius}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Padding" Value="16,4" />
+  </Style>
+
+  <!-- 设置行：图标 | 标题/描述 | 控件 -->
+  <Style Selector="Grid.settings-row">
+    <Setter Property="MinHeight" Value="56" />
+    <Setter Property="ColumnSpacing" Value="12" />
+    <Setter Property="Margin" Value="0,10" />
+  </Style>
+
+  <!-- 设置行左侧图标 -->
+  <Style Selector="ui|SymbolIcon.settings-row-icon">
+    <Setter Property="FontSize" Value="17" />
+    <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+
+  <!-- 设置行之间的分隔线 -->
+  <Style Selector="Border.settings-divider">
+    <Setter Property="Height" Value="1" />
+    <Setter Property="Background" Value="{DynamicResource BorderBrush}" />
+    <Setter Property="Opacity" Value="0.5" />
+    <Setter Property="Margin" Value="0,2" />
   </Style>
 
 </Styles>

@@ -12,40 +12,89 @@
       <TextBlock Text="下载设置" FontSize="22" FontWeight="SemiBold"/>
 
       <!-- 下载源 -->
-      <ui:SettingsExpander Header="下载源" IsExpanded="True">
-        <ui:SettingsExpanderItem Content="下载源" Description="{Binding DownloadSourceDescription}">
-          <ui:SettingsExpanderItem.Footer>
-            <ComboBox Width="220" ItemsSource="{Binding DownloadSourceOptions}" SelectedItem="{Binding DownloadSource}"/>
-          </ui:SettingsExpanderItem.Footer>
-        </ui:SettingsExpanderItem>
+      <StackPanel Spacing="6">
+        <StackPanel Orientation="Horizontal" Spacing="6" Margin="4,0,0,2">
+          <ui:SymbolIcon Symbol="Cloud" FontSize="14" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+          <TextBlock Text="下载源" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+        </StackPanel>
 
-        <ui:SettingsExpanderItem Content="社区镜像源" Description="{Binding MirrorSourceModeDescription}">
-          <ui:SettingsExpanderItem.Footer>
-            <ComboBox Width="220" ItemsSource="{Binding MirrorSourceModeOptions}" SelectedItem="{Binding MirrorSourceMode}">
-              <ComboBox.ItemTemplate>
-                <DataTemplate>
-                  <TextBlock Text="{Binding Converter={x:Static converters:EnumToChineseTextConverter.Instance}}"/>
-                </DataTemplate>
-              </ComboBox.ItemTemplate>
-            </ComboBox>
-          </ui:SettingsExpanderItem.Footer>
-        </ui:SettingsExpanderItem>
-      </ui:SettingsExpander>
+        <Border Classes="settings-card">
+          <StackPanel>
+            <Grid Classes="settings-row" ColumnDefinitions="Auto,*,Auto">
+              <ui:SymbolIcon Grid.Column="0" Classes="settings-row-icon" Symbol="Globe"/>
+              <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                <TextBlock Text="下载源" FontSize="13" FontWeight="Medium"/>
+                <TextBlock Text="{Binding DownloadSourceDescription}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap"/>
+              </StackPanel>
+              <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+                <RadioButton Classes="segment" GroupName="downloadSource" Content="官方源"
+                             IsChecked="{Binding DownloadSource, Mode=TwoWay, Converter={x:Static converters:SegmentCheckedConverter.Instance}, ConverterParameter=Official}"/>
+                <RadioButton Classes="segment" GroupName="downloadSource" Content="BMCLAPI 镜像"
+                             IsChecked="{Binding DownloadSource, Mode=TwoWay, Converter={x:Static converters:SegmentCheckedConverter.Instance}, ConverterParameter=BMCLAPI}"/>
+              </StackPanel>
+            </Grid>
+
+            <Border Classes="settings-divider"/>
+
+            <Grid Classes="settings-row" ColumnDefinitions="Auto,*,Auto">
+              <ui:SymbolIcon Grid.Column="0" Classes="settings-row-icon" Symbol="CloudSync"/>
+              <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                <TextBlock Text="社区镜像源" FontSize="13" FontWeight="Medium"/>
+                <TextBlock Text="{Binding MirrorSourceModeDescription}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap"/>
+              </StackPanel>
+              <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+                <RadioButton Classes="segment" GroupName="mirrorMode" Content="优先镜像源"
+                             IsChecked="{Binding MirrorSourceMode, Mode=TwoWay, Converter={x:Static converters:SegmentCheckedConverter.Instance}, ConverterParameter=PreferMirror}"/>
+                <RadioButton Classes="segment" GroupName="mirrorMode" Content="只用官方源"
+                             IsChecked="{Binding MirrorSourceMode, Mode=TwoWay, Converter={x:Static converters:SegmentCheckedConverter.Instance}, ConverterParameter=OfficialOnly}"/>
+              </StackPanel>
+            </Grid>
+          </StackPanel>
+        </Border>
+      </StackPanel>
 
       <!-- 下载选项 -->
-      <ui:SettingsExpander Header="下载选项" IsExpanded="True">
-        <ui:SettingsExpanderItem Content="最大下载线程" Description="同时下载的文件数量">
-          <ui:SettingsExpanderItem.Footer>
-            <ComboBox Width="120" ItemsSource="{Binding MaxDownloadThreadsOptions}" SelectedItem="{Binding MaxDownloadThreads}"/>
-          </ui:SettingsExpanderItem.Footer>
-        </ui:SettingsExpanderItem>
+      <StackPanel Spacing="6">
+        <StackPanel Orientation="Horizontal" Spacing="6" Margin="4,0,0,2">
+          <ui:SymbolIcon Symbol="Download" FontSize="14" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+          <TextBlock Text="下载选项" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+        </StackPanel>
 
-        <ui:SettingsExpanderItem Content="下载游戏时完整下载所有资源文件" Description="下载游戏依赖库、声音、语言、纹理等全部资源文件">
-          <ui:SettingsExpanderItem.Footer>
-            <ToggleSwitch IsChecked="{Binding DownloadAssetsWithGame}"/>
-          </ui:SettingsExpanderItem.Footer>
-        </ui:SettingsExpanderItem>
-      </ui:SettingsExpander>
+        <Border Classes="settings-card">
+          <StackPanel>
+            <Grid Classes="settings-row" ColumnDefinitions="Auto,*,Auto">
+              <ui:SymbolIcon Grid.Column="0" Classes="settings-row-icon" Symbol="TwoPage"/>
+              <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                <TextBlock Text="最大下载线程" FontSize="13" FontWeight="Medium"/>
+                <TextBlock Text="同时下载的文件数量" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
+              </StackPanel>
+              <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+                <RadioButton Classes="segment" GroupName="maxThreads" Content="4"
+                             IsChecked="{Binding MaxDownloadThreads, Mode=TwoWay, Converter={x:Static converters:SegmentCheckedConverter.Instance}, ConverterParameter=4}"/>
+                <RadioButton Classes="segment" GroupName="maxThreads" Content="8"
+                             IsChecked="{Binding MaxDownloadThreads, Mode=TwoWay, Converter={x:Static converters:SegmentCheckedConverter.Instance}, ConverterParameter=8}"/>
+                <RadioButton Classes="segment" GroupName="maxThreads" Content="16"
+                             IsChecked="{Binding MaxDownloadThreads, Mode=TwoWay, Converter={x:Static converters:SegmentCheckedConverter.Instance}, ConverterParameter=16}"/>
+                <RadioButton Classes="segment" GroupName="maxThreads" Content="32"
+                             IsChecked="{Binding MaxDownloadThreads, Mode=TwoWay, Converter={x:Static converters:SegmentCheckedConverter.Instance}, ConverterParameter=32}"/>
+                <RadioButton Classes="segment" GroupName="maxThreads" Content="64"
+                             IsChecked="{Binding MaxDownloadThreads, Mode=TwoWay, Converter={x:Static converters:SegmentCheckedConverter.Instance}, ConverterParameter=64}"/>
+              </StackPanel>
+            </Grid>
+
+            <Border Classes="settings-divider"/>
+
+            <Grid Classes="settings-row" ColumnDefinitions="Auto,*,Auto">
+              <ui:SymbolIcon Grid.Column="0" Classes="settings-row-icon" Symbol="SelectAll"/>
+              <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                <TextBlock Text="下载游戏时完整下载所有资源文件" FontSize="13" FontWeight="Medium"/>
+                <TextBlock Text="下载游戏依赖库、声音、语言、纹理等全部资源文件" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap"/>
+              </StackPanel>
+              <ToggleSwitch Grid.Column="2" IsChecked="{Binding DownloadAssetsWithGame}" VerticalAlignment="Center"/>
+            </Grid>
+          </StackPanel>
+        </Border>
+      </StackPanel>
 
       <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
         <Button Content="测试下载源" Command="{Binding TestDownloadSourceCommand}"/>

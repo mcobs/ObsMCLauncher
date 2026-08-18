@@ -16,9 +16,9 @@
                      ExpandedModeThresholdWidth="0">
 
     <ui:NavigationView.MenuItems>
-      <ui:NavigationViewItem Content="游戏" Tag="Game">
+      <ui:NavigationViewItem Content="通用" Tag="General">
         <ui:NavigationViewItem.IconSource>
-          <ui:SymbolIconSource Symbol="Games"/>
+          <ui:SymbolIconSource Symbol="Settings"/>
         </ui:NavigationViewItem.IconSource>
       </ui:NavigationViewItem>
 
@@ -28,15 +28,15 @@
         </ui:NavigationViewItem.IconSource>
       </ui:NavigationViewItem>
 
-      <ui:NavigationViewItem Content="下载" Tag="Download">
+      <ui:NavigationViewItem Content="游戏" Tag="Game">
         <ui:NavigationViewItem.IconSource>
-          <ui:SymbolIconSource Symbol="Download"/>
+          <ui:SymbolIconSource Symbol="Games"/>
         </ui:NavigationViewItem.IconSource>
       </ui:NavigationViewItem>
 
-      <ui:NavigationViewItem Content="通用" Tag="General">
+      <ui:NavigationViewItem Content="下载" Tag="Download">
         <ui:NavigationViewItem.IconSource>
-          <ui:SymbolIconSource Symbol="Settings"/>
+          <ui:SymbolIconSource Symbol="Download"/>
         </ui:NavigationViewItem.IconSource>
       </ui:NavigationViewItem>
     </ui:NavigationView.MenuItems>
