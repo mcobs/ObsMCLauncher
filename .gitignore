@@ -281,3 +281,6 @@ UPDATE_SYSTEM_DESIGN.md
 ObsMCLauncher-main/
 AGENTS.md
 .temp/
+
+# WorkBuddy workspace data (memory, project metadata, local state)
+.workbuddy/

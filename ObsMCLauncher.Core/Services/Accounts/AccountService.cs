@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using ObsMCLauncher.Core.Models;
 using ObsMCLauncher.Core.Plugins;
 using ObsMCLauncher.Core.Plugins.Events;
+using ObsMCLauncher.Core.Security;
 
 namespace ObsMCLauncher.Core.Services.Accounts;
 
@@ -15,6 +16,16 @@ public class AccountService
 {
     private static readonly Lazy<AccountService> _instance = new(() => new AccountService());
     public static AccountService Instance => _instance.Value;
+
+    /// <summary>
+    /// 账号持久化 JSON 选项：敏感字段（令牌）经 <see cref="GameAccountSensitiveConverter"/>
+    /// 加密后落盘，内存中保持明文。无 "OMCL1:" 前缀的旧版明文读取时原样兼容。
+    /// </summary>
+    private static readonly JsonSerializerOptions AccountJsonOptions = new()
+    {
+        WriteIndented = true,
+        Converters = { new GameAccountSensitiveConverter() }
+    };
 
     private string _accountsFilePath = string.Empty;
     private List<GameAccount> _accounts = [];
@@ -375,7 +386,7 @@ public class AccountService
             if (File.Exists(_accountsFilePath))
             {
                 var json = File.ReadAllText(_accountsFilePath);
-                var accounts = JsonSerializer.Deserialize<List<GameAccount>>(json);
+                var accounts = JsonSerializer.Deserialize<List<GameAccount>>(json, AccountJsonOptions);
                 return accounts ?? [];
             }
         }
@@ -390,8 +401,7 @@ public class AccountService
     {
         try
         {
-            var options = new JsonSerializerOptions { WriteIndented = true };
-            var json = JsonSerializer.Serialize(_accounts, options);
+            var json = JsonSerializer.Serialize(_accounts, AccountJsonOptions);
             File.WriteAllText(_accountsFilePath, json);
         }
         catch
