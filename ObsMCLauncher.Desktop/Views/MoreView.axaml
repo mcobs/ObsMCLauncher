@@ -3,6 +3,8 @@
              xmlns:vm="using:ObsMCLauncher.Desktop.ViewModels"
              xmlns:converters="using:ObsMCLauncher.Desktop.Converters"
              xmlns:ui="using:FluentAvalonia.UI.Controls"
+             xmlns:core="using:ObsMCLauncher.Core.Plugins"
+             xmlns:mdxaml="https://github.com/whistyun/Markdown.Avalonia"
              x:Class="ObsMCLauncher.Desktop.Views.MoreView"
              x:DataType="vm:MoreViewModel"
              x:Name="MoreViewControl">
@@ -216,144 +218,227 @@
             <Binding Path="#MoreViewControl.DataContext.SelectedTabIndex"/>
           </MultiBinding>
         </Grid.IsVisible>
-        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-          <Grid Margin="24">
-          <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="420"/>
-            <ColumnDefinition Width="16"/>
-            <ColumnDefinition Width="*"/>
-          </Grid.ColumnDefinitions>
+        <Grid Margin="16" MinWidth="840">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="400"/>
+              <ColumnDefinition Width="16"/>
+              <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
 
-          <Border Grid.Column="0" Background="{DynamicResource SurfaceBrush}" CornerRadius="12" Padding="16"
-                  BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
-            <Grid RowDefinitions="Auto,Auto,*">
-              <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,12">
-                <RadioButton Content="市场"
-                             IsChecked="{Binding CurrentTab, Converter={x:Static converters:PluginTabToBoolConverter.Instance}, ConverterParameter=Market}"
-                             Padding="16,6" FontSize="13"/>
-                <RadioButton Content="已安装"
-                             IsChecked="{Binding CurrentTab, Converter={x:Static converters:PluginTabToBoolConverter.Instance}, ConverterParameter=Installed}"
-                             Padding="16,6" FontSize="13" Margin="8,0,0,0"/>
-              </StackPanel>
+            <!-- 左侧：搜索 / 筛选 / 列表 -->
+            <Border Grid.Column="0" Background="{DynamicResource SurfaceBrush}" CornerRadius="12"
+                    BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
+              <Grid RowDefinitions="Auto,Auto,Auto,Auto,*">
 
-              <Grid Grid.Row="1" Margin="0,0,0,12" IsVisible="{Binding IsMarket}">
-                <Grid.ColumnDefinitions>
-                  <ColumnDefinition Width="*"/>
-                  <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <TextBox Grid.Column="0" Text="{Binding SearchText}" Watermark="搜索插件..." Margin="0,0,8,0"/>
-                <ComboBox Grid.Column="1" ItemsSource="{Binding PlatformFilters}" 
-                          SelectedItem="{Binding SelectedPlatformFilter}"
-                          Width="120">
-                  <ComboBox.ItemTemplate>
-                    <DataTemplate>
-                      <TextBlock Text="{Binding DisplayName}"/>
-                    </DataTemplate>
-                  </ComboBox.ItemTemplate>
-                </ComboBox>
-              </Grid>
+                <!-- 搜索框 -->
+                <Grid Grid.Row="0" Margin="12,12,12,10">
+                  <TextBox Text="{Binding SearchText}" Watermark="搜索插件..." Padding="26,7"/>
+                  <Path Data="M15.5 14H14.71L14.43 13.73C15.41 12.59 16 11.11 16 9.5C16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16C11.11 16 12.59 15.41 13.73 14.43L14 14.71V15.5L19 20.49L20.49 19L15.5 14M9.5 14C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14Z"
+                        Width="15" Height="15" Stretch="Uniform"
+                        Fill="{DynamicResource TextTertiaryBrush}" Opacity="0.8"
+                        HorizontalAlignment="Left" Margin="7,0,0,0"
+                        VerticalAlignment="Center" IsHitTestVisible="False"/>
+                </Grid>
 
-              <Grid Grid.Row="2">
-                <ListBox ItemsSource="{Binding LeftItems}"
-                         SelectedItem="{Binding SelectedItem}"
-                         Background="Transparent"
-                         BorderThickness="0">
-                    <ListBox.ItemTemplate>
-                      <DataTemplate>
-                        <Border CornerRadius="8" Padding="12" Margin="0,0,0,8"
-                                Background="{DynamicResource SurfaceElevatedBrush}"
-                                BorderBrush="{DynamicResource BorderBrush}"
-                                BorderThickness="1">
-                          <Grid ColumnDefinitions="Auto,*,Auto">
-                            <Border Grid.Column="0" Width="32" Height="32" CornerRadius="6" Margin="0,0,10,0"
-                                    Background="{DynamicResource SurfaceBrush}"
-                                    IsVisible="{Binding IconUrl, Converter={x:Static converters:PluginIconVisibleConverter.Instance}}">
-                              <Image Stretch="UniformToFill">
-                                <Image.Source>
-                                  <MultiBinding Converter="{x:Static converters:PluginIconConverter.Instance}">
-                                    <Binding Path="IconUrl" />
-                                    <Binding Path="ActualThemeVariant" RelativeSource="{RelativeSource AncestorType=Window}" />
-                                  </MultiBinding>
-                                </Image.Source>
-                              </Image>
-                            </Border>
-                            <StackPanel Grid.Column="1">
-                              <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="Medium"/>
-                              <TextBlock Text="{Binding Meta}" FontSize="11" Margin="0,2,0,0"
-                                         Foreground="{DynamicResource TextSecondaryBrush}"/>
-                            </StackPanel>
-                            <TextBlock Grid.Column="2" Text="!" FontSize="14" FontWeight="Bold"
-                                       Foreground="{DynamicResource DangerBrush}" VerticalAlignment="Center"
-                                       IsVisible="{Binding HasError}"/>
-                          </Grid>
-                        </Border>
+                <!-- 筛选：分类 + 平台（仅市场） -->
+                <Grid Grid.Row="1" ColumnDefinitions="*,*,*" ColumnSpacing="8" Margin="12,0,12,10"
+                      IsVisible="{Binding IsMarket}">
+                  <ComboBox Grid.Column="0" ItemsSource="{Binding Categories}" SelectedItem="{Binding SelectedCategory}"
+                            PlaceholderText="分类">
+                    <ComboBox.ItemTemplate>
+                      <DataTemplate x:DataType="core:PluginCategory">
+                        <TextBlock Text="{Binding Name}" FontSize="12"/>
                       </DataTemplate>
-                    </ListBox.ItemTemplate>
-                  </ListBox>
+                    </ComboBox.ItemTemplate>
+                  </ComboBox>
+                  <ComboBox Grid.Column="1" Grid.ColumnSpan="2" ItemsSource="{Binding PlatformFilters}"
+                            SelectedItem="{Binding SelectedPlatformFilter}">
+                    <ComboBox.ItemTemplate>
+                      <DataTemplate x:DataType="vm:PlatformFilterItem">
+                        <TextBlock Text="{Binding DisplayName}" FontSize="12"/>
+                      </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                  </ComboBox>
+                </Grid>
 
-                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" IsVisible="{Binding IsMarketLoading}" Spacing="16" Margin="16">
-                  <Border Classes="shimmer" Width="260" Height="48" Margin="0,0,0,0"/>
-                  <Border Classes="shimmer" Width="220" Height="48" Margin="0,0,0,0"/>
-                  <Border Classes="shimmer" Width="240" Height="48" Margin="0,0,0,0"/>
-                  <Border Classes="shimmer" Width="200" Height="48" Margin="0,0,0,0"/>
+                <!-- TabStrip + 刷新 -->
+                <DockPanel Grid.Row="2" LastChildFill="False" Margin="4,0,8,4">
+                  <TabStrip DockPanel.Dock="Left" SelectedIndex="{Binding CurrentTabIndex}"
+                            Background="Transparent">
+                    <TabStrip.Styles>
+                      <Style Selector="TabStripItem">
+                        <Setter Property="FontSize" Value="13"/>
+                      </Style>
+                    </TabStrip.Styles>
+                    <TabStripItem Content="市场"/>
+                    <TabStripItem Content="已安装"/>
+                  </TabStrip>
+                  <Button DockPanel.Dock="Right" Content="刷新" Command="{Binding RefreshCommand}"
+                          Classes="ghost" Padding="12,4" FontSize="12" VerticalAlignment="Center"/>
+                </DockPanel>
+
+                <!-- 加载进度 -->
+                <ProgressBar Grid.Row="3" IsIndeterminate="True" Height="3" VerticalAlignment="Top"
+                             Margin="12,4,12,0" IsVisible="{Binding IsMarketLoading}"/>
+
+                <!-- 列表 -->
+                <ListBox Grid.Row="4" ItemsSource="{Binding LeftItems}" SelectedItem="{Binding SelectedItem}"
+                         Background="Transparent" BorderThickness="0" Padding="8,4,8,8">
+                  <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="vm:PluginListItemViewModel">
+                      <Border CornerRadius="8" Padding="10" Margin="4,2,4,6"
+                              Background="{DynamicResource SurfaceElevatedBrush}"
+                              BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                        <Grid ColumnDefinitions="Auto,*,Auto">
+                          <Border Grid.Column="0" Width="32" Height="32" CornerRadius="6" Margin="0,0,10,0"
+                                  Background="{DynamicResource SurfaceBrush}"
+                                  IsVisible="{Binding IconUrl, Converter={x:Static converters:PluginIconVisibleConverter.Instance}}">
+                            <Image Stretch="UniformToFill">
+                              <Image.Source>
+                                <MultiBinding Converter="{x:Static converters:PluginIconConverter.Instance}">
+                                  <Binding Path="IconUrl"/>
+                                  <Binding Path="ActualThemeVariant" RelativeSource="{RelativeSource AncestorType=Window}"/>
+                                </MultiBinding>
+                              </Image.Source>
+                            </Image>
+                          </Border>
+                          <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="Medium"
+                                       TextTrimming="CharacterEllipsis"/>
+                            <TextBlock Text="{Binding Meta}" FontSize="11" Margin="0,2,0,0"
+                                       Foreground="{DynamicResource TextSecondaryBrush}"
+                                       TextTrimming="CharacterEllipsis"/>
+                          </StackPanel>
+                          <Border Grid.Column="2" Width="18" Height="18" CornerRadius="9" Margin="6,0,0,0"
+                                  VerticalAlignment="Center" Background="{DynamicResource DangerBrush}"
+                                  ToolTip.Tip="插件加载异常"
+                                  IsVisible="{Binding HasError}">
+                            <TextBlock Text="!" FontSize="11" FontWeight="Bold" Foreground="White"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                          </Border>
+                        </Grid>
+                      </Border>
+                    </DataTemplate>
+                  </ListBox.ItemTemplate>
+                </ListBox>
+
+                <!-- 空状态 -->
+                <StackPanel Grid.Row="4" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="10"
+                            IsVisible="{Binding IsEmptyHintVisible}" Margin="16">
+                  <Path Data="M6.5 2C5.12 2 4 3.12 4 4.5V19.5C4 20.88 5.12 22 6.5 22H17.5C18.88 22 20 20.88 20 19.5V9L14 3H6.5M8 13H16V15H8V13M12 9V4L17 9H12Z"
+                        Width="52" Height="52" Stretch="Uniform" Fill="{DynamicResource TextTertiaryBrush}" Opacity="0.7"/>
+                  <TextBlock Text="{Binding EmptyStateText}" FontSize="13"
+                             Foreground="{DynamicResource TextSecondaryBrush}"
+                             TextAlignment="Center" TextWrapping="Wrap" MaxWidth="290"/>
+                  <Button Content="刷新" Command="{Binding RefreshCommand}" Classes="ghost" FontSize="12"
+                          HorizontalAlignment="Center" Padding="14,6"/>
+                </StackPanel>
+              </Grid>
+            </Border>
+
+            <!-- 右侧：详情 -->
+            <Border Grid.Column="2" Background="{DynamicResource SurfaceBrush}" CornerRadius="12"
+                    BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
+              <Grid RowDefinitions="Auto,Auto,*">
+
+                <!-- 未选中占位 -->
+                <StackPanel Grid.Row="0" Grid.RowSpan="3" VerticalAlignment="Center" HorizontalAlignment="Center"
+                            Spacing="12"
+                            IsVisible="{Binding SelectedItem, Converter={x:Static converters:NullToBoolConverter.Instance}, ConverterParameter=Invert}">
+                  <Path Data="M7 2H17A2 2 0 0 1 19 4V20A2 2 0 0 1 17 22H7A2 2 0 0 1 5 20V4A2 2 0 0 1 7 2M7 6V10H17V6H7M7 12V14H15V12H7M7 16V18H13V16H7Z"
+                        Width="56" Height="56" Stretch="Uniform" Fill="{DynamicResource TextTertiaryBrush}" Opacity="0.7"/>
+                  <TextBlock Text="选择一个插件查看详情" FontSize="14"
+                             Foreground="{DynamicResource TextSecondaryBrush}"/>
                 </StackPanel>
 
-                <TextBlock Text="{Binding MarketError}" FontSize="13"
-                           VerticalAlignment="Center" HorizontalAlignment="Center"
-                           Foreground="{DynamicResource TextSecondaryBrush}"
-                           IsVisible="{Binding MarketError, Converter={x:Static converters:NotNullConverter.Instance}}"/>
+                <!-- 详情头部 -->
+                <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="16,16,16,8"
+                      IsVisible="{Binding SelectedItem, Converter={x:Static converters:NullToBoolConverter.Instance}}">
+                  <Border Grid.Column="0" Width="52" Height="52" CornerRadius="10" ClipToBounds="True"
+                          Background="{DynamicResource SurfaceBrush}" Margin="0,0,14,0">
+                    <Image Stretch="UniformToFill">
+                      <Image.Source>
+                        <MultiBinding Converter="{x:Static converters:PluginIconConverter.Instance}">
+                          <Binding Path="Detail.IconUrl"/>
+                          <Binding Path="ActualThemeVariant" RelativeSource="{RelativeSource AncestorType=Window}"/>
+                        </MultiBinding>
+                      </Image.Source>
+                    </Image>
+                  </Border>
+
+                  <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <WrapPanel Orientation="Horizontal">
+                      <TextBlock Text="{Binding Detail.Title}" FontSize="18" FontWeight="SemiBold"
+                                 TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                      <Border Background="{DynamicResource PrimaryBrush}" Opacity="0.15" CornerRadius="999"
+                              Padding="10,2" Margin="8,0,0,0" VerticalAlignment="Center"
+                              IsVisible="{Binding Detail.IsEnabledStatus}">
+                        <TextBlock Text="已启用" FontSize="11" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource PrimaryBrush}"/>
+                      </Border>
+                      <Border Background="{DynamicResource DangerSoftBrush}" CornerRadius="999"
+                              Padding="10,2" Margin="8,0,0,0" VerticalAlignment="Center"
+                              IsVisible="{Binding Detail.IsErrorStatus}">
+                        <TextBlock Text="异常" FontSize="11" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource DangerBrush}"/>
+                      </Border>
+                      <Border Background="{DynamicResource SurfaceHoverBrush}" CornerRadius="999"
+                              Padding="10,2" Margin="8,0,0,0" VerticalAlignment="Center"
+                              IsVisible="{Binding Detail.IsDisabledStatus}">
+                        <TextBlock Text="未启用" FontSize="11" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"/>
+                      </Border>
+                    </WrapPanel>
+                    <TextBlock Text="{Binding Detail.Meta}" FontSize="12" Margin="0,4,0,0"
+                               Foreground="{DynamicResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis"/>
+                  </StackPanel>
+
+                  <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <Button Content="{Binding Detail.SecondaryActionText}" Command="{Binding SecondaryActionCommand}"
+                            IsVisible="{Binding Detail.SecondaryActionVisible}"
+                            Height="32" Padding="14,0" Classes="danger" FontSize="13"/>
+                    <Button Content="{Binding Detail.PrimaryActionText}" Command="{Binding PrimaryActionCommand}"
+                            IsEnabled="{Binding Detail.PrimaryActionEnabled}"
+                            IsVisible="{Binding Detail.PrimaryActionVisible}"
+                            Classes="accent" Height="32" Padding="16,0" FontSize="13"/>
+                    <Button Content="主页" Command="{Binding OpenHomeCommand}"
+                            IsVisible="{Binding Detail.HomeVisible}"
+                            Classes="ghost" Height="32" Padding="12,0" FontSize="13"/>
+                    <Button Content="仓库" Command="{Binding OpenRepoCommand}"
+                            IsVisible="{Binding Detail.RepoVisible}"
+                            Classes="ghost" Height="32" Padding="12,0" FontSize="13"/>
+                  </StackPanel>
+                </Grid>
+
+                <!-- 详情 TabStrip -->
+                <TabStrip Grid.Row="1" SelectedIndex="{Binding SelectedDetailTabIndex}"
+                          Background="Transparent" Margin="12,4,12,0"
+                          IsVisible="{Binding SelectedItem, Converter={x:Static converters:NullToBoolConverter.Instance}}">
+                  <TabStrip.Styles>
+                    <Style Selector="TabStripItem">
+                      <Setter Property="FontSize" Value="13"/>
+                    </Style>
+                  </TabStrip.Styles>
+                  <TabStripItem Content="说明"/>
+                  <TabStripItem Content="输出" IsVisible="{Binding Detail.OutputVisible}"/>
+                </TabStrip>
+
+                <!-- 详情内容 -->
+                <Panel Grid.Row="2"
+                       IsVisible="{Binding SelectedItem, Converter={x:Static converters:NullToBoolConverter.Instance}}">
+                  <mdxaml:MarkdownScrollViewer Markdown="{Binding Detail.Markdown}"
+                                               Margin="12,8,12,12"
+                                               IsVisible="{Binding SelectedDetailTabIndex, Converter={x:Static converters:TabIndexToBoolConverter.Instance}, ConverterParameter=0}"/>
+                  <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="12,8,12,12"
+                                IsVisible="{Binding SelectedDetailTabIndex, Converter={x:Static converters:TabIndexToBoolConverter.Instance}, ConverterParameter=1}">
+                    <SelectableTextBlock Text="{Binding Detail.Output}" TextWrapping="Wrap"
+                                         FontSize="12"
+                                         Foreground="{DynamicResource TextSecondaryBrush}"/>
+                  </ScrollViewer>
+                </Panel>
               </Grid>
-            </Grid>
-          </Border>
-
-          <Border Grid.Column="2" Background="{DynamicResource SurfaceBrush}" CornerRadius="12" Padding="16"
-                  BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
-            <Grid RowDefinitions="Auto,Auto,Auto,*">
-              <TextBlock Grid.Row="0" Text="{Binding Detail.Title}" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,4"/>
-              <TextBlock Grid.Row="1" Text="{Binding Detail.Meta}" FontSize="12"
-                         Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,12"/>
-
-              <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,12">
-                <Button Content="{Binding Detail.PrimaryActionText}"
-                        Command="{Binding PrimaryActionCommand}"
-                        IsEnabled="{Binding Detail.PrimaryActionEnabled}"
-                        IsVisible="{Binding Detail.PrimaryActionVisible}"
-                        Classes="accent"
-                        Height="32" Padding="16,0"/>
-                <Button Content="{Binding Detail.SecondaryActionText}"
-                        Command="{Binding SecondaryActionCommand}"
-                        IsVisible="{Binding Detail.SecondaryActionVisible}"
-                        Height="32" Padding="16,0" Margin="10,0,0,0"/>
-                <Button Content="主页"
-                        Command="{Binding OpenHomeCommand}"
-                        IsVisible="{Binding Detail.HomeVisible}"
-                        Classes="ghost"
-                        Height="32" Padding="12,0" Margin="10,0,0,0"/>
-                <Button Content="仓库"
-                        Command="{Binding OpenRepoCommand}"
-                        IsVisible="{Binding Detail.RepoVisible}"
-                        Classes="ghost"
-                        Height="32" Padding="12,0" Margin="6,0,0,0"/>
-              </StackPanel>
-
-              <TabControl Grid.Row="3" Background="Transparent" BorderThickness="0" Margin="-8,0,-8,-8">
-                <TabItem Header="详情" Padding="8,2">
-                  <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="420">
-                    <TextBlock Text="{Binding Detail.Description}" TextWrapping="Wrap"
-                               Foreground="{DynamicResource TextSecondaryBrush}" FontSize="13" Margin="8"/>
-                  </ScrollViewer>
-                </TabItem>
-                <TabItem Header="输出" Padding="8,2" IsVisible="{Binding Detail.OutputVisible}">
-                  <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="420">
-                    <TextBlock Text="{Binding Detail.Output}" TextWrapping="Wrap"
-                               Foreground="{DynamicResource TextSecondaryBrush}" FontSize="12" Margin="8"/>
-                  </ScrollViewer>
-                </TabItem>
-              </TabControl>
-            </Grid>
-          </Border>
-        </Grid>
-        </ScrollViewer>
+            </Border>
+          </Grid>
       </Grid>
 
       <Grid DataContext="{Binding Screenshots}">

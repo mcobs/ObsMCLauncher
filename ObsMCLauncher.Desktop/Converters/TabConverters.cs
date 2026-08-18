@@ -40,35 +40,6 @@ public class TabIndexToBoolConverter : IValueConverter
     }
 }
 
-public class PluginTabToBoolConverter : IValueConverter
-{
-    public static readonly PluginTabToBoolConverter Instance = new();
-
-    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
-    {
-        if (value is ViewModels.PluginSubTab tab && parameter is string param)
-        {
-            if (Enum.TryParse<ViewModels.PluginSubTab>(param, out var targetTab))
-            {
-                return tab == targetTab;
-            }
-        }
-        return false;
-    }
-
-    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
-    {
-        if (value is bool isChecked && isChecked && parameter is string param)
-        {
-            if (Enum.TryParse<ViewModels.PluginSubTab>(param, out var targetTab))
-            {
-                return targetTab;
-            }
-        }
-        return ViewModels.PluginSubTab.Installed;
-    }
-}
-
 public class BoolToColorConverter : IValueConverter
 {
     public static readonly BoolToColorConverter Instance = new();
