@@ -65,6 +65,67 @@
         </ui:SettingsExpanderItem>
       </ui:SettingsExpander>
 
+      <!-- 背景壁纸 -->
+      <ui:SettingsExpander Header="背景壁纸" IsExpanded="True" Description="为启动器主界面设置本地壁纸">
+        <ui:SettingsExpanderItem Content="启用壁纸" Description="在主内容区显示背景图片">
+          <ui:SettingsExpanderItem.Footer>
+            <ToggleSwitch IsChecked="{Binding WallpaperEnabled, Mode=TwoWay}"/>
+          </ui:SettingsExpanderItem.Footer>
+        </ui:SettingsExpanderItem>
+
+        <ui:SettingsExpanderItem Content="选择图片" Description="选择本地图片作为壁纸">
+          <ui:SettingsExpanderItem.Footer>
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Button Content="浏览…" Command="{Binding BrowseWallpaperCommand}"/>
+              <TextBlock Text="{Binding WallpaperPath}" FontSize="11" MaxWidth="200"
+                         TextTrimming="CharacterEllipsis"
+                         Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+            </StackPanel>
+          </ui:SettingsExpanderItem.Footer>
+        </ui:SettingsExpanderItem>
+
+        <ui:SettingsExpanderItem Content="不透明度" Description="壁纸的透明程度">
+          <ui:SettingsExpanderItem.Footer>
+            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+              <Slider Width="160" Minimum="0" Maximum="1" TickFrequency="0.05"
+                      IsSnapToTickEnabled="True"
+                      Value="{Binding WallpaperOpacity, Mode=TwoWay}"/>
+              <TextBlock Text="{Binding WallpaperOpacity, StringFormat={}{0:P0}}" FontSize="12"
+                         Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+            </StackPanel>
+          </ui:SettingsExpanderItem.Footer>
+        </ui:SettingsExpanderItem>
+
+        <ui:SettingsExpanderItem Content="显示方式" Description="壁纸的拉伸方式">
+          <ui:SettingsExpanderItem.Footer>
+            <ComboBox Width="140" SelectedIndex="{Binding WallpaperStretch}">
+              <ComboBoxItem Content="拉伸填充"/>
+              <ComboBoxItem Content="适应缩放"/>
+              <ComboBoxItem Content="裁剪填充"/>
+              <ComboBoxItem Content="原始大小"/>
+            </ComboBox>
+          </ui:SettingsExpanderItem.Footer>
+        </ui:SettingsExpanderItem>
+
+        <ui:SettingsExpanderItem Content="扩展到导航栏" Description="将壁纸延伸到左侧导航栏区域">
+          <ui:SettingsExpanderItem.Footer>
+            <ToggleSwitch IsChecked="{Binding WallpaperExtendToNav, Mode=TwoWay}"/>
+          </ui:SettingsExpanderItem.Footer>
+        </ui:SettingsExpanderItem>
+
+        <ui:SettingsExpanderItem Content="导航栏透明度" Description="扩展到导航栏时，导航栏背景的透明程度">
+          <ui:SettingsExpanderItem.Footer>
+            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+              <Slider Width="160" Minimum="0.1" Maximum="1" TickFrequency="0.05"
+                      IsSnapToTickEnabled="True"
+                      Value="{Binding NavBackgroundOpacity, Mode=TwoWay}"/>
+              <TextBlock Text="{Binding NavBackgroundOpacity, StringFormat={}{0:P0}}" FontSize="12"
+                         Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+            </StackPanel>
+          </ui:SettingsExpanderItem.Footer>
+        </ui:SettingsExpanderItem>
+      </ui:SettingsExpander>
+
       <!-- 通知 -->
       <ui:SettingsExpander Header="通知" IsExpanded="True">
         <ui:SettingsExpanderItem Content="通知样式" Description="选择通知消息的显示位置和样式">

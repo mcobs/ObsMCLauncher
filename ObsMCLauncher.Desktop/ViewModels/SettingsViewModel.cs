@@ -63,6 +63,12 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(CornerRadius)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(Density)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(AnimationLevel)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperEnabled)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperPath)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperOpacity)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperStretch)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperExtendToNav)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(NavBackgroundOpacity)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(MaxMemory)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(MinMemory)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(DownloadSource)));
@@ -142,6 +148,10 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
         ApplyDensity();
         ApplyAnimationLevel();
 
+        // 应用已保存的壁纸配置
+        ApplyWallpaper();
+        ApplyNavTransparency();
+
         // 监听系统主题变化
         if (Application.Current != null)
         {
@@ -150,6 +160,7 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
 
         BrowseGameDirectoryCommand = new AsyncRelayCommand(BrowseGameDirectoryAsync);
         BrowseJavaPathCommand = new AsyncRelayCommand(BrowseJavaPathAsync);
+        BrowseWallpaperCommand = new AsyncRelayCommand(BrowseWallpaperAsync);
         TestDownloadSourceCommand = new AsyncRelayCommand(TestDownloadSourceAsync);
         ResetDefaultsCommand = new RelayCommand(ResetDefaults);
         MoveCardUpCommand = new RelayCommand<HomeCardInfo>(MoveCardUp);
@@ -353,6 +364,200 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
                 ApplyAnimationLevel();
                 AutoSave();
             }
+        }
+    }
+
+    public bool WallpaperEnabled
+    {
+        get => _config.WallpaperEnabled;
+        set
+        {
+            if (_config.WallpaperEnabled != value)
+            {
+                _config.WallpaperEnabled = value;
+                OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperEnabled)));
+                ApplyWallpaper();
+                AutoSave();
+            }
+        }
+    }
+
+    /// <summary>壁纸路径展示（可能为 null）</summary>
+    public string WallpaperPath
+    {
+        get => _config.WallpaperPath ?? "";
+        set
+        {
+            var v = string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+            if (_config.WallpaperPath != v)
+            {
+                _config.WallpaperPath = v;
+                OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperPath)));
+                ApplyWallpaper();
+                AutoSave();
+            }
+        }
+    }
+
+    public double WallpaperOpacity
+    {
+        get => _config.WallpaperOpacity;
+        set
+        {
+            var v = Math.Clamp(value, 0, 1);
+            if (_config.WallpaperOpacity != v)
+            {
+                _config.WallpaperOpacity = v;
+                OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperOpacity)));
+                AutoSave();
+            }
+        }
+    }
+
+    public int WallpaperStretch
+    {
+        get => _config.WallpaperStretch;
+        set
+        {
+            var v = Math.Clamp(value, 0, 3);
+            if (_config.WallpaperStretch != v)
+            {
+                _config.WallpaperStretch = v;
+                OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperStretch)));
+                AutoSave();
+            }
+        }
+    }
+
+    public bool WallpaperExtendToNav
+    {
+        get => _config.WallpaperExtendToNav;
+        set
+        {
+            if (_config.WallpaperExtendToNav != value)
+            {
+                _config.WallpaperExtendToNav = value;
+                OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperExtendToNav)));
+                ApplyNavTransparency();
+                AutoSave();
+            }
+        }
+    }
+
+    public double NavBackgroundOpacity
+    {
+        get => _config.NavBackgroundOpacity;
+        set
+        {
+            var v = Math.Clamp(value, 0.1, 1);
+            if (_config.NavBackgroundOpacity != v)
+            {
+                _config.NavBackgroundOpacity = v;
+                OnPropertyChanged(new PropertyChangedEventArgs(nameof(NavBackgroundOpacity)));
+                ApplyNavTransparency();
+                AutoSave();
+            }
+        }
+    }
+
+    public IAsyncRelayCommand BrowseWallpaperCommand { get; }
+
+    private void ApplyWallpaper()
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (Application.Current?.Resources is not { } resources) return;
+            if (_config.WallpaperEnabled && !string.IsNullOrWhiteSpace(_config.WallpaperPath)
+                && File.Exists(_config.WallpaperPath))
+            {
+                try
+                {
+                    var bitmap = new Avalonia.Media.Imaging.Bitmap(_config.WallpaperPath);
+                    resources["MainWallpaperBrush"] = new Avalonia.Media.ImageBrush(bitmap)
+                    {
+                        Stretch = StretchMap(_config.WallpaperStretch),
+                        Opacity = _config.WallpaperOpacity
+                    };
+                    resources["IsMainWallpaperVisible"] = true;
+                }
+                catch
+                {
+                    resources["MainWallpaperBrush"] = null;
+                    resources["IsMainWallpaperVisible"] = false;
+                }
+            }
+            else
+            {
+                resources["MainWallpaperBrush"] = null;
+                resources["IsMainWallpaperVisible"] = false;
+            }
+        });
+    }
+
+    private void ApplyNavTransparency()
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (Application.Current?.Resources is not { } resources) return;
+            // 扩展时导航栏也铺壁纸（Pane 背景透明露出底下），否则用原导航背景色
+            if (_config.WallpaperExtendToNav && _config.WallpaperEnabled)
+            {
+                resources["NavBackgroundOpacity"] = _config.NavBackgroundOpacity;
+                resources["IsNavWallpaperVisible"] = true;
+                resources["NavigationViewDefaultPaneBackground"] = new SolidColorBrush(ResolveNavBgColor())
+                {
+                    Opacity = _config.NavBackgroundOpacity
+                };
+            }
+            else
+            {
+                resources["NavBackgroundOpacity"] = 1.0;
+                resources["IsNavWallpaperVisible"] = false;
+                // 恢复默认导航栏背景（跟随当前主题）
+                resources["NavigationViewDefaultPaneBackground"] = new SolidColorBrush(ResolveNavBgColor());
+            }
+        });
+    }
+
+    /// <summary>导航栏背景基准色（深/浅跟随主题）</summary>
+    private Color ResolveNavBgColor()
+        => Application.Current?.ActualThemeVariant == ThemeVariant.Light
+            ? Color.Parse("#FFFFFF")
+            : Color.Parse("#141619");
+
+    private static Avalonia.Media.Stretch StretchMap(int mode) => mode switch
+    {
+        0 => Avalonia.Media.Stretch.Fill,
+        2 => Avalonia.Media.Stretch.UniformToFill,
+        3 => Avalonia.Media.Stretch.None,
+        _ => Avalonia.Media.Stretch.Uniform
+    };
+
+    private async Task BrowseWallpaperAsync()
+    {
+        try
+        {
+            if (Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop || desktop.MainWindow == null)
+                return;
+#pragma warning disable CS0618
+            var dlg = new OpenFileDialog
+            {
+                Title = "选择背景壁纸",
+                AllowMultiple = false,
+                Filters = new() { new FileDialogFilter { Name = "图片", Extensions = { "png", "jpg", "jpeg", "webp", "bmp" } } }
+            };
+            var result = await dlg.ShowAsync(desktop.MainWindow);
+#pragma warning restore CS0618
+            var path = result?.FirstOrDefault();
+            if (!string.IsNullOrWhiteSpace(path))
+            {
+                WallpaperEnabled = true;
+                WallpaperPath = path;
+            }
+        }
+        catch (Exception ex)
+        {
+            Status = $"选择壁纸失败: {ex.Message}";
         }
     }
 
@@ -1014,6 +1219,12 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(CornerRadius)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(Density)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(AnimationLevel)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperEnabled)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperPath)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperOpacity)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperStretch)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperExtendToNav)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(NavBackgroundOpacity)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(MaxMemory)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(MinMemory)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(DownloadSource)));
@@ -1051,6 +1262,8 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
         ApplyCornerRadius();
         ApplyDensity();
         ApplyAnimationLevel();
+        ApplyWallpaper();
+        ApplyNavTransparency();
 
         AutoSave();
     }

@@ -141,6 +141,13 @@
             ClipToBounds="True">
     <Grid x:Name="RootGrid" RowDefinitions="*">
 
+        <!-- 主内容区壁纸底层（仅在启用壁纸时显示） -->
+        <Border Grid.Row="0" IsVisible="{DynamicResource IsMainWallpaperVisible}">
+            <Border.Background>
+                <DynamicResourceExtension ResourceKey="MainWallpaperBrush"/>
+            </Border.Background>
+        </Border>
+
         <ui:NavigationView x:Name="MainNav"
                            Grid.Row="0"
                            PaneDisplayMode="Auto"

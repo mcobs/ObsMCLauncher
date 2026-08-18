@@ -193,6 +193,24 @@ public class LauncherConfig
     /// </summary>
     public int AnimationLevel { get; set; } = 1;
 
+    /// <summary>是否启用主内容区背景壁纸</summary>
+    public bool WallpaperEnabled { get; set; } = false;
+
+    /// <summary>壁纸图片路径（本地文件）</summary>
+    public string? WallpaperPath { get; set; }
+
+    /// <summary>主内容壁纸透明度（0-1）</summary>
+    public double WallpaperOpacity { get; set; } = 0.35;
+
+    /// <summary>壁纸显示方式：0=Fill 1=Uniform 2=UniformToFill 3=None(原尺寸)</summary>
+    public int WallpaperStretch { get; set; } = 1;
+
+    /// <summary>是否将壁纸扩展到导航栏（通过降低导航栏透明度实现）</summary>
+    public bool WallpaperExtendToNav { get; set; } = false;
+
+    /// <summary>导航栏背景透明度（0-1，越小越透出壁纸），仅扩展时生效</summary>
+    public double NavBackgroundOpacity { get; set; } = 0.7;
+
     public string? SelectedVersion { get; set; }
 
     public string? SelectedAccountId { get; set; }
