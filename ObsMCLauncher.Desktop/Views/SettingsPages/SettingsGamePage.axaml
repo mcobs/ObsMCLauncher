@@ -85,12 +85,16 @@
                 <TextBlock Text="版本隔离" FontSize="13" FontWeight="Medium"/>
                 <TextBlock Text="开启后，每个版本将使用独立的 mods、saves、resourcepacks 等文件夹" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap"/>
               </StackPanel>
-              <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
-                <RadioButton Classes="segment" GroupName="gameDirType" Content="关闭"
-                             IsChecked="{Binding GameDirectoryType, Mode=TwoWay, Converter={x:Static converters:SegmentCheckedConverter.Instance}, ConverterParameter=RootFolder}"/>
-                <RadioButton Classes="segment" GroupName="gameDirType" Content="开启"
-                             IsChecked="{Binding GameDirectoryType, Mode=TwoWay, Converter={x:Static converters:SegmentCheckedConverter.Instance}, ConverterParameter=VersionFolder}"/>
-              </StackPanel>
+              <ComboBox Grid.Column="2" Width="200"
+                        ItemsSource="{Binding GameDirectoryTypeOptions}"
+                        SelectedItem="{Binding GameDirectoryType}"
+                        VerticalAlignment="Center">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate>
+                    <TextBlock Text="{Binding Converter={x:Static converters:EnumToChineseTextConverter.Instance}}"/>
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
             </Grid>
           </StackPanel>
         </Border>

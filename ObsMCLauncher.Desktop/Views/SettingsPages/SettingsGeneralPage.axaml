@@ -37,16 +37,16 @@
                 <TextBlock Text="更新通道" FontSize="13" FontWeight="Medium"/>
                 <TextBlock Text="选择要接收的更新类型，切换后立即生效" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
               </StackPanel>
-              <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
-                <RadioButton Classes="segment" GroupName="updateChannel" Content="正式版"
-                             IsChecked="{Binding SelectedUpdateChannel, Mode=TwoWay, Converter={x:Static converters:SegmentCheckedConverter.Instance}, ConverterParameter=Stable}"/>
-                <RadioButton Classes="segment" GroupName="updateChannel" Content="测试版"
-                             IsChecked="{Binding SelectedUpdateChannel, Mode=TwoWay, Converter={x:Static converters:SegmentCheckedConverter.Instance}, ConverterParameter=Beta}"/>
-                <RadioButton Classes="segment" GroupName="updateChannel" Content="预发布版"
-                             IsChecked="{Binding SelectedUpdateChannel, Mode=TwoWay, Converter={x:Static converters:SegmentCheckedConverter.Instance}, ConverterParameter=RC}"/>
-                <RadioButton Classes="segment" GroupName="updateChannel" Content="预览版"
-                             IsChecked="{Binding SelectedUpdateChannel, Mode=TwoWay, Converter={x:Static converters:SegmentCheckedConverter.Instance}, ConverterParameter=Preview}"/>
-              </StackPanel>
+              <ComboBox Grid.Column="2" Width="140"
+                        ItemsSource="{Binding UpdateChannelOptions}"
+                        SelectedItem="{Binding SelectedUpdateChannel}"
+                        VerticalAlignment="Center">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate>
+                    <TextBlock Text="{Binding Converter={x:Static converters:EnumToChineseTextConverter.Instance}}"/>
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
             </Grid>
           </StackPanel>
         </Border>

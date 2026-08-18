@@ -26,12 +26,10 @@
                 <TextBlock Text="下载源" FontSize="13" FontWeight="Medium"/>
                 <TextBlock Text="{Binding DownloadSourceDescription}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap"/>
               </StackPanel>
-              <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
-                <RadioButton Classes="segment" GroupName="downloadSource" Content="官方源"
-                             IsChecked="{Binding DownloadSource, Mode=TwoWay, Converter={x:Static converters:SegmentCheckedConverter.Instance}, ConverterParameter=Official}"/>
-                <RadioButton Classes="segment" GroupName="downloadSource" Content="BMCLAPI 镜像"
-                             IsChecked="{Binding DownloadSource, Mode=TwoWay, Converter={x:Static converters:SegmentCheckedConverter.Instance}, ConverterParameter=BMCLAPI}"/>
-              </StackPanel>
+              <ComboBox Grid.Column="2" Width="220"
+                        ItemsSource="{Binding DownloadSourceOptions}"
+                        SelectedItem="{Binding DownloadSource}"
+                        VerticalAlignment="Center"/>
             </Grid>
 
             <Border Classes="settings-divider"/>
@@ -42,12 +40,16 @@
                 <TextBlock Text="社区镜像源" FontSize="13" FontWeight="Medium"/>
                 <TextBlock Text="{Binding MirrorSourceModeDescription}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap"/>
               </StackPanel>
-              <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
-                <RadioButton Classes="segment" GroupName="mirrorMode" Content="优先镜像源"
-                             IsChecked="{Binding MirrorSourceMode, Mode=TwoWay, Converter={x:Static converters:SegmentCheckedConverter.Instance}, ConverterParameter=PreferMirror}"/>
-                <RadioButton Classes="segment" GroupName="mirrorMode" Content="只用官方源"
-                             IsChecked="{Binding MirrorSourceMode, Mode=TwoWay, Converter={x:Static converters:SegmentCheckedConverter.Instance}, ConverterParameter=OfficialOnly}"/>
-              </StackPanel>
+              <ComboBox Grid.Column="2" Width="220"
+                        ItemsSource="{Binding MirrorSourceModeOptions}"
+                        SelectedItem="{Binding MirrorSourceMode}"
+                        VerticalAlignment="Center">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate>
+                    <TextBlock Text="{Binding Converter={x:Static converters:EnumToChineseTextConverter.Instance}}"/>
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
             </Grid>
           </StackPanel>
         </Border>
@@ -68,18 +70,10 @@
                 <TextBlock Text="最大下载线程" FontSize="13" FontWeight="Medium"/>
                 <TextBlock Text="同时下载的文件数量" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
               </StackPanel>
-              <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
-                <RadioButton Classes="segment" GroupName="maxThreads" Content="4"
-                             IsChecked="{Binding MaxDownloadThreads, Mode=TwoWay, Converter={x:Static converters:SegmentCheckedConverter.Instance}, ConverterParameter=4}"/>
-                <RadioButton Classes="segment" GroupName="maxThreads" Content="8"
-                             IsChecked="{Binding MaxDownloadThreads, Mode=TwoWay, Converter={x:Static converters:SegmentCheckedConverter.Instance}, ConverterParameter=8}"/>
-                <RadioButton Classes="segment" GroupName="maxThreads" Content="16"
-                             IsChecked="{Binding MaxDownloadThreads, Mode=TwoWay, Converter={x:Static converters:SegmentCheckedConverter.Instance}, ConverterParameter=16}"/>
-                <RadioButton Classes="segment" GroupName="maxThreads" Content="32"
-                             IsChecked="{Binding MaxDownloadThreads, Mode=TwoWay, Converter={x:Static converters:SegmentCheckedConverter.Instance}, ConverterParameter=32}"/>
-                <RadioButton Classes="segment" GroupName="maxThreads" Content="64"
-                             IsChecked="{Binding MaxDownloadThreads, Mode=TwoWay, Converter={x:Static converters:SegmentCheckedConverter.Instance}, ConverterParameter=64}"/>
-              </StackPanel>
+              <ComboBox Grid.Column="2" Width="120"
+                        ItemsSource="{Binding MaxDownloadThreadsOptions}"
+                        SelectedItem="{Binding MaxDownloadThreads}"
+                        VerticalAlignment="Center"/>
             </Grid>
 
             <Border Classes="settings-divider"/>

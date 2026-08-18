@@ -27,14 +27,11 @@
                 <TextBlock Text="主题模式" FontSize="13" FontWeight="Medium"/>
                 <TextBlock Text="选择启动器的外观主题" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
               </StackPanel>
-              <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
-                <RadioButton Classes="segment" GroupName="themeMode" Content="深色"
-                             IsChecked="{Binding ThemeMode, Mode=TwoWay, Converter={x:Static converters:SegmentCheckedConverter.Instance}, ConverterParameter=0}"/>
-                <RadioButton Classes="segment" GroupName="themeMode" Content="浅色"
-                             IsChecked="{Binding ThemeMode, Mode=TwoWay, Converter={x:Static converters:SegmentCheckedConverter.Instance}, ConverterParameter=1}"/>
-                <RadioButton Classes="segment" GroupName="themeMode" Content="跟随系统"
-                             IsChecked="{Binding ThemeMode, Mode=TwoWay, Converter={x:Static converters:SegmentCheckedConverter.Instance}, ConverterParameter=2}"/>
-              </StackPanel>
+              <ComboBox Grid.Column="2" Width="160" SelectedIndex="{Binding ThemeMode}" VerticalAlignment="Center">
+                <ComboBoxItem Content="深色模式"/>
+                <ComboBoxItem Content="浅色模式"/>
+                <ComboBoxItem Content="跟随系统"/>
+              </ComboBox>
             </Grid>
 
             <Border Classes="settings-divider"/>
@@ -84,14 +81,11 @@
                 <TextBlock Text="密度" FontSize="13" FontWeight="Medium"/>
                 <TextBlock Text="控制主要界面的留白与间距" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
               </StackPanel>
-              <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
-                <RadioButton Classes="segment" GroupName="density" Content="紧凑"
-                             IsChecked="{Binding Density, Mode=TwoWay, Converter={x:Static converters:SegmentCheckedConverter.Instance}, ConverterParameter=0}"/>
-                <RadioButton Classes="segment" GroupName="density" Content="标准"
-                             IsChecked="{Binding Density, Mode=TwoWay, Converter={x:Static converters:SegmentCheckedConverter.Instance}, ConverterParameter=1}"/>
-                <RadioButton Classes="segment" GroupName="density" Content="宽松"
-                             IsChecked="{Binding Density, Mode=TwoWay, Converter={x:Static converters:SegmentCheckedConverter.Instance}, ConverterParameter=2}"/>
-              </StackPanel>
+              <ComboBox Grid.Column="2" Width="140" SelectedIndex="{Binding Density}" VerticalAlignment="Center">
+                <ComboBoxItem Content="紧凑"/>
+                <ComboBoxItem Content="标准"/>
+                <ComboBoxItem Content="宽松"/>
+              </ComboBox>
             </Grid>
 
             <Border Classes="settings-divider"/>
@@ -102,14 +96,11 @@
                 <TextBlock Text="动画级别" FontSize="13" FontWeight="Medium"/>
                 <TextBlock Text="控制主要过渡动画的启用与强度" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
               </StackPanel>
-              <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
-                <RadioButton Classes="segment" GroupName="animLevel" Content="禁用"
-                             IsChecked="{Binding AnimationLevel, Mode=TwoWay, Converter={x:Static converters:SegmentCheckedConverter.Instance}, ConverterParameter=0}"/>
-                <RadioButton Classes="segment" GroupName="animLevel" Content="标准"
-                             IsChecked="{Binding AnimationLevel, Mode=TwoWay, Converter={x:Static converters:SegmentCheckedConverter.Instance}, ConverterParameter=1}"/>
-                <RadioButton Classes="segment" GroupName="animLevel" Content="华丽"
-                             IsChecked="{Binding AnimationLevel, Mode=TwoWay, Converter={x:Static converters:SegmentCheckedConverter.Instance}, ConverterParameter=2}"/>
-              </StackPanel>
+              <ComboBox Grid.Column="2" Width="140" SelectedIndex="{Binding AnimationLevel}" VerticalAlignment="Center">
+                <ComboBoxItem Content="禁用"/>
+                <ComboBoxItem Content="标准"/>
+                <ComboBoxItem Content="华丽"/>
+              </ComboBox>
             </Grid>
           </StackPanel>
         </Border>
@@ -229,16 +220,12 @@
                 <TextBlock Text="显示方式" FontSize="13" FontWeight="Medium"/>
                 <TextBlock Text="壁纸的拉伸方式" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
               </StackPanel>
-              <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
-                <RadioButton Classes="segment" GroupName="wallpaperStretch" Content="拉伸填充"
-                             IsChecked="{Binding WallpaperStretch, Mode=TwoWay, Converter={x:Static converters:SegmentCheckedConverter.Instance}, ConverterParameter=0}"/>
-                <RadioButton Classes="segment" GroupName="wallpaperStretch" Content="适应缩放"
-                             IsChecked="{Binding WallpaperStretch, Mode=TwoWay, Converter={x:Static converters:SegmentCheckedConverter.Instance}, ConverterParameter=1}"/>
-                <RadioButton Classes="segment" GroupName="wallpaperStretch" Content="裁剪填充"
-                             IsChecked="{Binding WallpaperStretch, Mode=TwoWay, Converter={x:Static converters:SegmentCheckedConverter.Instance}, ConverterParameter=2}"/>
-                <RadioButton Classes="segment" GroupName="wallpaperStretch" Content="原始大小"
-                             IsChecked="{Binding WallpaperStretch, Mode=TwoWay, Converter={x:Static converters:SegmentCheckedConverter.Instance}, ConverterParameter=3}"/>
-              </StackPanel>
+              <ComboBox Grid.Column="2" Width="140" SelectedIndex="{Binding WallpaperStretch}" VerticalAlignment="Center">
+                <ComboBoxItem Content="拉伸填充"/>
+                <ComboBoxItem Content="适应缩放"/>
+                <ComboBoxItem Content="裁剪填充"/>
+                <ComboBoxItem Content="原始大小"/>
+              </ComboBox>
             </Grid>
 
             <Border Classes="settings-divider"/>
