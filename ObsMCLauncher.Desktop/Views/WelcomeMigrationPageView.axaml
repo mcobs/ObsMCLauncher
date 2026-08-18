@@ -41,29 +41,32 @@
                                Margin="0 0 0 12" />
                     <ui:SettingsExpander Header="Plain Craft Launcher 2"
                                          Description="导入应用设置、各版本游戏设置与外置登录服务器数据的位置见 PCL 目录"
-                                         IsClickEnabled="True"
-                                         MinHeight="64"
-                                         Click="SourcePcl_OnClick">
+                                          IsClickEnabled="True"
+                                          MinHeight="64"
+                                          Click="SourcePcl_OnClick">
                         <ui:SettingsExpander.IconSource>
-                            <ui:FontIconSource Glyph="&#xE896;" />
+                            <ui:BitmapIconSource UriSource="avares://ObsMCLauncher.Desktop/Assets/LauncherIcons/PCL2.png"
+                                                 ShowAsMonochrome="False" />
                         </ui:SettingsExpander.IconSource>
                     </ui:SettingsExpander>
                     <ui:SettingsExpander Header="Hello Minecraft! Launcher (3.16+)"
                                          Description="新版配置格式（config 目录下的 JSON 文件）"
-                                         IsClickEnabled="True"
-                                         MinHeight="64"
-                                         Click="SourceHmclNew_OnClick">
+                                          IsClickEnabled="True"
+                                          MinHeight="64"
+                                          Click="SourceHmclNew_OnClick">
                         <ui:SettingsExpander.IconSource>
-                            <ui:FontIconSource Glyph="&#xE713;" />
+                            <ui:BitmapIconSource UriSource="avares://ObsMCLauncher.Desktop/Assets/LauncherIcons/HMCL.png"
+                                                 ShowAsMonochrome="False" />
                         </ui:SettingsExpander.IconSource>
                     </ui:SettingsExpander>
                     <ui:SettingsExpander Header="Hello Minecraft! Launcher (≤3.15.x)"
                                          Description="旧版 hmcl.json 配置格式"
-                                         IsClickEnabled="True"
-                                         MinHeight="64"
-                                         Click="SourceHmclLegacy_OnClick">
+                                          IsClickEnabled="True"
+                                          MinHeight="64"
+                                          Click="SourceHmclLegacy_OnClick">
                         <ui:SettingsExpander.IconSource>
-                            <ui:FontIconSource Glyph="&#xE896;" />
+                            <ui:BitmapIconSource UriSource="avares://ObsMCLauncher.Desktop/Assets/LauncherIcons/HMCL.png"
+                                                 ShowAsMonochrome="False" />
                         </ui:SettingsExpander.IconSource>
                     </ui:SettingsExpander>
                 </StackPanel>
@@ -95,8 +98,10 @@
 
                     <CheckBox IsChecked="{Binding ImportGameSettings}">
                         <StackPanel Orientation="Horizontal" Spacing="10">
-                            <ui:FontIcon Glyph="&#xE713;" FontSize="18"
-                                         VerticalAlignment="Center" />
+                            <Path Data="M21 6H3c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-10 7H8v3H6v-3H3v-2h3V8h2v3h3v2zm4.5 2c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm4-3c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"
+                                 Fill="{DynamicResource TextFillColorPrimaryBrush}"
+                                 Width="18" Height="18" Stretch="Uniform"
+                                 VerticalAlignment="Center" />
                             <StackPanel Spacing="1" VerticalAlignment="Center">
                                 <TextBlock Text="游戏设置" FontWeight="SemiBold" FontSize="13" />
                                 <TextBlock Text="包括各实例的内存、Java 路径、JVM 参数与版本隔离设置。"
@@ -108,8 +113,10 @@
 
                     <CheckBox IsChecked="{Binding ImportAppSettings}">
                         <StackPanel Orientation="Horizontal" Spacing="10">
-                            <ui:FontIcon Glyph="&#xEF27;" FontSize="18"
-                                         VerticalAlignment="Center" />
+                            <Path Data="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.2 15.42l-.97 2.05-2.29-.75c-.6.38-1.27.68-1.98.87l-.12 2.42h-2.7l-.12-2.42c-.71-.19-1.38-.49-1.98-.87l-2.29.75-.97-2.05 1.88-1.61c-.12-.43-.2-.88-.2-1.36s.08-.93.2-1.36L4.7 13.05l.97-2.05 2.29.75c.6-.38 1.27-.68 1.98-.87l.12-2.42h2.7l.12 2.42c.71.19 1.38.49 1.98.87l2.29-.75.97 2.05-1.88 1.61c.12.43.2.88.2 1.36s-.08.93-.2 1.36l1.88 1.61z"
+                                 Fill="{DynamicResource TextFillColorPrimaryBrush}"
+                                 Width="18" Height="18" Stretch="Uniform"
+                                 VerticalAlignment="Center" />
                             <StackPanel Spacing="1" VerticalAlignment="Center">
                                 <TextBlock Text="应用设置" FontWeight="SemiBold" FontSize="13" />
                                 <TextBlock Text="包括游戏文件夹、Java、内存、下载与更新等应用首选项。"
@@ -195,21 +202,24 @@
                                                         <Setter Property="TextWrapping" Value="Wrap" />
                                                     </Style>
                                                 </Grid.Styles>
-                                                <ui:FontIcon Grid.Column="0" FontSize="13" Margin="0 0 6 0"
-                                                             VerticalAlignment="Top"
-                                                             Glyph="&#xE73E;"
-                                                             Foreground="#10B981"
-                                                             IsVisible="{Binding Imported}" />
-                                                <ui:FontIcon Grid.Column="0" FontSize="13" Margin="0 0 6 0"
-                                                             VerticalAlignment="Top"
-                                                             Glyph="&#xE711;"
-                                                             Foreground="{DynamicResource TextSecondaryBrush}"
-                                                             IsVisible="{Binding Skipped}" />
-                                                <ui:FontIcon Grid.Column="0" FontSize="13" Margin="0 0 6 0"
-                                                             VerticalAlignment="Top"
-                                                             Glyph="&#xE7BA;"
-                                                             Foreground="{DynamicResource WarningBrush}"
-                                                             IsVisible="{Binding Warning}" />
+                                                <Path Grid.Column="0" Data="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"
+                                                      Width="13" Height="13" Stretch="Uniform"
+                                                      Margin="0 0 6 0"
+                                                      VerticalAlignment="Top"
+                                                      Fill="#10B981"
+                                                      IsVisible="{Binding Imported}" />
+                                                <Path Grid.Column="0" Data="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-5.5 14.5L8 18l4-4 4 4 1.5-1.5-4-4 4-4L16 7l-4 4-4-4-1.5 1.5 4 4-4 4z"
+                                                      Width="13" Height="13" Stretch="Uniform"
+                                                      Margin="0 0 6 0"
+                                                      VerticalAlignment="Top"
+                                                      Fill="{DynamicResource TextSecondaryBrush}"
+                                                      IsVisible="{Binding Skipped}" />
+                                                <Path Grid.Column="0" Data="M12 2L1 21h22L12 2zm1 15h-2v2h2v-2zm0-6h-2v4h2v-4z"
+                                                      Width="13" Height="13" Stretch="Uniform"
+                                                      Margin="0 0 6 0"
+                                                      VerticalAlignment="Top"
+                                                      Fill="{DynamicResource WarningBrush}"
+                                                      IsVisible="{Binding Warning}" />
                                                 <TextBlock Grid.Column="1" Text="{Binding Name}"
                                                            FontSize="12" FontWeight="SemiBold"
                                                            VerticalAlignment="Top" />
@@ -232,7 +242,9 @@
                             Classes="accent"
                             HorizontalAlignment="Center"
                             Margin="0 8 0 0">
-                        <ui:FontIcon Glyph="&#xE73E;" FontSize="18" />
+                        <Path Data="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"
+                              Width="18" Height="18" Stretch="Uniform"
+                              Fill="White" />
                     </Button>
                 </StackPanel>
             </Border>
