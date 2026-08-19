@@ -19,6 +19,12 @@ public partial class SettingsHomePage : UserControl
     // 超过这个距离才算拖拽，否则当作点击
     private const double DragThreshold = 4;
 
+    // 拖拽自动滚动：指针靠近预览可视区上下边缘时触发，每帧滚动一个步长
+    private const double AutoScrollEdge = 36;
+    private const double AutoScrollStep = 18;
+    private readonly DispatcherTimer _autoScrollTimer = new() { Interval = TimeSpan.FromMilliseconds(16) };
+    private int _autoScrollDir; // -1 向上、0 不动、1 向下
+
     private static readonly Cursor DragCursor = new(StandardCursorType.DragMove);
 
     private Point _pressPos;
@@ -35,6 +41,7 @@ public partial class SettingsHomePage : UserControl
         InitializeComponent();
         // 捕获被系统拿走（窗口切换等）时收尾，避免卡在拖拽状态
         PointerCaptureLost += OnPointerCaptureLost;
+        _autoScrollTimer.Tick += OnAutoScrollTick;
     }
 
     // 页面经 Frame 导航创建，DataContext 继承的是 SettingsViewModel，
@@ -190,6 +197,7 @@ public partial class SettingsHomePage : UserControl
             _ => string.Empty
         };
         DragGhost.IsVisible = true;
+        _autoScrollTimer.Start();
         UpdateDrag(e);
     }
 
@@ -197,6 +205,20 @@ public partial class SettingsHomePage : UserControl
     {
         var pos = e.GetPosition(PageRoot);
         DragGhost.Margin = new Thickness(pos.X + 14, pos.Y + 12, 0, 0);
+
+        // 指针进入预览可视区上下边缘带时，标记自动滚动方向（到边界后由定时器自然停止）
+        var scPos = e.GetPosition(PreviewScroll);
+        var viewH = PreviewScroll.Viewport.Height;
+        _autoScrollDir = 0;
+        if (scPos.Y < AutoScrollEdge && PreviewScroll.Offset.Y > 0.5)
+        {
+            _autoScrollDir = -1;
+        }
+        else if (scPos.Y > viewH - AutoScrollEdge &&
+                 PreviewScroll.Offset.Y < PreviewScroll.Extent.Height - viewH - 0.5)
+        {
+            _autoScrollDir = 1;
+        }
 
         var row = HitRowRoot(pos)?.DataContext as HomeRowViewModel;
         if (!ReferenceEquals(row, _dropTargetRow))
@@ -211,6 +233,16 @@ public partial class SettingsHomePage : UserControl
                 row.IsDropTarget = true;
             }
         }
+    }
+
+    // 拖拽自动滚动：按 UpdateDrag 标记的方向每帧滚动一小步
+    private void OnAutoScrollTick(object? sender, EventArgs e)
+    {
+        if (!_isDragging || _autoScrollDir == 0) return;
+
+        var maxY = Math.Max(0, PreviewScroll.Extent.Height - PreviewScroll.Viewport.Height);
+        var newY = Math.Clamp(PreviewScroll.Offset.Y + _autoScrollDir * AutoScrollStep, 0, maxY);
+        PreviewScroll.Offset = PreviewScroll.Offset.WithY(newY);
     }
 
     private void EndDrag(PointerReleasedEventArgs e)
@@ -251,6 +283,8 @@ public partial class SettingsHomePage : UserControl
     {
         _isDragging = false;
         _pendingDrag = null;
+        _autoScrollTimer.Stop();
+        _autoScrollDir = 0;
         if (_dropTargetRow != null)
         {
             _dropTargetRow.IsDropTarget = false;
