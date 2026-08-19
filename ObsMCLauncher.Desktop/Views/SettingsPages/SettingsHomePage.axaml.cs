@@ -75,7 +75,7 @@ public partial class SettingsHomePage : UserControl
     // 组件库按下：同样捕获，release 时按是否拖拽区分"点击添加"与"拖入预览"
     private void LibraryChip_PointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        if (sender is not Button { DataContext: LibraryComponentItem item })
+        if (sender is not Border { DataContext: LibraryComponentItem item })
         {
             return;
         }
