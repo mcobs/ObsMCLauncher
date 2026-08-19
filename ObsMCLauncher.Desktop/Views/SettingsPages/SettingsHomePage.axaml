@@ -232,7 +232,7 @@
   </UserControl.Styles>
 
   <Grid x:Name="PageRoot">
-    <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <ScrollViewer x:Name="PageScroll" VerticalScrollBarVisibility="Auto">
       <StackPanel Margin="12,16,12,24" Spacing="14">
 
         <Grid ColumnDefinitions="*,Auto">

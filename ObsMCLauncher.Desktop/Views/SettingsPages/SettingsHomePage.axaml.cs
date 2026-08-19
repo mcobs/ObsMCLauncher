@@ -206,16 +206,16 @@ public partial class SettingsHomePage : UserControl
         var pos = e.GetPosition(PageRoot);
         DragGhost.Margin = new Thickness(pos.X + 14, pos.Y + 12, 0, 0);
 
-        // 指针进入预览可视区上下边缘带时，标记自动滚动方向（到边界后由定时器自然停止）
+        // 指针进入预览可视区上下边缘带时，标记自动滚动方向。
+        // 预览内部内容不足（无法滚动）时由 DoAutoScroll 兜底滚外层页面
         var scPos = e.GetPosition(PreviewScroll);
         var viewH = PreviewScroll.Viewport.Height;
         _autoScrollDir = 0;
-        if (scPos.Y < AutoScrollEdge && PreviewScroll.Offset.Y > 0.5)
+        if (scPos.Y < AutoScrollEdge)
         {
             _autoScrollDir = -1;
         }
-        else if (scPos.Y > viewH - AutoScrollEdge &&
-                 PreviewScroll.Offset.Y < PreviewScroll.Extent.Height - viewH - 0.5)
+        else if (scPos.Y > viewH - AutoScrollEdge)
         {
             _autoScrollDir = 1;
         }
@@ -235,14 +235,33 @@ public partial class SettingsHomePage : UserControl
         }
     }
 
-    // 拖拽自动滚动：按 UpdateDrag 标记的方向每帧滚动一小步
+    // 拖拽自动滚动：优先滚预览内部，预览到边界（或内容不足滚不动）时滚外层设置页，
+    // 保证拖到边缘总有可滚动的对象
+    private void DoAutoScroll()
+    {
+        var sc = PreviewScroll;
+        var maxY = Math.Max(0, sc.Extent.Height - sc.Viewport.Height);
+
+        if (_autoScrollDir < 0 && sc.Offset.Y > 0.5)
+        {
+            sc.Offset = sc.Offset.WithY(Math.Max(0, sc.Offset.Y + _autoScrollDir * AutoScrollStep));
+        }
+        else if (_autoScrollDir > 0 && sc.Offset.Y < maxY - 0.5)
+        {
+            sc.Offset = sc.Offset.WithY(Math.Min(maxY, sc.Offset.Y + _autoScrollDir * AutoScrollStep));
+        }
+        else if (_autoScrollDir != 0 && PageScroll is { } page)
+        {
+            // 预览滚不动，滚整个设置页
+            var pageMax = Math.Max(0, page.Extent.Height - page.Viewport.Height);
+            page.Offset = page.Offset.WithY(Math.Clamp(page.Offset.Y + _autoScrollDir * AutoScrollStep * 2, 0, pageMax));
+        }
+    }
+
     private void OnAutoScrollTick(object? sender, EventArgs e)
     {
         if (!_isDragging || _autoScrollDir == 0) return;
-
-        var maxY = Math.Max(0, PreviewScroll.Extent.Height - PreviewScroll.Viewport.Height);
-        var newY = Math.Clamp(PreviewScroll.Offset.Y + _autoScrollDir * AutoScrollStep, 0, maxY);
-        PreviewScroll.Offset = PreviewScroll.Offset.WithY(newY);
+        DoAutoScroll();
     }
 
     private void EndDrag(PointerReleasedEventArgs e)
