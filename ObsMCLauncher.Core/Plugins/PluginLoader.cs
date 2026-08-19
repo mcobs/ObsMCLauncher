@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using ObsMCLauncher.Core.Utils;
 
 namespace ObsMCLauncher.Core.Plugins;
@@ -113,6 +114,105 @@ public class PluginLoader
         }
     }
 
+    /// <summary>
+    /// 只加载指定 id 的单个插件（用于市场安装后增量加载，避免全量重扫导致已加载插件重复 OnLoad）
+    /// </summary>
+    public bool LoadPluginById(string pluginId)
+    {
+        var pluginDir = Path.Combine(_pluginsDirectory, pluginId);
+        if (!Directory.Exists(pluginDir))
+        {
+            DebugLogger.Warn("PluginLoader", $"插件目录不存在: {pluginDir}");
+            return false;
+        }
+
+        _loadedPlugins.RemoveAll(p => p.Id == pluginId);
+
+        try
+        {
+            LoadPlugin(pluginDir);
+            return _loadedPlugins.Any(p => p.Id == pluginId && p.IsLoaded);
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Error("PluginLoader", $"加载插件失败 [{pluginId}]: {ex.Message}");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 校验插件元数据，返回错误信息；校验通过返回 null
+    /// </summary>
+    private string? ValidatePluginMetadata(PluginMetadata metadata, string pluginDirName)
+    {
+        if (string.IsNullOrWhiteSpace(metadata.Id))
+            return "plugin.json 缺少 id 字段";
+
+        // 目录名必须与插件 id 一致（文档约定）
+        if (!string.Equals(metadata.Id, pluginDirName, StringComparison.OrdinalIgnoreCase))
+            return $"插件目录名 ({pluginDirName}) 与 id ({metadata.Id}) 不一致，目录名必须与插件 id 完全一致";
+
+        // id 格式：小写字母开头，仅含小写字母/数字/连字符，长度 3-50
+        if (!Regex.IsMatch(metadata.Id, "^[a-z][a-z0-9-]{2,49}$"))
+            return "插件 id 不规范：必须以小写字母开头，仅含小写字母/数字/连字符，长度 3-50";
+
+        if (string.IsNullOrWhiteSpace(metadata.Name))
+            return "plugin.json 缺少 name 字段";
+        if (string.IsNullOrWhiteSpace(metadata.Version))
+            return "plugin.json 缺少 version 字段";
+
+        // id 唯一性
+        if (_loadedPlugins.Any(p => p.Id == metadata.Id))
+            return $"插件 id '{metadata.Id}' 已存在，不允许重复";
+
+        // 最低启动器版本要求
+        if (!string.IsNullOrWhiteSpace(metadata.MinLauncherVersion) &&
+            CompareVersions(metadata.MinLauncherVersion, VersionInfo.Version) > 0)
+        {
+            return $"需要启动器 v{metadata.MinLauncherVersion} 或更高，当前为 v{VersionInfo.Version}";
+        }
+
+        // 依赖检查：声明依赖的插件必须已加载
+        if (metadata.Dependencies != null && metadata.Dependencies.Length > 0)
+        {
+            var missing = metadata.Dependencies
+                .Where(dep => !_loadedPlugins.Any(p => p.Id == dep && p.IsLoaded))
+                .ToList();
+            if (missing.Count > 0)
+                return $"缺少依赖插件: {string.Join(", ", missing)}";
+        }
+
+        return null;
+    }
+
+    private static int CompareVersions(string a, string b)
+    {
+        var pa = ParseVersionParts(a);
+        var pb = ParseVersionParts(b);
+        var len = Math.Max(pa.Length, pb.Length);
+        for (int i = 0; i < len; i++)
+        {
+            var va = i < pa.Length ? pa[i] : 0;
+            var vb = i < pb.Length ? pb[i] : 0;
+            if (va != vb) return va.CompareTo(vb);
+        }
+        return 0;
+    }
+
+    private static int[] ParseVersionParts(string v)
+    {
+        var result = new List<int>();
+        var head = v.Trim().Split('-', '+')[0];
+        foreach (var part in head.Split('.'))
+        {
+            if (int.TryParse(part, out var n))
+                result.Add(n);
+            else
+                break;
+        }
+        return result.ToArray();
+    }
+
     private void LoadPlugin(string pluginDirectory)
     {
         var pluginDirName = Path.GetFileName(pluginDirectory);
@@ -138,6 +238,30 @@ public class PluginLoader
         catch (Exception ex)
         {
             DebugLogger.Error("PluginLoader", $"解析 plugin.json 失败: {ex.Message}");
+            return;
+        }
+
+        // 元数据校验（id 格式/目录一致/重复/依赖/最低版本）
+        var validationMessage = ValidatePluginMetadata(metadata, pluginDirName);
+        if (validationMessage != null)
+        {
+            DebugLogger.Warn("PluginLoader", $"插件校验失败 [{metadata.Name ?? pluginDirName}]: {validationMessage}");
+
+            _loadedPlugins.Add(new LoadedPlugin
+            {
+                Id = metadata.Id,
+                Name = metadata.Name ?? string.Empty,
+                Version = metadata.Version,
+                Author = metadata.Author,
+                Description = metadata.Description,
+                DirectoryPath = pluginDirectory,
+                Metadata = metadata,
+                IsLoaded = false,
+                ErrorMessage = "插件校验失败",
+                ErrorOutput = validationMessage
+            });
+
+            CreateDisabledMarker(pluginDirectory);
             return;
         }
 

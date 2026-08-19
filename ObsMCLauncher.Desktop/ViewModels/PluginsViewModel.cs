@@ -548,7 +548,7 @@ public partial class PluginsViewModel : ViewModelBase
             if (success)
             {
                 _notificationService.ShowCountdown("安装成功", $"插件 {plugin.Name} 已安装，重启启动器生效", 3);
-                _pluginLoader.LoadAllPlugins();
+                _pluginLoader.LoadPluginById(plugin.Id);
                 await RefreshInstalledAsync();
                 CurrentTab = PluginSubTab.Installed;
             }
