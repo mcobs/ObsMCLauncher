@@ -3,6 +3,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
 using ObsMCLauncher.Desktop.ViewModels;
 
@@ -30,13 +31,22 @@ public partial class SettingsHomePage : UserControl
     }
 
     // 页面经 Frame 导航创建，DataContext 继承的是 SettingsViewModel，
-    // 这里换成主页编辑器自己的视图模型
+    // 这里换成主页编辑器自己的视图模型。
+    // 用 Dispatcher 延迟一帧，确保 XAML 绑定先用 SettingsViewModel 解析完，再切到 SettingsHomeViewModel
     protected override void OnDataContextChanged(EventArgs e)
     {
         base.OnDataContextChanged(e);
         if (DataContext is SettingsViewModel svm && svm.SettingsHome != null)
         {
-            DataContext = svm.SettingsHome;
+            var homeVm = svm.SettingsHome;
+            Dispatcher.UIThread.Post(() =>
+            {
+                // 再次检查，避免重复切换
+                if (!ReferenceEquals(DataContext, homeVm))
+                {
+                    DataContext = homeVm;
+                }
+            }, DispatcherPriority.Loaded);
         }
     }
 

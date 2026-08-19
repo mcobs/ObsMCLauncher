@@ -34,7 +34,7 @@
               Cursor="Hand">
         <Panel>
           <!-- 组件真实渲染（模板来自 App 级），预览中不响应交互 -->
-          <ContentControl Content="{Binding}" IsHitTestVisible="False"/>
+          <ContentPresenter Content="{Binding}" IsHitTestVisible="False"/>
           <!-- 选中态虚线框 -->
           <Border Classes="edit-comp-selection"
                   IsVisible="{Binding IsEditorSelected}"

@@ -1,8 +1,11 @@
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.Input;
 using ObsMCLauncher.Core.Models;
 using ObsMCLauncher.Core.Services;
+using ObsMCLauncher.Core.Utils;
 
 namespace ObsMCLauncher.Desktop.ViewModels;
 
@@ -98,7 +101,33 @@ public sealed class SettingsHomeViewModel : ViewModelBase
             RefreshLibrary();
         });
 
-        RefreshLibrary();
+        // 延迟到 UI 空闲后刷新，确保 HomeViewModel 的 BuildHomeRows 已完成
+        Dispatcher.UIThread.Post(() =>
+        {
+            EnsureDataReady();
+            RefreshLibrary();
+        }, DispatcherPriority.ApplicationIdle);
+    }
+
+    /// <summary>确保 HomeComponentRegistry 和 Home.HomeRows 已就绪</summary>
+    private void EnsureDataReady()
+    {
+        // 强制触发 HomeComponentRegistry 静态构造函数
+        // （访问任意静态成员即可触发，这里用 TryGet 来确保）
+        HomeComponentRegistry.TryGet(HomeComponentRegistry.WelcomeId);
+        var registryCount = HomeComponentRegistry.GetAll().Count;
+
+        if (registryCount == 0)
+        {
+            DebugLogger.Warn("SettingsHome", "HomeComponentRegistry is empty after forcing init");
+        }
+
+        // 如果主页行为空，强制重建
+        if (Home.HomeRows.Count == 0)
+        {
+            DebugLogger.Warn("SettingsHome", "Home.HomeRows is empty, forcing rebuild");
+            Home.ForceRebuildRows();
+        }
     }
 
     /// <summary>选中组件（点击编辑器中的组件时调用）</summary>
@@ -144,7 +173,11 @@ public sealed class SettingsHomeViewModel : ViewModelBase
     /// <summary>从注册表重建组件库（含"已添加"状态）</summary>
     public void RefreshLibrary()
     {
+        var all = HomeComponentRegistry.GetAll();
+        DebugLogger.Info("SettingsHome", $"RefreshLibrary: registry has {all.Count} components, home rows={Home?.HomeRows.Count ?? -1}");
+
         LibraryGroups.Clear();
+        var rowsLookup = new HashSet<string>(Home!.HomeRows.SelectMany(r => r.Components).Select(c => c.Id));
         foreach (var group in HomeComponentRegistry.GetGrouped())
         {
             var vm = new LibraryGroupViewModel { DisplayName = group.DisplayName };
@@ -153,9 +186,10 @@ public sealed class SettingsHomeViewModel : ViewModelBase
                 vm.Items.Add(new LibraryComponentItem
                 {
                     Descriptor = descriptor,
-                    IsAdded = Home.HomeRows.Any(r => r.Components.Any(c => c.Id == descriptor.Id))
+                    IsAdded = rowsLookup.Contains(descriptor.Id)
                 });
             }
+            DebugLogger.Info("SettingsHome", $"  Group '{group.DisplayName}' has {vm.Items.Count} items");
             LibraryGroups.Add(vm);
         }
     }

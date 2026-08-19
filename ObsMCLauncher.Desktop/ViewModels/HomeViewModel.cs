@@ -267,6 +267,8 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
         HomeRows.Clear();
 
         var layout = LauncherConfig.Load().GetHomeLayout();
+        DebugLogger.Info("Home", $"BuildHomeRows: layout has {layout.Rows.Count} rows, {layout.Rows.Sum(r => r.Components.Count)} components total");
+
         foreach (var row in layout.Rows)
         {
             var rowVm = new HomeRowViewModel { IsPinnedToBottom = row.IsPinnedToBottom };
@@ -277,9 +279,15 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
                 {
                     rowVm.Components.Add(vm);
                 }
+                else
+                {
+                    DebugLogger.Warn("Home", $"BuildHomeRows: skipped component '{comp.Id}' (CreateComponentVM returned null)");
+                }
             }
             HomeRows.Add(rowVm);
         }
+
+        DebugLogger.Info("Home", $"BuildHomeRows: {HomeRows.Count} rows built, {HomeRows.Sum(r => r.Components.Count)} components, HomeCards has {HomeCards.Count} items");
 
         SyncRenderRows();
     }
@@ -523,6 +531,12 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
         var config = LauncherConfig.Load();
         config.HomeLayout = HomeLayoutConfig.CreateDefault(config.HomeCards);
         config.Save();
+        BuildHomeRows();
+    }
+
+    /// <summary>强制从配置重建行（设置页编辑器兜底用）</summary>
+    public void ForceRebuildRows()
+    {
         BuildHomeRows();
     }
 
