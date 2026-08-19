@@ -20,6 +20,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using ObsMCLauncher.Core.Models;
 using ObsMCLauncher.Core.Services;
+using ObsMCLauncher.Core.Services.Download;
 using ObsMCLauncher.Core.Services.Mirror;
 using ObsMCLauncher.Core.Utils;
 using ObsMCLauncher.Desktop.Services;
@@ -548,36 +549,69 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
         }
     }
 
-    // 同名字体复用同一实例：避免频繁切换时反复解析字体
+    private CancellationTokenSource? _fontApplyCts;
+
+    // 同名字体复用同一实例：频繁切换时反复 new FontFamily 会触发全界面
+    // 字形重排，容易出现残影/合成粗体叠加等渲染异常，缓存可显著缓解
     private readonly Dictionary<string, FontFamily> _fontFamilyCache = [];
+
+    // 主字体缺字形时的回退链，末尾的中文字体保证中文不乱码
+    private static readonly string[] CjkFallbackFonts =
+        ["Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC", "Noto Sans SC"];
+
+    // 构造「主字体, 平台默认, 中文字体」复合字体，缺字形时按顺序回退
+    private static FontFamily BuildFontFamily(string primary)
+    {
+        var names = new List<string> { primary };
+        var defaultName = FontManager.Current.DefaultFontFamily?.Name;
+        if (!string.IsNullOrEmpty(defaultName) && !names.Contains(defaultName))
+        {
+            names.Add(defaultName);
+        }
+        foreach (var f in CjkFallbackFonts)
+        {
+            if (!names.Contains(f)) names.Add(f);
+        }
+        return new FontFamily(string.Join(", ", names));
+    }
 
     private void ApplyFont()
     {
-        if (Application.Current?.Resources is not { } resources) return;
-
-        // 同步应用：字体/字重下拉都在 UI 线程触发，直接改资源即可。
-        // 之前用 Dispatcher.Post + 取消令牌，快速切换时会丢更新，表现为切换后不变
-        var family = string.IsNullOrWhiteSpace(_config.CustomFontFamily)
-            ? FontFamily.Default
-            : GetOrCreateFontFamily(_config.CustomFontFamily);
-
-        resources["GlobalFontFamily"] = family;
-        // FA 控件（导航栏等）通过该令牌读字体，必须同步覆盖才跟随自定义字体
-        resources["ContentControlThemeFontFamily"] = family;
-        resources["GlobalFontWeight"] = (FontWeight)Math.Clamp(_config.CustomFontWeight, 100, 950);
-    }
-
-    // 自定义字体后接一个中文兜底字体，纯西文字体显示中文时不会出现方框。
-    // 刻意只用两个字体，避免多字体复合链引发字形重叠/残影等渲染伪影
-    private FontFamily GetOrCreateFontFamily(string name)
-    {
-        if (_fontFamilyCache.TryGetValue(name, out var cached))
+        _fontApplyCts?.Cancel();
+        _fontApplyCts = new CancellationTokenSource();
+        var token = _fontApplyCts.Token;
+        Dispatcher.UIThread.Post(() =>
         {
-            return cached;
-        }
-        var family = new FontFamily($"{name}, Microsoft YaHei UI");
-        _fontFamilyCache[name] = family;
-        return family;
+            if (token.IsCancellationRequested) return;
+            if (Application.Current?.Resources is not { } resources) return;
+
+            FontFamily family;
+            if (string.IsNullOrWhiteSpace(_config.CustomFontFamily))
+            {
+                // 恢复默认：显式写回系统默认字体，而不是 Remove。
+                // 移除键时 DynamicResource 不一定重新解析，FA 控件会残留旧字体，
+                // 表现为切回默认后仍是上次字体、反复切换也恢复不了
+                var defaultName = FontManager.Current.DefaultFontFamily?.Name;
+                family = string.IsNullOrEmpty(defaultName)
+                    ? FontFamily.Default
+                    : BuildFontFamily(defaultName);
+            }
+            else
+            {
+                if (!_fontFamilyCache.TryGetValue(_config.CustomFontFamily, out var cached))
+                {
+                    cached = BuildFontFamily(_config.CustomFontFamily);
+                    _fontFamilyCache[_config.CustomFontFamily] = cached;
+                }
+                family = cached;
+            }
+
+            resources["GlobalFontFamily"] = family;
+            // FA 控件样式显式引用该令牌，不写的话导航栏等不跟随自定义字体；
+            // 恢复默认时也写回同一默认字体，保证彻底还原
+            resources["ContentControlThemeFontFamily"] = family;
+            resources["GlobalFontWeight"] = (FontWeight)Math.Clamp(_config.CustomFontWeight, 100, 950);
+        });
     }
 
     // 壁纸位图与画刷缓存：调透明度/拉伸时直接复用，避免反复解码大图
@@ -1333,8 +1367,45 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
             return;
         }
 
-        main.Notifications.Show("下载源测试", $"当前下载源: {DownloadSource}", ViewModels.Notifications.NotificationType.Info, 3);
-        await Task.CompletedTask;
+        // 根据当前选择的下载源取对应的服务，并以其版本清单接口作为连通性测试目标
+        var sourceName = DownloadSource == DownloadSource.Official ? "官方源" : "BMCLAPI 镜像";
+        var service = DownloadSource == DownloadSource.Official
+            ? (IDownloadSourceService)new MojangDownloadSourceService()
+            : new BmclapiDownloadSourceService();
+        var url = service.GetVersionManifestUrl();
+
+        string message;
+        NotificationType type;
+        var sw = Stopwatch.StartNew();
+        try
+        {
+            using var client = HttpClientFactory.CreateClient(timeout: TimeSpan.FromSeconds(10));
+            using var response = await client.GetAsync(url).ConfigureAwait(false);
+            sw.Stop();
+
+            if (response.IsSuccessStatusCode)
+            {
+                message = $"{sourceName}连接正常，延迟约 {sw.ElapsedMilliseconds} ms";
+                type = NotificationType.Success;
+            }
+            else
+            {
+                message = $"{sourceName}响应异常（HTTP {(int)response.StatusCode}）";
+                type = NotificationType.Warning;
+            }
+        }
+        catch (Exception ex)
+        {
+            sw.Stop();
+            message = $"{sourceName}连接失败：{ex.Message}";
+            type = NotificationType.Error;
+        }
+
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            Status = $"下载源测试：{message}";
+            main.Notifications.Show("下载源测试", message, type, 5);
+        });
     }
 
     private void ResetDefaults()
@@ -1608,6 +1679,8 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
         }
         _saveNotifyCts?.Cancel();
         _saveNotifyCts?.Dispose();
+        _fontApplyCts?.Cancel();
+        _fontApplyCts?.Dispose();
         GC.SuppressFinalize(this);
     }
 
