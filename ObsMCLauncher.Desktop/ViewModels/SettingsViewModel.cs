@@ -757,9 +757,25 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
             {
                 faTheme.CustomAccentColor = ResolveAccentColor();
             }
+
+            // 主页欢迎卡片渐变跟随强调色：起点为压暗后的同色系
+            if (Application.Current?.Resources is { } resources)
+            {
+                var accent = ResolveAccentColor();
+                resources["HomeWelcomeGradientStart"] = Darken(accent, 0.7);
+                resources["HomeWelcomeGradientEnd"] = accent;
+            }
+
             UpdateThemeResources(_config.ThemeMode);
         });
     }
+
+    /// <summary>按比例压暗颜色（factor 越小越暗，0.7 表示保留 70% 亮度）</summary>
+    private static Color Darken(Color c, double factor)
+        => Color.FromRgb(
+            (byte)Math.Round(c.R * factor),
+            (byte)Math.Round(c.G * factor),
+            (byte)Math.Round(c.B * factor));
 
     /// <summary>圆角半径应用到全局圆角资源（主要容器读取）</summary>
     private void ApplyCornerRadius()

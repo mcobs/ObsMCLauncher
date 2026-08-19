@@ -33,6 +33,10 @@
     <SolidColorBrush x:Key="AccentBrush" Color="#10B981"/>
     <SolidColorBrush x:Key="AccentSecondaryBrush" Color="#34D399"/>
 
+    <!-- 主页欢迎卡片渐变（运行时由设置按强调色覆盖，此处为默认绿） -->
+    <Color x:Key="HomeWelcomeGradientStart">#059669</Color>
+    <Color x:Key="HomeWelcomeGradientEnd">#10B981</Color>
+
     <!-- 旧主色别名，全部收敛到 #10B981 / #34D399，保证向后兼容 -->
     <SolidColorBrush x:Key="PrimaryBrush" Color="#10B981"/>
     <SolidColorBrush x:Key="PrimaryDarkBrush" Color="#10B981"/>
