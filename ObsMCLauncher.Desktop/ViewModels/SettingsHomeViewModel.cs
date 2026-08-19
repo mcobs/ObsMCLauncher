@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using Avalonia.Threading;
@@ -9,17 +8,10 @@ using ObsMCLauncher.Core.Utils;
 
 namespace ObsMCLauncher.Desktop.ViewModels;
 
-/// <summary>组件库条目</summary>
-public sealed class LibraryComponentItem : ViewModelBase
+/// <summary>组件库条目（同一组件可重复添加，无"已添加"状态）</summary>
+public sealed class LibraryComponentItem
 {
     public required HomeComponentDescriptor Descriptor { get; init; }
-
-    private bool _isAdded;
-    public bool IsAdded
-    {
-        get => _isAdded;
-        set => SetProperty(ref _isAdded, value);
-    }
 
     public string Title => Descriptor.Title;
 
@@ -142,14 +134,11 @@ public sealed class SettingsHomeViewModel : ViewModelBase
         if (SelectedComponent == null) return;
         Home.RemoveComponent(SelectedComponent);
         SelectedComponent = null;
-        RefreshLibrary();
     }
 
     /// <summary>点击组件库条目添加组件：优先加到选中组件所在行，否则加到最后的滚动行</summary>
     public void AddComponentFromLibrary(LibraryComponentItem item)
     {
-        if (item.IsAdded) return;
-
         var row = SelectedComponent != null
             ? Home.HomeRows.FirstOrDefault(r => r.Components.Contains(SelectedComponent))
             : null;
@@ -167,29 +156,19 @@ public sealed class SettingsHomeViewModel : ViewModelBase
         {
             SelectedComponent = added;
         }
-        RefreshLibrary();
     }
 
-    /// <summary>从注册表重建组件库（含"已添加"状态）</summary>
+    /// <summary>从注册表重建组件库（同一组件可重复添加，条目无状态）</summary>
     public void RefreshLibrary()
     {
-        var all = HomeComponentRegistry.GetAll();
-        DebugLogger.Info("SettingsHome", $"RefreshLibrary: registry has {all.Count} components, home rows={Home?.HomeRows.Count ?? -1}");
-
         LibraryGroups.Clear();
-        var rowsLookup = new HashSet<string>(Home!.HomeRows.SelectMany(r => r.Components).Select(c => c.Id));
         foreach (var group in HomeComponentRegistry.GetGrouped())
         {
             var vm = new LibraryGroupViewModel { DisplayName = group.DisplayName };
             foreach (var descriptor in group.Components)
             {
-                vm.Items.Add(new LibraryComponentItem
-                {
-                    Descriptor = descriptor,
-                    IsAdded = rowsLookup.Contains(descriptor.Id)
-                });
+                vm.Items.Add(new LibraryComponentItem { Descriptor = descriptor });
             }
-            DebugLogger.Info("SettingsHome", $"  Group '{group.DisplayName}' has {vm.Items.Count} items");
             LibraryGroups.Add(vm);
         }
     }

@@ -421,19 +421,9 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
         config.Save();
     }
 
-    /// <summary>添加组件到指定行的指定位置（index 超出范围时追加到行尾），返回新组件；重复添加返回已有实例</summary>
+    /// <summary>添加组件到指定行的指定位置（index 超出范围时追加到行尾），同一组件可重复添加</summary>
     public HomeComponentViewModel? AddComponentToRow(string componentId, HomeRowViewModel row, int index)
     {
-        var existing = HomeRows.SelectMany(r => r.Components).FirstOrDefault(c => c.Id == componentId);
-        if (existing != null) return existing;
-
-        // 卡片类组件添加即视为启用
-        var card = HomeCards.FirstOrDefault(c => c.CardId == componentId);
-        if (card != null)
-        {
-            card.IsEnabled = true;
-        }
-
         var descriptor = HomeComponentRegistry.TryGet(componentId);
         var vm = CreateComponentVM(componentId, descriptor?.DefaultSize ?? HomeCardSize.Medium);
         if (vm == null) return null;
@@ -448,17 +438,11 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
         return vm;
     }
 
-    /// <summary>移除组件；卡片类组件同时标记为禁用（组件库可重新添加）</summary>
+    /// <summary>移除组件（布局即唯一真相，组件库可随时重新添加）</summary>
     public void RemoveComponent(HomeComponentViewModel component)
     {
         var row = HomeRows.FirstOrDefault(r => r.Components.Contains(component));
         row?.Components.Remove(component);
-
-        var card = HomeCards.FirstOrDefault(c => c.CardId == component.Id);
-        if (card != null)
-        {
-            card.IsEnabled = false;
-        }
 
         PersistHomeLayout();
     }

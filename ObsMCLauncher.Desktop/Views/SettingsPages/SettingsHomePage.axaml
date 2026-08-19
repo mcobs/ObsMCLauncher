@@ -43,14 +43,37 @@
       </Border>
     </DataTemplate>
 
-    <!-- 编辑器中的行：组件容器 + 行工具条 -->
+    <!-- 编辑器中的行：组件容器 + 空行占位 + 行工具条 + 拖拽落点高亮 -->
     <DataTemplate x:Key="EditableRowTemplate" x:DataType="vm:HomeRowViewModel">
-      <Panel Margin="0,0,0,16">
-        <ItemsControl ItemsSource="{Binding Components}"
-                      MinHeight="44">
+      <Panel Classes="edit-row-root" Margin="0,0,0,16" MinHeight="44">
+        <!-- 空行占位：保证新建的行看得见、可悬停出工具条 -->
+        <Border Classes="edit-row-empty" IsVisible="{Binding IsEmpty}" MinHeight="44">
+          <TextBlock Text="空行：拖拽组件到这里"
+                     FontSize="12"
+                     Foreground="{DynamicResource TextTertiaryBrush}"
+                     HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        </Border>
+
+        <!-- 常规行：一排到底，放不下时按宽度等比缩小（与真实主页一致） -->
+        <Viewbox Stretch="Uniform" StretchDirection="DownOnly" HorizontalAlignment="Left"
+                 IsVisible="{Binding !IsSingleFill}">
+          <ItemsControl ItemsSource="{Binding Components}" MinHeight="44">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <StackPanel Orientation="Horizontal"/>
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <StaticResource ResourceKey="EditableComponentTemplate"/>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </Viewbox>
+
+        <!-- 单个 Fill 组件独占整行 -->
+        <ItemsControl ItemsSource="{Binding Components}" IsVisible="{Binding IsSingleFill}">
           <ItemsControl.ItemsPanel>
             <ItemsPanelTemplate>
-              <WrapPanel Orientation="Horizontal"/>
+              <Grid/>
             </ItemsPanelTemplate>
           </ItemsControl.ItemsPanel>
           <ItemsControl.ItemTemplate>
@@ -71,6 +94,9 @@
             </Button>
           </StackPanel>
         </Border>
+
+        <!-- 拖拽落点高亮 -->
+        <Border Classes="edit-row-drop" IsVisible="{Binding IsDropTarget}" IsHitTestVisible="False"/>
       </Panel>
     </DataTemplate>
   </UserControl.Resources>
@@ -93,6 +119,21 @@
       <Setter Property="CornerRadius" Value="6"/>
       <Setter Property="Margin" Value="-3"/>
       <Setter Property="Opacity" Value="0.9"/>
+    </Style>
+    <!-- 空行占位 -->
+    <Style Selector="Border.edit-row-empty">
+      <Setter Property="BorderBrush" Value="{DynamicResource DividerBrush}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="CornerRadius" Value="8"/>
+      <Setter Property="Background" Value="{DynamicResource LayerFillColorPrimaryBrush}"/>
+      <Setter Property="Opacity" Value="0.7"/>
+    </Style>
+    <!-- 拖拽落点高亮 -->
+    <Style Selector="Border.edit-row-drop">
+      <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+      <Setter Property="BorderThickness" Value="1.5"/>
+      <Setter Property="CornerRadius" Value="8"/>
+      <Setter Property="Background" Value="#1410B981"/>
     </Style>
     <Style Selector="Border.edit-row-toolbar">
       <Setter Property="HorizontalAlignment" Value="Right"/>
@@ -126,6 +167,16 @@
     <Style Selector="Button.edit-tool-btn:pointerover /template/ ContentPresenter#PART_ContentPresenter">
       <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}"/>
     </Style>
+    <!-- 拖拽跟随光标的浮层 -->
+    <Style Selector="Border.drag-ghost">
+      <Setter Property="Background" Value="{DynamicResource SurfaceElevatedBrush}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="CornerRadius" Value="6"/>
+      <Setter Property="Padding" Value="10,6"/>
+      <Setter Property="Opacity" Value="0.92"/>
+      <Setter Property="BoxShadow" Value="0 4 16 0 #40000000"/>
+    </Style>
     <!-- 组件库条目 -->
     <Style Selector="Button.lib-chip">
       <Setter Property="Padding" Value="10,8"/>
@@ -139,130 +190,131 @@
       <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}"/>
       <Setter Property="RenderTransform" Value="translateY(-1px)"/>
     </Style>
-    <Style Selector="Button.lib-chip:disabled">
-      <Setter Property="Opacity" Value="0.45"/>
-    </Style>
   </UserControl.Styles>
 
-  <ScrollViewer VerticalScrollBarVisibility="Auto">
-    <StackPanel Margin="12,16,12,24" Spacing="14">
+  <Grid x:Name="PageRoot">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+      <StackPanel Margin="12,16,12,24" Spacing="14">
 
-      <Grid ColumnDefinitions="*,Auto">
-        <TextBlock Grid.Column="0" Text="主页自定义" FontSize="22" FontWeight="SemiBold" VerticalAlignment="Center"/>
-        <Button Grid.Column="1" Content="恢复默认布局" Classes="ghost"
-                Command="{Binding ResetLayoutCommand}" VerticalAlignment="Center"/>
-      </Grid>
+        <Grid ColumnDefinitions="*,Auto">
+          <TextBlock Grid.Column="0" Text="主页自定义" FontSize="22" FontWeight="SemiBold" VerticalAlignment="Center"/>
+          <Button Grid.Column="1" Content="恢复默认布局" Classes="ghost"
+                  Command="{Binding ResetLayoutCommand}" VerticalAlignment="Center"/>
+        </Grid>
 
-      <TextBlock Text="在预览中点击组件进行选择，从下方组件库拖入新组件；改动实时保存并同步到主页。"
-                 FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap"/>
+        <TextBlock Text="在预览中点击组件进行选择，从下方组件库拖入新组件；改动实时保存并同步到主页。"
+                   FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap"/>
 
-      <!-- 模拟主页：尺寸与真实主页内容区一致，等比缩放显示 -->
-      <Viewbox Stretch="Uniform" MaxHeight="460">
-        <Border x:Name="PreviewRoot" MinWidth="640" MinHeight="360"
-                BorderBrush="{DynamicResource CardBorderBrush}"
-                BorderThickness="1"
-                CornerRadius="{DynamicResource CardCornerRadius}"
-                Background="{DynamicResource LayerFillColorSecondaryBrush}"
-                ClipToBounds="True"
-                DragDrop.AllowDrop="True">
-          <Grid RowDefinitions="*,Auto">
-            <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
-              <ItemsControl ItemsSource="{Binding Home.ScrollableRows}" Margin="24,24,24,16"
-                            ItemTemplate="{StaticResource EditableRowTemplate}"/>
-            </ScrollViewer>
+        <!-- 模拟主页：固定设计尺寸与真实主页内容区同比例，整体等比缩放显示 -->
+        <Viewbox Stretch="Uniform">
+          <Border x:Name="PreviewRoot" Width="880" Height="600"
+                  BorderBrush="{DynamicResource CardBorderBrush}"
+                  BorderThickness="1"
+                  CornerRadius="{DynamicResource CardCornerRadius}"
+                  Background="{DynamicResource LayerFillColorSecondaryBrush}"
+                  ClipToBounds="True">
+            <Grid RowDefinitions="*,Auto">
+              <ScrollViewer x:Name="PreviewScroll" Grid.Row="0" VerticalScrollBarVisibility="Auto">
+                <ItemsControl ItemsSource="{Binding Home.ScrollableRows}" Margin="24,24,24,16"
+                              ItemTemplate="{StaticResource EditableRowTemplate}"/>
+              </ScrollViewer>
 
-            <StackPanel Grid.Row="1" Margin="24,0,24,16" Spacing="0">
-              <ItemsControl ItemsSource="{Binding Home.PinnedRows}"
-                            ItemTemplate="{StaticResource EditableRowTemplate}"/>
+              <StackPanel Grid.Row="1" Margin="24,0,24,16" Spacing="0">
+                <ItemsControl ItemsSource="{Binding Home.PinnedRows}"
+                              ItemTemplate="{StaticResource EditableRowTemplate}"/>
+              </StackPanel>
+            </Grid>
+          </Border>
+        </Viewbox>
+
+        <Button Content="＋ 添加一行" Classes="ghost" HorizontalAlignment="Left"
+                Click="AddRow_Click"/>
+
+        <!-- 选中组件操作条 -->
+        <Border Classes="settings-card" IsVisible="{Binding HasSelectedComponent}" Padding="14">
+          <Grid ColumnDefinitions="*,Auto,Auto" VerticalAlignment="Center">
+            <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="2">
+              <TextBlock FontSize="13" FontWeight="Medium">
+                <Run Text="已选中："/>
+                <Run Text="{Binding SelectedComponentTitle}"/>
+              </TextBlock>
+              <TextBlock Text="拖拽可移动位置，删除后可从组件库重新添加"
+                         FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
             </StackPanel>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="0,0,12,0">
+              <TextBlock Text="尺寸" FontSize="12" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}"/>
+              <ComboBox Width="110"
+                        ItemsSource="{x:Static vm:SettingsHomeViewModel.SizeOptionNames}"
+                        SelectedIndex="{Binding SelectedComponentSizeIndex}"/>
+            </StackPanel>
+            <Button Grid.Column="2" Content="删除组件" Classes="ghost" Click="DeleteSelected_Click" VerticalAlignment="Center"/>
           </Grid>
         </Border>
-      </Viewbox>
 
-      <Button Content="＋ 添加一行" Classes="ghost" HorizontalAlignment="Left"
-              Click="AddRow_Click"/>
-
-      <!-- 选中组件操作条 -->
-      <Border Classes="settings-card" IsVisible="{Binding HasSelectedComponent}" Padding="14">
-        <Grid ColumnDefinitions="*,Auto,Auto" VerticalAlignment="Center">
-          <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="2">
-            <TextBlock FontSize="13" FontWeight="Medium">
-              <Run Text="已选中："/>
-              <Run Text="{Binding SelectedComponentTitle}"/>
-            </TextBlock>
-            <TextBlock Text="拖拽可移动位置，删除后可从组件库重新添加"
-                       FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
+        <!-- 组件库 -->
+        <StackPanel Spacing="8">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <ui:SymbolIcon Symbol="Library" FontSize="14" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+            <TextBlock Text="组件库" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center"/>
+            <TextBlock Text="点击或拖拽到上方预览中添加，同一组件可添加多个" FontSize="11"
+                       Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
           </StackPanel>
-          <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="0,0,12,0">
-            <TextBlock Text="尺寸" FontSize="12" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}"/>
-            <ComboBox Width="110"
-                      ItemsSource="{x:Static vm:SettingsHomeViewModel.SizeOptionNames}"
-                      SelectedIndex="{Binding SelectedComponentSizeIndex}"/>
-          </StackPanel>
-          <Button Grid.Column="2" Content="删除组件" Classes="ghost" Click="DeleteSelected_Click" VerticalAlignment="Center"/>
-        </Grid>
-      </Border>
 
-      <!-- 组件库 -->
-      <StackPanel Spacing="8">
-        <StackPanel Orientation="Horizontal" Spacing="8">
-          <ui:SymbolIcon Symbol="Library" FontSize="14" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
-          <TextBlock Text="组件库" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center"/>
-          <TextBlock Text="点击或拖拽到上方预览中添加" FontSize="11"
-                     Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+          <ItemsControl ItemsSource="{Binding LibraryGroups}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:LibraryGroupViewModel">
+                <StackPanel Margin="0,0,0,10" Spacing="6">
+                  <TextBlock Text="{Binding DisplayName}" FontSize="12" FontWeight="Medium"
+                             Foreground="{DynamicResource TextSecondaryBrush}"/>
+                  <ItemsControl ItemsSource="{Binding Items}">
+                    <ItemsControl.ItemsPanel>
+                      <ItemsPanelTemplate>
+                        <WrapPanel Orientation="Horizontal"/>
+                      </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:LibraryComponentItem">
+                        <Button Classes="lib-chip" Margin="0,0,8,8"
+                                Click="LibraryChip_Click"
+                                PointerPressed="LibraryChip_PointerPressed"
+                                ToolTip.Tip="{Binding Description}">
+                          <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Grid Width="18" Height="18" VerticalAlignment="Center">
+                              <Path Data="{Binding Descriptor.Icon, Converter={StaticResource CardIconConverter}}"
+                                    IsVisible="{Binding Descriptor.Icon, Converter={StaticResource CardIconConverter}, ConverterParameter=IsPath}"
+                                    Fill="{DynamicResource AccentBrush}"
+                                    Width="16" Height="16" Stretch="Uniform"
+                                    HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                              <TextBlock Text="{Binding Descriptor.Icon}"
+                                         IsVisible="{Binding Descriptor.Icon, Converter={StaticResource CardIconConverter}, ConverterParameter=IsText}"
+                                         FontSize="16"
+                                         Foreground="{DynamicResource AccentBrush}"
+                                         HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Grid>
+                            <StackPanel VerticalAlignment="Center">
+                              <TextBlock Text="{Binding Title}" FontSize="12" FontWeight="Medium"/>
+                              <TextBlock Text="{Binding Description}" FontSize="10"
+                                         Foreground="{DynamicResource TextSecondaryBrush}" MaxLines="1" TextTrimming="CharacterEllipsis"/>
+                            </StackPanel>
+                          </StackPanel>
+                        </Button>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
         </StackPanel>
 
-        <ItemsControl ItemsSource="{Binding LibraryGroups}">
-          <ItemsControl.ItemTemplate>
-            <DataTemplate x:DataType="vm:LibraryGroupViewModel">
-              <StackPanel Margin="0,0,0,10" Spacing="6">
-                <TextBlock Text="{Binding DisplayName}" FontSize="12" FontWeight="Medium"
-                           Foreground="{DynamicResource TextSecondaryBrush}"/>
-                <ItemsControl ItemsSource="{Binding Items}">
-                  <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate>
-                      <WrapPanel Orientation="Horizontal"/>
-                    </ItemsPanelTemplate>
-                  </ItemsControl.ItemsPanel>
-                  <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="vm:LibraryComponentItem">
-                      <Button Classes="lib-chip" Margin="0,0,8,8"
-                              IsEnabled="{Binding !IsAdded}"
-                              Click="LibraryChip_Click"
-                              PointerPressed="LibraryChip_PointerPressed"
-                              ToolTip.Tip="{Binding Description}">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                          <Grid Width="18" Height="18" VerticalAlignment="Center">
-                            <Path Data="{Binding Descriptor.Icon, Converter={StaticResource CardIconConverter}}"
-                                  IsVisible="{Binding Descriptor.Icon, Converter={StaticResource CardIconConverter}, ConverterParameter=IsPath}"
-                                  Fill="{DynamicResource AccentBrush}"
-                                  Width="16" Height="16" Stretch="Uniform"
-                                  HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                            <TextBlock Text="{Binding Descriptor.Icon}"
-                                       IsVisible="{Binding Descriptor.Icon, Converter={StaticResource CardIconConverter}, ConverterParameter=IsText}"
-                                       FontSize="16"
-                                       Foreground="{DynamicResource AccentBrush}"
-                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                          </Grid>
-                          <StackPanel VerticalAlignment="Center">
-                            <TextBlock Text="{Binding Title}" FontSize="12" FontWeight="Medium"/>
-                            <TextBlock Text="{Binding Description}" FontSize="10"
-                                       Foreground="{DynamicResource TextSecondaryBrush}" MaxLines="1" TextTrimming="CharacterEllipsis"/>
-                          </StackPanel>
-                          <TextBlock Text="已添加" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}"
-                                     VerticalAlignment="Center"
-                                     IsVisible="{Binding IsAdded}"/>
-                        </StackPanel>
-                      </Button>
-                    </DataTemplate>
-                  </ItemsControl.ItemTemplate>
-                </ItemsControl>
-              </StackPanel>
-            </DataTemplate>
-          </ItemsControl.ItemTemplate>
-        </ItemsControl>
       </StackPanel>
+    </ScrollViewer>
 
-    </StackPanel>
-  </ScrollViewer>
+    <!-- 拖拽时跟随光标的提示浮层 -->
+    <Border x:Name="DragGhost" Classes="drag-ghost"
+            IsVisible="False" IsHitTestVisible="False"
+            HorizontalAlignment="Left" VerticalAlignment="Top">
+      <TextBlock x:Name="DragGhostText" FontSize="12" FontWeight="Medium"/>
+    </Border>
+  </Grid>
 </UserControl>

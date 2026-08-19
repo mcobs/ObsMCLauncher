@@ -97,6 +97,18 @@ public sealed class HomeRowViewModel : ViewModelBase
     /// <summary>行内恰好一个 Fill 组件时整行拉伸渲染（欢迎卡、分隔线独占一行的场景）</summary>
     public bool IsSingleFill => Components.Count == 1 && Components[0].Size == HomeCardSize.Fill;
 
+    /// <summary>空行（编辑器里显示占位提示用）</summary>
+    public bool IsEmpty => Components.Count == 0;
+
+    private bool _isDropTarget;
+
+    /// <summary>编辑器拖拽时当前落点行高亮（仅运行时状态，不持久化）</summary>
+    public bool IsDropTarget
+    {
+        get => _isDropTarget;
+        set => SetProperty(ref _isDropTarget, value);
+    }
+
     public HomeRowViewModel()
     {
         Components.CollectionChanged += OnComponentsChanged;
@@ -105,5 +117,6 @@ public sealed class HomeRowViewModel : ViewModelBase
     private void OnComponentsChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
         OnPropertyChanged(nameof(IsSingleFill));
+        OnPropertyChanged(nameof(IsEmpty));
     }
 }

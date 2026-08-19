@@ -7,21 +7,24 @@
 
   <!-- 组件渲染模板定义在 App.axaml（Application.DataTemplates），与设置页模拟主页共用 -->
 
-  <!-- 布局渲染：滚动区（普通行）+ 底部固定区（固定行），行内组件横向排列自动换行 -->
+  <!-- 布局渲染：滚动区（普通行）+ 底部固定区（固定行）；行内组件一排到底，超宽时整行等比缩小不换行 -->
   <Grid RowDefinitions="*,Auto">
     <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
       <ItemsControl ItemsSource="{Binding ScrollableRows}" Margin="24,24,24,16">
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="vm:HomeRowViewModel">
             <Panel Margin="0,0,0,16">
-              <!-- 常规行：组件横向排列自动换行 -->
-              <ItemsControl ItemsSource="{Binding Components}" IsVisible="{Binding !IsSingleFill}">
-                <ItemsControl.ItemsPanel>
-                  <ItemsPanelTemplate>
-                    <WrapPanel Orientation="Horizontal"/>
-                  </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-              </ItemsControl>
+              <!-- 常规行：一排到底，放不下时按宽度等比缩小 -->
+              <Viewbox Stretch="Uniform" StretchDirection="DownOnly" HorizontalAlignment="Left"
+                       IsVisible="{Binding !IsSingleFill}">
+                <ItemsControl ItemsSource="{Binding Components}">
+                  <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                      <StackPanel Orientation="Horizontal"/>
+                    </ItemsPanelTemplate>
+                  </ItemsControl.ItemsPanel>
+                </ItemsControl>
+              </Viewbox>
               <!-- 单个 Fill 组件独占整行 -->
               <ItemsControl ItemsSource="{Binding Components}" IsVisible="{Binding IsSingleFill}">
                 <ItemsControl.ItemsPanel>
@@ -41,13 +44,16 @@
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="vm:HomeRowViewModel">
             <Panel Margin="0,0,0,12">
-              <ItemsControl ItemsSource="{Binding Components}" IsVisible="{Binding !IsSingleFill}">
-                <ItemsControl.ItemsPanel>
-                  <ItemsPanelTemplate>
-                    <WrapPanel Orientation="Horizontal"/>
-                  </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-              </ItemsControl>
+              <Viewbox Stretch="Uniform" StretchDirection="DownOnly" HorizontalAlignment="Left"
+                       IsVisible="{Binding !IsSingleFill}">
+                <ItemsControl ItemsSource="{Binding Components}">
+                  <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                      <StackPanel Orientation="Horizontal"/>
+                    </ItemsPanelTemplate>
+                  </ItemsControl.ItemsPanel>
+                </ItemsControl>
+              </Viewbox>
               <ItemsControl ItemsSource="{Binding Components}" IsVisible="{Binding IsSingleFill}">
                 <ItemsControl.ItemsPanel>
                   <ItemsPanelTemplate>

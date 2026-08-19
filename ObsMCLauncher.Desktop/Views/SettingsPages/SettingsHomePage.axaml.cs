@@ -1,33 +1,48 @@
 using System;
+using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using ObsMCLauncher.Core.Services;
 using ObsMCLauncher.Desktop.ViewModels;
 
 namespace ObsMCLauncher.Desktop.Views.SettingsPages;
 
 public partial class SettingsHomePage : UserControl
 {
+    // 行模板根节点的样式类名，命中测试按它找行
+    private const string RowRootClass = "edit-row-root";
+
     // 超过这个距离才算拖拽，否则当作点击
     private const double DragThreshold = 4;
+
+    private static readonly Cursor DragCursor = new(StandardCursorType.DragMove);
 
     private Point _pressPos;
     private object? _pendingDrag;
 
     // 拖拽期间有效：当前拖的是组件还是组件库条目（进程内直接传引用）
-    private object? _activeDrag;
+    private bool _isDragging;
+    private IPointer? _dragPointer;
+    private HomeRowViewModel? _dropTargetRow;
 
     private SettingsHomeViewModel? Vm => DataContext as SettingsHomeViewModel;
 
     public SettingsHomePage()
     {
         InitializeComponent();
-        // 拖放事件挂在预览区根节点，统一从落点向上找目标行
-        PreviewRoot.AddHandler(DragDrop.DragOverEvent, Preview_DragOver);
-        PreviewRoot.AddHandler(DragDrop.DropEvent, Preview_Drop);
+        // 捕获被系统拿走（窗口切换等）时收尾，避免卡在拖拽状态
+        PointerCaptureLost += (_, _) =>
+        {
+            if (_isDragging)
+            {
+                CleanupDrag();
+            }
+            _pendingDrag = null;
+        };
     }
 
     // 页面经 Frame 导航创建，DataContext 继承的是 SettingsViewModel，
@@ -57,7 +72,7 @@ public partial class SettingsHomePage : UserControl
         {
             Vm.SelectComponent(vm);
             _pendingDrag = vm;
-            _pressPos = e.GetPosition(null);
+            _pressPos = e.GetPosition(PageRoot);
         }
     }
 
@@ -76,13 +91,16 @@ public partial class SettingsHomePage : UserControl
         if (sender is Button { DataContext: LibraryComponentItem item })
         {
             _pendingDrag = item;
-            _pressPos = e.GetPosition(null);
+            _pressPos = e.GetPosition(PageRoot);
         }
     }
 
     private void AddRow_Click(object? sender, RoutedEventArgs e)
     {
-        Vm?.Home.InsertRow(Vm.Home.HomeRows.Count);
+        if (Vm == null) return;
+        Vm.Home.InsertRow(Vm.Home.HomeRows.Count);
+        // 等布局更新后滚到底部，让新行进入视野
+        Dispatcher.UIThread.Post(PreviewScroll.ScrollToEnd, DispatcherPriority.Loaded);
     }
 
     private void DeleteSelected_Click(object? sender, RoutedEventArgs e)
@@ -103,38 +121,91 @@ public partial class SettingsHomePage : UserControl
         if (Vm != null && sender is Button { DataContext: HomeRowViewModel row })
         {
             Vm.Home.RemoveRow(row);
-            Vm.RefreshLibrary();
         }
     }
 
-    private void Preview_DragOver(object? sender, DragEventArgs e)
+    protected override void OnPointerMoved(PointerEventArgs e)
     {
-        if (_activeDrag != null)
+        if (_pendingDrag != null && !_isDragging)
         {
-            e.DragEffects = DragDropEffects.Move | DragDropEffects.Copy;
-            e.Handled = true;
+            var delta = e.GetPosition(PageRoot) - _pressPos;
+            if (Math.Abs(delta.X) > DragThreshold || Math.Abs(delta.Y) > DragThreshold)
+            {
+                BeginDrag(e, _pendingDrag);
+            }
+        }
+        if (_isDragging)
+        {
+            UpdateDrag(e);
+        }
+        base.OnPointerMoved(e);
+    }
+
+    protected override void OnPointerReleased(PointerReleasedEventArgs e)
+    {
+        if (_isDragging)
+        {
+            EndDrag(e);
+        }
+        _pendingDrag = null;
+        base.OnPointerReleased(e);
+    }
+
+    private void BeginDrag(PointerEventArgs e, object payload)
+    {
+        _isDragging = true;
+        _dragPointer = e.Pointer;
+        _dragPointer.Capture(this);
+        Cursor = DragCursor;
+
+        DragGhostText.Text = payload switch
+        {
+            HomeComponentViewModel c => HomeComponentRegistry.TryGet(c.Id)?.Title ?? c.Id,
+            LibraryComponentItem i => i.Title,
+            _ => string.Empty
+        };
+        DragGhost.IsVisible = true;
+        UpdateDrag(e);
+    }
+
+    private void UpdateDrag(PointerEventArgs e)
+    {
+        var pos = e.GetPosition(PageRoot);
+        DragGhost.Margin = new Thickness(pos.X + 14, pos.Y + 12, 0, 0);
+
+        var row = HitRowRoot(pos)?.DataContext as HomeRowViewModel;
+        if (!ReferenceEquals(row, _dropTargetRow))
+        {
+            if (_dropTargetRow != null)
+            {
+                _dropTargetRow.IsDropTarget = false;
+            }
+            _dropTargetRow = row;
+            if (row != null)
+            {
+                row.IsDropTarget = true;
+            }
         }
     }
 
-    private void Preview_Drop(object? sender, DragEventArgs e)
+    private void EndDrag(PointerReleasedEventArgs e)
     {
-        var payload = _activeDrag;
-        _activeDrag = null;
+        var payload = _pendingDrag;
+        var pos = e.GetPosition(PageRoot);
+        CleanupDrag();
+
         if (Vm == null || payload == null)
         {
             return;
         }
 
-        // 落点向上找行容器；没落在任何行上就忽略
-        var rowItems = FindRowItems(e.Source as Visual);
-        if (rowItems == null)
+        var rowRoot = HitRowRoot(pos);
+        if (rowRoot?.DataContext is not HomeRowViewModel row)
         {
-            e.Handled = true;
-            return;
+            return; // 没落在任何行上，当次拖拽取消
         }
-        var row = (HomeRowViewModel)rowItems.DataContext!;
 
-        var index = CalcDropIndex(rowItems, e);
+        var index = CalcDropIndex(rowRoot, pos);
 
         if (payload is HomeComponentViewModel component)
         {
@@ -148,84 +219,76 @@ public partial class SettingsHomePage : UserControl
             {
                 Vm.SelectComponent(added);
             }
-            Vm.RefreshLibrary();
         }
-        e.Handled = true;
     }
 
-    protected override void OnPointerMoved(PointerEventArgs e)
+    private void CleanupDrag()
     {
-        if (_pendingDrag != null)
-        {
-            var delta = e.GetPosition(null) - _pressPos;
-            if (Math.Abs(delta.X) > DragThreshold || Math.Abs(delta.Y) > DragThreshold)
-            {
-                var payload = _pendingDrag;
-                _pendingDrag = null;
-                StartDrag(e, payload);
-            }
-        }
-        base.OnPointerMoved(e);
-    }
-
-    protected override void OnPointerReleased(PointerReleasedEventArgs e)
-    {
-        // 没拖起来就算了，点击交给 Click/选中处理
+        _isDragging = false;
         _pendingDrag = null;
-        base.OnPointerReleased(e);
+        _dragPointer?.Capture(null);
+        _dragPointer = null;
+        if (_dropTargetRow != null)
+        {
+            _dropTargetRow.IsDropTarget = false;
+            _dropTargetRow = null;
+        }
+        DragGhost.IsVisible = false;
+        Cursor = null;
     }
 
-    private async void StartDrag(PointerEventArgs e, object payload)
+    /// <summary>落点命中的行：遍历预览里所有行根节点，做坐标换算后的矩形包含判断</summary>
+    private Panel? HitRowRoot(Point posInPage)
     {
-        _activeDrag = payload;
-
-        var transfer = new DataTransfer();
-        transfer.Add(DataTransferItem.CreateText(
-            payload is LibraryComponentItem ? "OMCL/LibraryComponent" : "OMCL/HomeComponent"));
-
-        try
+        foreach (var panel in PreviewRoot.GetVisualDescendants().OfType<Panel>())
         {
-            await DragDrop.DoDragDropAsync(e, transfer, DragDropEffects.Move | DragDropEffects.Copy);
-        }
-        finally
-        {
-            _activeDrag = null;
-        }
-    }
-
-    /// <summary>从落点元素向上找渲染行的 ItemsControl（DataContext 是 HomeRowViewModel）</summary>
-    private static ItemsControl? FindRowItems(Visual? source)
-    {
-        while (source != null)
-        {
-            if (source is ItemsControl { DataContext: HomeRowViewModel })
+            if (!panel.Classes.Contains(RowRootClass) || !panel.IsEffectivelyVisible)
             {
-                return (ItemsControl)source;
+                continue;
             }
-            source = source.GetVisualParent();
+            var topLeft = panel.TranslatePoint(new Point(0, 0), PageRoot);
+            if (topLeft == null)
+            {
+                continue;
+            }
+            var bounds = new Rect(topLeft.Value, panel.Bounds.Size);
+            if (bounds.Contains(posInPage))
+            {
+                return panel;
+            }
         }
         return null;
     }
 
-    /// <summary>按落点计算插入位置：找到第一个中点在落点之后的子元素，插它前面，否则追加</summary>
-    private static int CalcDropIndex(ItemsControl rowItems, DragEventArgs e)
+    /// <summary>按落点计算插入位置：找到第一个中点在落点之后的组件，插它前面，否则追加</summary>
+    private static int CalcDropIndex(Panel rowRoot, Point posInPage)
     {
-        if (rowItems.ItemsPanelRoot is not { } panel)
+        // 组件容器是行内 ItemsControl（面板为水平 StackPanel），坐标换算已考虑 Viewbox 缩放
+        var panel = rowRoot.GetVisualDescendants()
+            .OfType<ItemsControl>()
+            .Where(ic => ic.IsEffectivelyVisible)
+            .Select(ic => ic.ItemsPanelRoot)
+            .OfType<StackPanel>()
+            .FirstOrDefault();
+        if (panel == null || panel.Children.Count == 0)
         {
             return 0;
         }
 
-        var pos = e.GetPosition(panel);
-        var children = panel.Children;
-        for (var i = 0; i < children.Count; i++)
+        var pos = rowRoot.TranslatePoint(posInPage, panel);
+        if (pos == null)
         {
-            var b = children[i].Bounds;
-            // 换行的行用纵向判断，同行用横向判断
-            if (pos.Y < b.Y + b.Height / 2 || (pos.Y < b.Bottom && pos.X < b.X + b.Width / 2))
+            return 0;
+        }
+
+        for (var i = 0; i < panel.Children.Count; i++)
+        {
+            var b = panel.Children[i].Bounds;
+            if (pos.Value.X < b.X + b.Width / 2)
             {
                 return i;
             }
         }
-        return children.Count;
+        return panel.Children.Count;
     }
 }
