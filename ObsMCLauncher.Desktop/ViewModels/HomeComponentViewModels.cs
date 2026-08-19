@@ -76,6 +76,15 @@ public sealed class HomeRowViewModel : ViewModelBase
 {
     public ObservableCollection<HomeComponentViewModel> Components { get; } = new();
 
+    private bool _isPinnedToBottom;
+
+    /// <summary>固定到底部：不随卡片区滚动，始终显示在主页底部</summary>
+    public bool IsPinnedToBottom
+    {
+        get => _isPinnedToBottom;
+        set => SetProperty(ref _isPinnedToBottom, value);
+    }
+
     /// <summary>行内恰好一个 Fill 组件时整行拉伸渲染（欢迎卡、分隔线独占一行的场景）</summary>
     public bool IsSingleFill => Components.Count == 1 && Components[0].Size == HomeCardSize.Fill;
 

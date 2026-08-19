@@ -37,6 +37,9 @@ public class HomeComponentConfig
 public class HomeRowConfig
 {
     public List<HomeComponentConfig> Components { get; set; } = [];
+
+    /// <summary>固定到底部：不随卡片区滚动，始终显示在主页底部（旧版操作区的行为）</summary>
+    public bool IsPinnedToBottom { get; set; }
 }
 
 /// <summary>主页整体布局：行的垂直列表</summary>
@@ -61,14 +64,16 @@ public class HomeLayoutConfig
         return removed;
     }
 
-    /// <summary>追加组件到最后一行，没有行时先建一行</summary>
+    /// <summary>追加组件到最后一个非固定行；没有可用的行时先建一行</summary>
     public void Append(string componentId, HomeCardSize size)
     {
-        if (Rows.Count == 0)
+        var row = Rows.LastOrDefault(r => !r.IsPinnedToBottom);
+        if (row == null)
         {
-            Rows.Add(new HomeRowConfig());
+            row = new HomeRowConfig();
+            Rows.Add(row);
         }
-        Rows[^1].Components.Add(new HomeComponentConfig { Id = componentId, Size = size });
+        row.Components.Add(new HomeComponentConfig { Id = componentId, Size = size });
     }
 
     /// <summary>清理空行；清空后至少保留一个空行，保证主页可放置组件</summary>
@@ -131,13 +136,14 @@ public class HomeLayoutConfig
             layout.Rows.Add(cardRow);
         }
 
-        // 分隔线独占一行
+        // 分隔线独占一行，与操作行一起固定在主页底部（还原旧版固定操作区的布局）
         layout.Rows.Add(new HomeRowConfig
         {
-            Components = [new HomeComponentConfig { Id = HomeComponentRegistry.SeparatorId, Size = HomeCardSize.Fill }]
+            Components = [new HomeComponentConfig { Id = HomeComponentRegistry.SeparatorId, Size = HomeCardSize.Fill }],
+            IsPinnedToBottom = true
         });
 
-        // 操作行：账号 + 版本 + 启动 + 日志开关，尺寸贴近旧版固定布局
+        // 操作行：账号 + 版本 + 启动 + 日志开关，固定在底部
         layout.Rows.Add(new HomeRowConfig
         {
             Components =
@@ -146,7 +152,8 @@ public class HomeLayoutConfig
                 new HomeComponentConfig { Id = HomeComponentRegistry.VersionPickerId, Size = HomeCardSize.Large },
                 new HomeComponentConfig { Id = HomeComponentRegistry.LaunchButtonId, Size = HomeCardSize.Medium },
                 new HomeComponentConfig { Id = HomeComponentRegistry.LogToggleId, Size = HomeCardSize.Small }
-            ]
+            ],
+            IsPinnedToBottom = true
         });
 
         return layout;

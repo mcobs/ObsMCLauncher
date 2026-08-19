@@ -164,16 +164,36 @@ public class HomeLayoutTests
         Assert.Equal(HomeComponentRegistry.NewsId, layout.Rows[1].Components[0].Id);
         Assert.Equal(HomeComponentRegistry.MultiplayerId, layout.Rows[1].Components[1].Id);
         Assert.Equal(HomeComponentRegistry.ModsId, layout.Rows[1].Components[2].Id);
-        // 第三行：分隔线独占
+        // 第三行：分隔线独占，固定在底部
         Assert.Single(layout.Rows[2].Components);
         Assert.Equal(HomeComponentRegistry.SeparatorId, layout.Rows[2].Components[0].Id);
         Assert.Equal(HomeCardSize.Fill, layout.Rows[2].Components[0].Size);
-        // 第四行：操作区
+        Assert.True(layout.Rows[2].IsPinnedToBottom);
+        // 第四行：操作区，固定在底部
         Assert.Equal(4, layout.Rows[3].Components.Count);
         Assert.Equal(HomeComponentRegistry.AccountPickerId, layout.Rows[3].Components[0].Id);
         Assert.Equal(HomeComponentRegistry.VersionPickerId, layout.Rows[3].Components[1].Id);
         Assert.Equal(HomeComponentRegistry.LaunchButtonId, layout.Rows[3].Components[2].Id);
         Assert.Equal(HomeComponentRegistry.LogToggleId, layout.Rows[3].Components[3].Id);
+        Assert.True(layout.Rows[3].IsPinnedToBottom);
+        // 前两行不固定（随卡片区滚动）
+        Assert.False(layout.Rows[0].IsPinnedToBottom);
+        Assert.False(layout.Rows[1].IsPinnedToBottom);
+    }
+
+    [Fact]
+    public void Layout_Append_SkipsPinnedRows()
+    {
+        var layout = new HomeLayoutConfig();
+        layout.Rows.Add(new HomeRowConfig { IsPinnedToBottom = true });
+
+        layout.Append("a", HomeCardSize.Medium);
+
+        // 固定行不被使用，而是新建了非固定行
+        Assert.Equal(2, layout.Rows.Count);
+        Assert.Empty(layout.Rows[0].Components);
+        Assert.Single(layout.Rows[1].Components);
+        Assert.False(layout.Rows[1].IsPinnedToBottom);
     }
 
     [Fact]

@@ -295,10 +295,10 @@
 
   </UserControl.DataTemplates>
 
-  <!-- 布局渲染：行的垂直列表，每行内组件横向排列自动换行 -->
-  <Grid>
-    <ScrollViewer VerticalScrollBarVisibility="Auto">
-      <ItemsControl ItemsSource="{Binding HomeRows}" Margin="24,24,24,24">
+  <!-- 布局渲染：滚动区（普通行）+ 底部固定区（固定行），行内组件横向排列自动换行 -->
+  <Grid RowDefinitions="*,Auto">
+    <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
+      <ItemsControl ItemsSource="{Binding ScrollableRows}" Margin="24,24,24,16">
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="vm:HomeRowViewModel">
             <Panel Margin="0,0,0,16">
@@ -324,6 +324,31 @@
       </ItemsControl>
     </ScrollViewer>
 
-    <views:InstanceView DataContext="{Binding InstanceViewModel}"/>
+    <StackPanel Grid.Row="1" Margin="24,0,24,16">
+      <ItemsControl ItemsSource="{Binding PinnedRows}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:HomeRowViewModel">
+            <Panel Margin="0,0,0,12">
+              <ItemsControl ItemsSource="{Binding Components}" IsVisible="{Binding !IsSingleFill}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <WrapPanel Orientation="Horizontal"/>
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+              </ItemsControl>
+              <ItemsControl ItemsSource="{Binding Components}" IsVisible="{Binding IsSingleFill}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <Grid/>
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+              </ItemsControl>
+            </Panel>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </StackPanel>
+
+    <views:InstanceView Grid.RowSpan="2" DataContext="{Binding InstanceViewModel}"/>
   </Grid>
 </UserControl>
