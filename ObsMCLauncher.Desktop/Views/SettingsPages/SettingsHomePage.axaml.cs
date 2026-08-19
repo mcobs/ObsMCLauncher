@@ -57,15 +57,15 @@ public partial class SettingsHomePage : UserControl
         }
     }
 
-    // 组件外壳按下：立即捕获指针到页面并选中组件，位移超阈值后转为拖拽。
-    // 捕获能防止后续移动被预览的 ScrollViewer 抢走（之前拖不动的根源）
+    // 组件外壳按下：立即捕获指针到页面，位移超阈值后转为拖拽。
+    // 捕获能防止后续移动被预览的 ScrollViewer 抢走（之前拖不动的根源）。
+    // 注意：这里不立即选中，拖拽过程中不点亮组件；纯点击（未拖动）释放时才选中
     private void ComponentChrome_PointerPressed(object? sender, PointerPressedEventArgs e)
     {
         if (Vm == null || sender is not Border { DataContext: HomeComponentViewModel vm })
         {
             return;
         }
-        Vm.SelectComponent(vm);
         _pendingDrag = vm;
         _pressPos = e.GetPosition(PageRoot);
         e.Pointer.Capture(this);
@@ -149,6 +149,11 @@ public partial class SettingsHomePage : UserControl
         {
             // 没拖动就是纯点击：组件库直接添加（指针已捕获到页面，Click 不会触发）
             Vm?.AddComponentFromLibrary(item);
+        }
+        else if (_pendingDrag is HomeComponentViewModel vm)
+        {
+            // 纯点击组件才选中（拖拽已在 EndDrag 里选中被拖组件）
+            Vm?.SelectComponent(vm);
         }
         _pendingDrag = null;
         e.Pointer.Capture(null);
@@ -255,12 +260,14 @@ public partial class SettingsHomePage : UserControl
             {
                 continue;
             }
+            // 两个角都做坐标换算，把 Viewbox 等的缩放一并考虑进去
             var topLeft = panel.TranslatePoint(new Point(0, 0), PageRoot);
-            if (topLeft == null)
+            var bottomRight = panel.TranslatePoint(new Point(panel.Bounds.Width, panel.Bounds.Height), PageRoot);
+            if (topLeft == null || bottomRight == null)
             {
                 continue;
             }
-            var bounds = new Rect(topLeft.Value, panel.Bounds.Size);
+            var bounds = new Rect(topLeft.Value, bottomRight.Value);
             if (bounds.Contains(posInPage))
             {
                 return panel;
