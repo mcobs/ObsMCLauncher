@@ -91,6 +91,7 @@
 
   <UserControl.Styles>
     <Style Selector="Border.edit-comp">
+      <Setter Property="Background" Value="Transparent"/>
       <Setter Property="CornerRadius" Value="6"/>
       <Setter Property="Transitions">
         <Transitions>
