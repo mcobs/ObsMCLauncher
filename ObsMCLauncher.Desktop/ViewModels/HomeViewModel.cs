@@ -575,7 +575,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     private void NotifySettingsViewModelRefreshPluginCards()
     {
         // 直接引用主窗口持有的设置 ViewModel，避免按导航标题查找
-        NavigationStore.MainWindow?.Settings?.RefreshPluginCards();
+        NavigationStore.MainWindow?.Settings?.SettingsHome.RefreshLibrary();
     }
 
     public void OnPluginCardUnregistered(string cardId)

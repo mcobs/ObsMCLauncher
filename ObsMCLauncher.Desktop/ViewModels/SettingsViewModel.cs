@@ -105,7 +105,6 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
 
         UpdateGameDirectoryDisplayText();
         _ = ReloadJavaOptionsAsync();
-        LoadHomeCards();
 
         Status = "设置已重新加载";
         _isInitializing = false;
@@ -132,7 +131,6 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
         MaxDownloadThreadsOptions = new ObservableCollection<int> { 4, 8, 16, 32, 64 };
         UpdateChannelOptions = new ObservableCollection<UpdateChannel>((UpdateChannel[])Enum.GetValues(typeof(UpdateChannel)));
         JavaOptions = new ObservableCollection<JavaOption>();
-        HomeCards = new ObservableCollection<HomeCardInfo>();
 
         _isInitializing = true;
         _config = LauncherConfig.Load();
@@ -177,8 +175,6 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
         BrowseWallpaperCommand = new AsyncRelayCommand(BrowseWallpaperAsync);
         TestDownloadSourceCommand = new AsyncRelayCommand(TestDownloadSourceAsync);
         ResetDefaultsCommand = new RelayCommand(ResetDefaults);
-        MoveCardUpCommand = new RelayCommand<HomeCardInfo>(MoveCardUp);
-        MoveCardDownCommand = new RelayCommand<HomeCardInfo>(MoveCardDown);
         SelectCenterNotificationCommand = new RelayCommand(() => NotificationPosition = NotificationPosition.Center);
         SelectBottomRightNotificationCommand = new RelayCommand(() => NotificationPosition = NotificationPosition.BottomRight);
         SelectTabCommand = new RelayCommand<string>(tab =>
@@ -213,7 +209,6 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
 
         UpdateGameDirectoryDisplayText();
         _ = ReloadJavaOptionsAsync();
-        LoadHomeCards();
 
         Status = "设置已加载";
         _isInitializing = false;
@@ -225,8 +220,6 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
     public IAsyncRelayCommand BrowseJavaPathCommand { get; }
     public IAsyncRelayCommand TestDownloadSourceCommand { get; }
     public IRelayCommand ResetDefaultsCommand { get; }
-    public IRelayCommand<HomeCardInfo> MoveCardUpCommand { get; }
-    public IRelayCommand<HomeCardInfo> MoveCardDownCommand { get; }
     public IRelayCommand SelectCenterNotificationCommand { get; }
     public IRelayCommand SelectBottomRightNotificationCommand { get; }
     public IRelayCommand<string> SelectTabCommand { get; }
@@ -244,8 +237,6 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
     public ObservableCollection<UpdateChannel> UpdateChannelOptions { get; }
 
     public ObservableCollection<JavaOption> JavaOptions { get; }
-
-    public ObservableCollection<HomeCardInfo> HomeCards { get; }
 
     private JavaOption? _selectedJavaOption;
     public JavaOption? SelectedJavaOption
@@ -1708,216 +1699,4 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
         GC.SuppressFinalize(this);
     }
 
-    #region 主页卡片管理
-
-    public void RefreshPluginCards()
-    {
-        if (_homeViewModel == null) return;
-
-        // 获取当前所有插件卡片
-        var pluginCards = _homeViewModel.HomeCards.Where(c => c.IsPluginCard).ToList();
-        var cardConfigs = _config.HomeCards ?? new List<HomeCardConfig>();
-
-        // 移除现有的插件卡片
-        var existingPluginCards = HomeCards.Where(c => c.IsPluginCard).ToList();
-        foreach (var card in existingPluginCards)
-        {
-            HomeCards.Remove(card);
-        }
-
-        // 添加新的插件卡片
-        foreach (var pluginCard in pluginCards)
-        {
-            var cardConfig = cardConfigs.FirstOrDefault(c => c.CardId == pluginCard.CardId);
-            var isEnabled = cardConfig?.IsEnabled ?? true;
-
-            var cardCopy = new HomeCardInfo
-            {
-                CardId = pluginCard.CardId,
-                Title = pluginCard.Title,
-                Description = pluginCard.Description,
-                Icon = pluginCard.Icon,
-                CommandId = pluginCard.CommandId,
-                Payload = pluginCard.Payload,
-                IsPluginCard = true,
-                PluginId = pluginCard.PluginId,
-                IsEnabled = isEnabled,
-                Order = cardConfig?.Order ?? (HomeCards.Count + 1000) // 放在最后
-            };
-            HomeCards.Add(cardCopy);
-        }
-
-        // 重新排序
-        var sortedCards = HomeCards.OrderBy(c => c.Order).ToList();
-        HomeCards.Clear();
-        foreach (var card in sortedCards)
-        {
-            HomeCards.Add(card);
-        }
-
-        for (int i = 0; i < HomeCards.Count; i++)
-        {
-            HomeCards[i].Order = i;
-        }
-
-        DebugLogger.Info("Settings", $"已刷新插件卡片，共 {pluginCards.Count} 个");
-    }
-
-    private void LoadHomeCards()
-    {
-        HomeCards.Clear();
-
-        var defaultCards = new List<HomeCardInfo>
-        {
-            new HomeCardInfo { CardId = HomeCardInfo.WelcomeCardId, Title = "欢迎使用黑曜石启动器！", Description = "开始你的Minecraft之旅", Icon = HomeViewModel.IconRocket, Order = 0 },
-            new HomeCardInfo { CardId = "news", Title = "查看最新的 Minecraft 新闻", Description = "了解游戏动态", Icon = HomeViewModel.IconNews, Order = 1 },
-            new HomeCardInfo { CardId = "multiplayer", Title = "多人联机", Description = "加入服务器与好友一起游戏", Icon = HomeViewModel.IconGlobe, CommandId = "navigate:multiplayer", Order = 2 },
-            new HomeCardInfo { CardId = "mods", Title = "资源下载", Description = "下载Mod、材质包等资源", Icon = HomeViewModel.IconDownload, CommandId = "navigate:resources", Order = 3 }
-        };
-
-        var cardConfigs = _config.HomeCards ?? new List<HomeCardConfig>();
-
-        foreach (var card in defaultCards)
-        {
-            var cardConfig = cardConfigs.FirstOrDefault(c => c.CardId == card.CardId);
-            card.IsEnabled = cardConfig?.IsEnabled ?? true;
-            card.Order = cardConfig?.Order ?? defaultCards.IndexOf(card);
-            HomeCards.Add(card);
-        }
-
-        // 添加插件卡片（从HomeViewModel获取）
-        if (_homeViewModel != null)
-        {
-            var pluginCards = _homeViewModel.HomeCards.Where(c => c.IsPluginCard).ToList();
-            foreach (var pluginCard in pluginCards)
-            {
-                // 从配置中获取插件卡片的状态
-                var cardConfig = cardConfigs.FirstOrDefault(c => c.CardId == pluginCard.CardId);
-                var isEnabled = cardConfig?.IsEnabled ?? true;
-
-                var cardCopy = new HomeCardInfo
-                {
-                    CardId = pluginCard.CardId,
-                    Title = pluginCard.Title,
-                    Description = pluginCard.Description,
-                    Icon = pluginCard.Icon,
-                    CommandId = pluginCard.CommandId,
-                    Payload = pluginCard.Payload,
-                    IsPluginCard = true,
-                    PluginId = pluginCard.PluginId,
-                    IsEnabled = isEnabled,
-                    Order = cardConfig?.Order ?? (HomeCards.Count + 1000) // 放在最后
-                };
-                HomeCards.Add(cardCopy);
-            }
-        }
-
-        var sortedCards = HomeCards.OrderBy(c => c.Order).ToList();
-        HomeCards.Clear();
-        foreach (var card in sortedCards)
-        {
-            HomeCards.Add(card);
-        }
-
-        for (int i = 0; i < HomeCards.Count; i++)
-        {
-            HomeCards[i].Order = i;
-        }
-    }
-
-    public void OnCardEnabledChanged(HomeCardInfo card)
-    {
-        if (card == null) return;
-
-        // 插件卡片也需要保存到配置中
-        var cardConfig = _config.HomeCards.FirstOrDefault(c => c.CardId == card.CardId);
-        if (cardConfig == null)
-        {
-            cardConfig = new HomeCardConfig
-            {
-                CardId = card.CardId,
-                IsEnabled = card.IsEnabled,
-                Order = card.Order,
-                IsPluginCard = card.IsPluginCard,
-                PluginId = card.PluginId
-            };
-            _config.HomeCards.Add(cardConfig);
-        }
-        else
-        {
-            cardConfig.IsEnabled = card.IsEnabled;
-            cardConfig.IsPluginCard = card.IsPluginCard;
-            cardConfig.PluginId = card.PluginId;
-        }
-
-        _config.Save();
-        RefreshHomeCards();
-
-        DebugLogger.Info("Settings", $"卡片状态改变: {card.Title} (插件卡片: {card.IsPluginCard}) -> {card.IsEnabled}");
-    }
-
-    private void MoveCardUp(HomeCardInfo? card)
-    {
-        if (card == null) return;
-
-        var index = HomeCards.IndexOf(card);
-        if (index <= 0) return;
-
-        HomeCards.RemoveAt(index);
-        HomeCards.Insert(index - 1, card);
-
-        ApplyCardOrder();
-    }
-
-    private void MoveCardDown(HomeCardInfo? card)
-    {
-        if (card == null) return;
-
-        var index = HomeCards.IndexOf(card);
-        if (index < 0 || index >= HomeCards.Count - 1) return;
-
-        HomeCards.RemoveAt(index);
-        HomeCards.Insert(index + 1, card);
-
-        ApplyCardOrder();
-    }
-
-    private void ApplyCardOrder()
-    {
-        for (int i = 0; i < HomeCards.Count; i++)
-        {
-            HomeCards[i].Order = i;
-
-            var cardConfig = _config.HomeCards.FirstOrDefault(c => c.CardId == HomeCards[i].CardId);
-            if (cardConfig == null)
-            {
-                cardConfig = new HomeCardConfig
-                {
-                    CardId = HomeCards[i].CardId,
-                    IsEnabled = HomeCards[i].IsEnabled,
-                    Order = i,
-                    IsPluginCard = HomeCards[i].IsPluginCard,
-                    PluginId = HomeCards[i].PluginId
-                };
-                _config.HomeCards.Add(cardConfig);
-            }
-            else
-            {
-                cardConfig.Order = i;
-                cardConfig.IsEnabled = HomeCards[i].IsEnabled;
-                cardConfig.IsPluginCard = HomeCards[i].IsPluginCard;
-                cardConfig.PluginId = HomeCards[i].PluginId;
-            }
-        }
-
-        _config.Save();
-        RefreshHomeCards();
-    }
-
-    private void RefreshHomeCards()
-    {
-        _homeViewModel?.RefreshHomeCards();
-    }
-
-    #endregion
 }

@@ -84,68 +84,6 @@
         </Border>
       </StackPanel>
 
-      <!-- 主页卡片 -->
-      <StackPanel Spacing="6">
-        <StackPanel Orientation="Horizontal" Spacing="6" Margin="4,0,0,2">
-          <ui:SymbolIcon Symbol="Page" FontSize="14" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
-          <TextBlock Text="主页卡片" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
-        </StackPanel>
-
-        <Border Classes="settings-card" Padding="16,12">
-          <StackPanel Spacing="12">
-            <TextBlock Text="管理主页显示的卡片，可以启用/禁用和调整顺序" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
-
-            <ItemsControl ItemsSource="{Binding HomeCards}">
-              <ItemsControl.ItemTemplate>
-                <DataTemplate>
-                  <Border Background="{DynamicResource SurfaceElevatedBrush}"
-                          CornerRadius="6" Padding="12,10" Margin="0,0,0,6"
-                          BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
-                    <Grid ColumnDefinitions="Auto,*,Auto,Auto">
-                      <TextBlock Grid.Column="0" Text="..." FontSize="12"
-                                 Foreground="{DynamicResource TextTertiaryBrush}"
-                                 VerticalAlignment="Center" Margin="0,0,10,0"/>
-
-                      <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                        <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="Medium" Margin="0,0,0,2"/>
-                        <TextBlock Text="{Binding Description}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap"/>
-                      </StackPanel>
-
-                      <ToggleSwitch Grid.Column="2" IsChecked="{Binding IsEnabled}"
-                                    VerticalAlignment="Center" Margin="0,0,10,0"
-                                    IsCheckedChanged="CardEnabledChanged"/>
-
-                      <StackPanel Grid.Column="3" Orientation="Horizontal">
-                        <Button Width="28" Height="28" Margin="0,0,3,0" Padding="0"
-                                Classes="ghost"
-                                Command="{Binding $parent[ItemsControl].((vm:SettingsViewModel)DataContext).MoveCardUpCommand}"
-                                CommandParameter="{Binding}">
-                          <Path Data="M4 8L8 4L12 8"
-                                Width="10" Height="10"
-                                Stroke="{DynamicResource TextBrush}"
-                                StrokeThickness="2"
-                                Stretch="Uniform" />
-                        </Button>
-                        <Button Width="28" Height="28" Padding="0"
-                                Classes="ghost"
-                                Command="{Binding $parent[ItemsControl].((vm:SettingsViewModel)DataContext).MoveCardDownCommand}"
-                                CommandParameter="{Binding}">
-                          <Path Data="M12 8L8 12L4 8"
-                                Width="10" Height="10"
-                                Stroke="{DynamicResource TextBrush}"
-                                StrokeThickness="2"
-                                Stretch="Uniform" />
-                        </Button>
-                      </StackPanel>
-                    </Grid>
-                  </Border>
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
-          </StackPanel>
-        </Border>
-      </StackPanel>
-
     </StackPanel>
   </ScrollViewer>
 
