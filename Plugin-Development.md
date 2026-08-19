@@ -945,6 +945,65 @@ private void OnDownloadProgress(object? eventData)
 | 目标目录不在启动器允许范围 | 使用 `context.PluginDataDirectory` 或其子目录 |
 | 下载管理器回调未注入 | 一般是启动器初始化未完成，稍后再试 |
 
+### 13. 其他增强 API
+
+以下为插件开发中常用的便捷 API。
+
+**配置读写（存于插件数据目录下的 `config.json`）：**
+
+```csharp
+public class MyConfig
+{
+    public string Name { get; set; } = "";
+    public int Max { get; set; } = 10;
+}
+
+// 读取（文件不存在时返回 default）
+var cfg = _context.GetConfig<MyConfig>() ?? new MyConfig();
+
+// 写入
+_context.SaveConfig(new MyConfig { Name = "demo", Max = 20 });
+```
+
+**打开外部链接 / 跳转内部页面：**
+
+```csharp
+// 用系统默认浏览器打开链接（仅 http/https）
+bool ok = _context.OpenUrl("https://example.com");
+
+// 跳转到启动器内部页面：home / multiplayer / resources / accounts / versions / settings / more
+_context.NavigateTo("resources");
+```
+
+**查询下载任务状态（配合 `RequestDownload` 返回的任务 ID 轮询进度）：**
+
+```csharp
+string taskId = _context.RequestDownload(new PluginDownloadRequest { ... });
+
+// 略作延迟后查询
+var status = _context.GetDownloadTaskStatus(taskId);
+if (status != null)
+{
+    // status.Status: Downloading / Completed / Failed / Cancelled
+    _context.LogMessage(PluginLogLevel.Info, $"{taskId} -> {status.Status} {status.Progress:F0}%");
+}
+```
+
+**异步启动生命周期钩子：**
+
+同步钩子（`RegisterGameLaunchHook`）会在启动流程中被阻塞等待。若回调需要执行耗时/网络操作，请改用异步版本，避免卡住启动流程：
+
+```csharp
+// 若回调需要网络/耗时操作，请使用异步钩子，避免阻塞启动流程
+context.RegisterGameLaunchHookAsync("upload-on-crash", GameLaunchPhase.OnCrash, async ctx =>
+{
+    // 上报崩溃报告需要网络请求，适合用异步钩子
+    await UploadCrashReportAsync(ctx.VersionId, ctx.CrashReport);
+});
+```
+
+> `RegisterGameLaunchHookAsync` 的其它规则（触发顺序、`CancelLaunch` 拦截、异常隔离）与同步钩子一致；异步钩子与同步钩子按 `{pluginId}.{hookId}` 字典序混合触发。
+
 ---
 
 ## 💻 开发流程
