@@ -266,7 +266,7 @@ public partial class AccountManagementViewModel : ViewModelBase
 
                 SetStatus("已设置为默认账号", InfoBarSeverity.Success);
 
-                if (NavigationStore.MainWindow?.NavItems.FirstOrDefault(x => x.Title == "主页")?.Page is HomeViewModel homeVm)
+                if (NavigationStore.MainWindow?.Home is { } homeVm)
                 {
                     foreach (var a in homeVm.Accounts)
                     {

@@ -67,6 +67,18 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     private HomeViewModel? _homeViewModel;
     private MoreViewModel? _moreViewModel;
 
+    /// <summary>主页 ViewModel（供其它页面直接引用，避免按导航标题查找）</summary>
+    public HomeViewModel Home => _homeViewModel!;
+
+    /// <summary>账号管理 ViewModel（构造时创建，供主页等直接引用）</summary>
+    public AccountManagementViewModel AccountManagement { get; private set; } = null!;
+
+    /// <summary>设置 ViewModel（构造时创建，供主页等直接引用）</summary>
+    public SettingsViewModel Settings { get; private set; } = null!;
+
+    /// <summary>版本管理 ViewModel（构造时创建）</summary>
+    public VersionDownloadViewModel VersionDownload { get; private set; } = null!;
+
     private const double CollapseThreshold = 950;
 
     private double _windowWidth = double.NaN;
@@ -112,14 +124,18 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         // 恢复上次的导航栏状态（窗口宽度自适应逻辑由 NavigationView 阈值接管）
         IsPaneOpen = !config.IsNavCollapsed;
 
+        AccountManagement = new AccountManagementViewModel();
+        VersionDownload = new VersionDownloadViewModel(dispatcher, Notifications);
+        Settings = new SettingsViewModel(Notifications, _homeViewModel);
+
         const string iconBase = "avares://ObsMCLauncher.Desktop/Assets/SidebarIcons/";
-        NavItems.Add(new NavItemViewModel("主页", _homeViewModel, "🏠") { IconPath = iconBase + "dashboard.svg" });
+        NavItems.Add(new NavItemViewModel("主页", Home, "🏠") { IconPath = iconBase + "dashboard.svg" });
         NavItems.Add(new NavItemViewModel("多人联机", new MultiplayerViewModel(Notifications, Dialogs), "🌐") { IconPath = iconBase + "multiplayer.svg" });
-        NavItems.Add(new NavItemViewModel("账号管理", new AccountManagementViewModel(), "👤") { IconPath = iconBase + "accounts.svg" });
-        NavItems.Add(new NavItemViewModel("版本管理", new VersionDownloadViewModel(dispatcher, Notifications), "📥") { IconPath = iconBase + "versions.svg" });
+        NavItems.Add(new NavItemViewModel("账号管理", AccountManagement, "👤") { IconPath = iconBase + "accounts.svg" });
+        NavItems.Add(new NavItemViewModel("版本管理", VersionDownload, "📥") { IconPath = iconBase + "versions.svg" });
         NavItems.Add(new NavItemViewModel("资源下载", new ResourcesViewModel(), "📦") { IconPath = iconBase + "resources.svg" });
 
-        BottomNavItems.Add(new NavItemViewModel("设置", new SettingsViewModel(Notifications, _homeViewModel), "⚙️") { IconPath = iconBase + "settings.svg" });
+        BottomNavItems.Add(new NavItemViewModel("设置", Settings, "⚙️") { IconPath = iconBase + "settings.svg" });
         BottomNavItems.Add(new NavItemViewModel("更多", _moreViewModel, "⋯") { IconPath = iconBase + "more.svg" });
 
         SelectedNavItem = NavItems[0];
@@ -381,7 +397,8 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         PluginContext.OnGetDownloadTaskStatus = (taskId) => QueryDownloadTaskStatus(taskId);
     }
 
-    private void NavToPage(string page)
+    /// <summary>按页名导航到对应侧边栏页面（主页卡片等统一调用）</summary>
+    public void NavToPage(string page)
     {
         if (string.IsNullOrWhiteSpace(page)) return;
 

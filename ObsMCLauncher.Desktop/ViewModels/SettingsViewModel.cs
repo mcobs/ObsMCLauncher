@@ -1764,10 +1764,10 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
 
         var defaultCards = new List<HomeCardInfo>
         {
-            new HomeCardInfo { CardId = "welcome", Title = "欢迎使用黑曜石启动器！", Description = "开始你的Minecraft之旅", Icon = "🎉", Order = 0 },
-            new HomeCardInfo { CardId = "news", Title = "查看最新的 Minecraft 新闻", Description = "了解游戏动态", Icon = "📰", Order = 1 },
-            new HomeCardInfo { CardId = "multiplayer", Title = "多人联机", Description = "加入服务器与好友一起游戏", Icon = "🌐", CommandId = "navigate:multiplayer", Order = 2 },
-            new HomeCardInfo { CardId = "mods", Title = "资源下载", Description = "下载Mod、材质包等资源", Icon = "📦", CommandId = "navigate:resources", Order = 3 }
+            new HomeCardInfo { CardId = HomeCardInfo.WelcomeCardId, Title = "欢迎使用黑曜石启动器！", Description = "开始你的Minecraft之旅", Icon = HomeViewModel.IconRocket, Order = 0 },
+            new HomeCardInfo { CardId = "news", Title = "查看最新的 Minecraft 新闻", Description = "了解游戏动态", Icon = HomeViewModel.IconNews, Order = 1 },
+            new HomeCardInfo { CardId = "multiplayer", Title = "多人联机", Description = "加入服务器与好友一起游戏", Icon = HomeViewModel.IconGlobe, CommandId = "navigate:multiplayer", Order = 2 },
+            new HomeCardInfo { CardId = "mods", Title = "资源下载", Description = "下载Mod、材质包等资源", Icon = HomeViewModel.IconDownload, CommandId = "navigate:resources", Order = 3 }
         };
 
         var cardConfigs = _config.HomeCards ?? new List<HomeCardConfig>();
@@ -1911,10 +1911,7 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
 
     private void RefreshHomeCards()
     {
-        if (NavigationStore.MainWindow?.NavItems.FirstOrDefault(x => x.Title == "主页")?.Page is HomeViewModel homeVm)
-        {
-            homeVm.RefreshHomeCards();
-        }
+        _homeViewModel?.RefreshHomeCards();
     }
 
     #endregion

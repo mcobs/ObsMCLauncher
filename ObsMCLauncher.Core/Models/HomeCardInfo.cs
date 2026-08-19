@@ -5,6 +5,9 @@ namespace ObsMCLauncher.Core.Models;
 
 public class HomeCardInfo : INotifyPropertyChanged
 {
+    /// <summary>欢迎卡片的固定 CardId</summary>
+    public const string WelcomeCardId = "welcome";
+
     private string _cardId = string.Empty;
     private string _title = string.Empty;
     private string _description = string.Empty;

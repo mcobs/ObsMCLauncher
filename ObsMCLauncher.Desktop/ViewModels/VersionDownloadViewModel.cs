@@ -354,9 +354,7 @@ public partial class VersionDownloadViewModel : ViewModelBase
                     });
                 });
 
-                var homeVm = NavigationStore.MainWindow?.NavItems
-                    .FirstOrDefault(x => x.Title == "主页")?.Page as HomeViewModel;
-                if (homeVm != null)
+                if (NavigationStore.MainWindow?.Home is { } homeVm)
                 {
                     _ = homeVm.LoadLocalAsync();
                 }
@@ -431,8 +429,7 @@ public partial class VersionDownloadViewModel : ViewModelBase
         if (isCurrent)
         {
             RefreshInstalled();
-            var homeVm = NavigationStore.MainWindow?.NavItems
-                .FirstOrDefault(x => x.Title == "主页")?.Page as HomeViewModel;
+            var homeVm = NavigationStore.MainWindow?.Home;
             if (homeVm != null)
             {
                 _ = homeVm.LoadLocalAsync();
@@ -544,8 +541,7 @@ public partial class VersionDownloadViewModel : ViewModelBase
 
             _notificationService.Show("目录已切换", $"当前游戏目录: {Path.GetFileName(item.Path)}", NotificationType.Success);
 
-            var homeVm = NavigationStore.MainWindow?.NavItems
-                .FirstOrDefault(x => x.Title == "主页")?.Page as HomeViewModel;
+            var homeVm = NavigationStore.MainWindow?.Home;
             if (homeVm != null)
             {
                 _ = homeVm.LoadLocalAsync();
@@ -653,7 +649,7 @@ public partial class VersionDownloadViewModel : ViewModelBase
             RefreshInstalled();
             _notificationService.Show("版本选择", $"已选择版本: {version.Id}", NotificationType.Success);
             
-            if (NavigationStore.MainWindow?.NavItems.FirstOrDefault(x => x.Title == "主页")?.Page is HomeViewModel homeVm)
+            if (NavigationStore.MainWindow?.Home is { } homeVm)
             {
                 _ = homeVm.LoadLocalAsync();
             }

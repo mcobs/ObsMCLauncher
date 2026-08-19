@@ -33,9 +33,9 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
 
     public ObservableCollection<HomeCardInfo> HomeCards { get; } = new();
 
-    public HomeCardInfo? WelcomeCard => HomeCards.FirstOrDefault(c => c.CardId == "welcome");
+    public HomeCardInfo? WelcomeCard => HomeCards.FirstOrDefault(c => c.CardId == HomeCardInfo.WelcomeCardId);
 
-    public IEnumerable<HomeCardInfo> OtherCards => HomeCards.Where(c => c.CardId != "welcome");
+    public IEnumerable<HomeCardInfo> OtherCards => HomeCards.Where(c => c.CardId != HomeCardInfo.WelcomeCardId);
 
     public bool IsWelcomeCardEnabled => WelcomeCard?.IsEnabled ?? false;
 
@@ -88,7 +88,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
                     config.Save();
                     _persistedAccountId = value.Id;
 
-                    if (NavigationStore.MainWindow?.NavItems.FirstOrDefault(x => x.Title == "账号管理")?.Page is AccountManagementViewModel accountVm)
+                    if (NavigationStore.MainWindow?.AccountManagement is { } accountVm)
                     {
                         foreach (var w in accountVm.Items)
                         {
@@ -137,13 +137,12 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
                         config.Save();
 
                         SelectedVersionId = value.Id;
-                        LocalStatus = $"已选择版本: {value.Id}";
                         OpenVersionDetailCommand.NotifyCanExecuteChanged();
                         LaunchCommand.NotifyCanExecuteChanged(); // 刷新启动按钮可用状态
                     }
                     catch (Exception ex)
                     {
-                        LocalStatus = $"选择版本失败: {ex.Message}";
+                        DebugLogger.Error("Home", $"选择版本失败: {ex.Message}");
                     }
                 }
             }
@@ -163,26 +162,6 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
         }
     }
 
-    private string _localStatus = "";
-    public string LocalStatus
-    {
-        get => _localStatus;
-        set => SetProperty(ref _localStatus, value);
-    }
-
-    private bool _isLocalLoading;
-    public bool IsLocalLoading
-    {
-        get => _isLocalLoading;
-        set
-        {
-            if (SetProperty(ref _isLocalLoading, value))
-            {
-                RefreshLocalCommand.NotifyCanExecuteChanged();
-            }
-        }
-    }
-
     private bool _isLaunching;
     public bool IsLaunching
     {
@@ -197,7 +176,6 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
         }
     }
 
-    public IAsyncRelayCommand RefreshLocalCommand { get; }
     public IRelayCommand OpenVersionDetailCommand { get; }
     public IAsyncRelayCommand LaunchCommand { get; }
 
@@ -206,10 +184,10 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     private readonly System.Collections.Specialized.NotifyCollectionChangedEventHandler _homeCardsChangedHandler;
 
     // 默认卡片图标（SVG path data），避免依赖系统 emoji 字形导致跨平台渲染为方块
-    private const string IconRocket = "M12 2C12 2 6 6 6 12C6 15.31 7.79 18.17 10.5 19.71L12 23L13.5 19.71C16.21 18.17 18 15.31 18 12C18 6 12 2 12 2M12 10C10.9 10 10 9.1 10 8C10 6.9 10.9 6 12 6C13.1 6 14 6.9 14 8C14 9.1 13.1 10 12 10M12 20C12 20 8 17.86 8 12C8 10.5 8.5 9.24 9.3 8.17C9.86 8.69 10.42 9.12 11.16 9.44C12.62 10.08 14.55 10.37 15.5 10.05C15.76 11.5 15.37 12.6 15 13.43C14.5 14.53 12 20 12 20Z";
-    private const string IconNews = "M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2M20 16H5.17L4 17.17V4H20V16M7 9H17V7H7V9M7 13H14V11H7V13Z";
-    private const string IconGlobe = "M12 2C6.48 2 2 6.48 2 12S6.48 22 12 22 22 17.52 22 12 17.52 2 12 2M12 20C11.1 20 10.21 19.88 9.36 19.67L10 18L12 16L13.34 13.09L14.35 12H17.5C18.2 12 18.85 12.26 19.35 12.67C18.37 16.8 15.48 20 12 20M7 9L5.77 11.13L5.25 11.77C5.08 11.23 5 10.65 5 10C5 8.94 5.26 7.94 5.71 7.06L7 9M19 10.25C18.03 9.21 16.57 8.5 15 8.5H12.86L10 9.63V12.38L12.41 14.79L13.07 13.25L15 12.5L17 14.5V17.13C14.24 18.37 11 18.37 8.24 17.13L6.83 16.71L6.4 16.29L5.03 16.72C5.16 17.5 5.41 18.25 5.75 18.94C7.21 20.91 9.43 22.02 12 22C16.42 22 20 18.42 20 14C20 12.72 19.65 11.52 19.03 10.5L19 10.25Z";
-    private const string IconDownload = "M19 9H15V3H9V9H5L12 16L19 9M5 18V20H19V18H5Z";
+    internal const string IconRocket = "M12 2C12 2 6 6 6 12C6 15.31 7.79 18.17 10.5 19.71L12 23L13.5 19.71C16.21 18.17 18 15.31 18 12C18 6 12 2 12 2M12 10C10.9 10 10 9.1 10 8C10 6.9 10.9 6 12 6C13.1 6 14 6.9 14 8C14 9.1 13.1 10 12 10M12 20C12 20 8 17.86 8 12C8 10.5 8.5 9.24 9.3 8.17C9.86 8.69 10.42 9.12 11.16 9.44C12.62 10.08 14.55 10.37 15.5 10.05C15.76 11.5 15.37 12.6 15 13.43C14.5 14.53 12 20 12 20Z";
+    internal const string IconNews = "M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2M20 16H5.17L4 17.17V4H20V16M7 9H17V7H7V9M7 13H14V11H7V13Z";
+    internal const string IconGlobe = "M12 2C6.48 2 2 6.48 2 12S6.48 22 12 22 22 17.52 22 12 17.52 2 12 2M12 20C11.1 20 10.21 19.88 9.36 19.67L10 18L12 16L13.34 13.09L14.35 12H17.5C18.2 12 18.85 12.26 19.35 12.67C18.37 16.8 15.48 20 12 20M7 9L5.77 11.13L5.25 11.77C5.08 11.23 5 10.65 5 10C5 8.94 5.26 7.94 5.71 7.06L7 9M19 10.25C18.03 9.21 16.57 8.5 15 8.5H12.86L10 9.63V12.38L12.41 14.79L13.07 13.25L15 12.5L17 14.5V17.13C14.24 18.37 11 18.37 8.24 17.13L6.83 16.71L6.4 16.29L5.03 16.72C5.16 17.5 5.41 18.25 5.75 18.94C7.21 20.91 9.43 22.02 12 22C16.42 22 20 18.42 20 14C20 12.72 19.65 11.52 19.03 10.5L19 10.25Z";
+    internal const string IconDownload = "M19 9H15V3H9V9H5L12 16L19 9M5 18V20H19V18H5Z";
 
     public HomeViewModel(ObsMCLauncher.Core.Services.Ui.IDispatcher dispatcher, NotificationService notificationService)
     {
@@ -222,7 +200,6 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
 
         InstanceViewModel = new InstanceViewModel(notificationService);
 
-        RefreshLocalCommand = new AsyncRelayCommand(LoadLocalAsync, () => !IsLocalLoading);
         LaunchCommand = new AsyncRelayCommand(LaunchAsync, () => CanLaunch);
 
         OpenVersionDetailCommand = new RelayCommand(OpenVersionDetail, CanOpenVersionDetail);
@@ -273,7 +250,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
 
         var defaultCards = new List<HomeCardInfo>
         {
-            new HomeCardInfo { CardId = "welcome", Title = "欢迎使用黑曜石启动器", Description = "开始你的 Minecraft 之旅", Icon = IconRocket, Order = 0 },
+            new HomeCardInfo { CardId = HomeCardInfo.WelcomeCardId, Title = "欢迎使用黑曜石启动器", Description = "开始你的 Minecraft 之旅", Icon = IconRocket, Order = 0 },
             new HomeCardInfo { CardId = "news", Title = "查看最新的 Minecraft 新闻", Description = "了解游戏动态", Icon = IconNews, Order = 1 },
             new HomeCardInfo { CardId = "multiplayer", Title = "多人联机", Description = "加入服务器与好友一起游戏", Icon = IconGlobe, CommandId = "navigate:multiplayer", Order = 2 },
             new HomeCardInfo { CardId = "mods", Title = "资源下载", Description = "下载Mod、材质包等资源", Icon = IconDownload, CommandId = "navigate:resources", Order = 3 }
@@ -359,22 +336,8 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
 
     private void NotifySettingsViewModelRefreshPluginCards()
     {
-        // 通过NavigationStore找到SettingsViewModel并刷新插件卡片
-        var mainWindow = NavigationStore.MainWindow;
-        if (mainWindow == null) return;
-        
-        // 先检查NavItems
-        var settingsVm = mainWindow.NavItems
-            .FirstOrDefault(x => x.Title == "设置")?.Page as SettingsViewModel;
-        
-        // 如果在NavItems中找不到，检查BottomNavItems
-        if (settingsVm == null)
-        {
-            settingsVm = mainWindow.BottomNavItems
-                .FirstOrDefault(x => x.Title == "设置")?.Page as SettingsViewModel;
-        }
-        
-        settingsVm?.RefreshPluginCards();
+        // 直接引用主窗口持有的设置 ViewModel，避免按导航标题查找
+        NavigationStore.MainWindow?.Settings?.RefreshPluginCards();
     }
 
     public void OnPluginCardUnregistered(string cardId)
@@ -448,49 +411,11 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
         NavigateToNavPage(page);
     }
 
-    /// <summary>按页名导航到对应侧边栏页面（与 MainWindow 的导航映射保持一致）</summary>
+    /// <summary>按页名导航到对应侧边栏页面（统一走 MainWindow 的导航逻辑，避免映射重复）</summary>
     private void NavigateToNavPage(string page)
     {
-        var main = NavigationStore.MainWindow;
-        if (main == null)
-        {
-            DebugLogger.Warn("Home", "NavigationStore.MainWindow is null");
-            return;
-        }
-
-        // 映射页面名到导航项标题
-        var pageMapping = new System.Collections.Generic.Dictionary<string, string>
-        {
-            ["multiplayer"] = "多人联机",
-            ["resources"] = "资源下载",
-            ["accounts"] = "账号管理",
-            ["versions"] = "版本管理",
-            ["settings"] = "设置",
-            ["more"] = "更多"
-        };
-
-        if (!pageMapping.TryGetValue(page.ToLowerInvariant(), out var navTitle))
-        {
-            DebugLogger.Warn("Home", $"Page '{page}' not in mapping");
-            return;
-        }
-
-        var targetNav = main.NavItems.FirstOrDefault(n => n.Title == navTitle)
-            ?? main.BottomNavItems.FirstOrDefault(n => n.Title == navTitle);
-        if (targetNav == null)
-        {
-            DebugLogger.Warn("Home", $"NavItem with title '{navTitle}' not found");
-            return;
-        }
-
-        if (main.NavItems.Contains(targetNav))
-        {
-            main.SelectedNavItem = targetNav;
-        }
-        else if (main.BottomNavItems.Contains(targetNav))
-        {
-            main.SelectedBottomNavItem = targetNav;
-        }
+        if (string.IsNullOrWhiteSpace(page)) return;
+        NavigationStore.MainWindow?.NavToPage(page);
     }
 
     private void LoadAccounts()
@@ -673,7 +598,6 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     {
         try
         {
-            await _dispatcher.InvokeAsync(() => { IsLocalLoading = true; LocalStatus = "正在扫描本地版本..."; });
             var config = LauncherConfig.Load();
             var gameDir = config.GameDirectory;
             var list = ObsMCLauncher.Core.Services.Minecraft.LocalVersionService.GetInstalledVersions(gameDir);
@@ -687,17 +611,11 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
                 var selectedId = ObsMCLauncher.Core.Services.Minecraft.LocalVersionService.GetSelectedVersion();
                 SelectedVersionId = selectedId;
                 SelectedInstalledVersion = InstalledVersions.FirstOrDefault(x => x.Id == selectedId);
-
-                LocalStatus = $"已发现 {InstalledVersions.Count} 个本地版本";
             });
         }
         catch (Exception ex)
         {
-            await _dispatcher.InvokeAsync(() => LocalStatus = $"本地版本扫描失败: {ex.Message}");
-        }
-        finally
-        {
-            await _dispatcher.InvokeAsync(() => IsLocalLoading = false);
+            DebugLogger.Error("Home", $"本地版本扫描失败: {ex.Message}");
         }
     }
 
