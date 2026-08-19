@@ -228,9 +228,16 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             });
         };
 
-        PluginContext.OnHomeCardRegistered = (cardId, title, description, icon, commandId, payload) =>
+        PluginContext.OnHomeCardRegistered = (cardId, title, description, icon, commandId, payload, defaultSize) =>
         {
             DebugLogger.Info("Plugin", $"注册主页卡片: {title} (cardId: {cardId})");
+
+            // 无条件同步组件注册表，保证与插件生命周期一致（不依赖 HomeViewModel 是否已创建）
+            var dot = cardId.IndexOf('.');
+            var pluginId = dot > 0 ? cardId[..dot] : cardId;
+            var shortCardId = dot > 0 ? cardId[(dot + 1)..] : cardId;
+            ObsMCLauncher.Core.Services.HomeComponentRegistry.RegisterPluginCard(
+                pluginId, shortCardId, title, description, icon, defaultSize);
 
             // 分发到HomeViewModel
             Avalonia.Threading.Dispatcher.UIThread.Post(() =>
@@ -243,9 +250,39 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         {
             DebugLogger.Info("Plugin", $"注销主页卡片: {cardId}");
 
+            ObsMCLauncher.Core.Services.HomeComponentRegistry.Unregister(cardId);
+
             Avalonia.Threading.Dispatcher.UIThread.Post(() =>
             {
                 _homeViewModel?.OnPluginCardUnregistered(cardId);
+            });
+        };
+
+        PluginContext.OnHomeComponentRegistered = (componentId, title, description, icon, contentFactory, defaultSize) =>
+        {
+            DebugLogger.Info("Plugin", $"注册自定义主页组件: {title} (componentId: {componentId})");
+
+            var dot = componentId.IndexOf('.');
+            var pluginId = dot > 0 ? componentId[..dot] : componentId;
+            var shortId = dot > 0 ? componentId[(dot + 1)..] : componentId;
+            ObsMCLauncher.Core.Services.HomeComponentRegistry.RegisterPluginComponent(
+                pluginId, shortId, title, description, icon, contentFactory, defaultSize);
+
+            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            {
+                _homeViewModel?.OnPluginComponentRegistered(componentId, title, description, icon);
+            });
+        };
+
+        PluginContext.OnHomeComponentUnregistered = (componentId) =>
+        {
+            DebugLogger.Info("Plugin", $"注销自定义主页组件: {componentId}");
+
+            ObsMCLauncher.Core.Services.HomeComponentRegistry.Unregister(componentId);
+
+            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            {
+                _homeViewModel?.OnPluginComponentUnregistered(componentId);
             });
         };
 
@@ -263,6 +300,8 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         {
             DebugLogger.Info("MainWindow", $"插件已禁用: {pluginId}");
 
+            ObsMCLauncher.Core.Services.HomeComponentRegistry.RemovePluginComponents(pluginId);
+
             Avalonia.Threading.Dispatcher.UIThread.Post(() =>
             {
                 _moreViewModel?.RemoveAllPluginTabs(pluginId);
@@ -278,6 +317,8 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         PluginLoader.OnPluginRemoved = (pluginId) =>
         {
             DebugLogger.Info("MainWindow", $"插件已移除: {pluginId}");
+
+            ObsMCLauncher.Core.Services.HomeComponentRegistry.RemovePluginComponents(pluginId);
 
             Avalonia.Threading.Dispatcher.UIThread.Post(() =>
             {

@@ -34,9 +34,14 @@ public class PluginContext : IPluginContext
 
     public static Action<string, string>? OnTabUnregistered { get; set; }
 
-    public static Action<string, string, string, string?, string?, object?>? OnHomeCardRegistered { get; set; }
+    public static Action<string, string, string, string?, string?, object?, HomeCardSize>? OnHomeCardRegistered { get; set; }
 
     public static Action<string>? OnHomeCardUnregistered { get; set; }
+
+    /// <summary>插件注册自定义主页组件；参数：fullComponentId, title, description, icon, contentFactory, defaultSize</summary>
+    public static Action<string, string, string, string?, Func<object>, HomeCardSize>? OnHomeComponentRegistered { get; set; }
+
+    public static Action<string>? OnHomeComponentUnregistered { get; set; }
 
     public static Func<string, string, string, int?, string>? OnShowNotification { get; set; }
 
@@ -165,14 +170,45 @@ public class PluginContext : IPluginContext
         string? commandId = null,
         object? payload = null)
     {
+        RegisterHomeCard(cardId, title, description, icon, commandId, payload, HomeCardSize.Medium);
+    }
+
+    public void RegisterHomeCard(
+        string cardId,
+        string title,
+        string description,
+        string? icon,
+        string? commandId,
+        object? payload,
+        HomeCardSize defaultSize)
+    {
         var fullCardId = $"{_pluginId}.{cardId}";
-        OnHomeCardRegistered?.Invoke(fullCardId, title, description, icon, commandId, payload);
+        OnHomeCardRegistered?.Invoke(fullCardId, title, description, icon, commandId, payload, defaultSize);
     }
 
     public void UnregisterHomeCard(string cardId)
     {
         var fullCardId = $"{_pluginId}.{cardId}";
         OnHomeCardUnregistered?.Invoke(fullCardId);
+    }
+
+    public void RegisterHomeComponent(
+        string componentId,
+        string title,
+        string description,
+        string? icon,
+        Func<object> contentFactory,
+        HomeCardSize defaultSize = HomeCardSize.Medium)
+    {
+        if (string.IsNullOrEmpty(componentId) || contentFactory == null) return;
+        var fullComponentId = $"{_pluginId}.{componentId}";
+        OnHomeComponentRegistered?.Invoke(fullComponentId, title, description, icon, contentFactory, defaultSize);
+    }
+
+    public void UnregisterHomeComponent(string componentId)
+    {
+        var fullComponentId = $"{_pluginId}.{componentId}";
+        OnHomeComponentUnregistered?.Invoke(fullComponentId);
     }
 
     public string ShowNotification(string title, string message, string type = "info", int? durationSeconds = null)

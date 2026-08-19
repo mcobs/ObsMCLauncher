@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using ObsMCLauncher.Core.Models;
 
 namespace ObsMCLauncher.Core.Plugins;
 
@@ -126,10 +127,52 @@ public interface IPluginContext
         object? payload = null);
 
     /// <summary>
+    /// 注册主页卡片（可指定默认尺寸档位）
+    /// </summary>
+    /// <param name="cardId">卡片唯一标识符</param>
+    /// <param name="title">卡片标题</param>
+    /// <param name="description">卡片描述</param>
+    /// <param name="icon">图标名称（可选）</param>
+    /// <param name="commandId">点击触发的命令ID（可选）</param>
+    /// <param name="payload">自定义数据（可选）</param>
+    /// <param name="defaultSize">默认尺寸档位（用户在主页自定义中可再调整）</param>
+    void RegisterHomeCard(
+        string cardId,
+        string title,
+        string description,
+        string? icon,
+        string? commandId,
+        object? payload,
+        HomeCardSize defaultSize);
+
+    /// <summary>
     /// 注销主页卡片
     /// </summary>
     /// <param name="cardId">卡片唯一标识符</param>
     void UnregisterHomeCard(string cardId);
+
+    /// <summary>
+    /// 注册带自定义UI内容的主页组件（可完全控制组件外观）
+    /// </summary>
+    /// <param name="componentId">组件唯一标识符</param>
+    /// <param name="title">组件标题（组件库中显示）</param>
+    /// <param name="description">组件描述（组件库中显示）</param>
+    /// <param name="icon">图标（可选）</param>
+    /// <param name="contentFactory">内容工厂，每次放置时调用并返回 Avalonia 控件实例</param>
+    /// <param name="defaultSize">默认尺寸档位</param>
+    void RegisterHomeComponent(
+        string componentId,
+        string title,
+        string description,
+        string? icon,
+        Func<object> contentFactory,
+        HomeCardSize defaultSize = HomeCardSize.Medium);
+
+    /// <summary>
+    /// 注销自定义主页组件
+    /// </summary>
+    /// <param name="componentId">组件唯一标识符</param>
+    void UnregisterHomeComponent(string componentId);
 
     /// <summary>
     /// 显示通知

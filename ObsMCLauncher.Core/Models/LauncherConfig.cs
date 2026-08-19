@@ -237,6 +237,19 @@ public class LauncherConfig
 
     public List<HomeCardConfig> HomeCards { get; set; } = [];
 
+    /// <summary>主页布局（行 + 组件）。null 时首次使用会从旧版 HomeCards 配置迁移生成</summary>
+    public HomeLayoutConfig? HomeLayout { get; set; }
+
+    /// <summary>
+    /// 获取主页布局；不存在时从旧版 HomeCards（IsEnabled/Order）推导默认布局。
+    /// 注意：只填充内存字段，不自动写盘，由调用方决定何时 Save。
+    /// </summary>
+    public HomeLayoutConfig GetHomeLayout()
+    {
+        HomeLayout ??= HomeLayoutConfig.CreateDefault(HomeCards);
+        return HomeLayout;
+    }
+
     public List<VersionIsolationSetting> VersionIsolationSettings { get; set; } = [];
 
     public List<string> CustomGameDirectories { get; set; } = [];

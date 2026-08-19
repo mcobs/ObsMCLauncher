@@ -352,6 +352,50 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
         });
     }
 
+    /// <summary>
+    /// 插件注册自定义主页组件（内容由组件注册表中的工厂提供）。
+    /// 组件先以普通卡片形式进入卡片集合，渲染层的接入在组件化重构中完成。
+    /// </summary>
+    public void OnPluginComponentRegistered(string componentId, string title, string description, string? icon)
+    {
+        _dispatcher.InvokeAsync(() =>
+        {
+            var existing = HomeCards.FirstOrDefault(c => c.CardId == componentId);
+            if (existing != null)
+            {
+                existing.Title = title;
+                existing.Description = description;
+                existing.Icon = icon;
+            }
+            else
+            {
+                HomeCards.Add(new HomeCardInfo
+                {
+                    CardId = componentId,
+                    Title = title,
+                    Description = description,
+                    Icon = icon,
+                    IsPluginCard = true,
+                    PluginId = componentId.Split('.')[0]
+                });
+            }
+
+            NotifySettingsViewModelRefreshPluginCards();
+        });
+    }
+
+    public void OnPluginComponentUnregistered(string componentId)
+    {
+        _dispatcher.InvokeAsync(() =>
+        {
+            var card = HomeCards.FirstOrDefault(c => c.CardId == componentId);
+            if (card != null && card.IsPluginCard)
+            {
+                HomeCards.Remove(card);
+            }
+        });
+    }
+
     public void RemoveAllPluginCards(string pluginId)
     {
         _dispatcher.InvokeAsync(() =>

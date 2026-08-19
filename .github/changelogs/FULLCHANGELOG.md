@@ -4,6 +4,11 @@
 
 ## [v1.1.0-beta.4] - 2026-08-19
 
+### 新增（主页自定义基建，第一阶段）
+- 新增主页组件注册表 `HomeComponentRegistry`：内置组件（欢迎卡、新闻、多人联机、资源下载、账号选择、版本选择、启动按钮、日志开关、分隔线）与插件卡片、插件自定义组件统一注册，按内置/插件分组供组件库展示
+- 新增主页布局模型 `HomeLayout`（行 + 组件 + 尺寸档位 Small/Medium/Large/Fill），旧版 `HomeCards` 配置（启用状态/排序）首次使用时自动迁移为默认布局
+- 新增插件 API：`RegisterHomeCard` 支持声明默认尺寸档位（重载）；`RegisterHomeComponent` / `UnregisterHomeComponent` 允许插件注册完全自定义 UI 的主页组件（内容工厂模式）
+
 ### 修复
 - 修复插件扩展 API 在生产环境失效的问题：`LogMessage`、`GetInstalledVersions`、`GetCurrentAccount` 此前未在 Desktop 层接线，现真正生效；`RequestDownload` 已接入下载管理器，并校验目标目录白名单与 SHA-1
 - 修复游戏启动生命周期钩子从未触发的问题：启动钩子已接入 `GameLauncher` 启动流程（BeforeLaunch 可追加参数/拦截，AfterLaunch、退出/崩溃阶段均回调），并补发 `GameLaunched` / `GameClosed` 事件

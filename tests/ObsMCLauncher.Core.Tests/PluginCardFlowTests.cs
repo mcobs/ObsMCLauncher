@@ -98,7 +98,7 @@ public class PluginCardFlowTests : IDisposable
         var ctx = new PluginContext(PluginId);
 
         // 通过 PluginContext 回调触发注册
-        PluginContext.OnHomeCardRegistered = (cardId, title, desc, icon, cmd, payload) =>
+        PluginContext.OnHomeCardRegistered = (cardId, title, desc, icon, cmd, payload, _) =>
             registry.Register(cardId, title, desc, icon, cmd, payload);
 
         ctx.RegisterHomeCard("daily-tip", "每日提示", "今天也要好好挖矿", "Star", "show-tip", null);
@@ -117,7 +117,7 @@ public class PluginCardFlowTests : IDisposable
     {
         var registry = new CardRegistry();
         var ctx = new PluginContext(PluginId);
-        PluginContext.OnHomeCardRegistered = (id, t, d, i, c, p) => registry.Register(id, t, d, i, c, p);
+        PluginContext.OnHomeCardRegistered = (id, t, d, i, c, p, _) => registry.Register(id, t, d, i, c, p);
 
         ctx.RegisterHomeCard("card1", "卡片1", "desc1", null, null, null);
         ctx.RegisterHomeCard("card2", "卡片2", "desc2", null, null, null);
@@ -131,7 +131,7 @@ public class PluginCardFlowTests : IDisposable
     {
         var registry = new CardRegistry();
         var ctx = new PluginContext("my-plugin");
-        PluginContext.OnHomeCardRegistered = (id, t, d, i, c, p) => registry.Register(id, t, d, i, c, p);
+        PluginContext.OnHomeCardRegistered = (id, t, d, i, c, p, _) => registry.Register(id, t, d, i, c, p);
 
         ctx.RegisterHomeCard("feature1", "功能1", "desc", null, null, null);
 
@@ -145,7 +145,7 @@ public class PluginCardFlowTests : IDisposable
     {
         var registry = new CardRegistry();
         var ctx = new PluginContext(PluginId);
-        PluginContext.OnHomeCardRegistered = (id, t, d, i, c, p) => registry.Register(id, t, d, i, c, p);
+        PluginContext.OnHomeCardRegistered = (id, t, d, i, c, p, _) => registry.Register(id, t, d, i, c, p);
 
         // 第一次注册
         ctx.RegisterHomeCard("edit-test", "原标题", "原描述", null, null, null);
@@ -169,7 +169,7 @@ public class PluginCardFlowTests : IDisposable
     {
         var registry = new CardRegistry();
         var ctx = new PluginContext(PluginId);
-        PluginContext.OnHomeCardRegistered = (id, t, d, i, c, p) => registry.Register(id, t, d, i, c, p);
+        PluginContext.OnHomeCardRegistered = (id, t, d, i, c, p, _) => registry.Register(id, t, d, i, c, p);
 
         ctx.RegisterHomeCard("card1", "原标题", "原描述", null, null, null);
         ctx.RegisterHomeCard("card1", "新标题", "新描述", null, null, null);
@@ -187,7 +187,7 @@ public class PluginCardFlowTests : IDisposable
     {
         var registry = new CardRegistry();
         var ctx = new PluginContext(PluginId);
-        PluginContext.OnHomeCardRegistered = (id, t, d, i, c, p) => registry.Register(id, t, d, i, c, p);
+        PluginContext.OnHomeCardRegistered = (id, t, d, i, c, p, _) => registry.Register(id, t, d, i, c, p);
         PluginContext.OnHomeCardUnregistered = id => registry.Unregister(id);
 
         ctx.RegisterHomeCard("delete-test", "测试", "desc", null, null, null);
@@ -213,7 +213,7 @@ public class PluginCardFlowTests : IDisposable
     {
         var registry = new CardRegistry();
         var ctx = new PluginContext(PluginId);
-        PluginContext.OnHomeCardRegistered = (id, t, d, i, c, p) => registry.Register(id, t, d, i, c, p);
+        PluginContext.OnHomeCardRegistered = (id, t, d, i, c, p, _) => registry.Register(id, t, d, i, c, p);
         PluginContext.OnHomeCardUnregistered = id => registry.Unregister(id);
 
         ctx.RegisterHomeCard("card1", "卡片1", "desc", null, null, null);
@@ -278,7 +278,7 @@ public class PluginCardFlowTests : IDisposable
         var registry = new CardRegistry();
         var ctxA = new PluginContext("plugin-a");
         var ctxB = new PluginContext("plugin-b");
-        PluginContext.OnHomeCardRegistered = (id, t, d, i, c, p) => registry.Register(id, t, d, i, c, p);
+        PluginContext.OnHomeCardRegistered = (id, t, d, i, c, p, _) => registry.Register(id, t, d, i, c, p);
 
         ctxA.RegisterHomeCard("c1", "卡片1", "desc", null, null, null);
         ctxA.RegisterHomeCard("c2", "卡片2", "desc", null, null, null);
@@ -311,7 +311,7 @@ public class PluginCardFlowTests : IDisposable
     {
         var registry = new CardRegistry();
         var ctx = new PluginContext(PluginId);
-        PluginContext.OnHomeCardRegistered = (id, t, d, i, c, p) => registry.Register(id, t, d, i, c, p);
+        PluginContext.OnHomeCardRegistered = (id, t, d, i, c, p, _) => registry.Register(id, t, d, i, c, p);
 
         ctx.RegisterHomeCard("special", "<script>alert('xss')</script>", "desc", null, null, null);
 
@@ -324,7 +324,7 @@ public class PluginCardFlowTests : IDisposable
     {
         var registry = new CardRegistry();
         var ctx = new PluginContext(PluginId);
-        PluginContext.OnHomeCardRegistered = (id, t, d, i, c, p) => registry.Register(id, t, d, i, c, p);
+        PluginContext.OnHomeCardRegistered = (id, t, d, i, c, p, _) => registry.Register(id, t, d, i, c, p);
 
         var longTitle = new string('A', 1000);
         ctx.RegisterHomeCard("long", longTitle, "desc", null, null, null);
@@ -337,7 +337,7 @@ public class PluginCardFlowTests : IDisposable
     {
         var registry = new CardRegistry();
         var ctx = new PluginContext(PluginId);
-        PluginContext.OnHomeCardRegistered = (id, t, d, i, c, p) => registry.Register(id, t, d, i, c, p);
+        PluginContext.OnHomeCardRegistered = (id, t, d, i, c, p, _) => registry.Register(id, t, d, i, c, p);
 
         ctx.RegisterHomeCard("minimal", "标题", "描述"); // icon/command/payload 都为 null
 
@@ -353,7 +353,7 @@ public class PluginCardFlowTests : IDisposable
     {
         var registry = new CardRegistry();
         var ctx = new PluginContext(PluginId);
-        PluginContext.OnHomeCardRegistered = (id, t, d, i, c, p) => registry.Register(id, t, d, i, c, p, isEnabled: false);
+        PluginContext.OnHomeCardRegistered = (id, t, d, i, c, p, _) => registry.Register(id, t, d, i, c, p, isEnabled: false);
 
         ctx.RegisterHomeCard("disabled", "禁用卡片", "desc", null, null, null);
 
@@ -370,7 +370,7 @@ public class PluginCardFlowTests : IDisposable
     {
         var registry = new CardRegistry();
         var ctx = new PluginContext(PluginId);
-        PluginContext.OnHomeCardRegistered = (id, t, d, i, c, p) => registry.Register(id, t, d, i, c, p);
+        PluginContext.OnHomeCardRegistered = (id, t, d, i, c, p, _) => registry.Register(id, t, d, i, c, p);
 
         // 1. 注册命令
         int clickCount = 0;
