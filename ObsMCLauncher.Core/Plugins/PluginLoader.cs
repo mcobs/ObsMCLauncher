@@ -330,6 +330,8 @@ public class PluginLoader
             plugin.ErrorMessage = "插件已被禁用";
 
             PluginContext.RemovePluginCommands(pluginId);
+            PluginContext.RemovePluginLaunchHooks(pluginId);
+            PluginContext.RemovePluginEventHandlers(pluginId);
 
             OnPluginDisabled?.Invoke(pluginId);
 
@@ -476,6 +478,8 @@ public class PluginLoader
             }
 
             PluginContext.RemovePluginCommands(pluginId);
+            PluginContext.RemovePluginLaunchHooks(pluginId);
+            PluginContext.RemovePluginEventHandlers(pluginId);
 
             System.Threading.Thread.Sleep(100);
 

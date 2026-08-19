@@ -12,7 +12,7 @@ public class PluginContext : IPluginContext
     private readonly string _pluginId;
     private readonly string _pluginDataDir;
 
-    private static readonly Dictionary<string, List<Action<object?>>> _eventHandlers = new();
+    private static readonly Dictionary<string, List<(string pluginId, Action<object?> handler)>> _eventHandlers = new();
     private static readonly object _eventHandlersLock = new();
 
     private static readonly Dictionary<string, Action<object?>> _pluginCommands = new();
@@ -24,7 +24,7 @@ public class PluginContext : IPluginContext
 
     public static Action<string, string, string, string?, object?>? OnTabRegistered { get; set; }
 
-    public static Action<string, string, object?, object?>? OnTabRegisteredWithContent { get; set; }
+    public static Action<string, string, string, object?, object?>? OnTabRegisteredWithContent { get; set; }
 
     public static Action<string, string>? OnTabUnregistered { get; set; }
 
@@ -79,7 +79,7 @@ public class PluginContext : IPluginContext
 
     public void RegisterTab(string title, string tabId, object? customContent, string? icon = null, object? payload = null)
     {
-        OnTabRegisteredWithContent?.Invoke(title, tabId, customContent, payload);
+        OnTabRegisteredWithContent?.Invoke(_pluginId, title, tabId, customContent, payload);
     }
 
     public void UnregisterTab(string tabId)
@@ -89,14 +89,31 @@ public class PluginContext : IPluginContext
 
     public void SubscribeEvent(string eventName, Action<object?> handler)
     {
+        if (string.IsNullOrEmpty(eventName) || handler == null) return;
         lock (_eventHandlersLock)
         {
             if (!_eventHandlers.TryGetValue(eventName, out var list))
             {
-                list = new List<Action<object?>>();
+                list = new List<(string, Action<object?>)>();
                 _eventHandlers[eventName] = list;
             }
-            list.Add(handler);
+            list.Add((_pluginId, handler));
+        }
+    }
+
+    public void UnsubscribeEvent(string eventName, Action<object?> handler)
+    {
+        if (string.IsNullOrEmpty(eventName) || handler == null) return;
+        lock (_eventHandlersLock)
+        {
+            if (_eventHandlers.TryGetValue(eventName, out var list))
+            {
+                list.RemoveAll(e => e.pluginId == _pluginId && e.handler == handler);
+                if (list.Count == 0)
+                {
+                    _eventHandlers.Remove(eventName);
+                }
+            }
         }
     }
 
@@ -107,7 +124,7 @@ public class PluginContext : IPluginContext
         {
             if (_eventHandlers.TryGetValue(eventName, out var list))
             {
-                handlers = list.ToList();
+                handlers = list.Select(e => e.handler).ToList();
             }
         }
 
@@ -385,6 +402,30 @@ public class PluginContext : IPluginContext
     }
 
     /// <summary>
+    /// 移除指定插件的所有事件订阅（插件卸载时调用）
+    /// </summary>
+    public static void RemovePluginEventHandlers(string pluginId)
+    {
+        List<string> keysToRemove;
+        lock (_eventHandlersLock)
+        {
+            keysToRemove = _eventHandlers
+                .Where(kv => kv.Value.Any(e => e.pluginId == pluginId))
+                .Select(kv => kv.Key)
+                .ToList();
+
+            foreach (var key in keysToRemove)
+            {
+                _eventHandlers[key].RemoveAll(e => e.pluginId == pluginId);
+                if (_eventHandlers[key].Count == 0)
+                {
+                    _eventHandlers.Remove(key);
+                }
+            }
+        }
+    }
+
+    /// <summary>
     /// 清除启动钩子静态状态（仅用于单元测试隔离，不应在生产代码调用）
     /// 注意：仅清除新增的 _launchHooks，不清除 _eventHandlers / _pluginCommands
     /// 以避免影响并行运行的其他测试类
@@ -404,7 +445,7 @@ public class PluginContext : IPluginContext
         {
             if (_eventHandlers.TryGetValue(eventName, out var list))
             {
-                handlers = list.ToList();
+                handlers = list.Select(e => e.handler).ToList();
             }
         }
 

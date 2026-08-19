@@ -116,8 +116,8 @@ public class PluginPageFlowTests : IDisposable
     {
         var registry = new TabRegistry();
         var ctx = new PluginContext(PluginId);
-        PluginContext.OnTabRegisteredWithContent = (title, tabId, content, payload) =>
-            registry.Register(PluginId, title, tabId, payload, content);
+        PluginContext.OnTabRegisteredWithContent = (pid, title, tabId, content, payload) =>
+            registry.Register(pid, title, tabId, payload, content);
 
         var mockContent = new { Type = "Form", Fields = new[] { "name", "value" } };
         ctx.RegisterTab("表单页", "form-tab", mockContent);
@@ -174,8 +174,8 @@ public class PluginPageFlowTests : IDisposable
     {
         var registry = new TabRegistry();
         var ctx = new PluginContext(PluginId);
-        PluginContext.OnTabRegisteredWithContent = (title, tabId, content, payload) =>
-            registry.Register(PluginId, title, tabId, payload, content);
+        PluginContext.OnTabRegisteredWithContent = (pid, title, tabId, content, payload) =>
+            registry.Register(pid, title, tabId, payload, content);
 
         // 模拟一个组件树
         var componentTree = new
@@ -427,8 +427,8 @@ public class PluginPageFlowTests : IDisposable
 
         PluginContext.OnTabRegistered = (pid, title, tabId, icon, payload) =>
             registry.Register(pid, title, tabId, payload, null);
-        PluginContext.OnTabRegisteredWithContent = (title, tabId, content, payload) =>
-            registry.Register(PluginId, title, tabId, payload, content);
+        PluginContext.OnTabRegisteredWithContent = (pid, title, tabId, content, payload) =>
+            registry.Register(pid, title, tabId, payload, content);
         PluginContext.OnTabUnregistered = (pid, tabId) => registry.Unregister(pid, tabId);
 
         // 1. 创建标准页面

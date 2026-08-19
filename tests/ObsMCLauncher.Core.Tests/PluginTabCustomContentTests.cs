@@ -22,7 +22,7 @@ public class PluginTabCustomContentTests
         object? receivedContent = null;
         object? receivedPayload = null;
 
-        PluginContext.OnTabRegisteredWithContent = (title, tabId, customContent, payload) =>
+        PluginContext.OnTabRegisteredWithContent = (pluginId, title, tabId, customContent, payload) =>
         {
             receivedTitle = title;
             receivedTabId = tabId;
@@ -48,7 +48,7 @@ public class PluginTabCustomContentTests
         var ctx = CreateContext();
         object? receivedContent = "not-null";
 
-        PluginContext.OnTabRegisteredWithContent = (title, tabId, customContent, payload) =>
+        PluginContext.OnTabRegisteredWithContent = (pluginId, title, tabId, customContent, payload) =>
         {
             receivedContent = customContent;
         };
@@ -98,7 +98,7 @@ public class PluginTabCustomContentTests
             originalCalled = true;
         };
 
-        PluginContext.OnTabRegisteredWithContent = (title, tabId, customContent, payload) =>
+        PluginContext.OnTabRegisteredWithContent = (pluginId, title, tabId, customContent, payload) =>
         {
             // 新回调
         };
@@ -118,7 +118,7 @@ public class PluginTabCustomContentTests
         var ctx = CreateContext();
         object? receivedPayload = "not-null";
 
-        PluginContext.OnTabRegisteredWithContent = (title, tabId, customContent, payload) =>
+        PluginContext.OnTabRegisteredWithContent = (pluginId, title, tabId, customContent, payload) =>
         {
             receivedPayload = payload;
         };
@@ -138,7 +138,7 @@ public class PluginTabCustomContentTests
         // icon参数在新的重载中也有默认值null，这里验证回调能正常触发
         bool callbackInvoked = false;
 
-        PluginContext.OnTabRegisteredWithContent = (title, tabId, customContent, payload) =>
+        PluginContext.OnTabRegisteredWithContent = (pluginId, title, tabId, customContent, payload) =>
         {
             callbackInvoked = true;
         };
@@ -157,7 +157,7 @@ public class PluginTabCustomContentTests
         var ctx = CreateContext();
         var registeredTabs = new List<string>();
 
-        PluginContext.OnTabRegisteredWithContent = (title, tabId, customContent, payload) =>
+        PluginContext.OnTabRegisteredWithContent = (pluginId, title, tabId, customContent, payload) =>
         {
             registeredTabs.Add(tabId);
         };
@@ -187,7 +187,7 @@ public class PluginTabCustomContentTests
             originalCount++;
         };
 
-        PluginContext.OnTabRegisteredWithContent = (title, tabId, customContent, payload) =>
+        PluginContext.OnTabRegisteredWithContent = (pluginId, title, tabId, customContent, payload) =>
         {
             withContentCount++;
         };

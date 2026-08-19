@@ -94,6 +94,13 @@ public interface IPluginContext
     void SubscribeEvent(string eventName, Action<object?> handler);
 
     /// <summary>
+    /// 退订事件
+    /// </summary>
+    /// <param name="eventName">事件名称</param>
+    /// <param name="handler">事件处理器（需与订阅时相同引用）</param>
+    void UnsubscribeEvent(string eventName, Action<object?> handler);
+
+    /// <summary>
     /// 发布事件
     /// </summary>
     /// <param name="eventName">事件名称</param>
