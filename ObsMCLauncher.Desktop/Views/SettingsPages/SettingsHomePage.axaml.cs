@@ -93,6 +93,15 @@ public partial class SettingsHomePage : UserControl
         Dispatcher.UIThread.Post(PreviewScroll.ScrollToEnd, DispatcherPriority.Loaded);
     }
 
+    // 添加行槽位：预览内容未滚动到底部时显示，到底后隐藏（避免贴着底部操作区显得多余）
+    private void PreviewScroll_ScrollChanged(object? sender, ScrollChangedEventArgs e)
+    {
+        var sc = PreviewScroll;
+        var overflowing = sc.Extent.Height > sc.Viewport.Height + 1;
+        var atBottom = overflowing && sc.Offset.Y >= sc.Extent.Height - sc.Viewport.Height - 1;
+        AddRowSlot.IsVisible = !atBottom;
+    }
+
     private void DeleteSelected_Click(object? sender, RoutedEventArgs e)
     {
         Vm?.DeleteSelectedComponent();

@@ -296,44 +296,16 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
         return vm;
     }
 
-    /// <summary>数据驱动组件：欢迎横幅或通用卡片（要求卡片处于启用状态）</summary>
+    /// <summary>数据驱动组件：欢迎横幅或通用卡片。只要卡片存在即可放置
+    /// （是否放入主页布局由 HomeLayout 决定，禁用卡片仍可从组件库手动添加）</summary>
     private HomeComponentViewModel? CreateDataComponentVM(string id)
     {
-        var card = HomeCards.FirstOrDefault(c => c.CardId == id && c.IsEnabled);
+        var card = HomeCards.FirstOrDefault(c => c.CardId == id);
         if (id == HomeComponentRegistry.WelcomeId)
         {
             return card != null ? new WelcomeComponentViewModel { Card = card } : null;
         }
         return card != null ? new CardComponentViewModel { Card = card } : null;
-    }
-
-    /// <summary>确保组件出现在运行时布局中：已存在则刷新数据引用，不存在则追加到最后一行并持久化</summary>
-    private void EnsureComponentInRows(string id)
-    {
-        var existing = HomeRows.SelectMany(r => r.Components).FirstOrDefault(c => c.Id == id);
-        if (existing != null)
-        {
-            existing.Card = HomeCards.FirstOrDefault(c => c.CardId == id);
-            return;
-        }
-
-        if (!HomeCards.Any(c => c.CardId == id && c.IsEnabled)) return;
-
-        var descriptor = HomeComponentRegistry.TryGet(id);
-        var vm = CreateComponentVM(id, descriptor?.DefaultSize ?? HomeCardSize.Medium);
-        if (vm == null) return;
-
-        var targetRow = HomeRows.LastOrDefault();
-        if (targetRow == null)
-        {
-            targetRow = new HomeRowViewModel();
-            HomeRows.Add(targetRow);
-        }
-        targetRow.Components.Add(vm);
-
-        var config = LauncherConfig.Load();
-        config.GetHomeLayout().Append(id, vm.Size);
-        config.Save();
     }
 
     /// <summary>从运行时布局与持久化布局中移除组件</summary>
@@ -467,16 +439,33 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
         return true;
     }
 
-    /// <summary>调整组件尺寸档位；行里放不下新档位时保持原尺寸</summary>
+    /// <summary>调整组件尺寸档位。改为整行（Fill）时若行里有其他组件，
+    /// 自动把该组件挪到新独占行，保证能真正铺满整行；其余档位行里放不下时保持原尺寸</summary>
     public void SetComponentSize(HomeComponentViewModel component, HomeCardSize size)
     {
         if (component.Size == size) return;
         var row = HomeRows.FirstOrDefault(r => r.Components.Contains(component));
-        if (row != null && !row.CanAccept(size, component))
+        if (row == null)
+        {
+            component.Size = size;
+            PersistHomeLayout();
+            return;
+        }
+
+        // 整行：行里有其他组件时把该组件拆到新行，占满整行才成立
+        if (size == HomeCardSize.Fill && row.Components.Count > 1)
+        {
+            row.Components.Remove(component);
+            var idx = HomeRows.IndexOf(row);
+            var newRow = InsertRow(idx + 1);
+            newRow.Components.Add(component);
+        }
+        else if (!row.CanAccept(size, component))
         {
             DebugLogger.Warn("Home", $"size change rejected: row cannot fit size={size}");
             return;
         }
+
         component.Size = size;
         PersistHomeLayout();
     }
@@ -537,8 +526,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
             // 通知SettingsViewModel刷新插件卡片
             NotifySettingsViewModelRefreshPluginCards();
 
-            // 新卡片自动进入主页布局（与旧版"注册即显示"行为一致）
-            EnsureComponentInRows(cardId);
+            // 插件注册的卡片不自动放入主页布局，由用户在组件库中手动添加
         });
     }
 

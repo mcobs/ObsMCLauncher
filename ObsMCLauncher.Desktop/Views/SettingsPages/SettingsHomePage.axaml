@@ -189,6 +189,33 @@
       <Setter Property="Opacity" Value="0.92"/>
       <Setter Property="BoxShadow" Value="0 4 16 0 #40000000"/>
     </Style>
+    <Style Selector="Border.add-row-slot">
+      <Setter Property="Margin" Value="24,0,24,16"/>
+      <Setter Property="MinHeight" Value="44"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource DividerBrush}"/>
+      <Setter Property="BorderThickness" Value="1.5"/>
+      <Setter Property="CornerRadius" Value="8"/>
+      <Setter Property="Background" Value="#0CFFFFFF"/>
+      <Setter Property="Transitions">
+        <Transitions>
+          <BrushTransition Property="BorderBrush" Duration="0:0:0.12"/>
+        </Transitions>
+      </Setter>
+    </Style>
+    <Style Selector="Border.add-row-slot:pointerover">
+      <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+      <Setter Property="Background" Value="#1410B981"/>
+    </Style>
+    <Style Selector="Button.add-row-btn">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="Padding" Value="6"/>
+      <Setter Property="CornerRadius" Value="4"/>
+      <Setter Property="HorizontalContentAlignment" Value="Center"/>
+      <Setter Property="VerticalContentAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="Button.add-row-btn:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}"/>
+    </Style>
     <!-- 组件库条目 -->
     <Style Selector="Border.lib-chip">
       <Setter Property="Padding" Value="10,8"/>
@@ -226,19 +253,27 @@
                   Background="{DynamicResource LayerFillColorSecondaryBrush}"
                   ClipToBounds="True">
             <Grid RowDefinitions="*,Auto">
-              <ScrollViewer x:Name="PreviewScroll" Grid.Row="0" VerticalScrollBarVisibility="Auto">
-                <ItemsControl ItemsSource="{Binding Home.HomeRows}" Margin="24,24,24,16"
-                              ItemTemplate="{StaticResource EditableRowTemplate}"/>
-              </ScrollViewer>
+              <ScrollViewer x:Name="PreviewScroll" Grid.Row="0" VerticalScrollBarVisibility="Auto"
+                               ScrollChanged="PreviewScroll_ScrollChanged">
+                  <StackPanel>
+                    <ItemsControl ItemsSource="{Binding Home.HomeRows}" Margin="24,24,24,16"
+                                  ItemTemplate="{StaticResource EditableRowTemplate}"/>
 
-              <!-- 固定操作区：与真实主页共用同一控件，仅作预览不响应交互 -->
-              <views:HomeActionBar Grid.Row="1" DataContext="{Binding Home}" IsHitTestVisible="False"/>
-            </Grid>
-          </Border>
-        </Viewbox>
+                    <!-- 添加行槽位：位于最后一行之后、垂直居中显示一个加号；滚动到底部时隐藏 -->
+                    <Border x:Name="AddRowSlot" Classes="add-row-slot">
+                      <Button Classes="add-row-btn" Click="AddRow_Click" ToolTip.Tip="添加一行">
+                        <Path Data="M19 13H13V19H11V13H5V11H11V5H13V11H19V13Z"
+                              Width="16" Height="16" Stretch="Uniform" Fill="{DynamicResource AccentBrush}"/>
+                      </Button>
+                    </Border>
+                  </StackPanel>
+                </ScrollViewer>
 
-        <Button Content="＋ 添加一行" Classes="ghost" HorizontalAlignment="Left"
-                Click="AddRow_Click"/>
+                <!-- 固定操作区：与真实主页共用同一控件，仅作预览不响应交互 -->
+                <views:HomeActionBar Grid.Row="1" DataContext="{Binding Home}" IsHitTestVisible="False"/>
+              </Grid>
+            </Border>
+          </Viewbox>
 
         <!-- 选中组件操作条 -->
         <Border Classes="settings-card" IsVisible="{Binding HasSelectedComponent}" Padding="14">
