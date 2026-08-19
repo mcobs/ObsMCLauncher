@@ -27,8 +27,6 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     private readonly NotificationService _notificationService;
     private readonly DialogService _dialogService;
 
-    public ObservableCollection<MinecraftVersion> Versions { get; } = new();
-
     public ObservableCollection<ObsMCLauncher.Core.Services.Minecraft.InstalledVersion> InstalledVersions { get; } = new();
 
     public ObservableCollection<GameAccount> Accounts { get; } = new();
@@ -60,6 +58,15 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     /// <summary>启动按钮是否可用：有账号 + 已选版本 + 未在启动中</summary>
     public bool CanLaunch => HasAccounts && SelectedInstalledVersion != null && !IsLaunching;
 
+    /// <summary>已持久化的选中账号 Id，用于避免无变化的重复写盘</summary>
+    private string _persistedAccountId = "";
+
+    /// <summary>头像渲染结果缓存：按账号 Id 缓存，避免列表刷新时重复下载/解码</summary>
+    private readonly Dictionary<string, Avalonia.Media.Imaging.Bitmap> _avatarCache = new();
+
+    /// <summary>正在加载头像的账号集合，同一账号并发只加载一次</summary>
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, byte> _avatarLoading = new();
+
     private GameAccount? _selectedAccount;
     public GameAccount? SelectedAccount
     {
@@ -68,7 +75,8 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
         {
             if (SetProperty(ref _selectedAccount, value))
             {
-                if (value != null)
+                // 已是默认账号且持久化记录一致时无需重复写盘（如启动/刷新时的无变化选中）
+                if (value != null && (!value.IsDefault || _persistedAccountId != value.Id))
                 {
                     if (!value.IsDefault)
                     {
@@ -78,6 +86,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
                     var config = LauncherConfig.Load();
                     config.SelectedAccountId = value.Id;
                     config.Save();
+                    _persistedAccountId = value.Id;
 
                     if (NavigationStore.MainWindow?.NavItems.FirstOrDefault(x => x.Title == "账号管理")?.Page is AccountManagementViewModel accountVm)
                     {
@@ -154,31 +163,11 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
         }
     }
 
-    private string _status = "";
-    public string Status
-    {
-        get => _status;
-        set => SetProperty(ref _status, value);
-    }
-
     private string _localStatus = "";
     public string LocalStatus
     {
         get => _localStatus;
         set => SetProperty(ref _localStatus, value);
-    }
-
-    private bool _isLoading;
-    public bool IsLoading
-    {
-        get => _isLoading;
-        set
-        {
-            if (SetProperty(ref _isLoading, value))
-            {
-                RefreshCommand.NotifyCanExecuteChanged();
-            }
-        }
     }
 
     private bool _isLocalLoading;
@@ -208,7 +197,6 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
         }
     }
 
-    public IAsyncRelayCommand RefreshCommand { get; }
     public IAsyncRelayCommand RefreshLocalCommand { get; }
     public IRelayCommand OpenVersionDetailCommand { get; }
     public IAsyncRelayCommand LaunchCommand { get; }
@@ -234,7 +222,6 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
 
         InstanceViewModel = new InstanceViewModel(notificationService);
 
-        RefreshCommand = new AsyncRelayCommand(LoadAsync, () => !IsLoading);
         RefreshLocalCommand = new AsyncRelayCommand(LoadLocalAsync, () => !IsLocalLoading);
         LaunchCommand = new AsyncRelayCommand(LaunchAsync, () => CanLaunch);
 
@@ -243,6 +230,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
         var config = LauncherConfig.Load();
         SelectedVersionId = config.SelectedVersion;
         _showGameLog = config.ShowGameLogOnLaunch;
+        _persistedAccountId = config.SelectedAccountId ?? "";
 
         _homeCardsChangedHandler = (s, e) =>
         {
@@ -261,7 +249,6 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
 
         InitializeHomeData();
 
-        _ = LoadAsync();
         _ = LoadLocalAsync();
     }
 
@@ -508,8 +495,20 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
 
     private void LoadAccounts()
     {
-        Accounts.Clear();
         var accounts = ObsMCLauncher.Core.Services.Accounts.AccountService.Instance.GetAllAccounts();
+        var newIds = new HashSet<string>(accounts.Select(a => a.Id));
+
+        // 清理已删除账号的头像缓存，释放对应位图
+        foreach (var id in _avatarCache.Keys.ToList())
+        {
+            if (!newIds.Contains(id) && _avatarCache[id] is IDisposable d)
+            {
+                d.Dispose();
+                _avatarCache.Remove(id);
+            }
+        }
+
+        Accounts.Clear();
         foreach (var acc in accounts)
         {
             Accounts.Add(acc);
@@ -581,12 +580,9 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
 
     private void SelectLastAccount()
     {
-        var config = LauncherConfig.Load();
-        var lastAccountId = config.SelectedAccountId;
-        
-        if (!string.IsNullOrEmpty(lastAccountId))
+        if (!string.IsNullOrEmpty(_persistedAccountId))
         {
-            SelectedAccount = Accounts.FirstOrDefault(a => a.Id == lastAccountId);
+            SelectedAccount = Accounts.FirstOrDefault(a => a.Id == _persistedAccountId);
         }
         
         if (SelectedAccount == null)
@@ -599,6 +595,15 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     {
         foreach (var acc in Accounts)
         {
+            if (_avatarCache.TryGetValue(acc.Id, out var cached))
+            {
+                SetAvatar(acc, cached);
+                continue;
+            }
+
+            // 同一账号只发起一次加载，避免列表刷新时重复下载/解码
+            if (!_avatarLoading.TryAdd(acc.Id, 0)) continue;
+
             _ = Task.Run(async () =>
             {
                 try
@@ -611,13 +616,14 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
                         {
                             await _dispatcher.InvokeAsync(() =>
                             {
+                                _avatarCache[acc.Id] = bitmap;
                                 SetAvatar(acc, bitmap);
                             });
                             return;
                         }
                     }
 
-                    // 如果没有皮肤或加载失败，加载默认头像
+                    // 没有皮肤或加载失败时使用默认头像
                     await _dispatcher.InvokeAsync(() =>
                     {
                         try
@@ -625,13 +631,19 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
                             using var defaultAvatar = AssetLoader.Open(new Uri("avares://ObsMCLauncher.Desktop/Assets/logo.png"));
                             if (defaultAvatar != null)
                             {
-                                SetAvatar(acc, new Avalonia.Media.Imaging.Bitmap(defaultAvatar));
+                                var bitmap = new Avalonia.Media.Imaging.Bitmap(defaultAvatar);
+                                _avatarCache[acc.Id] = bitmap;
+                                SetAvatar(acc, bitmap);
                             }
                         }
                         catch { }
                     });
                 }
                 catch { }
+                finally
+                {
+                    _avatarLoading.TryRemove(acc.Id, out _);
+                }
             });
         }
     }
@@ -655,33 +667,6 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     {
         if (SelectedInstalledVersion == null) return;
         InstanceViewModel.SetVersion(SelectedInstalledVersion);
-    }
-
-    public async Task LoadAsync()
-    {
-        try
-        {
-            await _dispatcher.InvokeAsync(() => { IsLoading = true; Status = "正在获取版本列表..."; });
-            var manifest = await ObsMCLauncher.Core.Services.Minecraft.MinecraftVersionService.GetVersionListAsync().ConfigureAwait(false);
-            await _dispatcher.InvokeAsync(() =>
-            {
-                Versions.Clear();
-                if (manifest?.Versions != null)
-                {
-                    foreach (var v in manifest.Versions) Versions.Add(v);
-                    Status = $"已加载 {Versions.Count} 个版本";
-                }
-                else Status = "版本清单为空";
-            });
-        }
-        catch (Exception ex)
-        {
-            await _dispatcher.InvokeAsync(() => Status = $"加载失败: {ex.Message}");
-        }
-        finally
-        {
-            await _dispatcher.InvokeAsync(() => IsLoading = false);
-        }
     }
 
     public async Task LoadLocalAsync()
