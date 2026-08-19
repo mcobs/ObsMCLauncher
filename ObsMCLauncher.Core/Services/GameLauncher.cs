@@ -322,7 +322,7 @@ public class GameLauncher
                 GameDirectory = config.GameDirectory,
                 JavaPath = actualJavaPath
             };
-            PluginContext.TriggerGameLaunchHooks(GameLaunchPhase.BeforeLaunch, launchHook);
+            await PluginContext.TriggerGameLaunchHooksAsync(GameLaunchPhase.BeforeLaunch, launchHook);
             if (launchHook.CancelLaunch)
             {
                 errorMessage = "启动已被插件取消";
@@ -388,7 +388,7 @@ public class GameLauncher
                     process.Exited += (_, _) =>
                     {
                         var exitCode = process.ExitCode;
-                        FireGameExitHooks(versionId, actualMcVersion, config.GameDirectory, actualJavaPath, exitCode);
+                        _ = FireGameExitHooksAsync(versionId, actualMcVersion, config.GameDirectory, actualJavaPath, exitCode);
                         onGameExit.Invoke(exitCode);
                     };
                 }
@@ -399,14 +399,14 @@ public class GameLauncher
                 {
                     errorMessage = $"游戏进程启动后立即退出\n退出代码: {process.ExitCode}\n请检查Debug输出窗口查看详细错误日志";
                     var exitCode = process.ExitCode;
-                    FireGameExitHooks(versionId, actualMcVersion, config.GameDirectory, actualJavaPath, exitCode);
+                    _ = FireGameExitHooksAsync(versionId, actualMcVersion, config.GameDirectory, actualJavaPath, exitCode);
                     process.Dispose();
                     onGameExit?.Invoke(exitCode);
                     return new GameLaunchResult { Success = false, ErrorMessage = errorMessage };
                 }
 
                 // 游戏进程存活，触发启动后钩子与游戏启动事件
-                PluginContext.TriggerGameLaunchHooks(GameLaunchPhase.AfterLaunch, new GameLaunchHookContext
+                await PluginContext.TriggerGameLaunchHooksAsync(GameLaunchPhase.AfterLaunch, new GameLaunchHookContext
                 {
                     VersionId = versionId,
                     McVersion = actualMcVersion,
@@ -446,10 +446,10 @@ public class GameLauncher
     /// <summary>
     /// 触发游戏退出/崩溃钩子与游戏关闭事件。退出码为 0 视为正常退出，否则视为崩溃。
     /// </summary>
-    private static void FireGameExitHooks(string versionId, string mcVersion, string gameDir, string javaPath, int exitCode)
+    private static async Task FireGameExitHooksAsync(string versionId, string mcVersion, string gameDir, string javaPath, int exitCode)
     {
         var phase = exitCode == 0 ? GameLaunchPhase.OnExited : GameLaunchPhase.OnCrash;
-        PluginContext.TriggerGameLaunchHooks(phase, new GameLaunchHookContext
+        await PluginContext.TriggerGameLaunchHooksAsync(phase, new GameLaunchHookContext
         {
             VersionId = versionId,
             McVersion = mcVersion,

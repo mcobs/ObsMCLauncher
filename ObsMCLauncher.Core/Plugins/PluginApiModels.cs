@@ -118,3 +118,20 @@ public class PluginDownloadRequest
     /// <summary>是否立即开始下载，false 表示仅创建任务</summary>
     public bool AutoStart { get; set; } = true;
 }
+
+/// <summary>
+/// 下载任务的精简状态（供插件查询 RequestDownload 返回的任务进度）
+/// </summary>
+public class PluginDownloadTaskStatus
+{
+    public string TaskId { get; set; } = string.Empty;
+
+    /// <summary>状态：Downloading / Completed / Failed / Cancelled；未知返回 Unknown</summary>
+    public string Status { get; set; } = "Unknown";
+
+    /// <summary>进度（0-100）</summary>
+    public double Progress { get; set; }
+
+    /// <summary>状态消息（失败时通常为错误信息）</summary>
+    public string? StatusMessage { get; set; }
+}

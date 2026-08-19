@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace ObsMCLauncher.Core.Plugins;
 
@@ -206,4 +207,48 @@ public interface IPluginContext
     /// <param name="request">下载请求（URL/目标目录/文件名/SHA-1 可选）</param>
     /// <returns>任务 ID；URL/目录非法或被拒绝时返回空字符串</returns>
     string RequestDownload(PluginDownloadRequest request);
+
+    /// <summary>
+    /// 查询指定下载任务的状态（用于轮询 RequestDownload 返回的任务进度）
+    /// </summary>
+    /// <param name="taskId">任务 ID（由 RequestDownload 返回）</param>
+    /// <returns>任务精简状态；任务不存在时返回 null</returns>
+    PluginDownloadTaskStatus? GetDownloadTaskStatus(string taskId);
+
+    /// <summary>
+    /// 读取插件自己的配置文件（存于插件数据目录下的 config.json）
+    /// </summary>
+    /// <typeparam name="T">配置类型</typeparam>
+    /// <returns>反序列化后的配置；文件不存在或解析失败返回 default</returns>
+    T? GetConfig<T>();
+
+    /// <summary>
+    /// 写入插件自己的配置文件（存于插件数据目录下的 config.json）
+    /// </summary>
+    /// <typeparam name="T">配置类型</typeparam>
+    /// <param name="config">要保存的配置对象</param>
+    void SaveConfig<T>(T config);
+
+    /// <summary>
+    /// 使用系统默认浏览器打开外部链接
+    /// </summary>
+    /// <param name="url">http/https 链接</param>
+    /// <returns>是否成功打开</returns>
+    bool OpenUrl(string url);
+
+    /// <summary>
+    /// 跳转到启动器内部页面（multiplier/resources/accounts/versions/settings/more/home）
+    /// </summary>
+    /// <param name="page">目标页面标识</param>
+    void NavigateTo(string page);
+
+    /// <summary>
+    /// 注册异步游戏启动生命周期钩子（若回调需执行耗时/网络操作，请使用此异步版本）
+    /// </summary>
+    void RegisterGameLaunchHookAsync(string hookId, GameLaunchPhase phase, Func<GameLaunchHookContext, Task> handler);
+
+    /// <summary>
+    /// 注销异步启动生命周期钩子（同时注销同名同步钩子）
+    /// </summary>
+    void UnregisterGameLaunchHookAsync(string hookId);
 }

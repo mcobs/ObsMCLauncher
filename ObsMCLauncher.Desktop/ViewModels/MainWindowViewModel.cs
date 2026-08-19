@@ -351,6 +351,94 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
                 return string.Empty;
             }
         };
+
+        // 打开外部链接
+        PluginContext.OnOpenUrl = (url) =>
+        {
+            try
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = url,
+                    UseShellExecute = true
+                });
+                return true;
+            }
+            catch (Exception ex)
+            {
+                DebugLogger.Error("MainWindow", $"插件打开链接失败: {ex.Message}");
+                return false;
+            }
+        };
+
+        // 跳转到启动器内部页面
+        PluginContext.OnNavigateTo = (page) =>
+        {
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => NavToPage(page));
+        };
+
+        // 查询下载任务状态
+        PluginContext.OnGetDownloadTaskStatus = (taskId) => QueryDownloadTaskStatus(taskId);
+    }
+
+    private void NavToPage(string page)
+    {
+        if (string.IsNullOrWhiteSpace(page)) return;
+
+        var pageMapping = new System.Collections.Generic.Dictionary<string, string>
+        {
+            ["home"] = "主页",
+            ["multiplayer"] = "多人联机",
+            ["resources"] = "资源下载",
+            ["accounts"] = "账号管理",
+            ["versions"] = "版本管理",
+            ["settings"] = "设置",
+            ["more"] = "更多"
+        };
+
+        if (!pageMapping.TryGetValue(page.ToLowerInvariant(), out var navTitle)) return;
+
+        var targetNav = NavItems.FirstOrDefault(n => n.Title == navTitle)
+            ?? BottomNavItems.FirstOrDefault(n => n.Title == navTitle);
+        if (targetNav == null) return;
+
+        if (NavItems.Contains(targetNav))
+        {
+            SelectedNavItem = targetNav;
+        }
+        else if (BottomNavItems.Contains(targetNav))
+        {
+            SelectedBottomNavItem = targetNav;
+        }
+    }
+
+    private static PluginDownloadTaskStatus? QueryDownloadTaskStatus(string taskId)
+    {
+        if (string.IsNullOrEmpty(taskId)) return null;
+
+        ObsMCLauncher.Core.Services.Download.DownloadTask? task = null;
+        var tasks = ObsMCLauncher.Core.Services.Download.DownloadTaskManager.Instance.Tasks;
+
+        if (Avalonia.Threading.Dispatcher.UIThread.CheckAccess())
+        {
+            task = tasks.FirstOrDefault(t => t.Id == taskId);
+        }
+        else
+        {
+            Avalonia.Threading.Dispatcher.UIThread.Invoke(() =>
+            {
+                task = tasks.FirstOrDefault(t => t.Id == taskId);
+            });
+        }
+
+        if (task == null) return null;
+        return new PluginDownloadTaskStatus
+        {
+            TaskId = task.Id,
+            Status = task.Status.ToString(),
+            Progress = task.Progress,
+            StatusMessage = task.StatusMessage
+        };
     }
 
     private static string NormalizePluginLoaderType(string? loader)

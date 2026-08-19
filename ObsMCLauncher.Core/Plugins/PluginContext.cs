@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
+using System.Threading.Tasks;
 using ObsMCLauncher.Core.Models;
 using ObsMCLauncher.Core.Utils;
 
@@ -21,6 +23,10 @@ public class PluginContext : IPluginContext
     /// <summary>启动钩子表：key = $"{pluginId}.{hookId}"，value = (phase, handler)</summary>
     private static readonly Dictionary<string, (GameLaunchPhase phase, Action<GameLaunchHookContext> handler)> _launchHooks = new();
     private static readonly object _launchHooksLock = new();
+
+    /// <summary>异步启动钩子表：key = $"{pluginId}.{hookId}"，value = (phase, handler)</summary>
+    private static readonly Dictionary<string, (GameLaunchPhase phase, Func<GameLaunchHookContext, Task> handler)> _asyncLaunchHooks = new();
+    private static readonly object _asyncLaunchHooksLock = new();
 
     public static Action<string, string, string, string?, object?>? OnTabRegistered { get; set; }
 
@@ -49,6 +55,15 @@ public class PluginContext : IPluginContext
 
     /// <summary>提交下载请求回调；返回任务ID，空字符串表示被拒绝</summary>
     public static Func<string, PluginDownloadRequest, string>? OnRequestDownload { get; set; }
+
+    /// <summary>打开外部链接回调；返回是否成功</summary>
+    public static Func<string, bool>? OnOpenUrl { get; set; }
+
+    /// <summary>跳转到内部页面回调；参数为目标页面标识</summary>
+    public static Action<string>? OnNavigateTo { get; set; }
+
+    /// <summary>查询下载任务状态回调；任务不存在返回 null</summary>
+    public static Func<string, PluginDownloadTaskStatus?>? OnGetDownloadTaskStatus { get; set; }
 
     public PluginContext(string pluginId)
     {
@@ -283,6 +298,105 @@ public class PluginContext : IPluginContext
         }
     }
 
+    public PluginDownloadTaskStatus? GetDownloadTaskStatus(string taskId)
+    {
+        try
+        {
+            return OnGetDownloadTaskStatus?.Invoke(taskId);
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Error("PluginContext", $"查询下载任务状态异常: {ex.Message}");
+            return null;
+        }
+    }
+
+    public T? GetConfig<T>()
+    {
+        try
+        {
+            var path = GetConfigPath();
+            if (!File.Exists(path)) return default;
+            return JsonSerializer.Deserialize<T>(File.ReadAllText(path));
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Error("PluginContext", $"读取插件配置异常: {ex.Message}");
+            return default;
+        }
+    }
+
+    public void SaveConfig<T>(T config)
+    {
+        try
+        {
+            Directory.CreateDirectory(_pluginDataDir);
+            var json = JsonSerializer.Serialize(config, new JsonSerializerOptions { WriteIndented = true });
+            File.WriteAllText(GetConfigPath(), json);
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Error("PluginContext", $"保存插件配置异常: {ex.Message}");
+        }
+    }
+
+    public bool OpenUrl(string url)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(url)) return false;
+            // 仅允许 http/https，避免打开本地或危险协议
+            if (!url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &&
+                !url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+            return OnOpenUrl?.Invoke(url) ?? false;
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Error("PluginContext", $"打开链接异常: {ex.Message}");
+            return false;
+        }
+    }
+
+    public void NavigateTo(string page)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(page)) return;
+            OnNavigateTo?.Invoke(page);
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Error("PluginContext", $"导航异常: {ex.Message}");
+        }
+    }
+
+    private string GetConfigPath() => Path.Combine(_pluginDataDir, "config.json");
+
+    public void RegisterGameLaunchHookAsync(string hookId, GameLaunchPhase phase, Func<GameLaunchHookContext, Task> handler)
+    {
+        if (string.IsNullOrEmpty(hookId) || handler == null) return;
+        var fullId = $"{_pluginId}.{hookId}";
+        lock (_asyncLaunchHooksLock)
+        {
+            _asyncLaunchHooks[fullId] = (phase, handler);
+        }
+    }
+
+    public void UnregisterGameLaunchHookAsync(string hookId)
+    {
+        if (string.IsNullOrEmpty(hookId)) return;
+        var fullId = $"{_pluginId}.{hookId}";
+        lock (_asyncLaunchHooksLock)
+        {
+            _asyncLaunchHooks.Remove(fullId);
+        }
+        // 同名的同步钩子一并移除，避免残留
+        UnregisterGameLaunchHook(hookId);
+    }
+
     /// <summary>
     /// 执行插件注册的自定义命令
     /// </summary>
@@ -374,8 +488,39 @@ public class PluginContext : IPluginContext
     }
 
     /// <summary>
-    /// 获取当前已注册的启动钩子数量（主要用于测试与诊断）
+    /// 触发指定阶段的启动钩子（先同步后异步，均按 key 字典序）。返回经过所有钩子处理后的最终上下文。
     /// </summary>
+    public static async Task<GameLaunchHookContext> TriggerGameLaunchHooksAsync(GameLaunchPhase phase, GameLaunchHookContext context)
+    {
+        if (context == null) return new GameLaunchHookContext();
+
+        // 先触发同步钩子
+        TriggerGameLaunchHooks(phase, context);
+        if (phase == GameLaunchPhase.BeforeLaunch && context.CancelLaunch) return context;
+
+        List<KeyValuePair<string, (GameLaunchPhase phase, Func<GameLaunchHookContext, Task> handler)>> snapshot;
+        lock (_asyncLaunchHooksLock)
+        {
+            snapshot = _asyncLaunchHooks.OrderBy(k => k.Key).ToList();
+        }
+
+        foreach (var kvp in snapshot)
+        {
+            if (kvp.Value.phase != phase) continue;
+            try
+            {
+                await kvp.Value.handler(context).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                DebugLogger.Error("PluginContext", $"异步启动钩子异常 [{kvp.Key}] ({phase}): {ex.Message}");
+            }
+
+            if (phase == GameLaunchPhase.BeforeLaunch && context.CancelLaunch) break;
+        }
+
+        return context;
+    }
     public static int GetRegisteredHookCount()
     {
         lock (_launchHooksLock)
@@ -397,6 +542,14 @@ public class PluginContext : IPluginContext
             foreach (var key in keysToRemove)
             {
                 _launchHooks.Remove(key);
+            }
+        }
+        lock (_asyncLaunchHooksLock)
+        {
+            keysToRemove = _asyncLaunchHooks.Keys.Where(k => k.StartsWith(prefix)).ToList();
+            foreach (var key in keysToRemove)
+            {
+                _asyncLaunchHooks.Remove(key);
             }
         }
     }
@@ -435,6 +588,10 @@ public class PluginContext : IPluginContext
         lock (_launchHooksLock)
         {
             _launchHooks.Clear();
+        }
+        lock (_asyncLaunchHooksLock)
+        {
+            _asyncLaunchHooks.Clear();
         }
     }
 

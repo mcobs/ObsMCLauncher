@@ -15,6 +15,12 @@
 - `LauncherVersion` 改用真实版本源（同步启动器实际版本，不再硬编码）
 - 市场安装插件后改为增量加载单插件，避免全量重扫导致已加载插件被重复初始化
 
+### 新增
+- 新增插件通用配置读写 API：`GetConfig<T>` / `SaveConfig<T>`（存于插件数据目录 config.json）
+- 新增 `OpenUrl` 打开外部链接、`NavigateTo` 跳转启动器内部页面的 API
+- 新增 `GetDownloadTaskStatus` 查询下载任务状态的 API
+- 新增异步游戏启动生命周期钩子 `RegisterGameLaunchHookAsync`
+
 ## [v1.1.0-beta.3] - 2026-08-16
 
 ### 优化
