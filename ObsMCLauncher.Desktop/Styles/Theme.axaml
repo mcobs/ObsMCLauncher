@@ -18,7 +18,9 @@
     <SolidColorBrush x:Key="LayerFillColorPrimaryBrush" Color="#1C1F26"/>
     <SolidColorBrush x:Key="LayerFillColorSecondaryBrush" Color="#252830"/>
 
-    <!-- 全局字体：默认跟随系统，运行时由 SettingsViewModel 按配置覆盖 -->
+    <!-- 全局字体：默认内置 HarmonyOS Sans SC，运行时由 SettingsViewModel 按配置覆盖 -->
+    <FontFamily x:Key="GlobalFontFamily">avares://ObsMCLauncher.Desktop/Assets/Fonts/#HarmonyOS Sans SC, HarmonyOS Sans SC, Microsoft YaHei UI, PingFang SC, Noto Sans SC, Segoe UI, sans-serif</FontFamily>
+    <FontFamily x:Key="ContentControlThemeFontFamily">avares://ObsMCLauncher.Desktop/Assets/Fonts/#HarmonyOS Sans SC, HarmonyOS Sans SC, Microsoft YaHei UI, PingFang SC, Noto Sans SC, Segoe UI, sans-serif</FontFamily>
     <FontWeight x:Key="GlobalFontWeight">Normal</FontWeight>
 
     <!-- 壁纸资源默认值：运行时由 SettingsViewModel 按配置覆盖 -->

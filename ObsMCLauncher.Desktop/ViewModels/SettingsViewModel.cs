@@ -534,12 +534,13 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
     {
         try
         {
-            var defaultFont = FontManager.Current.DefaultFontFamily ?? FontFamily.Default;
-            var defaultName = string.IsNullOrEmpty(defaultFont.Name) ? "默认字体" : defaultFont.Name;
-            FontFamilies.Add(new FontFamilyItem(defaultFont, $"{defaultName}（默认）", true));
+            // 首项固定为内置 HarmonyOS 默认字体
+            var defaultName = "HarmonyOS Sans SC";
+            FontFamilies.Add(new FontFamilyItem(DefaultFontFamily, $"{defaultName}（默认）", true));
             foreach (var f in FontManager.Current.SystemFonts.OrderBy(x => x.Name, StringComparer.CurrentCulture))
             {
-                if (string.IsNullOrEmpty(f.Name) || f.Name == defaultFont.Name) continue;
+                if (string.IsNullOrEmpty(f.Name) ||
+                    f.Name.Equals(defaultName, StringComparison.OrdinalIgnoreCase)) continue;
                 FontFamilies.Add(new FontFamilyItem(f, f.Name, false));
             }
         }
@@ -558,6 +559,11 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
     // 主字体缺字形时的回退链，末尾的中文字体保证中文不乱码
     private static readonly string[] CjkFallbackFonts =
         ["Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC", "Noto Sans SC"];
+
+    // 内置默认字体：内嵌 HarmonyOS Sans SC 优先，缺字形时按序回退到其它系统中文字体
+    private static readonly FontFamily DefaultFontFamily = new(
+        "avares://ObsMCLauncher.Desktop/Assets/Fonts/#HarmonyOS Sans SC, HarmonyOS Sans SC, " +
+        "Microsoft YaHei UI, PingFang SC, Noto Sans SC, Segoe UI, sans-serif");
 
     // 构造「主字体, 平台默认, 中文字体」复合字体，缺字形时按顺序回退
     private static FontFamily BuildFontFamily(string primary)
@@ -588,13 +594,10 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
             FontFamily family;
             if (string.IsNullOrWhiteSpace(_config.CustomFontFamily))
             {
-                // 恢复默认：显式写回系统默认字体，而不是 Remove。
+                // 恢复默认：显式写回内置 HarmonyOS 字体，而不是 Remove。
                 // 移除键时 DynamicResource 不一定重新解析，FA 控件会残留旧字体，
                 // 表现为切回默认后仍是上次字体、反复切换也恢复不了
-                var defaultName = FontManager.Current.DefaultFontFamily?.Name;
-                family = string.IsNullOrEmpty(defaultName)
-                    ? FontFamily.Default
-                    : BuildFontFamily(defaultName);
+                family = DefaultFontFamily;
             }
             else
             {
