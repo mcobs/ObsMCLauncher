@@ -131,16 +131,21 @@ public class HomeLayoutConfig
             layout.Rows.Add(cardRow);
         }
 
-        // 操作行：分隔线 + 账号 + 版本 + 启动 + 日志开关
+        // 分隔线独占一行
+        layout.Rows.Add(new HomeRowConfig
+        {
+            Components = [new HomeComponentConfig { Id = HomeComponentRegistry.SeparatorId, Size = HomeCardSize.Fill }]
+        });
+
+        // 操作行：账号 + 版本 + 启动 + 日志开关，尺寸贴近旧版固定布局
         layout.Rows.Add(new HomeRowConfig
         {
             Components =
             [
-                new HomeComponentConfig { Id = HomeComponentRegistry.SeparatorId, Size = HomeCardSize.Fill },
-                new HomeComponentConfig { Id = HomeComponentRegistry.AccountPickerId, Size = HomeCardSize.Medium },
-                new HomeComponentConfig { Id = HomeComponentRegistry.VersionPickerId, Size = HomeCardSize.Medium },
+                new HomeComponentConfig { Id = HomeComponentRegistry.AccountPickerId, Size = HomeCardSize.Large },
+                new HomeComponentConfig { Id = HomeComponentRegistry.VersionPickerId, Size = HomeCardSize.Large },
                 new HomeComponentConfig { Id = HomeComponentRegistry.LaunchButtonId, Size = HomeCardSize.Medium },
-                new HomeComponentConfig { Id = HomeComponentRegistry.LogToggleId, Size = HomeCardSize.Medium }
+                new HomeComponentConfig { Id = HomeComponentRegistry.LogToggleId, Size = HomeCardSize.Small }
             ]
         });
 

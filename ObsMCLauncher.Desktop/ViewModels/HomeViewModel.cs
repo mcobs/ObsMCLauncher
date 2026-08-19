@@ -33,11 +33,8 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
 
     public ObservableCollection<HomeCardInfo> HomeCards { get; } = new();
 
-    public HomeCardInfo? WelcomeCard => HomeCards.FirstOrDefault(c => c.CardId == HomeCardInfo.WelcomeCardId);
-
-    public IEnumerable<HomeCardInfo> OtherCards => HomeCards.Where(c => c.CardId != HomeCardInfo.WelcomeCardId);
-
-    public bool IsWelcomeCardEnabled => WelcomeCard?.IsEnabled ?? false;
+    /// <summary>主页运行时布局：行列表，由 LauncherConfig.HomeLayout 驱动</summary>
+    public ObservableCollection<HomeRowViewModel> HomeRows { get; } = new();
 
     private bool _hasAccounts = true;
     public bool HasAccounts
@@ -181,8 +178,6 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
 
     public InstanceViewModel InstanceViewModel { get; }
 
-    private readonly System.Collections.Specialized.NotifyCollectionChangedEventHandler _homeCardsChangedHandler;
-
     // 默认卡片图标（SVG path data），避免依赖系统 emoji 字形导致跨平台渲染为方块
     internal const string IconRocket = "M12 2C12 2 6 6 6 12C6 15.31 7.79 18.17 10.5 19.71L12 23L13.5 19.71C16.21 18.17 18 15.31 18 12C18 6 12 2 12 2M12 10C10.9 10 10 9.1 10 8C10 6.9 10.9 6 12 6C13.1 6 14 6.9 14 8C14 9.1 13.1 10 12 10M12 20C12 20 8 17.86 8 12C8 10.5 8.5 9.24 9.3 8.17C9.86 8.69 10.42 9.12 11.16 9.44C12.62 10.08 14.55 10.37 15.5 10.05C15.76 11.5 15.37 12.6 15 13.43C14.5 14.53 12 20 12 20Z";
     internal const string IconNews = "M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2M20 16H5.17L4 17.17V4H20V16M7 9H17V7H7V9M7 13H14V11H7V13Z";
@@ -209,21 +204,6 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
         _showGameLog = config.ShowGameLogOnLaunch;
         _persistedAccountId = config.SelectedAccountId ?? "";
 
-        _homeCardsChangedHandler = (s, e) =>
-        {
-            OnPropertyChanged(nameof(WelcomeCard));
-            OnPropertyChanged(nameof(IsWelcomeCardEnabled));
-            OnPropertyChanged(nameof(OtherCards));
-
-            if (e.Action == System.Collections.Specialized.NotifyCollectionChangedAction.Add || 
-                e.Action == System.Collections.Specialized.NotifyCollectionChangedAction.Replace ||
-                e.Action == System.Collections.Specialized.NotifyCollectionChangedAction.Reset)
-            {
-                SubscribeToWelcomeCardChanges();
-            }
-        };
-        HomeCards.CollectionChanged += _homeCardsChangedHandler;
-
         InitializeHomeData();
 
         _ = LoadLocalAsync();
@@ -232,7 +212,6 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     public void Dispose()
     {
         AccountEvents.AccountsChanged -= OnAccountsChanged;
-        HomeCards.CollectionChanged -= _homeCardsChangedHandler;
         GC.SuppressFinalize(this);
     }
 
@@ -268,26 +247,117 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
             HomeCards.Add(card);
         }
 
+        BuildHomeRows();
+
         LoadAccounts();
 
         // 注意：PluginContext.OnHomeCardRegistered 和 OnHomeCardUnregistered
         // 现在在 MainWindowViewModel 中设置，并通过事件分发到各个ViewModel
     }
 
-    private void SubscribeToWelcomeCardChanges()
+    /// <summary>从持久化布局重建运行时行结构；没有数据的组件（如尚未注册的插件卡片）跳过渲染</summary>
+    private void BuildHomeRows()
     {
-        if (WelcomeCard != null)
+        HomeRows.Clear();
+
+        var layout = LauncherConfig.Load().GetHomeLayout();
+        foreach (var row in layout.Rows)
         {
-            WelcomeCard.PropertyChanged -= OnWelcomeCardPropertyChanged;
-            WelcomeCard.PropertyChanged += OnWelcomeCardPropertyChanged;
+            var rowVm = new HomeRowViewModel();
+            foreach (var comp in row.Components)
+            {
+                var vm = CreateComponentVM(comp.Id, comp.Size);
+                if (vm != null)
+                {
+                    rowVm.Components.Add(vm);
+                }
+            }
+            HomeRows.Add(rowVm);
         }
     }
 
-    private void OnWelcomeCardPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    /// <summary>按组件 ID 创建运行时组件视图模型；无法提供渲染数据的返回 null</summary>
+    private HomeComponentViewModel? CreateComponentVM(string id, HomeCardSize size)
     {
-        if (e.PropertyName == nameof(HomeCardInfo.IsEnabled))
+        var descriptor = HomeComponentRegistry.TryGet(id);
+
+        HomeComponentViewModel? vm = id switch
         {
-            OnPropertyChanged(nameof(IsWelcomeCardEnabled));
+            HomeComponentRegistry.SeparatorId => new SeparatorComponentViewModel(),
+            HomeComponentRegistry.AccountPickerId => new AccountPickerComponentViewModel(),
+            HomeComponentRegistry.VersionPickerId => new VersionPickerComponentViewModel(),
+            HomeComponentRegistry.LaunchButtonId => new LaunchButtonComponentViewModel(),
+            HomeComponentRegistry.LogToggleId => new LogToggleComponentViewModel(),
+            _ => CreateDataComponentVM(id, descriptor)
+        };
+        if (vm == null) return null;
+
+        vm.Id = id;
+        vm.Owner = this;
+        vm.Size = size;
+        return vm;
+    }
+
+    /// <summary>数据驱动组件：插件自定义内容优先，其次为通用卡片（要求启用状态）</summary>
+    private HomeComponentViewModel? CreateDataComponentVM(string id, HomeComponentDescriptor? descriptor)
+    {
+        if (descriptor?.HasCustomContent == true)
+        {
+            return new CustomContentComponentViewModel { Content = descriptor.ContentFactory!() };
+        }
+
+        var card = HomeCards.FirstOrDefault(c => c.CardId == id && c.IsEnabled);
+        if (id == HomeComponentRegistry.WelcomeId)
+        {
+            return card != null ? new WelcomeComponentViewModel { Card = card } : null;
+        }
+        return card != null ? new CardComponentViewModel { Card = card } : null;
+    }
+
+    /// <summary>确保组件出现在运行时布局中：已存在则刷新数据引用，不存在则追加到末行并持久化</summary>
+    private void EnsureComponentInRows(string id)
+    {
+        var existing = HomeRows.SelectMany(r => r.Components).FirstOrDefault(c => c.Id == id);
+        if (existing != null)
+        {
+            existing.Card = HomeCards.FirstOrDefault(c => c.CardId == id);
+            return;
+        }
+
+        var descriptor = HomeComponentRegistry.TryGet(id);
+        var isCardEnabled = HomeCards.Any(c => c.CardId == id && c.IsEnabled);
+        if (!isCardEnabled && descriptor?.HasCustomContent != true) return;
+
+        var vm = CreateComponentVM(id, descriptor?.DefaultSize ?? HomeCardSize.Medium);
+        if (vm == null) return;
+
+        if (HomeRows.Count == 0)
+        {
+            HomeRows.Add(new HomeRowViewModel());
+        }
+        HomeRows[^1].Components.Add(vm);
+
+        var config = LauncherConfig.Load();
+        config.GetHomeLayout().Append(id, vm.Size);
+        config.Save();
+    }
+
+    /// <summary>从运行时布局与持久化布局中移除组件</summary>
+    private void RemoveComponentFromRows(string id)
+    {
+        foreach (var row in HomeRows)
+        {
+            var vm = row.Components.FirstOrDefault(c => c.Id == id);
+            if (vm != null)
+            {
+                row.Components.Remove(vm);
+            }
+        }
+
+        var config = LauncherConfig.Load();
+        if (config.GetHomeLayout().Remove(id))
+        {
+            config.Save();
         }
     }
 
@@ -331,6 +401,9 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
 
             // 通知SettingsViewModel刷新插件卡片
             NotifySettingsViewModelRefreshPluginCards();
+
+            // 新卡片自动进入主页布局（与旧版"注册即显示"行为一致）
+            EnsureComponentInRows(cardId);
         });
     }
 
@@ -349,12 +422,13 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
             {
                 HomeCards.Remove(card);
             }
+
+            RemoveComponentFromRows(cardId);
         });
     }
 
     /// <summary>
-    /// 插件注册自定义主页组件（内容由组件注册表中的工厂提供）。
-    /// 组件先以普通卡片形式进入卡片集合，渲染层的接入在组件化重构中完成。
+    /// 插件注册自定义主页组件（内容由组件注册表中的工厂提供，UI 线程调用工厂创建控件实例）
     /// </summary>
     public void OnPluginComponentRegistered(string componentId, string title, string description, string? icon)
     {
@@ -381,6 +455,8 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
             }
 
             NotifySettingsViewModelRefreshPluginCards();
+
+            EnsureComponentInRows(componentId);
         });
     }
 
@@ -393,6 +469,8 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
             {
                 HomeCards.Remove(card);
             }
+
+            RemoveComponentFromRows(componentId);
         });
     }
 
@@ -406,11 +484,35 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
                 HomeCards.Remove(card);
             }
 
+            // 同步移除运行时布局与持久化布局中的组件
+            var prefix = pluginId + ".";
+            foreach (var row in HomeRows)
+            {
+                foreach (var vm in row.Components.Where(c => c.Id.StartsWith(prefix)).ToList())
+                {
+                    row.Components.Remove(vm);
+                }
+            }
+
             var config = LauncherConfig.Load();
             var configToRemove = config.HomeCards.Where(c => c.IsPluginCard && c.PluginId == pluginId).ToList();
             foreach (var cfg in configToRemove)
             {
                 config.HomeCards.Remove(cfg);
+            }
+
+            var layout = config.GetHomeLayout();
+            var layoutChanged = false;
+            foreach (var row in layout.Rows)
+            {
+                if (row.Components.RemoveAll(c => c.Id.StartsWith(prefix)) > 0)
+                {
+                    layoutChanged = true;
+                }
+            }
+            if (layoutChanged)
+            {
+                layout.RemoveEmptyRows();
             }
             config.Save();
 
@@ -497,7 +599,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     {
         // 保存当前的插件卡片
         var pluginCards = HomeCards.Where(c => c.IsPluginCard).ToList();
-        
+
         // 重新初始化主页数据
         InitializeHomeData();
 
@@ -517,33 +619,23 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
             }
         }
 
-        // 重新触发插件卡片注册，以便根据新的启用状态更新显示
-        // 这里需要通知所有已加载的插件重新注册他们的卡片
-        // 由于插件系统已经加载，我们可以通过重新调用OnPluginCardRegistered来更新卡片状态
+        // 卡片数据重建后同步运行时布局
+        BuildHomeRows();
+
+        // 按配置中的启用状态刷新插件卡片显示
         _dispatcher.InvokeAsync(() =>
         {
-            // 获取当前所有插件卡片
             var config = LauncherConfig.Load();
             var cardConfigs = config.HomeCards.Where(c => c.IsPluginCard).ToList();
-
-            // 对于每个插件卡片，重新检查其启用状态
             foreach (var cardConfig in cardConfigs)
             {
-                // 这里需要从插件系统获取卡片的详细信息
-                // 由于插件系统没有提供获取卡片详情的方法，我们只能更新现有卡片的启用状态
                 var existingCard = HomeCards.FirstOrDefault(c => c.CardId == cardConfig.CardId);
                 if (existingCard != null)
                 {
                     existingCard.IsEnabled = cardConfig.IsEnabled;
-
-                    // 不再从集合中移除禁用的卡片，而是保留它们，只是在显示时根据 IsEnabled 属性决定是否显示
-                }
-                else if (cardConfig.IsEnabled)
-                {
-                    // 如果卡片被启用但不在显示列表中，需要插件重新注册
-                    // 这里无法处理，因为需要插件重新调用RegisterHomeCard
                 }
             }
+            BuildHomeRows();
         });
     }
 

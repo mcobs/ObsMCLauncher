@@ -150,11 +150,11 @@ public class HomeComponentRegistryTests : IDisposable
 public class HomeLayoutTests
 {
     [Fact]
-    public void Layout_CreateDefault_NoLegacy_HasThreeRows()
+    public void Layout_CreateDefault_NoLegacy_HasFourRows()
     {
         var layout = HomeLayoutConfig.CreateDefault(null);
 
-        Assert.Equal(3, layout.Rows.Count);
+        Assert.Equal(4, layout.Rows.Count);
         // 第一行：欢迎卡独占
         Assert.Single(layout.Rows[0].Components);
         Assert.Equal(HomeComponentRegistry.WelcomeId, layout.Rows[0].Components[0].Id);
@@ -164,13 +164,16 @@ public class HomeLayoutTests
         Assert.Equal(HomeComponentRegistry.NewsId, layout.Rows[1].Components[0].Id);
         Assert.Equal(HomeComponentRegistry.MultiplayerId, layout.Rows[1].Components[1].Id);
         Assert.Equal(HomeComponentRegistry.ModsId, layout.Rows[1].Components[2].Id);
-        // 第三行：操作区
-        Assert.Equal(5, layout.Rows[2].Components.Count);
+        // 第三行：分隔线独占
+        Assert.Single(layout.Rows[2].Components);
         Assert.Equal(HomeComponentRegistry.SeparatorId, layout.Rows[2].Components[0].Id);
-        Assert.Equal(HomeComponentRegistry.AccountPickerId, layout.Rows[2].Components[1].Id);
-        Assert.Equal(HomeComponentRegistry.VersionPickerId, layout.Rows[2].Components[2].Id);
-        Assert.Equal(HomeComponentRegistry.LaunchButtonId, layout.Rows[2].Components[3].Id);
-        Assert.Equal(HomeComponentRegistry.LogToggleId, layout.Rows[2].Components[4].Id);
+        Assert.Equal(HomeCardSize.Fill, layout.Rows[2].Components[0].Size);
+        // 第四行：操作区
+        Assert.Equal(4, layout.Rows[3].Components.Count);
+        Assert.Equal(HomeComponentRegistry.AccountPickerId, layout.Rows[3].Components[0].Id);
+        Assert.Equal(HomeComponentRegistry.VersionPickerId, layout.Rows[3].Components[1].Id);
+        Assert.Equal(HomeComponentRegistry.LaunchButtonId, layout.Rows[3].Components[2].Id);
+        Assert.Equal(HomeComponentRegistry.LogToggleId, layout.Rows[3].Components[3].Id);
     }
 
     [Fact]
@@ -184,8 +187,8 @@ public class HomeLayoutTests
         var layout = HomeLayoutConfig.CreateDefault(legacy);
 
         Assert.False(layout.Contains(HomeComponentRegistry.WelcomeId));
-        // 卡片行 + 操作行仍在
-        Assert.Equal(2, layout.Rows.Count);
+        // 卡片行 + 分隔行 + 操作行仍在
+        Assert.Equal(3, layout.Rows.Count);
     }
 
     [Fact]
