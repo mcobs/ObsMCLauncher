@@ -252,8 +252,8 @@ public class LauncherConfig
         }
         else
         {
-            // 旧版本写盘的布局可能没有固定标记，读出来时顺手补上
-            HomeLayout.UpgradePinnedRows();
+            // 操作区去组件化后，旧版布局里的操作区组件改成读出时清理
+            HomeLayout.RemoveLegacyActionComponents();
         }
         return HomeLayout;
     }

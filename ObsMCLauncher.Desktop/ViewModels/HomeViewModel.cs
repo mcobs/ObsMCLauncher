@@ -33,14 +33,8 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
 
     public ObservableCollection<HomeCardInfo> HomeCards { get; } = new();
 
-    /// <summary>主页运行时布局：行列表，由 LauncherConfig.HomeLayout 驱动</summary>
+    /// <summary>主页运行时布局：行列表，由 LauncherConfig.HomeLayout 驱动；操作区固定渲染，不在行结构中</summary>
     public ObservableCollection<HomeRowViewModel> HomeRows { get; } = new();
-
-    /// <summary>随卡片区滚动的行（供主页渲染绑定）</summary>
-    public ObservableCollection<HomeRowViewModel> ScrollableRows { get; } = new();
-
-    /// <summary>固定在主页底部的行（供主页渲染绑定）</summary>
-    public ObservableCollection<HomeRowViewModel> PinnedRows { get; } = new();
 
     private bool _hasAccounts = true;
     public bool HasAccounts
@@ -271,7 +265,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
 
         foreach (var row in layout.Rows)
         {
-            var rowVm = new HomeRowViewModel { IsPinnedToBottom = row.IsPinnedToBottom };
+            var rowVm = new HomeRowViewModel();
             foreach (var comp in row.Components)
             {
                 var vm = CreateComponentVM(comp.Id, comp.Size);
@@ -288,35 +282,12 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
         }
 
         DebugLogger.Info("Home", $"BuildHomeRows: {HomeRows.Count} rows built, {HomeRows.Sum(r => r.Components.Count)} components, HomeCards has {HomeCards.Count} items");
-
-        SyncRenderRows();
-    }
-
-    /// <summary>按固定属性把行分发到滚动区/底部区两个渲染集合</summary>
-    private void SyncRenderRows()
-    {
-        ScrollableRows.Clear();
-        PinnedRows.Clear();
-        foreach (var row in HomeRows)
-        {
-            (row.IsPinnedToBottom ? PinnedRows : ScrollableRows).Add(row);
-        }
     }
 
     /// <summary>按组件 ID 创建运行时组件视图模型；无法提供渲染数据的返回 null</summary>
     private HomeComponentViewModel? CreateComponentVM(string id, HomeCardSize size)
     {
-        var descriptor = HomeComponentRegistry.TryGet(id);
-
-        HomeComponentViewModel? vm = id switch
-        {
-            HomeComponentRegistry.SeparatorId => new SeparatorComponentViewModel(),
-            HomeComponentRegistry.AccountPickerId => new AccountPickerComponentViewModel(),
-            HomeComponentRegistry.VersionPickerId => new VersionPickerComponentViewModel(),
-            HomeComponentRegistry.LaunchButtonId => new LaunchButtonComponentViewModel(),
-            HomeComponentRegistry.LogToggleId => new LogToggleComponentViewModel(),
-            _ => CreateDataComponentVM(id, descriptor)
-        };
+        var vm = CreateDataComponentVM(id);
         if (vm == null) return null;
 
         vm.Id = id;
@@ -325,14 +296,9 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
         return vm;
     }
 
-    /// <summary>数据驱动组件：插件自定义内容优先，其次为通用卡片（要求启用状态）</summary>
-    private HomeComponentViewModel? CreateDataComponentVM(string id, HomeComponentDescriptor? descriptor)
+    /// <summary>数据驱动组件：欢迎横幅或通用卡片（要求卡片处于启用状态）</summary>
+    private HomeComponentViewModel? CreateDataComponentVM(string id)
     {
-        if (descriptor?.HasCustomContent == true)
-        {
-            return new CustomContentComponentViewModel { Content = descriptor.ContentFactory!() };
-        }
-
         var card = HomeCards.FirstOrDefault(c => c.CardId == id && c.IsEnabled);
         if (id == HomeComponentRegistry.WelcomeId)
         {
@@ -341,7 +307,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
         return card != null ? new CardComponentViewModel { Card = card } : null;
     }
 
-    /// <summary>确保组件出现在运行时布局中：已存在则刷新数据引用，不存在则追加到最后一个滚动行并持久化</summary>
+    /// <summary>确保组件出现在运行时布局中：已存在则刷新数据引用，不存在则追加到最后一行并持久化</summary>
     private void EnsureComponentInRows(string id)
     {
         var existing = HomeRows.SelectMany(r => r.Components).FirstOrDefault(c => c.Id == id);
@@ -351,19 +317,17 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
             return;
         }
 
-        var descriptor = HomeComponentRegistry.TryGet(id);
-        var isCardEnabled = HomeCards.Any(c => c.CardId == id && c.IsEnabled);
-        if (!isCardEnabled && descriptor?.HasCustomContent != true) return;
+        if (!HomeCards.Any(c => c.CardId == id && c.IsEnabled)) return;
 
+        var descriptor = HomeComponentRegistry.TryGet(id);
         var vm = CreateComponentVM(id, descriptor?.DefaultSize ?? HomeCardSize.Medium);
         if (vm == null) return;
 
-        var targetRow = HomeRows.LastOrDefault(r => !r.IsPinnedToBottom);
+        var targetRow = HomeRows.LastOrDefault();
         if (targetRow == null)
         {
             targetRow = new HomeRowViewModel();
             HomeRows.Add(targetRow);
-            ScrollableRows.Add(targetRow);
         }
         targetRow.Components.Add(vm);
 
@@ -399,7 +363,6 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
         {
             Rows = HomeRows.Select(r => new HomeRowConfig
             {
-                IsPinnedToBottom = r.IsPinnedToBottom,
                 Components = r.Components.Select(c => new HomeComponentConfig
                 {
                     Id = c.Id,
@@ -421,11 +384,18 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
         config.Save();
     }
 
-    /// <summary>添加组件到指定行的指定位置（index 超出范围时追加到行尾），同一组件可重复添加</summary>
+    /// <summary>添加组件到指定行的指定位置（index 超出范围时追加到行尾）；行容量已满或档位互斥时返回 null，同一组件可重复添加</summary>
     public HomeComponentViewModel? AddComponentToRow(string componentId, HomeRowViewModel row, int index)
     {
         var descriptor = HomeComponentRegistry.TryGet(componentId);
-        var vm = CreateComponentVM(componentId, descriptor?.DefaultSize ?? HomeCardSize.Medium);
+        var size = descriptor?.DefaultSize ?? HomeCardSize.Medium;
+        if (!row.CanAccept(size))
+        {
+            DebugLogger.Warn("Home", $"row cannot accept component '{componentId}' (size={size}), row is full");
+            return null;
+        }
+
+        var vm = CreateComponentVM(componentId, size);
         if (vm == null) return null;
 
         if (index < 0 || index > row.Components.Count)
@@ -447,11 +417,18 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
         PersistHomeLayout();
     }
 
-    /// <summary>移动组件到目标行的目标位置（编辑器拖拽用）</summary>
+    /// <summary>移动组件到目标行的目标位置（编辑器拖拽用）；目标行放不下时不移动</summary>
     public void MoveComponent(HomeComponentViewModel component, HomeRowViewModel targetRow, int targetIndex)
     {
         var sourceRow = HomeRows.FirstOrDefault(r => r.Components.Contains(component));
         if (sourceRow == null) return;
+
+        // 目标行容量校验：源行即目标行时排除自身
+        if (!targetRow.CanAccept(component.Size, component))
+        {
+            DebugLogger.Warn("Home", "move rejected: target row is full");
+            return;
+        }
 
         // 同行移动需要先移除再按剩余集合计算插入位置
         sourceRow.Components.Remove(component);
@@ -477,7 +454,6 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
             index = HomeRows.Count;
         }
         HomeRows.Insert(index, row);
-        SyncRenderRows();
         PersistHomeLayout();
         return row;
     }
@@ -487,24 +463,20 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     {
         if (HomeRows.Count <= 1) return false;
         if (!HomeRows.Remove(row)) return false;
-        SyncRenderRows();
         PersistHomeLayout();
         return true;
     }
 
-    /// <summary>切换行的底部固定状态</summary>
-    public void SetRowPinned(HomeRowViewModel row, bool pinned)
-    {
-        if (row.IsPinnedToBottom == pinned) return;
-        row.IsPinnedToBottom = pinned;
-        SyncRenderRows();
-        PersistHomeLayout();
-    }
-
-    /// <summary>调整组件尺寸档位</summary>
+    /// <summary>调整组件尺寸档位；行里放不下新档位时保持原尺寸</summary>
     public void SetComponentSize(HomeComponentViewModel component, HomeCardSize size)
     {
         if (component.Size == size) return;
+        var row = HomeRows.FirstOrDefault(r => r.Components.Contains(component));
+        if (row != null && !row.CanAccept(size, component))
+        {
+            DebugLogger.Warn("Home", $"size change rejected: row cannot fit size={size}");
+            return;
+        }
         component.Size = size;
         PersistHomeLayout();
     }
@@ -587,53 +559,6 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
             }
 
             RemoveComponentFromRows(cardId);
-        });
-    }
-
-    /// <summary>
-    /// 插件注册自定义主页组件（内容由组件注册表中的工厂提供，UI 线程调用工厂创建控件实例）
-    /// </summary>
-    public void OnPluginComponentRegistered(string componentId, string title, string description, string? icon)
-    {
-        _dispatcher.InvokeAsync(() =>
-        {
-            var existing = HomeCards.FirstOrDefault(c => c.CardId == componentId);
-            if (existing != null)
-            {
-                existing.Title = title;
-                existing.Description = description;
-                existing.Icon = icon;
-            }
-            else
-            {
-                HomeCards.Add(new HomeCardInfo
-                {
-                    CardId = componentId,
-                    Title = title,
-                    Description = description,
-                    Icon = icon,
-                    IsPluginCard = true,
-                    PluginId = componentId.Split('.')[0]
-                });
-            }
-
-            NotifySettingsViewModelRefreshPluginCards();
-
-            EnsureComponentInRows(componentId);
-        });
-    }
-
-    public void OnPluginComponentUnregistered(string componentId)
-    {
-        _dispatcher.InvokeAsync(() =>
-        {
-            var card = HomeCards.FirstOrDefault(c => c.CardId == componentId);
-            if (card != null && card.IsPluginCard)
-            {
-                HomeCards.Remove(card);
-            }
-
-            RemoveComponentFromRows(componentId);
         });
     }
 

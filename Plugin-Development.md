@@ -15,7 +15,6 @@
   - [事件系统](#1-事件系统)
   - [注册UI标签页](#2-注册ui标签页)
   - [注册主页卡片](#3-注册主页卡片)
-  - [注册自定义主页组件](#3.1-注册自定义主页组件)
   - [目录获取](#4-目录获取)
   - [启动器版本信息](#5-启动器版本信息)
   - [通知系统](#6-通知系统)
@@ -236,16 +235,6 @@ namespace ObsMCLauncher.Core.Plugins
             HomeCardSize defaultSize);
 
         void UnregisterHomeCard(string cardId);
-
-        void RegisterHomeComponent(
-            string componentId,
-            string title,
-            string description,
-            string? icon,
-            Func<object> contentFactory,
-            HomeCardSize defaultSize = HomeCardSize.Medium);
-
-        void UnregisterHomeComponent(string componentId);
 
         void ShowNotification(string title, string message, string type = "info", int? durationSeconds = null);
         void UpdateNotification(string notificationId, string message, double? progress = null);
@@ -545,51 +534,8 @@ context.RegisterHomeCard(
 
 说明：
 - 尺寸档位只是**默认值**，用户可以在"设置 → 主页自定义"中随意调整每张卡片的实际尺寸与位置
-- 主页支持完全自定义布局：用户可以添加、删除、拖动任意组件（包括启动器内置的启动按钮、账号选择等）
+- 主页支持自定义布局：用户可以添加、删除、拖动卡片组件（账号选择、版本选择、启动按钮等操作区为固定结构，不参与自定义）
 - 未指定尺寸的旧签名调用等同于 `Medium`
-
-#### 3.1 注册自定义主页组件
-
-如果固定样式的卡片（图标+标题+描述）满足不了需求，插件可以注册**完全自定义 UI** 的主页组件：
-
-```csharp
-using Avalonia.Controls;
-
-public void OnLoad(IPluginContext context)
-{
-    context.RegisterHomeComponent(
-        "my-widget",                 // 组件ID（在插件内唯一）
-        "我的小组件",                  // 组件标题（组件库中显示）
-        "完全自定义内容的主页组件",       // 组件描述（组件库中显示）
-        "🧩",                         // 图标（组件库中显示，可选）
-        CreateContent,                // 内容工厂
-        HomeCardSize.Medium           // 默认尺寸档位
-    );
-}
-
-private object CreateContent()
-{
-    // 每次组件被放置到主页时调用，返回一个新的控件实例
-    return new StackPanel
-    {
-        Children =
-        {
-            new TextBlock { Text = "Hello from plugin!" }
-        }
-    };
-}
-
-public void OnUnload()
-{
-    _context?.UnregisterHomeComponent("my-widget");
-}
-```
-
-说明：
-- `contentFactory` 每次被调用都应返回**新的控件实例**，不要复用同一个实例
-- 组件会出现在"设置 → 主页自定义"的组件库中（按插件分组），用户拖入主页后生效
-- 与普通卡片一样支持尺寸档位，用户可自行调整
-- 插件禁用/卸载时组件自动从主页移除
 
 ### 4. 目录获取
 

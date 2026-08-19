@@ -1,0 +1,179 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:converters="using:ObsMCLauncher.Desktop.Converters"
+             x:Class="ObsMCLauncher.Desktop.Views.HomeActionBar"
+             x:DataType="vm:HomeViewModel"
+             xmlns:vm="using:ObsMCLauncher.Desktop.ViewModels">
+
+  <UserControl.Resources>
+    <converters:CardIconConverter x:Key="CardIconConverter"/>
+  </UserControl.Resources>
+
+  <!-- 主页底部操作区：账号/版本/启动 + 日志开关，固定结构不参与主页自定义编辑 -->
+  <StackPanel Margin="24,12,24,24">
+    <Separator Margin="0,0,0,16" Background="{DynamicResource DividerBrush}"/>
+    <Grid RowDefinitions="Auto,Auto">
+
+      <Grid Grid.Row="0" ColumnDefinitions="*,16,*,20,Auto">
+
+        <!-- 账号区：有账号时下拉 + 添加入口，无账号时显示添加按钮 -->
+        <Grid Grid.Column="0" ColumnDefinitions="*,Auto">
+          <Grid ColumnDefinitions="*">
+            <ComboBox
+                      PlaceholderText="选择游戏账号"
+                      HorizontalAlignment="Stretch"
+                      Height="42"
+                      ItemsSource="{Binding Accounts}"
+                      SelectedItem="{Binding SelectedAccount}"
+                      IsVisible="{Binding HasAccounts}">
+              <ComboBox.ItemTemplate>
+                <DataTemplate>
+                  <Grid ColumnDefinitions="Auto,*,Auto" Height="32">
+                    <Border Grid.Column="0" Width="24" Height="24" CornerRadius="4" ClipToBounds="True"
+                            Background="{DynamicResource SurfaceBrush}" VerticalAlignment="Center"
+                            IsVisible="{Binding Avatar, Converter={x:Static converters:NullToBoolConverter.Instance}}">
+                      <Image Source="{Binding Avatar}" Stretch="Uniform" />
+                    </Border>
+                    <Image Grid.Column="0" Width="24" Height="24"
+                           Stretch="Uniform"
+                           IsVisible="{Binding Avatar, Converter={x:Static converters:NullToBoolConverter.Instance}, ConverterParameter=Invert}">
+                      <Image.Source>
+                        <MultiBinding Converter="{x:Static converters:EnumToChineseTextConverter.Instance}" ConverterParameter="IconPath">
+                          <Binding Path="Type" />
+                          <Binding Path="ActualThemeVariant" RelativeSource="{RelativeSource AncestorType=Window}" />
+                        </MultiBinding>
+                      </Image.Source>
+                    </Image>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="8,0,0,0">
+                      <TextBlock Text="{Binding Username}" FontSize="13" FontWeight="Medium" TextTrimming="CharacterEllipsis"/>
+                      <TextBlock Text="{Binding Type, Converter={x:Static converters:EnumToChineseTextConverter.Instance}}"
+                                 FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" />
+                    </StackPanel>
+                  </Grid>
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+              <ComboBox.SelectionBoxItemTemplate>
+                <DataTemplate>
+                  <Grid ColumnDefinitions="Auto,*" Height="32">
+                    <Border Grid.Column="0" Width="24" Height="24" CornerRadius="4" ClipToBounds="True"
+                            Background="{DynamicResource SurfaceBrush}" VerticalAlignment="Center"
+                            IsVisible="{Binding Avatar, Converter={x:Static converters:NullToBoolConverter.Instance}}">
+                      <Image Source="{Binding Avatar}" Stretch="Uniform" />
+                    </Border>
+                    <Image Grid.Column="0" Width="24" Height="24"
+                           Stretch="Uniform"
+                           IsVisible="{Binding Avatar, Converter={x:Static converters:NullToBoolConverter.Instance}, ConverterParameter=Invert}">
+                      <Image.Source>
+                        <MultiBinding Converter="{x:Static converters:EnumToChineseTextConverter.Instance}" ConverterParameter="IconPath">
+                          <Binding Path="Type" />
+                          <Binding Path="ActualThemeVariant" RelativeSource="{RelativeSource AncestorType=Window}" />
+                        </MultiBinding>
+                      </Image.Source>
+                    </Image>
+                    <TextBlock Grid.Column="1" Text="{Binding Username}" VerticalAlignment="Center" Margin="8,0,0,0" FontSize="13" FontWeight="Medium"/>
+                  </Grid>
+                </DataTemplate>
+              </ComboBox.SelectionBoxItemTemplate>
+            </ComboBox>
+
+            <Button
+                    Height="42"
+                    HorizontalAlignment="Stretch"
+                    Classes="ghost"
+                    IsVisible="{Binding !HasAccounts}"
+                    Command="{Binding GoToCommand}"
+                    CommandParameter="accounts"
+                    ToolTip.Tip="前往账号管理">
+              <TextBlock Text="添加账号，点击前往"
+                         FontSize="13"
+                         Foreground="{DynamicResource TextSecondaryBrush}"
+                         VerticalAlignment="Center"
+                         HorizontalAlignment="Center"/>
+            </Button>
+          </Grid>
+
+          <Button Grid.Column="1"
+                  Width="42" Height="42" Margin="8,0,0,0"
+                  Classes="ghost"
+                  IsVisible="{Binding HasAccounts}"
+                  Command="{Binding GoToCommand}"
+                  CommandParameter="accounts"
+                  ToolTip.Tip="添加账号">
+            <Path Data="M19 13H13V19H11V13H5V11H11V5H13V11H19V13Z"
+                  Width="16" Height="16"
+                  Stretch="Uniform"
+                  Fill="{DynamicResource TextBrush}"/>
+          </Button>
+        </Grid>
+
+        <!-- 版本区：有本地版本时下拉 + 齿轮，无版本时显示下载引导 -->
+        <Grid Grid.Column="2" ColumnDefinitions="*,Auto">
+          <Grid ColumnDefinitions="*">
+            <ComboBox
+                      PlaceholderText="选择游戏版本"
+                      HorizontalAlignment="Stretch"
+                      Height="42"
+                      ItemsSource="{Binding InstalledVersions}"
+                      SelectedItem="{Binding SelectedInstalledVersion}"
+                      IsVisible="{Binding HasInstalledVersions}">
+              <ComboBox.ItemTemplate>
+                <DataTemplate>
+                  <TextBlock Text="{Binding Id}" FontSize="13" TextTrimming="CharacterEllipsis"/>
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+
+            <Button
+                    Height="42"
+                    HorizontalAlignment="Stretch"
+                    Classes="ghost"
+                    IsVisible="{Binding !HasInstalledVersions}"
+                    Command="{Binding GoToCommand}"
+                    CommandParameter="versions"
+                    ToolTip.Tip="前往下载版本">
+              <TextBlock Text="暂无本地版本，点击下载"
+                         FontSize="13"
+                         Foreground="{DynamicResource TextSecondaryBrush}"
+                         VerticalAlignment="Center"
+                         HorizontalAlignment="Center"/>
+            </Button>
+          </Grid>
+
+          <Button Grid.Column="1"
+                  Command="{Binding OpenVersionDetailCommand}"
+                  Width="42" Height="42" Margin="8,0,0,0"
+                  Classes="version-gear"
+                  ToolTip.Tip="管理当前版本"
+                  IsVisible="{Binding HasInstalledVersions}">
+            <Path Data="M12 15.5A3.5 3.5 0 0 1 8.5 12A3.5 3.5 0 0 1 12 8.5A3.5 3.5 0 0 1 15.5 12A3.5 3.5 0 0 1 12 15.5M19.4 13C19.5 12.7 19.5 12.3 19.5 12C19.5 11.7 19.5 11.3 19.4 11L21.5 9.4C21.7 9.2 21.7 9 21.6 8.8L19.6 5.4C19.5 5.2 19.2 5.1 19 5.2L16.5 6.2C16 5.8 15.4 5.5 14.8 5.3L14.4 2.6C14.4 2.3 14.2 2.2 14 2.2H10C9.8 2.2 9.6 2.3 9.6 2.6L9.2 5.3C8.6 5.5 8 5.8 7.5 6.2L5 5.2C4.8 5.1 4.5 5.2 4.4 5.4L2.4 8.8C2.3 9 2.3 9.2 2.5 9.4L4.6 11C4.5 11.3 4.5 11.7 4.5 12C4.5 12.3 4.5 12.7 4.6 13L2.5 14.6C2.3 14.8 2.3 15 2.4 15.2L4.4 18.6C4.5 18.8 4.8 18.9 5 18.8L7.5 17.8C8 18.2 8.6 18.5 9.2 18.7L9.6 21.4C9.6 21.7 9.8 21.8 10 21.8H14C14.2 21.8 14.4 21.7 14.4 21.4L14.8 18.7C15.4 18.5 16 18.2 16.5 17.8L19 18.8C19.2 18.9 19.5 18.8 19.6 18.6L21.6 15.2C21.7 15 21.7 14.8 21.5 14.6L19.4 13Z"
+                  Width="18" Height="18"
+                  Stretch="Uniform"
+                  Fill="{DynamicResource PrimaryBrush}" />
+          </Button>
+        </Grid>
+
+        <Button Grid.Column="4"
+                Height="42" MinWidth="140"
+                FontSize="15"
+                FontWeight="SemiBold"
+                Classes="accent"
+                Command="{Binding LaunchCommand}"
+                IsEnabled="{Binding CanLaunch}">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <Path Data="M8 5V19L19 12L8 5Z" Width="14" Height="14"
+                  Stretch="Uniform" Fill="White"
+                  VerticalAlignment="Center"/>
+            <TextBlock Text="启动游戏" VerticalAlignment="Center"/>
+          </StackPanel>
+        </Button>
+      </Grid>
+
+      <!-- 日志开关回到启动按钮正下方 -->
+      <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,10,0,0" HorizontalAlignment="Right">
+        <CheckBox Content="启动时显示游戏日志"
+                  IsChecked="{Binding ShowGameLog}"
+                  FontSize="12"/>
+      </StackPanel>
+    </Grid>
+  </StackPanel>
+</UserControl>

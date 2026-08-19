@@ -26,7 +26,6 @@ public partial class SettingsHomePage : UserControl
 
     // 拖拽期间有效：当前拖的是组件还是组件库条目（进程内直接传引用）
     private bool _isDragging;
-    private IPointer? _dragPointer;
     private HomeRowViewModel? _dropTargetRow;
 
     private SettingsHomeViewModel? Vm => DataContext as SettingsHomeViewModel;
@@ -35,14 +34,7 @@ public partial class SettingsHomePage : UserControl
     {
         InitializeComponent();
         // 捕获被系统拿走（窗口切换等）时收尾，避免卡在拖拽状态
-        PointerCaptureLost += (_, _) =>
-        {
-            if (_isDragging)
-            {
-                CleanupDrag();
-            }
-            _pendingDrag = null;
-        };
+        PointerCaptureLost += OnPointerCaptureLost;
     }
 
     // 页面经 Frame 导航创建，DataContext 继承的是 SettingsViewModel，
@@ -65,34 +57,32 @@ public partial class SettingsHomePage : UserControl
         }
     }
 
-    // 组件外壳按下：先选中，位移超阈值后转为拖拽
+    // 组件外壳按下：立即捕获指针到页面并选中组件，位移超阈值后转为拖拽。
+    // 捕获能防止后续移动被预览的 ScrollViewer 抢走（之前拖不动的根源）
     private void ComponentChrome_PointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        if (Vm != null && sender is Border { DataContext: HomeComponentViewModel vm })
+        if (Vm == null || sender is not Border { DataContext: HomeComponentViewModel vm })
         {
-            Vm.SelectComponent(vm);
-            _pendingDrag = vm;
-            _pressPos = e.GetPosition(PageRoot);
+            return;
         }
+        Vm.SelectComponent(vm);
+        _pendingDrag = vm;
+        _pressPos = e.GetPosition(PageRoot);
+        e.Pointer.Capture(this);
+        e.Handled = true;
     }
 
-    // 组件库：点击直接添加
-    private void LibraryChip_Click(object? sender, RoutedEventArgs e)
-    {
-        if (Vm != null && sender is Button { DataContext: LibraryComponentItem item })
-        {
-            Vm.AddComponentFromLibrary(item);
-        }
-    }
-
-    // 组件库：按下后可拖拽到预览的行里
+    // 组件库按下：同样捕获，release 时按是否拖拽区分"点击添加"与"拖入预览"
     private void LibraryChip_PointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        if (sender is Button { DataContext: LibraryComponentItem item })
+        if (sender is not Button { DataContext: LibraryComponentItem item })
         {
-            _pendingDrag = item;
-            _pressPos = e.GetPosition(PageRoot);
+            return;
         }
+        _pendingDrag = item;
+        _pressPos = e.GetPosition(PageRoot);
+        e.Pointer.Capture(this);
+        e.Handled = true;
     }
 
     private void AddRow_Click(object? sender, RoutedEventArgs e)
@@ -108,11 +98,19 @@ public partial class SettingsHomePage : UserControl
         Vm?.DeleteSelectedComponent();
     }
 
-    private void RowPin_Click(object? sender, RoutedEventArgs e)
+    // 组件右上角的删除按钮
+    private void ComponentDelete_Click(object? sender, RoutedEventArgs e)
     {
-        if (Vm != null && sender is Button { DataContext: HomeRowViewModel row })
+        if (Vm != null && sender is Button { DataContext: HomeComponentViewModel vm })
         {
-            Vm.Home.SetRowPinned(row, !row.IsPinnedToBottom);
+            if (ReferenceEquals(Vm.SelectedComponent, vm))
+            {
+                Vm.DeleteSelectedComponent();
+            }
+            else
+            {
+                Vm.Home.RemoveComponent(vm);
+            }
         }
     }
 
@@ -131,7 +129,7 @@ public partial class SettingsHomePage : UserControl
             var delta = e.GetPosition(PageRoot) - _pressPos;
             if (Math.Abs(delta.X) > DragThreshold || Math.Abs(delta.Y) > DragThreshold)
             {
-                BeginDrag(e, _pendingDrag);
+                BeginDrag(e);
             }
         }
         if (_isDragging)
@@ -147,18 +145,31 @@ public partial class SettingsHomePage : UserControl
         {
             EndDrag(e);
         }
+        else if (_pendingDrag is LibraryComponentItem item)
+        {
+            // 没拖动就是纯点击：组件库直接添加（指针已捕获到页面，Click 不会触发）
+            Vm?.AddComponentFromLibrary(item);
+        }
         _pendingDrag = null;
+        e.Pointer.Capture(null);
         base.OnPointerReleased(e);
     }
 
-    private void BeginDrag(PointerEventArgs e, object payload)
+    private void OnPointerCaptureLost(object? sender, PointerCaptureLostEventArgs e)
+    {
+        if (_isDragging)
+        {
+            CleanupDrag();
+        }
+        _pendingDrag = null;
+    }
+
+    private void BeginDrag(PointerEventArgs e)
     {
         _isDragging = true;
-        _dragPointer = e.Pointer;
-        _dragPointer.Capture(this);
         Cursor = DragCursor;
 
-        DragGhostText.Text = payload switch
+        DragGhostText.Text = _pendingDrag switch
         {
             HomeComponentViewModel c => HomeComponentRegistry.TryGet(c.Id)?.Title ?? c.Id,
             LibraryComponentItem i => i.Title,
@@ -226,8 +237,6 @@ public partial class SettingsHomePage : UserControl
     {
         _isDragging = false;
         _pendingDrag = null;
-        _dragPointer?.Capture(null);
-        _dragPointer = null;
         if (_dropTargetRow != null)
         {
             _dropTargetRow.IsDropTarget = false;

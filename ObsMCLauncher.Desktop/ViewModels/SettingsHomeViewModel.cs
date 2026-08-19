@@ -136,7 +136,7 @@ public sealed class SettingsHomeViewModel : ViewModelBase
         SelectedComponent = null;
     }
 
-    /// <summary>点击组件库条目添加组件：优先加到选中组件所在行，否则加到最后的滚动行</summary>
+    /// <summary>点击组件库条目添加组件：优先加到选中组件所在行，否则加到最后一行</summary>
     public void AddComponentFromLibrary(LibraryComponentItem item)
     {
         var row = SelectedComponent != null
@@ -144,7 +144,7 @@ public sealed class SettingsHomeViewModel : ViewModelBase
             : null;
         if (row == null)
         {
-            row = Home.ScrollableRows.LastOrDefault() ?? Home.HomeRows.LastOrDefault();
+            row = Home.HomeRows.LastOrDefault();
         }
         if (row == null)
         {

@@ -152,29 +152,6 @@ public interface IPluginContext
     void UnregisterHomeCard(string cardId);
 
     /// <summary>
-    /// 注册带自定义UI内容的主页组件（可完全控制组件外观）
-    /// </summary>
-    /// <param name="componentId">组件唯一标识符</param>
-    /// <param name="title">组件标题（组件库中显示）</param>
-    /// <param name="description">组件描述（组件库中显示）</param>
-    /// <param name="icon">图标（可选）</param>
-    /// <param name="contentFactory">内容工厂，每次放置时调用并返回 Avalonia 控件实例</param>
-    /// <param name="defaultSize">默认尺寸档位</param>
-    void RegisterHomeComponent(
-        string componentId,
-        string title,
-        string description,
-        string? icon,
-        Func<object> contentFactory,
-        HomeCardSize defaultSize = HomeCardSize.Medium);
-
-    /// <summary>
-    /// 注销自定义主页组件
-    /// </summary>
-    /// <param name="componentId">组件唯一标识符</param>
-    void UnregisterHomeComponent(string componentId);
-
-    /// <summary>
     /// 显示通知
     /// </summary>
     /// <param name="title">标题</param>

@@ -9,7 +9,7 @@ using Xunit;
 namespace ObsMCLauncher.Core.Tests;
 
 /// <summary>
-/// 主页组件注册表测试：内置组件自动注册、插件组件注册/分组/清理
+/// 主页组件注册表测试：内置组件自动注册、插件卡片注册/分组/清理
 /// </summary>
 public class HomeComponentRegistryTests : IDisposable
 {
@@ -32,18 +32,25 @@ public class HomeComponentRegistryTests : IDisposable
         Assert.Contains(all, c => c.Id == HomeComponentRegistry.NewsId);
         Assert.Contains(all, c => c.Id == HomeComponentRegistry.MultiplayerId);
         Assert.Contains(all, c => c.Id == HomeComponentRegistry.ModsId);
-        Assert.Contains(all, c => c.Id == HomeComponentRegistry.AccountPickerId);
-        Assert.Contains(all, c => c.Id == HomeComponentRegistry.VersionPickerId);
-        Assert.Contains(all, c => c.Id == HomeComponentRegistry.LaunchButtonId);
-        Assert.Contains(all, c => c.Id == HomeComponentRegistry.LogToggleId);
-        Assert.Contains(all, c => c.Id == HomeComponentRegistry.SeparatorId);
     }
 
     [Fact]
-    public void Registry_BuiltinDescriptor_HasFillSizeForWelcomeAndSeparator()
+    public void Registry_ActionAreaComponents_NotRegistered()
+    {
+        // 操作区去组件化：账号/版本/启动/日志开关/分隔线不再出现在注册表
+        var all = HomeComponentRegistry.GetAll();
+
+        Assert.DoesNotContain(all, c => c.Id == HomeComponentRegistry.AccountPickerId);
+        Assert.DoesNotContain(all, c => c.Id == HomeComponentRegistry.VersionPickerId);
+        Assert.DoesNotContain(all, c => c.Id == HomeComponentRegistry.LaunchButtonId);
+        Assert.DoesNotContain(all, c => c.Id == HomeComponentRegistry.LogToggleId);
+        Assert.DoesNotContain(all, c => c.Id == HomeComponentRegistry.SeparatorId);
+    }
+
+    [Fact]
+    public void Registry_BuiltinDescriptor_WelcomeHasFillSize()
     {
         Assert.Equal(HomeCardSize.Fill, HomeComponentRegistry.TryGet(HomeComponentRegistry.WelcomeId)!.DefaultSize);
-        Assert.Equal(HomeCardSize.Fill, HomeComponentRegistry.TryGet(HomeComponentRegistry.SeparatorId)!.DefaultSize);
         Assert.Null(HomeComponentRegistry.TryGet(HomeComponentRegistry.WelcomeId)!.PluginId);
     }
 
@@ -57,21 +64,7 @@ public class HomeComponentRegistryTests : IDisposable
         Assert.Equal("服务器状态", descriptor!.Title);
         Assert.Equal("demo", descriptor.PluginId);
         Assert.True(descriptor.IsPlugin);
-        Assert.False(descriptor.HasCustomContent);
         Assert.Equal(HomeCardSize.Large, descriptor.DefaultSize);
-    }
-
-    [Fact]
-    public void Registry_PluginComponent_HasContentFactory()
-    {
-        Func<object> factory = () => new object();
-        HomeComponentRegistry.RegisterPluginComponent("demo", "widget", "小组件", "描述", null, factory, HomeCardSize.Small);
-
-        var descriptor = HomeComponentRegistry.TryGet("demo.widget");
-        Assert.NotNull(descriptor);
-        Assert.True(descriptor!.HasCustomContent);
-        Assert.Same(factory, descriptor.ContentFactory);
-        Assert.Equal(HomeCardSize.Small, descriptor.DefaultSize);
     }
 
     [Fact]
@@ -138,23 +131,23 @@ public class HomeComponentRegistryTests : IDisposable
     {
         HomeComponentRegistry.RegisterPluginCard("", "card", "标题", "", null, HomeCardSize.Medium);
         HomeComponentRegistry.RegisterPluginCard("demo", "", "标题", "", null, HomeCardSize.Medium);
-        HomeComponentRegistry.RegisterPluginComponent("demo", "w", "标题", "", null, null!, HomeCardSize.Medium);
 
         Assert.Empty(HomeComponentRegistry.GetAll().Where(c => c.PluginId == "demo"));
     }
 }
 
 /// <summary>
-/// 主页布局模型测试：旧版 HomeCards 配置迁移、布局增删操作
+/// 主页布局模型测试：旧版 HomeCards 配置迁移、布局增删操作、操作区组件清理
 /// </summary>
 public class HomeLayoutTests
 {
     [Fact]
-    public void Layout_CreateDefault_NoLegacy_HasFourRows()
+    public void Layout_CreateDefault_NoLegacy_HasCardRowsOnly()
     {
         var layout = HomeLayoutConfig.CreateDefault(null);
 
-        Assert.Equal(4, layout.Rows.Count);
+        // 操作区去组件化后：欢迎行 + 卡片行，共两行
+        Assert.Equal(2, layout.Rows.Count);
         // 第一行：欢迎卡独占
         Assert.Single(layout.Rows[0].Components);
         Assert.Equal(HomeComponentRegistry.WelcomeId, layout.Rows[0].Components[0].Id);
@@ -164,36 +157,22 @@ public class HomeLayoutTests
         Assert.Equal(HomeComponentRegistry.NewsId, layout.Rows[1].Components[0].Id);
         Assert.Equal(HomeComponentRegistry.MultiplayerId, layout.Rows[1].Components[1].Id);
         Assert.Equal(HomeComponentRegistry.ModsId, layout.Rows[1].Components[2].Id);
-        // 第三行：分隔线独占，固定在底部
-        Assert.Single(layout.Rows[2].Components);
-        Assert.Equal(HomeComponentRegistry.SeparatorId, layout.Rows[2].Components[0].Id);
-        Assert.Equal(HomeCardSize.Fill, layout.Rows[2].Components[0].Size);
-        Assert.True(layout.Rows[2].IsPinnedToBottom);
-        // 第四行：操作区，固定在底部
-        Assert.Equal(4, layout.Rows[3].Components.Count);
-        Assert.Equal(HomeComponentRegistry.AccountPickerId, layout.Rows[3].Components[0].Id);
-        Assert.Equal(HomeComponentRegistry.VersionPickerId, layout.Rows[3].Components[1].Id);
-        Assert.Equal(HomeComponentRegistry.LaunchButtonId, layout.Rows[3].Components[2].Id);
-        Assert.Equal(HomeComponentRegistry.LogToggleId, layout.Rows[3].Components[3].Id);
-        Assert.True(layout.Rows[3].IsPinnedToBottom);
-        // 前两行不固定（随卡片区滚动）
-        Assert.False(layout.Rows[0].IsPinnedToBottom);
-        Assert.False(layout.Rows[1].IsPinnedToBottom);
+        // 布局中不含操作区组件
+        Assert.False(layout.Contains(HomeComponentRegistry.SeparatorId));
+        Assert.False(layout.Contains(HomeComponentRegistry.AccountPickerId));
+        Assert.False(layout.Contains(HomeComponentRegistry.LaunchButtonId));
     }
 
     [Fact]
-    public void Layout_Append_SkipsPinnedRows()
+    public void Layout_Append_AddsToLastRow()
     {
         var layout = new HomeLayoutConfig();
-        layout.Rows.Add(new HomeRowConfig { IsPinnedToBottom = true });
 
         layout.Append("a", HomeCardSize.Medium);
+        layout.Append("b", HomeCardSize.Small);
 
-        // 固定行不被使用，而是新建了非固定行
-        Assert.Equal(2, layout.Rows.Count);
-        Assert.Empty(layout.Rows[0].Components);
-        Assert.Single(layout.Rows[1].Components);
-        Assert.False(layout.Rows[1].IsPinnedToBottom);
+        Assert.Single(layout.Rows);
+        Assert.Equal(2, layout.Rows[0].Components.Count);
     }
 
     [Fact]
@@ -207,8 +186,8 @@ public class HomeLayoutTests
         var layout = HomeLayoutConfig.CreateDefault(legacy);
 
         Assert.False(layout.Contains(HomeComponentRegistry.WelcomeId));
-        // 卡片行 + 分隔行 + 操作行仍在
-        Assert.Equal(3, layout.Rows.Count);
+        // 只剩卡片行
+        Assert.Single(layout.Rows);
     }
 
     [Fact]
@@ -222,6 +201,7 @@ public class HomeLayoutTests
         var layout = HomeLayoutConfig.CreateDefault(legacy);
 
         Assert.False(layout.Contains(HomeComponentRegistry.NewsId));
+        // 欢迎行 + 卡片行（news 被禁用后卡片行剩 2 张）
         Assert.Equal(2, layout.Rows[1].Components.Count);
     }
 
@@ -241,7 +221,7 @@ public class HomeLayoutTests
         Assert.True(layout.Contains("demo.tip"));
         Assert.True(layout.Contains("demo.stats"));
         Assert.False(layout.Contains("demo.off"));
-        // Order=0 的插件卡片排在最前
+        // Order=0 的插件卡片排在最前（Rows[0] 是欢迎行，卡片行是 Rows[1]）
         Assert.Equal("demo.tip", layout.Rows[1].Components[0].Id);
         Assert.Equal("demo.stats", layout.Rows[1].Components[^1].Id);
     }
@@ -325,9 +305,9 @@ public class HomeLayoutTests
     }
 
     [Fact]
-    public void Layout_UpgradePinnedRows_LegacyLayout_ActionRowsPinned()
+    public void Layout_RemoveLegacyActionComponents_CleansOldRows()
     {
-        // 早期版本写盘的布局：没有任何固定标记，操作区跟卡片混在一起
+        // 旧版本写盘的布局：操作区以组件形式存在
         var config = new LauncherConfig();
         config.HomeLayout = new HomeLayoutConfig();
         config.HomeLayout.Rows.Add(new HomeRowConfig
@@ -349,36 +329,46 @@ public class HomeLayoutTests
 
         var layout = config.GetHomeLayout();
 
-        // 卡片行不固定，分隔线行和操作行补上固定标记
-        Assert.False(layout.Rows[0].IsPinnedToBottom);
-        Assert.True(layout.Rows[1].IsPinnedToBottom);
-        Assert.True(layout.Rows[2].IsPinnedToBottom);
+        // 操作区组件被清理，只剩欢迎行
+        Assert.Single(layout.Rows);
+        Assert.Equal(HomeComponentRegistry.WelcomeId, layout.Rows[0].Components[0].Id);
     }
 
     [Fact]
-    public void Layout_UpgradePinnedRows_AlreadyPinned_NoTouch()
+    public void Layout_RemoveLegacyActionComponents_NoLegacy_NoTouch()
     {
-        // 已有固定行说明是新布局（或用户手动调整过），不动
+        var layout = new HomeLayoutConfig();
+        layout.Rows.Add(new HomeRowConfig
+        {
+            Components = [new HomeComponentConfig { Id = HomeComponentRegistry.NewsId }]
+        });
+
+        layout.RemoveLegacyActionComponents();
+
+        // 没有旧操作区组件时布局原样保留
+        Assert.Single(layout.Rows);
+        Assert.Equal(HomeComponentRegistry.NewsId, layout.Rows[0].Components[0].Id);
+    }
+
+    [Fact]
+    public void Layout_RemoveLegacyActionComponents_AllRowsLegacy_KeepsOneRow()
+    {
         var layout = new HomeLayoutConfig();
         layout.Rows.Add(new HomeRowConfig
         {
             Components = [new HomeComponentConfig { Id = HomeComponentRegistry.LaunchButtonId }]
         });
-        layout.Rows.Add(new HomeRowConfig
-        {
-            Components = [new HomeComponentConfig { Id = HomeComponentRegistry.SeparatorId }],
-            IsPinnedToBottom = true
-        });
 
-        layout.UpgradePinnedRows();
+        layout.RemoveLegacyActionComponents();
 
-        Assert.False(layout.Rows[0].IsPinnedToBottom);
-        Assert.True(layout.Rows[1].IsPinnedToBottom);
+        // 全部清掉后至少保留一个空行供放置组件
+        Assert.Single(layout.Rows);
+        Assert.Empty(layout.Rows[0].Components);
     }
 }
 
 /// <summary>
-/// 插件主页组件 API 测试：卡片尺寸重载与自定义组件注册事件
+/// 插件主页组件 API 测试：卡片注册尺寸重载
 /// </summary>
 public class HomeComponentApiTests : IDisposable
 {
@@ -394,8 +384,6 @@ public class HomeComponentApiTests : IDisposable
     {
         PluginContext.OnHomeCardRegistered = null;
         PluginContext.OnHomeCardUnregistered = null;
-        PluginContext.OnHomeComponentRegistered = null;
-        PluginContext.OnHomeComponentUnregistered = null;
         PluginContext.RemovePluginCommands(PluginId);
         HomeComponentRegistry.ResetToBuiltinsForTests();
     }
@@ -428,63 +416,5 @@ public class HomeComponentApiTests : IDisposable
 
         Assert.Equal($"{PluginId}.stats", receivedId);
         Assert.Equal(HomeCardSize.Large, receivedSize);
-    }
-
-    [Fact]
-    public void Api_RegisterHomeComponent_FiresEventWithFactory()
-    {
-        string? receivedId = null;
-        Func<object>? receivedFactory = null;
-        HomeCardSize? receivedSize = null;
-        PluginContext.OnHomeComponentRegistered = (id, title, desc, icon, factory, size) =>
-        {
-            receivedId = id;
-            receivedFactory = factory;
-            receivedSize = size;
-        };
-
-        Func<object> factory = () => new object();
-        var ctx = new PluginContext(PluginId);
-        ctx.RegisterHomeComponent("widget", "小组件", "描述", "Icon", factory, HomeCardSize.Small);
-
-        Assert.Equal($"{PluginId}.widget", receivedId);
-        Assert.Same(factory, receivedFactory);
-        Assert.Equal(HomeCardSize.Small, receivedSize);
-    }
-
-    [Fact]
-    public void Api_RegisterHomeComponent_DefaultSizeIsMedium()
-    {
-        HomeCardSize? receivedSize = null;
-        PluginContext.OnHomeComponentRegistered = (_, _, _, _, _, size) => receivedSize = size;
-
-        var ctx = new PluginContext(PluginId);
-        ctx.RegisterHomeComponent("widget", "小组件", "描述", null, () => new object());
-
-        Assert.Equal(HomeCardSize.Medium, receivedSize);
-    }
-
-    [Fact]
-    public void Api_RegisterHomeComponent_NullFactory_Ignored()
-    {
-        var fired = false;
-        PluginContext.OnHomeComponentRegistered = (_, _, _, _, _, _) => fired = true;
-
-        var ctx = new PluginContext(PluginId);
-        ctx.RegisterHomeComponent("widget", "小组件", "描述", null, null!);
-
-        Assert.False(fired);
-    }
-
-    [Fact]
-    public void Api_UnregisterHomeComponent_FiresEventWithFullId()
-    {
-        string? unregisteredId = null;
-        PluginContext.OnHomeComponentUnregistered = id => unregisteredId = id;
-
-        var ctx = new PluginContext(PluginId);
-        ctx.UnregisterHomeComponent("widget");
-
-        Assert.Equal($"{PluginId}.widget", unregisteredId);
     }
 }

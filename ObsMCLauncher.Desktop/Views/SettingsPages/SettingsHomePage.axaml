@@ -2,31 +2,15 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:ObsMCLauncher.Desktop.ViewModels"
              xmlns:ui="using:FluentAvalonia.UI.Controls"
+             xmlns:views="using:ObsMCLauncher.Desktop.Views"
              xmlns:converters="using:ObsMCLauncher.Desktop.Converters"
              x:Class="ObsMCLauncher.Desktop.Views.SettingsPages.SettingsHomePage"
              x:DataType="vm:SettingsHomeViewModel">
 
-  <!-- 插件自定义内容在预览中的占位（真实内容由主页渲染，控件实例不能同时挂两棵可视树） -->
-  <UserControl.DataTemplates>
-    <DataTemplate x:DataType="vm:CustomContentComponentViewModel">
-      <Border MinWidth="{Binding MinWidth}" MinHeight="60"
-              Margin="0,0,10,10"
-              BorderBrush="{DynamicResource DividerBrush}"
-              BorderThickness="1"
-              CornerRadius="{DynamicResource CardCornerRadius}"
-              Background="{DynamicResource LayerFillColorPrimaryBrush}">
-        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="4">
-          <TextBlock Text="插件自定义组件" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}"/>
-          <TextBlock Text="{Binding Id}" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}"/>
-        </StackPanel>
-      </Border>
-    </DataTemplate>
-  </UserControl.DataTemplates>
-
   <UserControl.Resources>
     <converters:CardIconConverter x:Key="CardIconConverter"/>
 
-    <!-- 编辑器中的组件外壳：包裹真实组件渲染 + 选中态 + 拖拽 -->
+    <!-- 编辑器中的组件外壳：包裹真实组件渲染 + 选中态 + 删除按钮 -->
     <DataTemplate x:Key="EditableComponentTemplate" x:DataType="vm:HomeComponentViewModel">
       <Border Classes="edit-comp"
               Padding="3"
@@ -39,6 +23,14 @@
           <Border Classes="edit-comp-selection"
                   IsVisible="{Binding IsEditorSelected}"
                   IsHitTestVisible="False"/>
+          <!-- 选中后右上角直接删除 -->
+          <Button Classes="edit-comp-del"
+                  IsVisible="{Binding IsEditorSelected}"
+                  Click="ComponentDelete_Click"
+                  ToolTip.Tip="删除组件">
+            <Path Data="M19 6.41L17.59 5L12 10.59L6.41 5L5 6.41L10.59 12L5 17.59L6.41 19L12 13.41L17.59 19L19 17.59L13.41 12L19 6.41Z"
+                  Width="10" Height="10" Stretch="Uniform" Fill="{DynamicResource TextBrush}"/>
+          </Button>
         </Panel>
       </Border>
     </DataTemplate>
@@ -81,13 +73,9 @@
           </ItemsControl.ItemTemplate>
         </ItemsControl>
 
-        <!-- 行工具条（悬停显示）：固定到底部 / 删除行 -->
+        <!-- 行工具条（悬停显示）：删除行 -->
         <Border Classes="edit-row-toolbar">
           <StackPanel Orientation="Horizontal" Spacing="2">
-            <Button Classes="edit-tool-btn" Click="RowPin_Click" ToolTip.Tip="固定到底部 / 取消固定">
-              <Path Data="M16 12V4H17V2H7V4H8V12H6V14H13V21H17V14H18V12H16M14 12H10V4H14V12Z"
-                    Width="13" Height="13" Stretch="Uniform" Fill="{DynamicResource TextBrush}"/>
-            </Button>
             <Button Classes="edit-tool-btn" Click="RowDelete_Click" ToolTip.Tip="删除此行">
               <Path Data="M19 4H15.5L14.5 3H9.5L8.5 4H5V6H19M6 19C6 20.1 6.9 21 8 21H16C17.1 21 18 20.1 18 19V7H6V19Z"
                     Width="13" Height="13" Stretch="Uniform" Fill="{DynamicResource TextBrush}"/>
@@ -119,6 +107,25 @@
       <Setter Property="CornerRadius" Value="6"/>
       <Setter Property="Margin" Value="-3"/>
       <Setter Property="Opacity" Value="0.9"/>
+    </Style>
+    <!-- 选中组件右上角的删除按钮 -->
+    <Style Selector="Button.edit-comp-del">
+      <Setter Property="Width" Value="20"/>
+      <Setter Property="Height" Value="20"/>
+      <Setter Property="Padding" Value="0"/>
+      <Setter Property="CornerRadius" Value="10"/>
+      <Setter Property="HorizontalAlignment" Value="Right"/>
+      <Setter Property="VerticalAlignment" Value="Top"/>
+      <Setter Property="Margin" Value="0,-8,-8,0"/>
+      <Setter Property="Background" Value="{DynamicResource LayerFillColorPrimaryBrush}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="HorizontalContentAlignment" Value="Center"/>
+      <Setter Property="VerticalContentAlignment" Value="Center"/>
+      <Setter Property="ZIndex" Value="10"/>
+    </Style>
+    <Style Selector="Button.edit-comp-del:pointerover">
+      <Setter Property="Background" Value="{DynamicResource AccentFillAttentionBrush}"/>
     </Style>
     <!-- 空行占位 -->
     <Style Selector="Border.edit-row-empty">
@@ -202,11 +209,11 @@
                   Command="{Binding ResetLayoutCommand}" VerticalAlignment="Center"/>
         </Grid>
 
-        <TextBlock Text="在预览中点击组件进行选择，从下方组件库拖入新组件；改动实时保存并同步到主页。"
+        <TextBlock Text="在预览中点击选中组件（右上角可删除），从下方组件库点击或拖入组件；改动实时保存并同步到主页。每行宽度有上限，放不下时会整行等比缩小。"
                    FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap"/>
 
-        <!-- 模拟主页：固定设计尺寸与真实主页内容区同比例，整体等比缩放显示 -->
-        <Viewbox Stretch="Uniform">
+        <!-- 模拟主页：固定设计尺寸与真实主页内容区同比例，等比缩放显示（窗口最大化也不超过设计尺寸） -->
+        <Viewbox Stretch="Uniform" MaxWidth="880" MaxHeight="600" HorizontalAlignment="Center">
           <Border x:Name="PreviewRoot" Width="880" Height="600"
                   BorderBrush="{DynamicResource CardBorderBrush}"
                   BorderThickness="1"
@@ -215,14 +222,12 @@
                   ClipToBounds="True">
             <Grid RowDefinitions="*,Auto">
               <ScrollViewer x:Name="PreviewScroll" Grid.Row="0" VerticalScrollBarVisibility="Auto">
-                <ItemsControl ItemsSource="{Binding Home.ScrollableRows}" Margin="24,24,24,16"
+                <ItemsControl ItemsSource="{Binding Home.HomeRows}" Margin="24,24,24,16"
                               ItemTemplate="{StaticResource EditableRowTemplate}"/>
               </ScrollViewer>
 
-              <StackPanel Grid.Row="1" Margin="24,0,24,16" Spacing="0">
-                <ItemsControl ItemsSource="{Binding Home.PinnedRows}"
-                              ItemTemplate="{StaticResource EditableRowTemplate}"/>
-              </StackPanel>
+              <!-- 固定操作区：与真实主页共用同一控件，仅作预览不响应交互 -->
+              <views:HomeActionBar Grid.Row="1" DataContext="{Binding Home}" IsHitTestVisible="False"/>
             </Grid>
           </Border>
         </Viewbox>
@@ -275,7 +280,6 @@
                     <ItemsControl.ItemTemplate>
                       <DataTemplate x:DataType="vm:LibraryComponentItem">
                         <Button Classes="lib-chip" Margin="0,0,8,8"
-                                Click="LibraryChip_Click"
                                 PointerPressed="LibraryChip_PointerPressed"
                                 ToolTip.Tip="{Binding Description}">
                           <StackPanel Orientation="Horizontal" Spacing="8">

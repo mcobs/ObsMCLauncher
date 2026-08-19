@@ -7,10 +7,10 @@
 
   <!-- 组件渲染模板定义在 App.axaml（Application.DataTemplates），与设置页模拟主页共用 -->
 
-  <!-- 布局渲染：滚动区（普通行）+ 底部固定区（固定行）；行内组件一排到底，超宽时整行等比缩小不换行 -->
+  <!-- 布局渲染：卡片区独立滚动 + 固定操作区；行内组件一排到底，超宽时整行等比缩小不换行 -->
   <Grid RowDefinitions="*,Auto">
     <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
-      <ItemsControl ItemsSource="{Binding ScrollableRows}" Margin="24,24,24,16">
+      <ItemsControl ItemsSource="{Binding HomeRows}" Margin="24,24,24,16">
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="vm:HomeRowViewModel">
             <Panel Margin="0,0,0,16">
@@ -39,33 +39,7 @@
       </ItemsControl>
     </ScrollViewer>
 
-    <StackPanel Grid.Row="1" Margin="24,0,24,16">
-      <ItemsControl ItemsSource="{Binding PinnedRows}">
-        <ItemsControl.ItemTemplate>
-          <DataTemplate x:DataType="vm:HomeRowViewModel">
-            <Panel Margin="0,0,0,12">
-              <Viewbox Stretch="Uniform" StretchDirection="DownOnly" HorizontalAlignment="Left"
-                       IsVisible="{Binding !IsSingleFill}">
-                <ItemsControl ItemsSource="{Binding Components}">
-                  <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate>
-                      <StackPanel Orientation="Horizontal"/>
-                    </ItemsPanelTemplate>
-                  </ItemsControl.ItemsPanel>
-                </ItemsControl>
-              </Viewbox>
-              <ItemsControl ItemsSource="{Binding Components}" IsVisible="{Binding IsSingleFill}">
-                <ItemsControl.ItemsPanel>
-                  <ItemsPanelTemplate>
-                    <Grid/>
-                  </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-              </ItemsControl>
-            </Panel>
-          </DataTemplate>
-        </ItemsControl.ItemTemplate>
-      </ItemsControl>
-    </StackPanel>
+    <views:HomeActionBar Grid.Row="1"/>
 
     <views:InstanceView Grid.RowSpan="2" DataContext="{Binding InstanceViewModel}"/>
   </Grid>

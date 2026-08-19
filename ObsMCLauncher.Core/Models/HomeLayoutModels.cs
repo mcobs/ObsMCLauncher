@@ -33,18 +33,18 @@ public class HomeComponentConfig
     public HomeCardSize Size { get; set; } = HomeCardSize.Medium;
 }
 
-/// <summary>主页的一行，行内组件横向排列并自动换行</summary>
+/// <summary>主页的一行，行内组件一排到底，放不下时整行等比缩小</summary>
 public class HomeRowConfig
 {
     public List<HomeComponentConfig> Components { get; set; } = [];
-
-    /// <summary>固定到底部：不随卡片区滚动，始终显示在主页底部（旧版操作区的行为）</summary>
-    public bool IsPinnedToBottom { get; set; }
 }
 
-/// <summary>主页整体布局：行的垂直列表</summary>
+/// <summary>主页整体布局：行的垂直列表。操作区（账号/版本/启动/日志开关）不在此布局中，固定渲染在主页底部</summary>
 public class HomeLayoutConfig
 {
+    /// <summary>单行组件宽度上限（设计尺寸）：限制一行里塞过多组件导致整行被过度缩小</summary>
+    public const double MaxRowWidth = 832;
+
     public List<HomeRowConfig> Rows { get; set; } = [];
 
     public bool Contains(string componentId) =>
@@ -64,10 +64,10 @@ public class HomeLayoutConfig
         return removed;
     }
 
-    /// <summary>追加组件到最后一个非固定行；没有可用的行时先建一行</summary>
+    /// <summary>追加组件到最后一行；没有行时先建一行</summary>
     public void Append(string componentId, HomeCardSize size)
     {
-        var row = Rows.LastOrDefault(r => !r.IsPinnedToBottom);
+        var row = Rows.LastOrDefault();
         if (row == null)
         {
             row = new HomeRowConfig();
@@ -77,25 +77,31 @@ public class HomeLayoutConfig
     }
 
     /// <summary>
-    /// 早期版本迁移写盘的布局没有固定行标记，操作区会跟着卡片一起滚动。
-    /// 布局里没有任何固定行且包含操作区组件时，把这些行升级为固定，还原旧版底部常驻的效果。
+    /// 操作区去组件化后，旧版布局里的账号/版本/启动/日志开关/分隔线组件
+    /// 已改为主页固定渲染，读到旧布局时把这些残留组件清掉并收掉空行。
     /// </summary>
-    public void UpgradePinnedRows()
+    public void RemoveLegacyActionComponents()
     {
-        if (Rows.Any(r => r.IsPinnedToBottom)) return;
+        static bool IsLegacyActionComponent(string id) =>
+            id == HomeComponentRegistry.SeparatorId ||
+            id == HomeComponentRegistry.AccountPickerId ||
+            id == HomeComponentRegistry.VersionPickerId ||
+            id == HomeComponentRegistry.LaunchButtonId ||
+            id == HomeComponentRegistry.LogToggleId;
+
+        if (!Rows.Any(r => r.Components.Any(c => IsLegacyActionComponent(c.Id))))
+        {
+            return;
+        }
 
         foreach (var row in Rows)
         {
-            var isActionRow = row.Components.Any(c =>
-                c.Id == HomeComponentRegistry.SeparatorId ||
-                c.Id == HomeComponentRegistry.AccountPickerId ||
-                c.Id == HomeComponentRegistry.VersionPickerId ||
-                c.Id == HomeComponentRegistry.LaunchButtonId ||
-                c.Id == HomeComponentRegistry.LogToggleId);
-            if (isActionRow)
-            {
-                row.IsPinnedToBottom = true;
-            }
+            row.Components.RemoveAll(c => IsLegacyActionComponent(c.Id));
+        }
+        Rows.RemoveAll(r => r.Components.Count == 0);
+        if (Rows.Count == 0)
+        {
+            Rows.Add(new HomeRowConfig());
         }
     }
 
@@ -159,25 +165,10 @@ public class HomeLayoutConfig
             layout.Rows.Add(cardRow);
         }
 
-        // 分隔线独占一行，与操作行一起固定在主页底部（还原旧版固定操作区的布局）
-        layout.Rows.Add(new HomeRowConfig
+        if (layout.Rows.Count == 0)
         {
-            Components = [new HomeComponentConfig { Id = HomeComponentRegistry.SeparatorId, Size = HomeCardSize.Fill }],
-            IsPinnedToBottom = true
-        });
-
-        // 操作行：账号 + 版本 + 启动 + 日志开关，固定在底部
-        layout.Rows.Add(new HomeRowConfig
-        {
-            Components =
-            [
-                new HomeComponentConfig { Id = HomeComponentRegistry.AccountPickerId, Size = HomeCardSize.Large },
-                new HomeComponentConfig { Id = HomeComponentRegistry.VersionPickerId, Size = HomeCardSize.Large },
-                new HomeComponentConfig { Id = HomeComponentRegistry.LaunchButtonId, Size = HomeCardSize.Medium },
-                new HomeComponentConfig { Id = HomeComponentRegistry.LogToggleId, Size = HomeCardSize.Small }
-            ],
-            IsPinnedToBottom = true
-        });
+            layout.Rows.Add(new HomeRowConfig());
+        }
 
         return layout;
     }

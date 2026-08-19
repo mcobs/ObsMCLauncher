@@ -5,7 +5,7 @@ using ObsMCLauncher.Core.Models;
 
 namespace ObsMCLauncher.Core.Services;
 
-/// <summary>主页组件描述符：描述一个可放置到主页的组件（内置组件、插件卡片或插件自定义组件）</summary>
+/// <summary>主页组件描述符：描述一个可放置到主页的组件（内置组件或插件卡片）</summary>
 public sealed class HomeComponentDescriptor
 {
     public required string Id { get; init; }
@@ -22,12 +22,7 @@ public sealed class HomeComponentDescriptor
 
     public HomeCardSize DefaultSize { get; init; } = HomeCardSize.Medium;
 
-    /// <summary>插件自定义组件的内容工厂，非 null 时该组件渲染工厂返回的控件</summary>
-    public Func<object>? ContentFactory { get; init; }
-
     public bool IsPlugin => PluginId != null;
-
-    public bool HasCustomContent => ContentFactory != null;
 }
 
 /// <summary>组件库分组：内置组件一组，每个插件各一组</summary>
@@ -57,6 +52,8 @@ public static class HomeComponentRegistry
     public const string NewsId = "news";
     public const string MultiplayerId = "multiplayer";
     public const string ModsId = "mods";
+
+    // 操作区已去组件化：这些 ID 不再注册，仅供旧布局迁移清理时识别
     public const string AccountPickerId = "accountPicker";
     public const string VersionPickerId = "versionPicker";
     public const string LaunchButtonId = "launchButton";
@@ -68,11 +65,6 @@ public static class HomeComponentRegistry
     private const string IconNews = "M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2M20 16H5.17L4 17.17V4H20V16M7 9H17V7H7V9M7 13H14V11H7V13Z";
     private const string IconGlobe = "M12 2C6.48 2 2 6.48 2 12S6.48 22 12 22 22 17.52 22 12 17.52 2 12 2M12 20C11.1 20 10.21 19.88 9.36 19.67L10 18L12 16L13.34 13.09L14.35 12H17.5C18.2 12 18.85 12.26 19.35 12.67C18.37 16.8 15.48 20 12 20M7 9L5.77 11.13L5.25 11.77C5.08 11.23 5 10.65 5 10C5 8.94 5.26 7.94 5.71 7.06L7 9M19 10.25C18.03 9.21 16.57 8.5 15 8.5H12.86L10 9.63V12.38L12.41 14.79L13.07 13.25L15 12.5L17 14.5V17.13C14.24 18.37 11 18.37 8.24 17.13L6.83 16.71L6.4 16.29L5.03 16.72C5.16 17.5 5.41 18.25 5.75 18.94C7.21 20.91 9.43 22.02 12 22C16.42 22 20 18.42 20 14C20 12.72 19.65 11.52 19.03 10.5L19 10.25Z";
     private const string IconDownload = "M19 9H15V3H9V9H5L12 16L19 9M5 18V20H19V18H5Z";
-    private const string IconAccount = "M12 4A4 4 0 0 1 16 8A4 4 0 0 1 12 12A4 4 0 0 1 8 8A4 4 0 0 1 12 4M12 14C16.42 14 20 15.79 20 18V20H4V18C4 15.79 7.58 14 12 14Z";
-    private const string IconTag = "M21.41 11.58L12.41 2.58A2 2 0 0 0 11 2H4A2 2 0 0 0 2 4V11A2 2 0 0 0 2.59 12.42L11.59 21.42A2 2 0 0 0 13 22A2 2 0 0 0 14.41 21.41L21.41 14.41A2 2 0 0 0 22 13A2 2 0 0 0 21.41 11.58M6.5 8A1.5 1.5 0 1 1 8 6.5A1.5 1.5 0 0 1 6.5 8Z";
-    private const string IconPlay = "M8 5V19L19 12L8 5Z";
-    private const string IconFileDoc = "M6 2H18A2 2 0 0 1 20 4V20A2 2 0 0 1 18 22H6A2 2 0 0 1 4 20V4A2 2 0 0 1 6 2M6 4V20H18V4H6M8 6H16V8H8V6M8 10H16V12H8V10M8 14H13V16H8V14Z";
-    private const string IconMinus = "M19 13H5V11H19V13Z";
 
     static HomeComponentRegistry() => RegisterBuiltins();
 
@@ -113,46 +105,6 @@ public static class HomeComponentRegistry
             Icon = IconDownload,
             DefaultSize = HomeCardSize.Medium
         });
-        Register(new HomeComponentDescriptor
-        {
-            Id = AccountPickerId,
-            Title = "账号选择",
-            Description = "选择用于启动的游戏账号",
-            Icon = IconAccount,
-            DefaultSize = HomeCardSize.Medium
-        });
-        Register(new HomeComponentDescriptor
-        {
-            Id = VersionPickerId,
-            Title = "版本选择",
-            Description = "选择用于启动的游戏版本",
-            Icon = IconTag,
-            DefaultSize = HomeCardSize.Medium
-        });
-        Register(new HomeComponentDescriptor
-        {
-            Id = LaunchButtonId,
-            Title = "启动按钮",
-            Description = "启动选定的账号与版本",
-            Icon = IconPlay,
-            DefaultSize = HomeCardSize.Medium
-        });
-        Register(new HomeComponentDescriptor
-        {
-            Id = LogToggleId,
-            Title = "游戏日志开关",
-            Description = "控制启动时是否显示游戏日志",
-            Icon = IconFileDoc,
-            DefaultSize = HomeCardSize.Small
-        });
-        Register(new HomeComponentDescriptor
-        {
-            Id = SeparatorId,
-            Title = "分隔线",
-            Description = "行与行之间的水平分隔线",
-            Icon = IconMinus,
-            DefaultSize = HomeCardSize.Fill
-        });
     }
 
     /// <summary>注册或更新一个组件（同 ID 再次注册视为更新）</summary>
@@ -178,23 +130,6 @@ public static class HomeComponentRegistry
             Icon = icon,
             PluginId = pluginId,
             DefaultSize = defaultSize
-        });
-    }
-
-    /// <summary>注册插件自定义组件（内容由插件提供的内容工厂创建），ID 自动加 {pluginId}. 前缀</summary>
-    public static void RegisterPluginComponent(string pluginId, string componentId, string title, string description,
-        string? icon, Func<object> contentFactory, HomeCardSize defaultSize)
-    {
-        if (string.IsNullOrEmpty(pluginId) || string.IsNullOrEmpty(componentId) || contentFactory == null) return;
-        Register(new HomeComponentDescriptor
-        {
-            Id = $"{pluginId}.{componentId}",
-            Title = title,
-            Description = description,
-            Icon = icon,
-            PluginId = pluginId,
-            DefaultSize = defaultSize,
-            ContentFactory = contentFactory
         });
     }
 

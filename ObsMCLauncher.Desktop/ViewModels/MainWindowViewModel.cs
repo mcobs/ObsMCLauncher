@@ -258,34 +258,6 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             });
         };
 
-        PluginContext.OnHomeComponentRegistered = (componentId, title, description, icon, contentFactory, defaultSize) =>
-        {
-            DebugLogger.Info("Plugin", $"注册自定义主页组件: {title} (componentId: {componentId})");
-
-            var dot = componentId.IndexOf('.');
-            var pluginId = dot > 0 ? componentId[..dot] : componentId;
-            var shortId = dot > 0 ? componentId[(dot + 1)..] : componentId;
-            ObsMCLauncher.Core.Services.HomeComponentRegistry.RegisterPluginComponent(
-                pluginId, shortId, title, description, icon, contentFactory, defaultSize);
-
-            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-            {
-                _homeViewModel?.OnPluginComponentRegistered(componentId, title, description, icon);
-            });
-        };
-
-        PluginContext.OnHomeComponentUnregistered = (componentId) =>
-        {
-            DebugLogger.Info("Plugin", $"注销自定义主页组件: {componentId}");
-
-            ObsMCLauncher.Core.Services.HomeComponentRegistry.Unregister(componentId);
-
-            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-            {
-                _homeViewModel?.OnPluginComponentUnregistered(componentId);
-            });
-        };
-
         PluginContext.OnTabUnregistered = (pluginId, tabId) =>
         {
             DebugLogger.Info("Plugin", $"注销标签页: {tabId} (插件: {pluginId})");
