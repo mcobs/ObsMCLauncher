@@ -16,6 +16,7 @@ public partial class SettingsView : UserControl
 {
     private static readonly Dictionary<string, Type> PageMap = new()
     {
+        ["Home"] = typeof(SettingsHomePage),
         ["Game"] = typeof(SettingsGamePage),
         ["Appearance"] = typeof(SettingsAppearancePage),
         ["Download"] = typeof(SettingsDownloadPage),

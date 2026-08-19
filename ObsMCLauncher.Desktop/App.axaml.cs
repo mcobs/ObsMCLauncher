@@ -2,14 +2,18 @@ using System;
 using System.Threading.Tasks;
 using System.Linq;
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Data.Core;
 using Avalonia.Data.Core.Plugins;
+using Avalonia.Input;
 using Avalonia.Markup.Xaml;
 using Avalonia.Media;
+using Avalonia.VisualTree;
 using FluentAvalonia.Styling;
 using ObsMCLauncher.Desktop.ViewModels;
 using ObsMCLauncher.Desktop.Views;
+using ObsMCLauncher.Desktop.Views.SettingsPages;
 using ObsMCLauncher.Desktop.Windows;
 
 namespace ObsMCLauncher.Desktop;
@@ -227,5 +231,22 @@ public partial class App : Application
         {
             BindingPlugins.DataValidators.Remove(plugin);
         }
+    }
+
+    // 主页卡片点击（模板定义在 App 级，真实主页与设置页模拟器共用）
+    public void Card_PointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (sender is not Border { DataContext: HomeComponentViewModel { Card: { } card } vm })
+        {
+            return;
+        }
+
+        // 编辑器预览里的点击只用于选择组件，不触发卡片命令
+        if (sender is Control c && c.FindAncestorOfType<SettingsHomePage>() != null)
+        {
+            return;
+        }
+
+        vm.Owner.CardClickCommand.Execute(card);
     }
 }

@@ -76,6 +76,29 @@ public class HomeLayoutConfig
         row.Components.Add(new HomeComponentConfig { Id = componentId, Size = size });
     }
 
+    /// <summary>
+    /// 早期版本迁移写盘的布局没有固定行标记，操作区会跟着卡片一起滚动。
+    /// 布局里没有任何固定行且包含操作区组件时，把这些行升级为固定，还原旧版底部常驻的效果。
+    /// </summary>
+    public void UpgradePinnedRows()
+    {
+        if (Rows.Any(r => r.IsPinnedToBottom)) return;
+
+        foreach (var row in Rows)
+        {
+            var isActionRow = row.Components.Any(c =>
+                c.Id == HomeComponentRegistry.SeparatorId ||
+                c.Id == HomeComponentRegistry.AccountPickerId ||
+                c.Id == HomeComponentRegistry.VersionPickerId ||
+                c.Id == HomeComponentRegistry.LaunchButtonId ||
+                c.Id == HomeComponentRegistry.LogToggleId);
+            if (isActionRow)
+            {
+                row.IsPinnedToBottom = true;
+            }
+        }
+    }
+
     /// <summary>清理空行；清空后至少保留一个空行，保证主页可放置组件</summary>
     public void RemoveEmptyRows()
     {

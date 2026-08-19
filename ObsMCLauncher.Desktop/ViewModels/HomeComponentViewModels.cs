@@ -42,6 +42,15 @@ public abstract class HomeComponentViewModel : ViewModelBase
         HomeCardSize.Large => 380,
         _ => 560
     };
+
+    private bool _isEditorSelected;
+
+    /// <summary>编辑器中是否被选中（仅运行时状态，不持久化）</summary>
+    public bool IsEditorSelected
+    {
+        get => _isEditorSelected;
+        set => SetProperty(ref _isEditorSelected, value);
+    }
 }
 
 /// <summary>欢迎横幅</summary>

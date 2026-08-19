@@ -114,6 +114,11 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
     private LauncherConfig _config;
     private HomeViewModel? _homeViewModel;
 
+    /// <summary>主页自定义编辑器的视图模型（复用主页数据，改动直接生效）</summary>
+    public SettingsHomeViewModel SettingsHome => _settingsHome ??= new SettingsHomeViewModel(_homeViewModel!);
+
+    private SettingsHomeViewModel? _settingsHome;
+
     public SettingsViewModel(NotificationService notificationService, HomeViewModel? homeViewModel = null)
     {
         _notificationService = notificationService;

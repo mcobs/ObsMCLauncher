@@ -246,7 +246,15 @@ public class LauncherConfig
     /// </summary>
     public HomeLayoutConfig GetHomeLayout()
     {
-        HomeLayout ??= HomeLayoutConfig.CreateDefault(HomeCards);
+        if (HomeLayout == null)
+        {
+            HomeLayout = HomeLayoutConfig.CreateDefault(HomeCards);
+        }
+        else
+        {
+            // 旧版本写盘的布局可能没有固定标记，读出来时顺手补上
+            HomeLayout.UpgradePinnedRows();
+        }
         return HomeLayout;
     }
 

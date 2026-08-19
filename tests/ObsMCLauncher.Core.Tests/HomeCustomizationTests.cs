@@ -323,6 +323,58 @@ public class HomeLayoutTests
         // 迁移结果同时写回属性，随 Save 持久化
         Assert.Same(layout, config.HomeLayout);
     }
+
+    [Fact]
+    public void Layout_UpgradePinnedRows_LegacyLayout_ActionRowsPinned()
+    {
+        // 早期版本写盘的布局：没有任何固定标记，操作区跟卡片混在一起
+        var config = new LauncherConfig();
+        config.HomeLayout = new HomeLayoutConfig();
+        config.HomeLayout.Rows.Add(new HomeRowConfig
+        {
+            Components = [new HomeComponentConfig { Id = HomeComponentRegistry.WelcomeId }]
+        });
+        config.HomeLayout.Rows.Add(new HomeRowConfig
+        {
+            Components = [new HomeComponentConfig { Id = HomeComponentRegistry.SeparatorId }]
+        });
+        config.HomeLayout.Rows.Add(new HomeRowConfig
+        {
+            Components =
+            [
+                new HomeComponentConfig { Id = HomeComponentRegistry.AccountPickerId },
+                new HomeComponentConfig { Id = HomeComponentRegistry.LaunchButtonId }
+            ]
+        });
+
+        var layout = config.GetHomeLayout();
+
+        // 卡片行不固定，分隔线行和操作行补上固定标记
+        Assert.False(layout.Rows[0].IsPinnedToBottom);
+        Assert.True(layout.Rows[1].IsPinnedToBottom);
+        Assert.True(layout.Rows[2].IsPinnedToBottom);
+    }
+
+    [Fact]
+    public void Layout_UpgradePinnedRows_AlreadyPinned_NoTouch()
+    {
+        // 已有固定行说明是新布局（或用户手动调整过），不动
+        var layout = new HomeLayoutConfig();
+        layout.Rows.Add(new HomeRowConfig
+        {
+            Components = [new HomeComponentConfig { Id = HomeComponentRegistry.LaunchButtonId }]
+        });
+        layout.Rows.Add(new HomeRowConfig
+        {
+            Components = [new HomeComponentConfig { Id = HomeComponentRegistry.SeparatorId }],
+            IsPinnedToBottom = true
+        });
+
+        layout.UpgradePinnedRows();
+
+        Assert.False(layout.Rows[0].IsPinnedToBottom);
+        Assert.True(layout.Rows[1].IsPinnedToBottom);
+    }
 }
 
 /// <summary>

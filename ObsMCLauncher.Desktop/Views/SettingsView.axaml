@@ -16,6 +16,12 @@
                      ExpandedModeThresholdWidth="0">
 
     <ui:NavigationView.MenuItems>
+      <ui:NavigationViewItem Content="主页" Tag="Home">
+        <ui:NavigationViewItem.IconSource>
+          <ui:SymbolIconSource Symbol="Home"/>
+        </ui:NavigationViewItem.IconSource>
+      </ui:NavigationViewItem>
+
       <ui:NavigationViewItem Content="通用" Tag="General">
         <ui:NavigationViewItem.IconSource>
           <ui:SymbolIconSource Symbol="Settings"/>
