@@ -27,11 +27,12 @@
     </Style>
   </UserControl.Styles>
 
-  <Grid>
-    <ScrollViewer VerticalScrollBarVisibility="Auto">
-      <Grid Margin="24" RowDefinitions="*,Auto">
-        
-        <Grid Grid.Row="0" Margin="0,0,0,20" RowDefinitions="Auto,*">
+  <Grid RowDefinitions="*,Auto">
+    <!-- 卡片区：独立滚动，避免卡片多时把底部操作区挤出视口 -->
+    <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
+      <Grid Margin="24,24,24,0">
+
+        <Grid RowDefinitions="Auto,*">
           <Panel Grid.Row="0" Margin="0,0,0,20"
                  IsVisible="{Binding IsWelcomeCardEnabled}">
             <Border Classes="home-card"
@@ -114,10 +115,13 @@
             </ItemsControl.ItemTemplate>
           </ItemsControl>
         </Grid>
+      </Grid>
+    </ScrollViewer>
 
-        <StackPanel Grid.Row="1" Margin="0,8,0,0">
-          <Separator Margin="0,0,0,16" Background="{DynamicResource DividerBrush}"/>
-          <Grid RowDefinitions="Auto,Auto">
+    <!-- 操作区：固定在底部，账号/版本/启动始终可见 -->
+    <StackPanel Grid.Row="1" Margin="24,12,24,24">
+      <Separator Margin="0,0,0,16" Background="{DynamicResource DividerBrush}"/>
+      <Grid RowDefinitions="Auto,Auto">
             
             <Grid Grid.Row="0" ColumnDefinitions="*,16,*,20,Auto">
 
@@ -281,9 +285,6 @@
           </Grid>
         </StackPanel>
 
-      </Grid>
-    </ScrollViewer>
-
-    <views:InstanceView DataContext="{Binding InstanceViewModel}"/>
+    <views:InstanceView Grid.RowSpan="2" DataContext="{Binding InstanceViewModel}"/>
   </Grid>
 </UserControl>
