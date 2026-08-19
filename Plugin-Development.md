@@ -214,6 +214,7 @@ namespace ObsMCLauncher.Core.Plugins
 
         void RegisterTab(string title, string tabId, string? icon = null, object? payload = null);
         void SubscribeEvent(string eventName, Action<object?> handler);
+        void UnsubscribeEvent(string eventName, Action<object?> handler);
         void PublishEvent(string eventName, object? eventData);
 
         void RegisterHomeCard(
@@ -327,9 +328,9 @@ private void OnDownloadProgress(object? eventData)
 
 | 事件名 | 常量 | 说明 | 事件数据类型 |
 |--------|------|------|-------------|
-| `GameLaunched` | `EventNames.GameLaunched` | 游戏启动 | - |
-| `GameClosed` | `EventNames.GameClosed` | 游戏关闭 | - |
-| `VersionDownloaded` | `EventNames.VersionDownloaded` | 版本下载完成 | - |
+| `GameLaunched` | `EventNames.GameLaunched` | 游戏启动成功 | `string`（versionId） |
+| `GameClosed` | `EventNames.GameClosed` | 游戏进程关闭 | `int`（exitCode） |
+| `VersionDownloaded` | `EventNames.VersionDownloaded` | 版本下载就绪 | `VersionInstalledEventArgs` |
 | `VersionInstalling` | `EventNames.VersionInstalling` | 版本安装开始 | `VersionInstallingEventArgs` |
 | `VersionInstalled` | `EventNames.VersionInstalled` | 版本安装完成/失败 | `VersionInstalledEventArgs` |
 | `AccountChanged` | `EventNames.AccountChanged` | 账户变更 | `AccountChangedEventArgs` |
@@ -364,6 +365,26 @@ private void OnDownloadProgress(object? eventData)
 - `Status` - 下载状态（`Downloading`, `Completed`, `Failed`, `Cancelled`）
 
 插件也可以发布自定义事件。
+
+插件还可以退订事件，避免不再需要时继续收到通知：
+
+```csharp
+public void OnLoad(IPluginContext context)
+{
+    context.SubscribeEvent(IPluginContext.EventNames.GameLaunched, OnGameLaunched);
+    // ...
+}
+
+private void OnGameLaunched(object? eventData) { }
+
+private void DisableSubscription(IPluginContext context)
+{
+    context.UnsubscribeEvent(IPluginContext.EventNames.GameLaunched, OnGameLaunched);
+}
+```
+
+> 说明：插件卸载或禁用时，启动器会自动清理该插件的所有事件订阅，无需手动退订。
+> `UnsubscribeEvent` 的 `handler` 须与订阅时传入的是同一个方法引用（实例方法会隐式捕获 `this`）。
 
 ### 2. 注册UI标签页
 
