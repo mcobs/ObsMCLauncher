@@ -10,6 +10,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using ObsMCLauncher.Core.Models;
 using ObsMCLauncher.Core.Plugins;
+using ObsMCLauncher.Core.Services.Accounts;
 using ObsMCLauncher.Desktop.ViewModels.Dialogs;
 using ObsMCLauncher.Desktop.ViewModels.Notifications;
 using ObsMCLauncher.Core.Utils;
@@ -268,6 +269,172 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
                 _homeViewModel?.RemoveAllPluginCards(pluginId);
             });
         };
+
+        // 插件日志写入启动器统一日志
+        PluginContext.OnLogMessage = (pluginId, level, message) =>
+        {
+            var tag = $"Plugin[{pluginId}]";
+            switch (level)
+            {
+                case PluginLogLevel.Debug:
+                    DebugLogger.Debug(tag, message);
+                    break;
+                case PluginLogLevel.Info:
+                    DebugLogger.Info(tag, message);
+                    break;
+                case PluginLogLevel.Warning:
+                    DebugLogger.Warn(tag, message);
+                    break;
+                case PluginLogLevel.Error:
+                    DebugLogger.Error(tag, message);
+                    break;
+            }
+        };
+
+        // 获取已安装版本列表（只读精简信息）
+        PluginContext.OnGetInstalledVersions = (pluginId) =>
+        {
+            try
+            {
+                var config = LauncherConfig.Load();
+                return ObsMCLauncher.Core.Services.Minecraft.LocalVersionService.GetInstalledVersions(config.GameDirectory)
+                    .Select(v => new PluginVersionInfo
+                    {
+                        VersionId = v.Id,
+                        McVersion = string.IsNullOrEmpty(v.ActualVersionId) ? v.Id : v.ActualVersionId,
+                        LoaderType = NormalizePluginLoaderType(v.LoaderType),
+                        VersionDirectory = v.Path,
+                        LastPlayed = v.LastPlayed > DateTime.MinValue ? v.LastPlayed : (DateTime?)null
+                    })
+                    .ToList();
+            }
+            catch (Exception ex)
+            {
+                DebugLogger.Error("MainWindow", $"获取已安装版本列表异常: {ex.Message}");
+                return Array.Empty<PluginVersionInfo>();
+            }
+        };
+
+        // 获取当前默认账户（不含任何令牌）
+        PluginContext.OnGetCurrentAccount = () =>
+        {
+            try
+            {
+                var account = AccountService.Instance.GetDefaultAccount();
+                if (account == null) return null;
+                return new PluginAccountInfo
+                {
+                    AccountId = account.Id,
+                    Username = account.Username,
+                    AccountType = account.Type.ToString(),
+                    UUID = !string.IsNullOrEmpty(account.MinecraftUUID) ? account.MinecraftUUID : account.UUID,
+                    IsDefault = account.IsDefault
+                };
+            }
+            catch (Exception ex)
+            {
+                DebugLogger.Error("MainWindow", $"获取当前账户异常: {ex.Message}");
+                return null;
+            }
+        };
+
+        // 提交下载请求到启动器下载管理器统一调度
+        PluginContext.OnRequestDownload = (pluginId, request) =>
+        {
+            try
+            {
+                return TrySubmitPluginDownload(pluginId, request);
+            }
+            catch (Exception ex)
+            {
+                DebugLogger.Error("MainWindow", $"提交插件下载请求异常: {ex.Message}");
+                return string.Empty;
+            }
+        };
+    }
+
+    private static string NormalizePluginLoaderType(string? loader)
+    {
+        if (string.IsNullOrWhiteSpace(loader)) return "vanilla";
+        var normalized = loader.Trim().ToLowerInvariant();
+        return normalized switch
+        {
+            "forge" or "fabric" or "quilt" or "neoforge" or "optifine" => normalized,
+            _ => "vanilla"
+        };
+    }
+
+    /// <summary>
+    /// 提交一个插件下载请求：校验目标目录白名单后，交由下载管理器创建任务并异步下载。
+    /// </summary>
+    private static string TrySubmitPluginDownload(string pluginId, PluginDownloadRequest request)
+    {
+        if (request == null) return string.Empty;
+
+        var baseDir = Path.GetFullPath(VersionInfo.GetAppBaseDirectory());
+        var pluginDataDir = Path.GetFullPath(Path.Combine(baseDir, "OMCL", "plugins", pluginId));
+        var omclDir = Path.GetFullPath(Path.Combine(baseDir, "OMCL"));
+        var gameDir = Path.GetFullPath(LauncherConfig.Load().GameDirectory);
+
+        var fullTargetDir = Path.GetFullPath(request.TargetDirectory);
+        if (!IsSubPathOf(fullTargetDir, pluginDataDir) &&
+            !IsSubPathOf(fullTargetDir, omclDir) &&
+            !IsSubPathOf(fullTargetDir, gameDir))
+        {
+            DebugLogger.Warn("MainWindow", $"插件 {pluginId} 请求的下载目录不在允许范围内: {request.TargetDirectory}");
+            return string.Empty;
+        }
+
+        var savePath = Path.Combine(fullTargetDir, request.FileName);
+
+        var manager = ObsMCLauncher.Core.Services.Download.DownloadTaskManager.Instance;
+        var task = manager.AddTask(
+            string.IsNullOrWhiteSpace(request.TaskName) ? request.FileName : request.TaskName,
+            ObsMCLauncher.Core.Services.Download.DownloadTaskType.Mod);
+
+        var cts = new CancellationTokenSource();
+        task.CancellationTokenSource = cts;
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await ObsMCLauncher.Core.Services.Download.HttpDownloadService
+                    .DownloadFileToPathAsync(request.Url, savePath, task.Id, cts.Token);
+
+                if (!string.IsNullOrWhiteSpace(request.Sha1))
+                {
+                    var actual = FileHashVerifier.ComputeSha1(savePath);
+                    if (!string.Equals(actual, request.Sha1, StringComparison.OrdinalIgnoreCase))
+                    {
+                        throw new Exception("文件 SHA-1 校验失败");
+                    }
+                }
+
+                manager.CompleteTask(task.Id);
+                DebugLogger.Info("MainWindow", $"插件 {pluginId} 下载完成: {request.FileName}");
+            }
+            catch (OperationCanceledException)
+            {
+                manager.CancelTask(task.Id);
+            }
+            catch (Exception ex)
+            {
+                manager.FailTask(task.Id, ex.Message);
+                DebugLogger.Error("MainWindow", $"插件 {pluginId} 下载失败: {ex.Message}");
+            }
+        });
+
+        return task.Id;
+    }
+
+    private static bool IsSubPathOf(string candidate, string parent)
+    {
+        var candidateDir = candidate.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+            + Path.DirectorySeparatorChar;
+        var parentDir = parent.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+            + Path.DirectorySeparatorChar;
+        return candidateDir.StartsWith(parentDir, StringComparison.OrdinalIgnoreCase);
     }
 
     partial void OnSelectedNavItemChanged(NavItemViewModel? value)

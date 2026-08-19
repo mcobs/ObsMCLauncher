@@ -2,6 +2,13 @@
 
 本文件记录所有版本的更新历史。
 
+## [v1.1.0-beta.4] - 2026-08-19
+
+### 修复
+- 修复插件扩展 API 在生产环境失效的问题：`LogMessage`、`GetInstalledVersions`、`GetCurrentAccount` 此前未在 Desktop 层接线，现真正生效；`RequestDownload` 已接入下载管理器，并校验目标目录白名单与 SHA-1
+- 修复游戏启动生命周期钩子从未触发的问题：启动钩子已接入 `GameLauncher` 启动流程（BeforeLaunch 可追加参数/拦截，AfterLaunch、退出/崩溃阶段均回调），并补发 `GameLaunched` / `GameClosed` 事件
+- 补发此前未发布的 `VersionDownloaded` 事件（版本下载完成时触发）
+
 ## [v1.1.0-beta.3] - 2026-08-16
 
 ### 优化

@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using ObsMCLauncher.Core.Models;
+using ObsMCLauncher.Core.Plugins;
 using ObsMCLauncher.Core.Services.Accounts;
 using ObsMCLauncher.Core.Utils;
 
@@ -313,6 +314,29 @@ public class GameLauncher
 
             var arguments = BuildLaunchArguments(versionId, account, config, versionInfo, serverAddress, serverPort);
 
+            // 触发启动前钩子：插件可追加 JVM/游戏参数或拦截启动
+            var launchHook = new GameLaunchHookContext
+            {
+                VersionId = versionId,
+                McVersion = actualMcVersion,
+                GameDirectory = config.GameDirectory,
+                JavaPath = actualJavaPath
+            };
+            PluginContext.TriggerGameLaunchHooks(GameLaunchPhase.BeforeLaunch, launchHook);
+            if (launchHook.CancelLaunch)
+            {
+                errorMessage = "启动已被插件取消";
+                return new GameLaunchResult { Success = false, ErrorMessage = errorMessage };
+            }
+            foreach (var arg in launchHook.ExtraJvmArguments)
+            {
+                if (!string.IsNullOrWhiteSpace(arg)) arguments += " " + QuoteArgument(arg);
+            }
+            foreach (var arg in launchHook.ExtraGameArguments)
+            {
+                if (!string.IsNullOrWhiteSpace(arg)) arguments += " " + QuoteArgument(arg);
+            }
+
             onProgressUpdate?.Invoke("正在启动游戏进程...");
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -364,6 +388,7 @@ public class GameLauncher
                     process.Exited += (_, _) =>
                     {
                         var exitCode = process.ExitCode;
+                        FireGameExitHooks(versionId, actualMcVersion, config.GameDirectory, actualJavaPath, exitCode);
                         onGameExit.Invoke(exitCode);
                     };
                 }
@@ -374,10 +399,21 @@ public class GameLauncher
                 {
                     errorMessage = $"游戏进程启动后立即退出\n退出代码: {process.ExitCode}\n请检查Debug输出窗口查看详细错误日志";
                     var exitCode = process.ExitCode;
+                    FireGameExitHooks(versionId, actualMcVersion, config.GameDirectory, actualJavaPath, exitCode);
                     process.Dispose();
                     onGameExit?.Invoke(exitCode);
                     return new GameLaunchResult { Success = false, ErrorMessage = errorMessage };
                 }
+
+                // 游戏进程存活，触发启动后钩子与游戏启动事件
+                PluginContext.TriggerGameLaunchHooks(GameLaunchPhase.AfterLaunch, new GameLaunchHookContext
+                {
+                    VersionId = versionId,
+                    McVersion = actualMcVersion,
+                    GameDirectory = config.GameDirectory,
+                    JavaPath = actualJavaPath
+                });
+                PluginContext.TriggerGlobalEvent(IPluginContext.EventNames.GameLaunched, versionId);
 
                 onProgressUpdate?.Invoke("启动完成");
                 return new GameLaunchResult { Success = true };
@@ -405,6 +441,23 @@ public class GameLauncher
             }
             return new GameLaunchResult { Success = false, ErrorMessage = errorMessage };
         }
+    }
+
+    /// <summary>
+    /// 触发游戏退出/崩溃钩子与游戏关闭事件。退出码为 0 视为正常退出，否则视为崩溃。
+    /// </summary>
+    private static void FireGameExitHooks(string versionId, string mcVersion, string gameDir, string javaPath, int exitCode)
+    {
+        var phase = exitCode == 0 ? GameLaunchPhase.OnExited : GameLaunchPhase.OnCrash;
+        PluginContext.TriggerGameLaunchHooks(phase, new GameLaunchHookContext
+        {
+            VersionId = versionId,
+            McVersion = mcVersion,
+            GameDirectory = gameDir,
+            JavaPath = javaPath,
+            ExitCode = exitCode
+        });
+        PluginContext.TriggerGlobalEvent(IPluginContext.EventNames.GameClosed, exitCode);
     }
 
     private static void TryKillGameProcess(Process? process)

@@ -7,6 +7,11 @@ public static class DebugLogger
 {
     private static readonly object _lock = new();
 
+    public static void Debug(string serviceName, string message)
+    {
+        Log("DEBUG", serviceName, message);
+    }
+
     public static void Info(string serviceName, string message)
     {
         Log("INFO", serviceName, message);
@@ -44,7 +49,7 @@ public static class DebugLogger
         
         lock (_lock)
         {
-            Debug.WriteLine(logMessage);
+            System.Diagnostics.Debug.WriteLine(logMessage);
         }
     }
 }

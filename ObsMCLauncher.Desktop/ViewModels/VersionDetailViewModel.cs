@@ -1010,6 +1010,19 @@ public class VersionDetailViewModel : ViewModelBase
                     Success = true
                 });
 
+            // 版本已下载就绪，触发版本下载完成事件
+            PluginContext.TriggerGlobalEvent(IPluginContext.EventNames.VersionDownloaded,
+                new VersionInstalledEventArgs
+                {
+                    McVersion = SelectedMcVersion,
+                    VersionName = CustomVersionName,
+                    LoaderType = loaderType,
+                    LoaderVersion = loaderVersion,
+                    GameDirectory = gameDir,
+                    VersionDirectory = versionDir,
+                    Success = true
+                });
+
             // 如果开启了自动下载资源，则在后台启动下载任务
             if (cfg.DownloadAssetsWithGame)
             {
