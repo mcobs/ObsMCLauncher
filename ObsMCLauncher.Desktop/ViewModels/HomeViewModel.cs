@@ -230,7 +230,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
         var defaultCards = new List<HomeCardInfo>
         {
             new HomeCardInfo { CardId = HomeCardInfo.WelcomeCardId, Title = "欢迎使用黑曜石启动器", Description = "开始你的 Minecraft 之旅", Icon = IconRocket, Order = 0 },
-            new HomeCardInfo { CardId = "news", Title = "查看最新的 Minecraft 新闻", Description = "了解游戏动态", Icon = IconNews, Order = 1 },
+            new HomeCardInfo { CardId = "news", Title = "查看最新的 Minecraft 新闻", Description = "了解游戏动态", Icon = IconNews, CommandId = "url:https://zh.minecraft.wiki/", Order = 1 },
             new HomeCardInfo { CardId = "multiplayer", Title = "多人联机", Description = "加入服务器与好友一起游戏", Icon = IconGlobe, CommandId = "navigate:multiplayer", Order = 2 },
             new HomeCardInfo { CardId = "mods", Title = "资源下载", Description = "下载Mod、材质包等资源", Icon = IconDownload, CommandId = "navigate:resources", Order = 3 }
         };
@@ -440,7 +440,8 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>调整组件尺寸档位。改为整行（Fill）时若行里有其他组件，
-    /// 自动把该组件挪到新独占行，保证能真正铺满整行；其余档位行里放不下时保持原尺寸</summary>
+    /// 自动把该组件挪到新独占行；放大到更大档位而当前行放不下时，也会把组件挪到新行，
+    /// 保证宽度调整生效并即时刷新；缩小档位永远可行，直接应用。</summary>
     public void SetComponentSize(HomeComponentViewModel component, HomeCardSize size)
     {
         if (component.Size == size) return;
@@ -459,11 +460,28 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
             var idx = HomeRows.IndexOf(row);
             var newRow = InsertRow(idx + 1);
             newRow.Components.Add(component);
-        }
-        else if (!row.CanAccept(size, component))
-        {
-            DebugLogger.Warn("Home", $"size change rejected: row cannot fit size={size}");
+            component.Size = size;
+            PersistHomeLayout();
             return;
+        }
+
+        // 放大到更大档位而当前行放不下时，把组件移到新行，保证宽度调整生效并即时刷新；
+        // 缩小档位永远可行，直接应用即可。
+        if (!row.CanAccept(size, component))
+        {
+            if ((int)size > (int)component.Size)
+            {
+                row.Components.Remove(component);
+                var idx = HomeRows.IndexOf(row);
+                var newRow = InsertRow(idx + 1);
+                newRow.Components.Add(component);
+            }
+            else
+            {
+                // 缩小档位理论上不会放不下，仅作防护
+                DebugLogger.Warn("Home", $"size change rejected: row cannot fit size={size}");
+                return;
+            }
         }
 
         component.Size = size;
