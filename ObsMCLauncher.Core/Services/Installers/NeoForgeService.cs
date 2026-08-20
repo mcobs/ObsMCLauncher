@@ -29,8 +29,8 @@ namespace ObsMCLauncher.Core.Services.Installers
 
         /// <summary>
         /// Minecraft版本（从NeoForge版本号推断）
-        /// 标准格式: {MC主版本}.{MC次版本}.{NeoForge构建号}
-        /// 例如 21.1.240 对应 MC 1.21.1
+        /// 旧格式(MC 1.x): {MC主版本}.{MC次版本}.{NeoForge构建号}，例如 21.1.240 对应 MC 1.21.1
+        /// 新格式(MC 26.1+): {MC年份}.{MC发布}.{MC补丁}.{NeoForge构建号}，例如 26.1.0.10 对应 MC 26.1
         /// </summary>
         public string MinecraftVersion
         {
@@ -42,20 +42,31 @@ namespace ObsMCLauncher.Core.Services.Installers
                 var versionWithoutSuffix = Version.Split('-')[0];
                 var parts = versionWithoutSuffix.Split('.');
 
+                if (!int.TryParse(parts[0], out int major))
+                    return "";
+
+                // 新格式（26.1+，calver）：4段，前3段为MC版本，第4段为NeoForge构建号
+                // 例如 26.1.0.10 -> MC 26.1（补丁0省略）/ 26.1.2.10 -> MC 26.1.2
+                if (parts.Length == 4 && major >= 26 && int.TryParse(parts[1], out int release))
+                {
+                    // 补丁为0时省略，与Minecraft版本manifest中的id保持一致（26.1而非26.1.0）
+                    if (parts[2] == "0")
+                        return $"{parts[0]}.{parts[1]}";
+                    return $"{parts[0]}.{parts[1]}.{parts[2]}";
+                }
+
                 // 标准NeoForge版本号应为3段: {MC主版本}.{MC次版本}.{构建号}
                 // 例如 21.1.240 -> MC 1.21.1
-                // 拒绝非标准格式（如4段的 26.2.0.25）
                 if (parts.Length != 3)
                     return "";
 
-                if (!int.TryParse(parts[0], out int neoMajor) ||
-                    !int.TryParse(parts[1], out int neoMinor))
+                if (!int.TryParse(parts[1], out int neoMinor))
                     return "";
 
                 // NeoForge 20.x.x - 99.x.x 对应 MC 1.20.x - 1.99.x
-                if (neoMajor >= 20 && neoMajor < 100)
+                if (major >= 20 && major < 100)
                 {
-                    return $"1.{neoMajor}.{neoMinor}";
+                    return $"1.{major}.{neoMinor}";
                 }
 
                 return "";
