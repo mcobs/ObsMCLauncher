@@ -105,9 +105,9 @@
                        Command="{Binding ChangeSourceCommand}" CommandParameter="2" />
         </StackPanel>
 
-        <ComboBox Grid.Column="1" Width="96" Height="34" FontSize="12"
-                  ItemsSource="{Binding VersionFilters}"
-                  SelectedItem="{Binding VersionFilter}" />
+        <ui:FAComboBox Grid.Column="1" Width="140" Height="34" FontSize="12" IsEditable="True"
+                       ItemsSource="{Binding VersionFilters}"
+                       Text="{Binding VersionFilter, Mode=TwoWay}" />
 
         <ComboBox Grid.Column="2" Width="96" Height="34" FontSize="12"
                   ItemsSource="{Binding AvailableSortOptions}"

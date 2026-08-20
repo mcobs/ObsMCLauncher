@@ -60,7 +60,7 @@ public partial class ResourcesViewModel : ViewModelBase
     [ObservableProperty] private ResourceSource _currentSource = ResourceSource.Both;
     [ObservableProperty] private string _currentResourceType = "Mods";
     [ObservableProperty] private string? _selectedVersionId;
-    [ObservableProperty] private string _versionFilter = "全部版本";
+    [ObservableProperty] private string _versionFilter = "全部（可自行输入）";
     [ObservableProperty] private bool _hasQuery;
 
     // 顶部提示条（InfoBar）
@@ -77,7 +77,7 @@ public partial class ResourcesViewModel : ViewModelBase
 
     public ObservableCollection<ResourceItemViewModel> Results { get; } = new();
     public ObservableCollection<string> InstalledVersions { get; } = new();
-    public ObservableCollection<string> VersionFilters { get; } = new() { "全部版本", "1.21", "1.20", "1.19", "1.18", "1.16", "1.12" };
+    public ObservableCollection<string> VersionFilters { get; } = new() { "全部（可自行输入）", "26.2", "26.1", "1.21.11", "1.21.8", "1.21.4", "1.21.1", "1.20.4", "1.20.2", "1.19.4", "1.18.2", "1.16.5", "1.15.2", "1.14.4", "1.12.2", "1.7.10", "1.6.4" };
     public ObservableCollection<SortOption> AvailableSortOptions { get; } = new();
 
     [ObservableProperty]
@@ -397,7 +397,7 @@ public partial class ResourcesViewModel : ViewModelBase
             _chineseMatchOffset = 0;
 
             string gameVersion = "";
-            if (VersionFilter != "全部版本") gameVersion = VersionFilter;
+            if (VersionFilter != "全部（可自行输入）") gameVersion = VersionFilter;
             else if (!string.IsNullOrEmpty(SelectedVersionId)) gameVersion = ExtractGameVersion(SelectedVersionId);
 
             var chineseMatchTasks = SearchByChineseTranslation(gameVersion, ct);
@@ -581,7 +581,7 @@ public partial class ResourcesViewModel : ViewModelBase
             var ct = _searchCts.Token;
 
             string gameVersion = "";
-            if (VersionFilter != "全部版本") gameVersion = VersionFilter;
+            if (VersionFilter != "全部（可自行输入）") gameVersion = VersionFilter;
             else if (!string.IsNullOrEmpty(SelectedVersionId)) gameVersion = ExtractGameVersion(SelectedVersionId);
 
             var tasks = new List<Task>();
@@ -957,7 +957,7 @@ public partial class ResourcesViewModel : ViewModelBase
         try
         {
             var config = LauncherConfig.Load();
-            var gameVersion = VersionFilter != "全部版本" ? VersionFilter : (ExtractGameVersion(SelectedVersionId ?? config.SelectedVersion ?? ""));
+            var gameVersion = VersionFilter != "全部（可自行输入）" ? VersionFilter : (ExtractGameVersion(SelectedVersionId ?? config.SelectedVersion ?? ""));
 
             if (CurrentResourceType == "Modpacks")
             {
