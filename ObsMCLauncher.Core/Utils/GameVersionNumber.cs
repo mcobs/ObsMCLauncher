@@ -268,8 +268,9 @@ public class MinecraftVersionComparer : IComparer<string>
         bool xIsSpecial = IsSpecialGroup(x);
         bool yIsSpecial = IsSpecialGroup(y);
 
-        if (xIsSpecial && !yIsSpecial) return 1;
-        if (!xIsSpecial && yIsSpecial) return -1;
+        // 特殊组（未知版本/其他版本）始终排到最后
+        if (xIsSpecial && !yIsSpecial) return -1;
+        if (!xIsSpecial && yIsSpecial) return 1;
         if (xIsSpecial && yIsSpecial)
             return string.Compare(x, y, StringComparison.Ordinal);
 

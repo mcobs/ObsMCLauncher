@@ -837,7 +837,7 @@ SelectedLoaderFilter = string.IsNullOrEmpty(previousSelection)
         var versions = await _modrinth.GetProjectVersionsAsync(hit.ProjectId, cancellationToken: cancellationToken).ConfigureAwait(false);
         if (versions == null || versions.Count == 0) return;
 
-        var sorted = versions.ToList();
+        var sorted = versions.OrderByDescending(v => v.DatePublished).ToList();
 
         var grouped = new Dictionary<string, List<ModrinthVersion>>();
         foreach (var v in sorted)

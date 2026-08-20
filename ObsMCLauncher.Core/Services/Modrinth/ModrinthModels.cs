@@ -81,6 +81,9 @@ public class ModrinthVersion
     [JsonPropertyName("version_number")]
     public string VersionNumber { get; set; } = "";
 
+    [JsonPropertyName("date_published")]
+    public DateTime DatePublished { get; set; }
+
     [JsonPropertyName("game_versions")]
     public List<string> GameVersions { get; set; } = new();
 
