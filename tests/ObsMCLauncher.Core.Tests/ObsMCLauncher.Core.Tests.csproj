@@ -23,7 +23,8 @@
   <ItemGroup>
     <!-- 动态背景测试素材（探针 .temp/probe/assets 的少量样本）：
          tiny.gif 合法 8 帧 GIF、anim_dirty.webp 40 帧动画 WebP、
-         static.png 静态 PNG、anim_dirty.png 合法 APNG（验证 D7 拒收路径） -->
+         static.png 静态 PNG、anim_dirty.png 合法 APNG（验证 D7 拒收路径）、
+         over_frames.gif 4×4/2001 帧（帧数闸门）、over_edge.png 8193×1（长边闸门） -->
     <Content Include="WallpaperAssets\**" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 

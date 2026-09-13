@@ -127,6 +127,63 @@ public class WallpaperMediaTests : IDisposable
         Assert.False(string.IsNullOrWhiteSpace(info.Error));
     }
 
+    // ────────────────────────────────────────────────────────────────
+    // 验收 A10：异常输入不崩溃且给出提示（§9.1 三重闸门 + 损坏文件）
+    // ────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void Probe_FrameCountOverLimit_IsRejectedWithClearMessage()
+    {
+        // 素材是 4×4 / 2001 帧，上限 2000。闸门在遍历 FrameInfo 之前，不会为它白跑一遍。
+        var info = BackgroundResolver.Probe(Asset("over_frames.gif"));
+
+        Assert.Equal(WallpaperKind.Unknown, info.Kind);
+        Assert.True(info.IsFailed);
+        Assert.False(info.IsPlayable);
+        Assert.Contains("帧数", info.Error);
+        Assert.Contains(BackgroundResolver.MaxFrameCount.ToString(), info.Error);
+    }
+
+    [Fact]
+    public void Probe_SourceLongEdgeOverLimit_IsRejectedWithClearMessage()
+    {
+        // 素材是 8193×1，上限 8192
+        var info = BackgroundResolver.Probe(Asset("over_edge.png"));
+
+        Assert.True(info.IsFailed);
+        Assert.Contains("长边", info.Error);
+        Assert.Contains(BackgroundResolver.MaxSourceLongEdge.ToString(), info.Error);
+    }
+
+    [Theory]
+    [InlineData("truncated.gif")]
+    [InlineData("garbage.webp")]
+    [InlineData("garbage.png")]
+    public void Probe_CorruptedFile_FailsWithoutThrowing(string name)
+    {
+        var path = TempFile(name);
+
+        if (name.StartsWith("truncated", StringComparison.Ordinal))
+        {
+            // 只留一个 GIF 头——对应下载中断后残留的半个文件
+            var bytes = File.ReadAllBytes(Asset("tiny.gif"));
+            File.WriteAllBytes(path, bytes.AsSpan(0, Math.Min(32, bytes.Length)).ToArray());
+        }
+        else
+        {
+            // 扩展名合法、内容全是垃圾：SKCodec 是原生代码，这里不能让它把进程带崩
+            var junk = new byte[512];
+            new Random(42).NextBytes(junk);
+            File.WriteAllBytes(path, junk);
+        }
+
+        var info = BackgroundResolver.Probe(path);
+
+        Assert.True(info.IsFailed);
+        Assert.False(info.IsPlayable);
+        Assert.False(string.IsNullOrWhiteSpace(info.Error));
+    }
+
     [Theory]
     [InlineData("a.png", true)]
     [InlineData("a.PNG", true)]
