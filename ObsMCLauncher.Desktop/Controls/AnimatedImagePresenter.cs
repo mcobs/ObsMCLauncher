@@ -60,6 +60,10 @@ public sealed class AnimatedImagePresenter : Control
     private CompositionCustomVisual? _visual;
     private AnimatedImageVisualHandler? _handler;
     private AnimatedImageSession? _session;
+    private TopLevel? _topLevel;
+
+    /// <summary>当前会话用的解码长边（物理像素）；DPI 与窗口尺寸变化都要拿它比对</summary>
+    private int _decodeLongEdge;
 
     static AnimatedImagePresenter()
     {
@@ -112,6 +116,15 @@ public sealed class AnimatedImagePresenter : Control
     {
         base.OnAttachedToVisualTree(e);
         LayoutUpdated += OnLayoutUpdated;
+
+        // DPI 变更（拖到另一块屏、系统缩放改动）必须重算解码尺寸：
+        // RenderScaling 从 1 变 2 时物理像素翻 4 倍，沿用旧尺寸会让画面糊掉。
+        if (TopLevel.GetTopLevel(this) is { } topLevel)
+        {
+            _topLevel = topLevel;
+            topLevel.ScalingChanged += OnScalingChanged;
+        }
+
         EnsureVisual();
         PushStretch();
         TryStartSession();
@@ -120,6 +133,11 @@ public sealed class AnimatedImagePresenter : Control
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
         LayoutUpdated -= OnLayoutUpdated;
+
+        if (_topLevel is { } topLevel) topLevel.ScalingChanged -= OnScalingChanged;
+        _topLevel = null;
+        _decodeLongEdge = 0;
+
         StopSession();
         // 视觉对象随控件一起销毁，这里只需断开引用
         if (_handler is not null) _handler.Session = null;
@@ -160,6 +178,30 @@ public sealed class AnimatedImagePresenter : Control
 
         // 首次布局完成前拿不到 Bounds，会话要等到这一刻才能确定解码尺寸
         if (_session is null && Request is not null) TryStartSession();
+        else if (_session is not null && ShouldRestartForLargerSize()) TryStartSession();
+    }
+
+    private void OnScalingChanged(object? sender, EventArgs e)
+    {
+        // RenderScaling 变了，旧的解码尺寸立刻作废（无关窗口大小是否变化）
+        TryStartSession();
+    }
+
+    /// <summary>
+    /// 窗口物理长边是否明显超过当前会话的解码尺寸。
+    /// </summary>
+    /// <remarks>
+    /// 只在"变大超过 25%"时重建：重建要 Join 解码线程并重新解首帧，
+    /// 拖窗口会连续触发，不加阈值就是肉眼可见的卡顿。
+    /// 变小不重建——省下的内存有限，代价却是动图从头播一遍。
+    /// </remarks>
+    private bool ShouldRestartForLargerSize()
+    {
+        if (_decodeLongEdge <= 0) return false;
+
+        var scaling = _topLevel?.RenderScaling ?? 1.0;
+        var target = (int)Math.Ceiling(Math.Max(Bounds.Width, Bounds.Height) * scaling);
+        return target > _decodeLongEdge * 1.25;
     }
 
     private void EnsureVisual()
@@ -205,8 +247,9 @@ public sealed class AnimatedImagePresenter : Control
         StopSession();
 
         // 解码尺寸按**物理像素**夹紧：HiDPI（RenderScaling=2）下物理尺寸翻 4 倍，是防内存爆掉的关键闸门
-        var scaling = TopLevel.GetTopLevel(this)?.RenderScaling ?? 1.0;
+        var scaling = _topLevel?.RenderScaling ?? TopLevel.GetTopLevel(this)?.RenderScaling ?? 1.0;
         var windowLongEdge = (int)Math.Ceiling(Math.Max(Bounds.Width, Bounds.Height) * scaling);
+        _decodeLongEdge = windowLongEdge;
 
         var session = new AnimatedImageSession(request, windowLongEdge);
         session.Start(IsPaused || !IsVisible);

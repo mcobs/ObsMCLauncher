@@ -46,7 +46,17 @@ public sealed class PowerStatusMonitor : IDisposable
     /// <summary>是否处于电池供电</summary>
     public bool IsOnBattery => Current == PowerSource.Battery;
 
-    /// <summary>供电方式发生变化</summary>
+    /// <summary>
+    /// 当前会话是否为远程桌面（§6.5：强制暂停，不走用户设置）。
+    /// </summary>
+    /// <remarks>
+    /// 远程桌面下每一帧都要过网络编码，动图的带宽与 CPU 代价被放大，
+    /// 而用户看到的画面还被压缩过——继续播没有任何收益。
+    /// 与 <see cref="Current"/> 共用一次轮询，不额外起定时器。
+    /// </remarks>
+    public bool IsRemoteSession { get; private set; }
+
+    /// <summary>供电方式或远程会话状态发生变化</summary>
     public event EventHandler? Changed;
 
     /// <summary>立即读一次并启动轮询</summary>
@@ -70,10 +80,12 @@ public sealed class PowerStatusMonitor : IDisposable
         if (_disposed) return;
 
         var value = Read();
-        if (value == Current) return;
+        var remote = ReadRemoteSession();
+        if (value == Current && remote == IsRemoteSession) return;
 
         Current = value;
-        DebugLogger.Info("Wallpaper", $"供电方式变化：{value}");
+        IsRemoteSession = remote;
+        DebugLogger.Info("Wallpaper", $"系统状态变化：供电={value}，远程会话={remote}");
         Changed?.Invoke(this, EventArgs.Empty);
     }
 
@@ -90,6 +102,22 @@ public sealed class PowerStatusMonitor : IDisposable
         catch
         {
             return PowerSource.Unknown;
+        }
+    }
+
+    /// <summary>读取当前是否为远程桌面会话（不抛异常）</summary>
+    internal static bool ReadRemoteSession()
+    {
+        try
+        {
+            if (OperatingSystem.IsWindows()) return ReadRemoteSessionWindows();
+            if (OperatingSystem.IsLinux()) return ReadRemoteSessionLinux();
+
+            return false;
+        }
+        catch
+        {
+            return false;
         }
     }
 
@@ -152,6 +180,37 @@ public sealed class PowerStatusMonitor : IDisposable
         }
 
         return sawAc ? PowerSource.AlternatingCurrent : PowerSource.Unknown;
+    }
+
+    // ────────────────────────────────────────────────────────────────
+    // 远程桌面会话（§6.5）
+    // ────────────────────────────────────────────────────────────────
+
+    private const int SmRemoteSession = 0x1000;
+
+    [DllImport("user32.dll", SetLastError = false)]
+    private static extern int GetSystemMetrics(int index);
+
+    private static bool ReadRemoteSessionWindows()
+        => GetSystemMetrics(SmRemoteSession) != 0;
+
+    /// <summary>
+    /// Linux 上没有可靠的远程桌面判据，这里只认 SSH 转发。
+    /// </summary>
+    /// <remarks>
+    /// 宁可漏判也不误判：漏判的代价是远程会话下多耗一点电，
+    /// 误判的代价是本地用户看到壁纸莫名其妙不动——后者会被当成 bug 报过来。
+    /// VNC / RDP 不覆盖：它们的 <c>XDG_SESSION_TYPE</c> 与本地会话无从区分。
+    /// </remarks>
+    private static bool ReadRemoteSessionLinux()
+    {
+        foreach (var name in new[] { "SSH_CONNECTION", "SSH_CLIENT", "SSH_TTY" })
+        {
+            var value = Environment.GetEnvironmentVariable(name);
+            if (!string.IsNullOrEmpty(value)) return true;
+        }
+
+        return false;
     }
 
     public void Dispose()

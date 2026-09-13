@@ -374,11 +374,14 @@ public sealed class WallpaperService : INotifyPropertyChanged, IDisposable
 
     private void UpdateExternalPause()
     {
-        var pause = _snapshot?.PauseOnBattery == true && _power.IsOnBattery;
+        // 电池暂停走用户设置（PauseOnBattery），远程桌面是 §6.5 的强制项，不看设置
+        var pause = (_snapshot?.PauseOnBattery == true && _power.IsOnBattery) || _power.IsRemoteSession;
         if (pause == ExternalPause) return;
 
         ExternalPause = pause;
-        DebugLogger.Info(LogService, pause ? "电池供电，动图已暂停" : "恢复市电，动图继续播放");
+        DebugLogger.Info(LogService, pause
+            ? _power.IsRemoteSession ? "远程桌面会话，动图已暂停" : "电池供电，动图已暂停"
+            : "恢复本地/市电，动图继续播放");
         Raise(nameof(ExternalPause));
 
         // 轮播跟随同一个暂停开关：暂停时不再排定，恢复后按当前项重新排定
