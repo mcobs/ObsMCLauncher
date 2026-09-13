@@ -480,37 +480,15 @@
     <Setter Property="Background" Value="{DynamicResource NavItemSelectedBackgroundBrush}" />
   </Style>
 
-  <!-- ===== 设置页分组（ClassIsland 风格） ===== -->
+  <!--
+    ===== 设置页分组 =====
 
-  <!-- 分组卡片：一个分组框包裹若干设置行 -->
-  <Style Selector="Border.settings-card">
-    <Setter Property="Background" Value="{DynamicResource CardBackgroundBrush}" />
-    <Setter Property="CornerRadius" Value="{DynamicResource CardCornerRadius}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}" />
-    <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="Padding" Value="16,4" />
-  </Style>
+    原先这里有一套手写样式（settings-card / settings-row / settings-row-icon / settings-divider），
+    用来在手写的 Border + Grid 上仿 ClassIsland 的卡片外观。
 
-  <!-- 设置行：图标 | 标题/描述 | 控件 -->
-  <Style Selector="Grid.settings-row">
-    <Setter Property="MinHeight" Value="56" />
-    <Setter Property="ColumnSpacing" Value="12" />
-    <Setter Property="Margin" Value="0,10" />
-  </Style>
-
-  <!-- 设置行左侧图标 -->
-  <Style Selector="ui|SymbolIcon.settings-row-icon">
-    <Setter Property="FontSize" Value="17" />
-    <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
-    <Setter Property="VerticalAlignment" Value="Center" />
-  </Style>
-
-  <!-- 设置行之间的分隔线 -->
-  <Style Selector="Border.settings-divider">
-    <Setter Property="Height" Value="1" />
-    <Setter Property="Background" Value="{DynamicResource BorderBrush}" />
-    <Setter Property="Opacity" Value="0.5" />
-    <Setter Property="Margin" Value="0,2" />
-  </Style>
+    设置页现已全部迁移到 FluentAvalonia 规范（ui:SettingsExpander / ui:SettingsExpanderItem），
+    这些样式的最后一个使用点已移除，故一并删除——留着只会让后来者误以为还有第二种写法。
+    参数行的外观现在由 FluentAvalonia 主题提供。
+  -->
 
 </Styles>
