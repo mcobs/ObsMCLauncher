@@ -7,354 +7,614 @@
              x:Class="ObsMCLauncher.Desktop.Views.SettingsPages.SettingsAppearancePage"
              x:DataType="vm:SettingsViewModel">
 
+  <!--
+    外观设置页（设计文档 §8）。
+
+    整页只用 FluentAvalonia 控件（`ui:` 前缀），不再有手写的 settings-card / settings-row：
+    同一页出现两套视觉语言比"少一个自定义外观"糟得多。
+    参数行一律是 ui:SettingsExpanderItem，右侧控件槽是 Footer，Content 是行标题。
+
+    区块顺序：主题 / 个性 / 字体 / 【1】背景壁纸 / 【2】显示设置 / 【3】动图播放 / 【4】轮播与性能 / 通知。
+    两个参数折叠栏（【2】【4】）默认折叠，让默认视野只剩"开关 + 卡片网格"。
+  -->
+
   <ScrollViewer VerticalScrollBarVisibility="Auto">
     <StackPanel Margin="12,16,12,24" Spacing="16">
 
       <TextBlock Text="外观设置" FontSize="22" FontWeight="SemiBold"/>
 
-      <!-- 主题 -->
-      <StackPanel Spacing="6">
-        <StackPanel Orientation="Horizontal" Spacing="6" Margin="4,0,0,2">
-          <ui:SymbolIcon Symbol="ColorBackground" FontSize="14" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
-          <TextBlock Text="主题" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
-        </StackPanel>
+      <!-- ===================== 主题 ===================== -->
+      <ui:SettingsExpander Header="主题" Description="启动器的整体配色" IsExpanded="True">
+        <ui:SettingsExpander.IconSource>
+          <ui:SymbolIconSource Symbol="ColorBackground"/>
+        </ui:SettingsExpander.IconSource>
 
-        <Border Classes="settings-card">
-          <StackPanel>
-            <Grid Classes="settings-row" ColumnDefinitions="Auto,*,Auto">
-              <ui:SymbolIcon Grid.Column="0" Classes="settings-row-icon" Symbol="DarkTheme"/>
-              <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                <TextBlock Text="主题模式" FontSize="13" FontWeight="Medium"/>
-                <TextBlock Text="选择启动器的外观主题" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
-              </StackPanel>
-              <ComboBox Grid.Column="2" Width="160" SelectedIndex="{Binding ThemeMode}" VerticalAlignment="Center">
-                <ComboBoxItem Content="深色模式"/>
-                <ComboBoxItem Content="浅色模式"/>
-                <ComboBoxItem Content="跟随系统"/>
-              </ComboBox>
-            </Grid>
+        <ui:SettingsExpanderItem Content="主题模式" Description="选择启动器的外观主题">
+          <ui:SettingsExpanderItem.IconSource>
+            <ui:SymbolIconSource Symbol="DarkTheme"/>
+          </ui:SettingsExpanderItem.IconSource>
+          <ui:SettingsExpanderItem.Footer>
+            <ComboBox Width="160" SelectedIndex="{Binding ThemeMode}" VerticalAlignment="Center">
+              <ComboBoxItem Content="深色模式"/>
+              <ComboBoxItem Content="浅色模式"/>
+              <ComboBoxItem Content="跟随系统"/>
+            </ComboBox>
+          </ui:SettingsExpanderItem.Footer>
+        </ui:SettingsExpanderItem>
 
-            <Border Classes="settings-divider"/>
+        <ui:SettingsExpanderItem Content="强调色" Description="应用显示强调元素时所使用的全局高亮配色">
+          <ui:SettingsExpanderItem.IconSource>
+            <ui:SymbolIconSource Symbol="ColorFill"/>
+          </ui:SettingsExpanderItem.IconSource>
+          <ui:SettingsExpanderItem.Footer>
+            <ColorPicker Color="{Binding AccentColorValue, Mode=TwoWay}" VerticalAlignment="Center"/>
+          </ui:SettingsExpanderItem.Footer>
+        </ui:SettingsExpanderItem>
+      </ui:SettingsExpander>
 
-            <Grid Classes="settings-row" ColumnDefinitions="Auto,*,Auto">
-              <ui:SymbolIcon Grid.Column="0" Classes="settings-row-icon" Symbol="ColorFill"/>
-              <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                <TextBlock Text="强调色" FontSize="13" FontWeight="Medium"/>
-                <TextBlock Text="应用显示强调元素时所使用的全局高亮配色" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
-              </StackPanel>
-              <ColorPicker Grid.Column="2" Color="{Binding AccentColorValue, Mode=TwoWay}" VerticalAlignment="Center"/>
-            </Grid>
-          </StackPanel>
-        </Border>
-      </StackPanel>
+      <!-- ===================== 个性 ===================== -->
+      <ui:SettingsExpander Header="个性" Description="调整界面的观感细节" IsExpanded="True">
+        <ui:SettingsExpander.IconSource>
+          <ui:SymbolIconSource Symbol="View"/>
+        </ui:SettingsExpander.IconSource>
 
-      <!-- 个性 -->
-      <StackPanel Spacing="6">
-        <StackPanel Orientation="Horizontal" Spacing="6" Margin="4,0,0,2">
-          <ui:SymbolIcon Symbol="View" FontSize="14" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
-          <TextBlock Text="个性" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
-          <TextBlock Text="调整界面的观感细节" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" Margin="4,0,0,0"/>
-        </StackPanel>
+        <ui:SettingsExpanderItem Content="圆角半径" Description="控制主要容器与卡片的圆角大小">
+          <ui:SettingsExpanderItem.IconSource>
+            <ui:SymbolIconSource Symbol="Ruler"/>
+          </ui:SettingsExpanderItem.IconSource>
+          <ui:SettingsExpanderItem.Footer>
+            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+              <Slider Width="150" Minimum="0" Maximum="28" TickFrequency="1"
+                      IsSnapToTickEnabled="True"
+                      Value="{Binding CornerRadius, Mode=TwoWay}"/>
+              <TextBlock Text="{Binding CornerRadius}" FontSize="12"
+                         Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+            </StackPanel>
+          </ui:SettingsExpanderItem.Footer>
+        </ui:SettingsExpanderItem>
 
-        <Border Classes="settings-card">
-          <StackPanel>
-            <Grid Classes="settings-row" ColumnDefinitions="Auto,*,Auto">
-              <ui:SymbolIcon Grid.Column="0" Classes="settings-row-icon" Symbol="Ruler"/>
-              <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                <TextBlock Text="圆角半径" FontSize="13" FontWeight="Medium"/>
-                <TextBlock Text="控制主要容器与卡片的圆角大小" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
-              </StackPanel>
-              <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                <Slider Width="150" Minimum="0" Maximum="28" TickFrequency="1"
-                        IsSnapToTickEnabled="True"
-                        Value="{Binding CornerRadius, Mode=TwoWay}"/>
-                <TextBlock Text="{Binding CornerRadius}" FontSize="12"
-                           Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
-              </StackPanel>
-            </Grid>
+        <ui:SettingsExpanderItem Content="密度" Description="控制主要界面的留白与间距">
+          <ui:SettingsExpanderItem.IconSource>
+            <ui:SymbolIconSource Symbol="List"/>
+          </ui:SettingsExpanderItem.IconSource>
+          <ui:SettingsExpanderItem.Footer>
+            <ComboBox Width="140" SelectedIndex="{Binding Density}" VerticalAlignment="Center">
+              <ComboBoxItem Content="紧凑"/>
+              <ComboBoxItem Content="标准"/>
+              <ComboBoxItem Content="宽松"/>
+            </ComboBox>
+          </ui:SettingsExpanderItem.Footer>
+        </ui:SettingsExpanderItem>
 
-            <Border Classes="settings-divider"/>
+        <ui:SettingsExpanderItem Content="动画级别" Description="控制主要过渡动画的启用与强度">
+          <ui:SettingsExpanderItem.IconSource>
+            <ui:SymbolIconSource Symbol="Play"/>
+          </ui:SettingsExpanderItem.IconSource>
+          <ui:SettingsExpanderItem.Footer>
+            <ComboBox Width="140" SelectedIndex="{Binding AnimationLevel}" VerticalAlignment="Center">
+              <ComboBoxItem Content="禁用"/>
+              <ComboBoxItem Content="标准"/>
+              <ComboBoxItem Content="华丽"/>
+            </ComboBox>
+          </ui:SettingsExpanderItem.Footer>
+        </ui:SettingsExpanderItem>
+      </ui:SettingsExpander>
 
-            <Grid Classes="settings-row" ColumnDefinitions="Auto,*,Auto">
-              <ui:SymbolIcon Grid.Column="0" Classes="settings-row-icon" Symbol="List"/>
-              <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                <TextBlock Text="密度" FontSize="13" FontWeight="Medium"/>
-                <TextBlock Text="控制主要界面的留白与间距" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
-              </StackPanel>
-              <ComboBox Grid.Column="2" Width="140" SelectedIndex="{Binding Density}" VerticalAlignment="Center">
-                <ComboBoxItem Content="紧凑"/>
-                <ComboBoxItem Content="标准"/>
-                <ComboBoxItem Content="宽松"/>
-              </ComboBox>
-            </Grid>
+      <!-- ===================== 字体 ===================== -->
+      <ui:SettingsExpander Header="字体" Description="自定义启动器界面显示的字体" IsExpanded="True">
+        <ui:SettingsExpander.IconSource>
+          <ui:SymbolIconSource Symbol="FontSize"/>
+        </ui:SettingsExpander.IconSource>
 
-            <Border Classes="settings-divider"/>
+        <ui:SettingsExpanderItem Content="自定义字体" Description="界面文字使用的字体，列表按字体本身预览">
+          <ui:SettingsExpanderItem.IconSource>
+            <ui:SymbolIconSource Symbol="Font"/>
+          </ui:SettingsExpanderItem.IconSource>
+          <ui:SettingsExpanderItem.Footer>
+            <ComboBox Width="220" MaxDropDownHeight="360"
+                      ItemsSource="{Binding FontFamilies}"
+                      SelectedItem="{Binding SelectedFontItem, Mode=TwoWay}"
+                      VerticalAlignment="Center">
+              <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:FontFamilyItem">
+                  <TextBlock Text="{Binding Display}" FontFamily="{Binding Family}"
+                             ToolTip.Tip="{Binding Display}"
+                             MaxWidth="200" TextTrimming="CharacterEllipsis"
+                             VerticalAlignment="Center"/>
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+          </ui:SettingsExpanderItem.Footer>
+        </ui:SettingsExpanderItem>
 
-            <Grid Classes="settings-row" ColumnDefinitions="Auto,*,Auto">
-              <ui:SymbolIcon Grid.Column="0" Classes="settings-row-icon" Symbol="Play"/>
-              <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                <TextBlock Text="动画级别" FontSize="13" FontWeight="Medium"/>
-                <TextBlock Text="控制主要过渡动画的启用与强度" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
-              </StackPanel>
-              <ComboBox Grid.Column="2" Width="140" SelectedIndex="{Binding AnimationLevel}" VerticalAlignment="Center">
-                <ComboBoxItem Content="禁用"/>
-                <ComboBoxItem Content="标准"/>
-                <ComboBoxItem Content="华丽"/>
-              </ComboBox>
-            </Grid>
-          </StackPanel>
-        </Border>
-      </StackPanel>
+        <ui:SettingsExpanderItem Content="自定义字重" Description="界面文字的粗细，需要所选字体支持对应字重">
+          <ui:SettingsExpanderItem.IconSource>
+            <ui:SymbolIconSource Symbol="Bold"/>
+          </ui:SettingsExpanderItem.IconSource>
+          <ui:SettingsExpanderItem.Footer>
+            <ComboBox Width="150"
+                      ItemsSource="{x:Static vm:SettingsViewModel.FontWeightOptions}"
+                      SelectedItem="{Binding SelectedFontWeight, Mode=TwoWay}"
+                      VerticalAlignment="Center">
+              <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="a:FontWeight">
+                  <TextBlock Text="{Binding}" FontWeight="{Binding}" ToolTip.Tip="{Binding}"/>
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+          </ui:SettingsExpanderItem.Footer>
+        </ui:SettingsExpanderItem>
+      </ui:SettingsExpander>
 
-      <!-- 字体 -->
-      <StackPanel Spacing="6">
-        <StackPanel Orientation="Horizontal" Spacing="6" Margin="4,0,0,2">
-          <ui:SymbolIcon Symbol="FontSize" FontSize="14" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
-          <TextBlock Text="字体" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
-          <TextBlock Text="自定义启动器界面显示的字体" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" Margin="4,0,0,0"/>
-        </StackPanel>
+      <!-- ===================== 【1】背景壁纸 ===================== -->
+      <ui:SettingsExpander Header="背景壁纸"
+                           Description="为启动器主界面设置本地图片或动图"
+                           IsExpanded="True">
+        <ui:SettingsExpander.IconSource>
+          <ui:SymbolIconSource Symbol="Pictures"/>
+        </ui:SettingsExpander.IconSource>
 
-        <Border Classes="settings-card">
-          <StackPanel>
-            <Grid Classes="settings-row" ColumnDefinitions="Auto,*,Auto">
-              <ui:SymbolIcon Grid.Column="0" Classes="settings-row-icon" Symbol="Font"/>
-              <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                <TextBlock Text="自定义字体" FontSize="13" FontWeight="Medium"/>
-                <TextBlock Text="界面文字使用的字体，列表按字体本身预览" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
-              </StackPanel>
-              <ComboBox Grid.Column="2" Width="220" MaxDropDownHeight="360"
-                        ItemsSource="{Binding FontFamilies}"
-                        SelectedItem="{Binding SelectedFontItem, Mode=TwoWay}"
-                        VerticalAlignment="Center">
-                <ComboBox.ItemTemplate>
-                  <DataTemplate x:DataType="vm:FontFamilyItem">
-                    <TextBlock Text="{Binding Display}" FontFamily="{Binding Family}"
-                               ToolTip.Tip="{Binding Display}"
-                               MaxWidth="200" TextTrimming="CharacterEllipsis"
-                               VerticalAlignment="Center"/>
-                  </DataTemplate>
-                </ComboBox.ItemTemplate>
-              </ComboBox>
-            </Grid>
+        <ui:SettingsExpander.Footer>
+          <ToggleSwitch IsChecked="{Binding WallpaperEnabled, Mode=TwoWay}"
+                        OnContent="" OffContent=""
+                        VerticalAlignment="Center"/>
+        </ui:SettingsExpander.Footer>
 
-            <Border Classes="settings-divider"/>
+        <!--
+          条目内容区放自由布局（与 FA 官方 ControlsGallery 里"含图片列表的设置条目"同一手法）。
+          这里刻意不给网格套 ScrollViewer：设置页外层已有滚动容器，嵌套滚动会互相抢滚轮事件。
+        -->
+        <ui:SettingsExpanderItem>
+          <StackPanel Spacing="10" HorizontalAlignment="Stretch">
 
-            <Grid Classes="settings-row" ColumnDefinitions="Auto,*,Auto">
-              <ui:SymbolIcon Grid.Column="0" Classes="settings-row-icon" Symbol="Bold"/>
-              <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                <TextBlock Text="自定义字重" FontSize="13" FontWeight="Medium"/>
-                <TextBlock Text="界面文字的粗细，需要所选字体支持对应字重" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
-              </StackPanel>
-              <ComboBox Grid.Column="2" Width="150"
-                        ItemsSource="{x:Static vm:SettingsViewModel.FontWeightOptions}"
-                        SelectedItem="{Binding SelectedFontWeight, Mode=TwoWay}"
-                        VerticalAlignment="Center">
-                <ComboBox.ItemTemplate>
-                  <DataTemplate x:DataType="a:FontWeight">
-                    <TextBlock Text="{Binding}" FontWeight="{Binding}" ToolTip.Tip="{Binding}"/>
-                  </DataTemplate>
-                </ComboBox.ItemTemplate>
-              </ComboBox>
-            </Grid>
-          </StackPanel>
-        </Border>
-      </StackPanel>
+            <!-- 拒收汇总（APNG / 无法读取）：给的是可操作建议，不是单纯报错 -->
+            <ui:InfoBar IsOpen="{Binding HasWallpaperRejection, Mode=OneWay}"
+                        IsClosable="True"
+                        CloseButtonClick="OnWallpaperRejectionBarClosed"
+                        Severity="Warning"
+                        Title="部分文件未能添加"
+                        Message="{Binding WallpaperRejectionMessage}"/>
 
-      <!-- 背景壁纸 -->
-      <StackPanel Spacing="6">
-        <StackPanel Orientation="Horizontal" Spacing="6" Margin="4,0,0,2">
-          <ui:SymbolIcon Symbol="Pictures" FontSize="14" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
-          <TextBlock Text="背景壁纸" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
-          <TextBlock Text="为启动器主界面设置本地壁纸" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" Margin="4,0,0,0"/>
-        </StackPanel>
+            <ui:ItemsRepeater ItemsSource="{Binding WallpaperCards}">
+              <ui:ItemsRepeater.Layout>
+                <ui:UniformGridLayout MinItemWidth="150" MinItemHeight="150"
+                                      MinRowSpacing="8" MinColumnSpacing="8"
+                                      ItemsStretch="Fill" ItemsJustification="Start"/>
+              </ui:ItemsRepeater.Layout>
 
-        <Border Classes="settings-card">
-          <StackPanel>
-            <Grid Classes="settings-row" ColumnDefinitions="Auto,*,Auto">
-              <ui:SymbolIcon Grid.Column="0" Classes="settings-row-icon" Symbol="Image"/>
-              <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                <TextBlock Text="启用壁纸" FontSize="13" FontWeight="Medium"/>
-                <TextBlock Text="在主内容区显示背景图片" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
-              </StackPanel>
-              <ToggleSwitch Grid.Column="2" IsChecked="{Binding WallpaperEnabled, Mode=TwoWay}" VerticalAlignment="Center"/>
-            </Grid>
+              <ui:ItemsRepeater.ItemTemplate>
+                <DataTemplate x:DataType="vm:WallpaperItemViewModel">
+                  <!--
+                    拖拽排序（§8.5）：按住卡片拖动即可重排。
+                    这里只挂事件、不写逻辑——重排与落点高亮的判断都在 SettingsViewModel，
+                    因为"顺序"是配置级状态，不能散落在视图里。
+                  -->
+                  <Border Classes="wallpaper-card"
+                          Classes.current="{Binding IsCurrent}"
+                          DragDrop.AllowDrop="True"
+                          PointerPressed="OnWallpaperCardPointerPressed"
+                          PointerMoved="OnWallpaperCardPointerMoved"
+                          PointerReleased="OnWallpaperCardPointerReleased"
+                          DragDrop.DragOver="OnWallpaperCardDragOver"
+                          DragDrop.DragLeave="OnWallpaperCardDragLeave"
+                          DragDrop.Drop="OnWallpaperCardDrop">
+                    <Panel>
 
-            <Border Classes="settings-divider"/>
+                      <!-- 缩略图（动图只解首帧，卡片上不播放） -->
+                      <Image Source="{Binding Thumbnail}" Stretch="UniformToFill"
+                             IsVisible="{Binding ShowThumbnail}"/>
 
-            <Grid Classes="settings-row" ColumnDefinitions="Auto,*,Auto">
-              <ui:SymbolIcon Grid.Column="0" Classes="settings-row-icon" Symbol="OpenFile"/>
-              <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                <TextBlock Text="选择图片" FontSize="13" FontWeight="Medium"/>
-                <TextBlock Text="选择本地图片作为壁纸" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
-              </StackPanel>
-              <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                <Button Content="浏览…" Command="{Binding BrowseWallpaperCommand}"/>
-                <TextBlock Text="{Binding WallpaperPath}" FontSize="11" MaxWidth="180"
-                           TextTrimming="CharacterEllipsis"
-                           Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
-              </StackPanel>
-            </Grid>
+                      <!-- 拖拽落点蒙版：放在缩略图之上、信息层之下，文字保持清晰 -->
+                      <Border Classes="wallpaper-card-drop"
+                              IsVisible="{Binding IsDropTarget}"/>
 
-            <Border Classes="settings-divider"/>
+                      <!-- 加载态 -->
+                      <Panel IsVisible="{Binding IsLoading}">
+                        <Border Background="{DynamicResource SubtleFillColorTertiaryBrush}"/>
+                        <ui:ProgressRing Width="16" Height="16"
+                                         IsIndeterminate="True"
+                                         HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                      </Panel>
 
-            <Grid Classes="settings-row" ColumnDefinitions="Auto,*,Auto">
-              <ui:SymbolIcon Grid.Column="0" Classes="settings-row-icon" Symbol="ColorLine"/>
-              <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                <TextBlock Text="不透明度" FontSize="13" FontWeight="Medium"/>
-                <TextBlock Text="壁纸的透明程度" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
-              </StackPanel>
-              <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                <Slider Width="150" Minimum="0" Maximum="1" TickFrequency="0.05"
-                        IsSnapToTickEnabled="True"
-                        Value="{Binding WallpaperOpacity, Mode=TwoWay}"/>
-                <TextBlock Text="{Binding WallpaperOpacity, StringFormat={}{0:P0}}" FontSize="12"
-                           Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
-              </StackPanel>
-            </Grid>
+                      <!-- 占位（探测成功但没有可用缩略图） -->
+                      <Panel IsVisible="{Binding ShowPlaceholder}">
+                        <Border Background="{DynamicResource SubtleFillColorTertiaryBrush}"/>
+                        <Path Data="M21 19V5C21 3.9 20.1 3 19 3H5C3.9 3 3 3.9 3 5V19C3 20.1 3.9 21 5 21H19C20.1 21 21 20.1 21 19M8.5 13.5L11 16.5L14.5 12L19 18H5L8.5 13.5Z"
+                              Fill="{DynamicResource TextTertiaryBrush}"
+                              Width="32" Height="32" Stretch="Uniform"
+                              HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                      </Panel>
 
-            <Border Classes="settings-divider"/>
+                      <!-- 错误态：文件缺失 / 解码失败（添加之后才坏掉的情况） -->
+                      <Panel IsVisible="{Binding ShowErrorIcon}" ToolTip.Tip="{Binding ErrorDetail}">
+                        <Border Background="{DynamicResource SubtleFillColorTertiaryBrush}"/>
+                        <Path Data="M1 21H23L12 2L1 21M13 18H11V16H13V18M13 14H11V10H13V14Z"
+                              Fill="{DynamicResource DangerBrush}"
+                              Width="32" Height="32" Stretch="Uniform"
+                              HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                      </Panel>
 
-            <Grid Classes="settings-row" ColumnDefinitions="Auto,*,Auto">
-              <ui:SymbolIcon Grid.Column="0" Classes="settings-row-icon" Symbol="Zoom"/>
-              <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                <TextBlock Text="显示方式" FontSize="13" FontWeight="Medium"/>
-                <TextBlock Text="壁纸的拉伸方式" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
-              </StackPanel>
-              <ComboBox Grid.Column="2" Width="140" SelectedIndex="{Binding WallpaperStretch}" VerticalAlignment="Center">
-                <ComboBoxItem Content="拉伸填充"/>
-                <ComboBoxItem Content="适应缩放"/>
-                <ComboBoxItem Content="裁剪填充"/>
-                <ComboBoxItem Content="原始大小"/>
-              </ComboBox>
-            </Grid>
+                      <!-- 右上角操作组：默认隐形，悬停浮现 -->
+                      <Panel Classes="wallpaper-card-actions"
+                             HorizontalAlignment="Right" VerticalAlignment="Top"
+                             Margin="0,6,6,0">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                          <Button Classes="wallpaper-card-action"
+                                  Command="{Binding MoveUpCommand}"
+                                  IsEnabled="{Binding CanMoveUp}"
+                                  ToolTip.Tip="上移">
+                            <Path Data="M7 14L12 9L17 14H7Z" Fill="White"
+                                  Width="12" Height="12" Stretch="Uniform"
+                                  HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                          </Button>
+                          <Button Classes="wallpaper-card-action"
+                                  Command="{Binding MoveDownCommand}"
+                                  IsEnabled="{Binding CanMoveDown}"
+                                  ToolTip.Tip="下移">
+                            <Path Data="M7 10L12 15L17 10H7Z" Fill="White"
+                                  Width="12" Height="12" Stretch="Uniform"
+                                  HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                          </Button>
+                          <Button Classes="wallpaper-card-action"
+                                  Command="{Binding RemoveCommand}"
+                                  ToolTip.Tip="移除">
+                            <Path Data="M19 6.41L17.59 5L12 10.59L6.41 5L5 6.41L10.59 12L5 17.59L6.41 19L12 13.41L17.59 19L19 17.59L13.41 12L19 6.41Z"
+                                  Fill="White" Width="11" Height="11" Stretch="Uniform"
+                                  HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                          </Button>
+                        </StackPanel>
+                      </Panel>
 
-            <Border Classes="settings-divider"/>
+                      <!-- 当前**正在显示**的那一张（含轮播自动切换），非用户点选 -->
+                      <Border Classes="wallpaper-card-check"
+                              HorizontalAlignment="Left" VerticalAlignment="Top" Margin="6"
+                              IsVisible="{Binding IsCurrent}">
+                        <Path Data="M9 16.17L4.83 12L3.41 13.41L9 19L21 7L19.59 5.59L9 16.17Z"
+                              Fill="White" Width="12" Height="12" Stretch="Uniform"
+                              HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                      </Border>
 
-            <Grid Classes="settings-row" ColumnDefinitions="Auto,*,Auto">
-              <ui:SymbolIcon Grid.Column="0" Classes="settings-row-icon" Symbol="OpenPane"/>
-              <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                <TextBlock Text="扩展到导航栏" FontSize="13" FontWeight="Medium"/>
-                <TextBlock Text="将壁纸延伸到左侧导航栏区域" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
-              </StackPanel>
-              <ToggleSwitch Grid.Column="2" IsChecked="{Binding WallpaperExtendToNav, Mode=TwoWay}" VerticalAlignment="Center"/>
-            </Grid>
-
-            <Border Classes="settings-divider"/>
-
-            <Grid Classes="settings-row" ColumnDefinitions="Auto,*,Auto">
-              <ui:SymbolIcon Grid.Column="0" Classes="settings-row-icon" Symbol="ColorFill"/>
-              <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                <TextBlock Text="导航栏透明度" FontSize="13" FontWeight="Medium"/>
-                <TextBlock Text="扩展到导航栏时，导航栏背景的透明程度" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
-              </StackPanel>
-              <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                <Slider Width="150" Minimum="0.1" Maximum="1" TickFrequency="0.05"
-                        IsSnapToTickEnabled="True"
-                        Value="{Binding NavBackgroundOpacity, Mode=TwoWay}"/>
-                <TextBlock Text="{Binding NavBackgroundOpacity, StringFormat={}{0:P0}}" FontSize="12"
-                           Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
-              </StackPanel>
-            </Grid>
-          </StackPanel>
-        </Border>
-      </StackPanel>
-
-      <!-- 通知 -->
-      <StackPanel Spacing="6">
-        <StackPanel Orientation="Horizontal" Spacing="6" Margin="4,0,0,2">
-          <ui:SymbolIcon Symbol="Message" FontSize="14" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
-          <TextBlock Text="通知" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
-        </StackPanel>
-
-        <Border Classes="settings-card" Padding="16,10">
-          <StackPanel>
-            <Grid Classes="settings-row" ColumnDefinitions="Auto,*">
-              <ui:SymbolIcon Grid.Column="0" Classes="settings-row-icon" Symbol="Comment"/>
-              <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="10">
-                <StackPanel Spacing="2">
-                  <TextBlock Text="通知样式" FontSize="13" FontWeight="Medium"/>
-                  <TextBlock Text="选择通知消息的显示位置和样式" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
-                </StackPanel>
-
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                  <!-- 居中通知预览（真实 InfoBar） -->
-                  <Border Width="220" CornerRadius="8"
-                          BorderThickness="2"
-                          BorderBrush="{Binding NotificationPosition, Converter={x:Static converters:NotificationPositionToBorderConverter.Instance}, ConverterParameter=Center}">
-                    <Button Classes="ghost" Padding="0"
-                            Command="{Binding SelectCenterNotificationCommand}">
-                      <StackPanel>
-                        <Border Height="110" Padding="10"
-                                CornerRadius="8,8,0,0"
-                                Background="{DynamicResource SurfaceElevatedBrush}"
-                                BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
-                          <ui:InfoBar IsOpen="True" IsClosable="False"
-                                      Severity="Informational"
-                                      Title="通知标题"
-                                      Message="通知内容"
-                                      VerticalAlignment="Top" HorizontalAlignment="Stretch"/>
-                        </Border>
-                        <Border Padding="8,6" Background="{DynamicResource SurfaceBrush}" CornerRadius="0,0,8,8">
-                          <StackPanel HorizontalAlignment="Center">
-                            <TextBlock Text="居中显示" FontSize="11" FontWeight="Medium"/>
-                            <TextBlock Text="窗口顶部居中" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                      <!-- 底部信息层 -->
+                      <Border Classes="wallpaper-card-caption">
+                        <StackPanel Spacing="3">
+                          <TextBlock Text="{Binding FileName}" FontSize="13" FontWeight="Medium"
+                                     Foreground="{DynamicResource TextBrush}"
+                                     TextTrimming="CharacterEllipsis"/>
+                          <StackPanel Orientation="Horizontal" Spacing="4">
+                            <Border Classes="wallpaper-card-badge"
+                                    Classes.animated="{Binding IsAnimated}">
+                              <TextBlock Text="{Binding KindLabel}" FontSize="11"
+                                         Foreground="{DynamicResource TextBrush}"/>
+                            </Border>
+                            <TextBlock Text="{Binding MetaLabel}" FontSize="11"
+                                       Foreground="{DynamicResource TextSecondaryBrush}"
+                                       TextTrimming="CharacterEllipsis"
+                                       VerticalAlignment="Center"
+                                       IsVisible="{Binding !HasError}"/>
+                            <TextBlock Text="文件不可用" FontSize="11"
+                                       Foreground="{DynamicResource DangerBrush}"
+                                       VerticalAlignment="Center"
+                                       IsVisible="{Binding HasError}"/>
+                            <Path Data="M1 21H23L12 2L1 21M13 18H11V16H13V18M13 14H11V10H13V14Z"
+                                  Fill="{DynamicResource WarningBrush}"
+                                  Width="11" Height="11" Stretch="Uniform"
+                                  VerticalAlignment="Center"
+                                  IsVisible="{Binding IsHeavy}"
+                                  ToolTip.Tip="{Binding HeavyTip}"/>
                           </StackPanel>
-                        </Border>
-                      </StackPanel>
-                    </Button>
-                  </Border>
+                        </StackPanel>
+                      </Border>
 
-                  <!-- 右下角通知预览（真实 InfoBar） -->
-                  <Border Width="220" CornerRadius="8"
-                          BorderThickness="2"
-                          BorderBrush="{Binding NotificationPosition, Converter={x:Static converters:NotificationPositionToBorderConverter.Instance}, ConverterParameter=BottomRight}">
-                    <Button Classes="ghost" Padding="0"
-                            Command="{Binding SelectBottomRightNotificationCommand}">
-                      <StackPanel>
-                        <Border Height="110" Padding="10"
-                                CornerRadius="8,8,0,0"
-                                Background="{DynamicResource SurfaceElevatedBrush}"
-                                BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
-                          <ui:InfoBar IsOpen="True" IsClosable="False"
-                                      Severity="Success"
-                                      Title="通知标题"
-                                      Message="通知内容"
-                                      Width="150"
-                                      VerticalAlignment="Bottom" HorizontalAlignment="Right"/>
-                        </Border>
-                        <Border Padding="8,6" Background="{DynamicResource SurfaceBrush}" CornerRadius="0,0,8,8">
-                          <StackPanel HorizontalAlignment="Center">
-                            <TextBlock Text="右下角显示" FontSize="11" FontWeight="Medium"/>
-                            <TextBlock Text="窗口右下角" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}"/>
-                          </StackPanel>
-                        </Border>
-                      </StackPanel>
-                    </Button>
+                    </Panel>
+                  </Border>
+                </DataTemplate>
+              </ui:ItemsRepeater.ItemTemplate>
+            </ui:ItemsRepeater>
+
+            <!-- 添加卡 + 空态格式说明 -->
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <Button Classes="wallpaper-card-add"
+                      Command="{Binding AddWallpapersCommand}"
+                      DragDrop.AllowDrop="True"
+                      DragDrop.DragOver="OnAddCardDragOver"
+                      DragDrop.Drop="OnAddCardDrop">
+                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="6">
+                  <ui:SymbolIcon Symbol="Add" FontSize="20"
+                                 HorizontalAlignment="Center"
+                                 Foreground="{DynamicResource AccentBrush}"/>
+                  <TextBlock Text="添加壁纸" FontSize="12"
+                             HorizontalAlignment="Center"
+                             Foreground="{DynamicResource TextSecondaryBrush}"/>
+                </StackPanel>
+              </Button>
+
+              <!-- 空态才出现的格式说明（§8.4）：列表里已有图时不再占位置 -->
+              <StackPanel VerticalAlignment="Center" Spacing="4" MaxWidth="360"
+                          IsVisible="{Binding ShowWallpaperFormatsHint, Mode=OneWay}">
+                <TextBlock Text="支持 PNG / JPG / BMP / GIF / 动画 WebP" FontSize="11"
+                           Foreground="{DynamicResource TextSecondaryBrush}"
+                           TextWrapping="Wrap"/>
+                <TextBlock Text="不含动画 PNG（APNG）。多张图片可轮播播放。"
+                           FontSize="11"
+                           Foreground="{DynamicResource TextTertiaryBrush}"
+                           TextWrapping="Wrap"/>
+              </StackPanel>
+            </StackPanel>
+
+          </StackPanel>
+        </ui:SettingsExpanderItem>
+      </ui:SettingsExpander>
+
+      <!-- ===================== 【2】显示设置（默认折叠） ===================== -->
+      <ui:SettingsExpander Header="显示设置"
+                           Description="壁纸在主界面上的呈现方式"
+                           IsExpanded="False">
+        <ui:SettingsExpander.IconSource>
+          <ui:SymbolIconSource Symbol="Image"/>
+        </ui:SettingsExpander.IconSource>
+
+        <ui:SettingsExpanderItem Content="不透明度" Description="壁纸的透明程度">
+          <ui:SettingsExpanderItem.Footer>
+            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+              <Slider Width="150" Minimum="0" Maximum="1" TickFrequency="0.05"
+                      IsSnapToTickEnabled="True"
+                      Value="{Binding WallpaperOpacity, Mode=TwoWay}"/>
+              <TextBlock Text="{Binding WallpaperOpacity, StringFormat={}{0:P0}}"
+                         FontSize="12" VerticalAlignment="Center"
+                         Foreground="{DynamicResource TextSecondaryBrush}"/>
+            </StackPanel>
+          </ui:SettingsExpanderItem.Footer>
+        </ui:SettingsExpanderItem>
+
+        <ui:SettingsExpanderItem Content="显示方式" Description="壁纸的拉伸方式">
+          <ui:SettingsExpanderItem.Footer>
+            <ComboBox Width="140" SelectedIndex="{Binding WallpaperStretch}" VerticalAlignment="Center">
+              <ComboBoxItem Content="拉伸填充"/>
+              <ComboBoxItem Content="适应缩放"/>
+              <ComboBoxItem Content="裁剪填充"/>
+              <ComboBoxItem Content="原始大小"/>
+            </ComboBox>
+          </ui:SettingsExpanderItem.Footer>
+        </ui:SettingsExpanderItem>
+
+        <ui:SettingsExpanderItem Content="扩展到导航栏" Description="将壁纸延伸到左侧导航栏区域">
+          <ui:SettingsExpanderItem.Footer>
+            <ToggleSwitch IsChecked="{Binding WallpaperExtendToNav, Mode=TwoWay}"
+                          OnContent="" OffContent="" VerticalAlignment="Center"/>
+          </ui:SettingsExpanderItem.Footer>
+        </ui:SettingsExpanderItem>
+
+        <ui:SettingsExpanderItem Content="导航栏透明度" Description="扩展到导航栏时，导航栏背景的透明程度">
+          <ui:SettingsExpanderItem.Footer>
+            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+              <Slider Width="150" Minimum="0.1" Maximum="1" TickFrequency="0.05"
+                      IsSnapToTickEnabled="True"
+                      IsEnabled="{Binding WallpaperExtendToNav}"
+                      Value="{Binding NavBackgroundOpacity, Mode=TwoWay}"/>
+              <TextBlock Text="{Binding NavBackgroundOpacity, StringFormat={}{0:P0}}"
+                         FontSize="12" VerticalAlignment="Center"
+                         Foreground="{DynamicResource TextSecondaryBrush}"/>
+            </StackPanel>
+          </ui:SettingsExpanderItem.Footer>
+        </ui:SettingsExpanderItem>
+      </ui:SettingsExpander>
+
+      <!-- ===================== 【3】动图播放 ===================== -->
+      <ui:SettingsExpander Header="动图播放"
+                           Description="GIF / 动画 WebP 的播放行为"
+                           IsExpanded="True">
+        <ui:SettingsExpander.IconSource>
+          <ui:PathIconSource Data="M12 2C6.48 2 2 6.48 2 12S6.48 22 12 22 22 17.52 22 12 17.52 2 12 2M10 16.5V7.5L16 12L10 16.5Z"/>
+        </ui:SettingsExpander.IconSource>
+
+        <ui:SettingsExpander.Footer>
+          <ToggleSwitch IsChecked="{Binding WallpaperPlayAnimated, Mode=TwoWay}"
+                        OnContent="" OffContent=""
+                        VerticalAlignment="Center"/>
+        </ui:SettingsExpander.Footer>
+
+        <ui:SettingsExpanderItem>
+          <StackPanel Spacing="8" HorizontalAlignment="Stretch">
+            <TextBlock Text="关闭后只显示第一帧，仍会按「轮播与性能」里的参数切换图片。"
+                       FontSize="11"
+                       Foreground="{DynamicResource TextSecondaryBrush}"
+                       TextWrapping="Wrap"/>
+
+            <!-- 一次添加多张动图时的资源提示；关闭动图播放后不再提醒 -->
+            <ui:InfoBar IsOpen="{Binding ShowAnimatedHeavyHint, Mode=OneWay}"
+                        IsClosable="False"
+                        Severity="Informational"
+                        Title="已添加多张动图"
+                        Message="同时播放多张动图会占用较多资源，建议配合轮播使用（轮播与性能 → 轮播间隔）。"/>
+          </StackPanel>
+        </ui:SettingsExpanderItem>
+      </ui:SettingsExpander>
+
+      <!-- ===================== 【4】轮播与性能（默认折叠） ===================== -->
+      <ui:SettingsExpander Header="轮播与性能"
+                           Description="切换节奏与动图资源占用"
+                           IsExpanded="False">
+        <ui:SettingsExpander.IconSource>
+          <ui:PathIconSource Data="M12 2C6.49 2 2 6.49 2 12S6.49 22 12 22S22 17.51 22 12S17.51 2 12 2M12 20C7.59 20 4 16.41 4 12S7.59 4 12 4S20 7.59 20 12S16.41 20 12 20M12.5 7V12.25L17 14.92L16.25 16.15L11 13V7H12.5Z"/>
+        </ui:SettingsExpander.IconSource>
+
+        <ui:SettingsExpanderItem Content="轮播间隔" Description="多张图片之间的切换节奏；选「自定义…」可填任意秒数">
+          <ui:SettingsExpanderItem.Footer>
+            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+              <ui:FAComboBox Width="130"
+                             ItemsSource="{Binding SlideIntervalOptions}"
+                             SelectedItem="{Binding SelectedSlideIntervalOption, Mode=TwoWay}">
+                <ui:FAComboBox.ItemTemplate>
+                  <DataTemplate x:DataType="vm:SlideIntervalOption">
+                    <TextBlock Text="{Binding Label}"/>
+                  </DataTemplate>
+                </ui:FAComboBox.ItemTemplate>
+              </ui:FAComboBox>
+
+              <ui:NumberBox Width="110"
+                            Minimum="5" Maximum="86400" SmallChange="5"
+                            SpinButtonPlacementMode="Inline"
+                            IsVisible="{Binding IsCustomSlideInterval}"
+                            Value="{Binding WallpaperSlideIntervalSeconds, Mode=TwoWay}"/>
+              <TextBlock Text="秒" FontSize="12" VerticalAlignment="Center"
+                         IsVisible="{Binding IsCustomSlideInterval}"
+                         Foreground="{DynamicResource TextSecondaryBrush}"/>
+            </StackPanel>
+          </ui:SettingsExpanderItem.Footer>
+        </ui:SettingsExpanderItem>
+
+        <ui:SettingsExpanderItem Content="轮播顺序" Description="顺序推进、每次随机，还是每次启动换一个起点">
+          <ui:SettingsExpanderItem.Footer>
+            <ui:FAComboBox Width="170"
+                           ItemsSource="{Binding SlideModeOptions}"
+                           SelectedItem="{Binding SelectedSlideModeOption, Mode=TwoWay}">
+              <ui:FAComboBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:SlideModeOption">
+                  <TextBlock Text="{Binding Label}"/>
+                </DataTemplate>
+              </ui:FAComboBox.ItemTemplate>
+            </ui:FAComboBox>
+          </ui:SettingsExpanderItem.Footer>
+        </ui:SettingsExpanderItem>
+
+        <ui:SettingsExpanderItem Content="切换过渡" Description="两张图片之间的交叉淡入时长">
+          <ui:SettingsExpanderItem.Footer>
+            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+              <Slider Width="150" Minimum="0" Maximum="2000" TickFrequency="50"
+                      IsSnapToTickEnabled="True"
+                      Value="{Binding WallpaperTransitionMs, Mode=TwoWay}"/>
+              <TextBlock Text="{Binding WallpaperTransitionMs, StringFormat={}{0} ms}"
+                         FontSize="12" VerticalAlignment="Center"
+                         Foreground="{DynamicResource TextSecondaryBrush}"/>
+            </StackPanel>
+          </ui:SettingsExpanderItem.Footer>
+        </ui:SettingsExpanderItem>
+
+        <ui:SettingsExpanderItem Content="帧率上限" Description="动图的播放帧率上限，调低可省电">
+          <ui:SettingsExpanderItem.Footer>
+            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+              <ui:NumberBox Width="120" Minimum="1" Maximum="60" SmallChange="1"
+                            SpinButtonPlacementMode="Inline"
+                            Value="{Binding WallpaperMaxFps, Mode=TwoWay}"/>
+              <TextBlock Text="fps" FontSize="12" VerticalAlignment="Center"
+                         Foreground="{DynamicResource TextSecondaryBrush}"/>
+            </StackPanel>
+          </ui:SettingsExpanderItem.Footer>
+        </ui:SettingsExpanderItem>
+
+        <ui:SettingsExpanderItem Content="解码尺寸上限" Description="动图的解码长边上限；只能向下夹紧，小图不会被放大">
+          <ui:SettingsExpanderItem.Footer>
+            <ui:FAComboBox Width="140"
+                           ItemsSource="{Binding DecodeEdgeOptions}"
+                           SelectedItem="{Binding SelectedDecodeEdgeOption, Mode=TwoWay}">
+              <ui:FAComboBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:DecodeEdgeOption">
+                  <TextBlock Text="{Binding Label}"/>
+                </DataTemplate>
+              </ui:FAComboBox.ItemTemplate>
+            </ui:FAComboBox>
+          </ui:SettingsExpanderItem.Footer>
+        </ui:SettingsExpanderItem>
+
+        <ui:SettingsExpanderItem Content="失焦时暂停" Description="窗口失去焦点时暂停动图，避免后台空转">
+          <ui:SettingsExpanderItem.Footer>
+            <ToggleSwitch IsChecked="{Binding WallpaperPauseOnUnfocused, Mode=TwoWay}"
+                          OnContent="" OffContent="" VerticalAlignment="Center"/>
+          </ui:SettingsExpanderItem.Footer>
+        </ui:SettingsExpanderItem>
+
+        <ui:SettingsExpanderItem Content="电池供电时暂停" Description="笔记本切换到电池供电时暂停动图与轮播">
+          <ui:SettingsExpanderItem.Footer>
+            <ToggleSwitch IsChecked="{Binding WallpaperPauseOnBattery, Mode=TwoWay}"
+                          OnContent="" OffContent="" VerticalAlignment="Center"/>
+          </ui:SettingsExpanderItem.Footer>
+        </ui:SettingsExpanderItem>
+      </ui:SettingsExpander>
+
+      <!-- ===================== 通知 ===================== -->
+      <ui:SettingsExpander Header="通知" Description="消息提示的显示位置与时长" IsExpanded="True">
+        <ui:SettingsExpander.IconSource>
+          <ui:SymbolIconSource Symbol="Message"/>
+        </ui:SettingsExpander.IconSource>
+
+        <ui:SettingsExpanderItem Content="通知样式" Description="选择通知消息的显示位置和样式">
+          <ui:SettingsExpanderItem.IconSource>
+            <ui:SymbolIconSource Symbol="Comment"/>
+          </ui:SettingsExpanderItem.IconSource>
+        </ui:SettingsExpanderItem>
+
+        <ui:SettingsExpanderItem>
+          <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Stretch">
+            <!-- 居中通知预览（真实 InfoBar） -->
+            <Border Width="220" CornerRadius="8" BorderThickness="2"
+                    BorderBrush="{Binding NotificationPosition, Converter={x:Static converters:NotificationPositionToBorderConverter.Instance}, ConverterParameter=Center}">
+              <Button Classes="ghost" Padding="0"
+                      Command="{Binding SelectCenterNotificationCommand}">
+                <StackPanel>
+                  <Border Height="110" Padding="10" CornerRadius="8,8,0,0"
+                          Background="{DynamicResource SurfaceElevatedBrush}"
+                          BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
+                    <ui:InfoBar IsOpen="True" IsClosable="False"
+                                Severity="Informational"
+                                Title="通知标题" Message="通知内容"
+                                VerticalAlignment="Top" HorizontalAlignment="Stretch"/>
+                  </Border>
+                  <Border Padding="8,6" Background="{DynamicResource SurfaceBrush}" CornerRadius="0,0,8,8">
+                    <StackPanel HorizontalAlignment="Center">
+                      <TextBlock Text="居中显示" FontSize="11" FontWeight="Medium"/>
+                      <TextBlock Text="窗口顶部居中" FontSize="9"
+                                 Foreground="{DynamicResource TextSecondaryBrush}"/>
+                    </StackPanel>
                   </Border>
                 </StackPanel>
-              </StackPanel>
-            </Grid>
+              </Button>
+            </Border>
 
-            <Border Classes="settings-divider"/>
-
-            <Grid Classes="settings-row" ColumnDefinitions="Auto,*,Auto"
-                  IsVisible="{Binding NotificationPosition, Converter={x:Static converters:NotificationPositionToVisibilityConverter.Instance}}">
-              <ui:SymbolIcon Grid.Column="0" Classes="settings-row-icon" Symbol="Clock"/>
-              <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                <TextBlock Text="自动关闭时间" FontSize="13" FontWeight="Medium"/>
-                <TextBlock Text="右下角通知自动关闭时间（3-30秒）" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
-              </StackPanel>
-              <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
-                <ui:NumberBox Value="{Binding NotificationAutoCloseSeconds}"
-                              Minimum="3" Maximum="30" SmallChange="1"
-                              SpinButtonPlacementMode="Inline"
-                              Width="140"/>
-                <TextBlock Text="秒" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
-              </StackPanel>
-            </Grid>
+            <!-- 右下角通知预览（真实 InfoBar） -->
+            <Border Width="220" CornerRadius="8" BorderThickness="2"
+                    BorderBrush="{Binding NotificationPosition, Converter={x:Static converters:NotificationPositionToBorderConverter.Instance}, ConverterParameter=BottomRight}">
+              <Button Classes="ghost" Padding="0"
+                      Command="{Binding SelectBottomRightNotificationCommand}">
+                <StackPanel>
+                  <Border Height="110" Padding="10" CornerRadius="8,8,0,0"
+                          Background="{DynamicResource SurfaceElevatedBrush}"
+                          BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
+                    <ui:InfoBar IsOpen="True" IsClosable="False"
+                                Severity="Success"
+                                Title="通知标题" Message="通知内容"
+                                Width="150"
+                                VerticalAlignment="Bottom" HorizontalAlignment="Right"/>
+                  </Border>
+                  <Border Padding="8,6" Background="{DynamicResource SurfaceBrush}" CornerRadius="0,0,8,8">
+                    <StackPanel HorizontalAlignment="Center">
+                      <TextBlock Text="右下角显示" FontSize="11" FontWeight="Medium"/>
+                      <TextBlock Text="窗口右下角" FontSize="9"
+                                 Foreground="{DynamicResource TextSecondaryBrush}"/>
+                    </StackPanel>
+                  </Border>
+                </StackPanel>
+              </Button>
+            </Border>
           </StackPanel>
-        </Border>
-      </StackPanel>
+        </ui:SettingsExpanderItem>
+
+        <ui:SettingsExpanderItem Content="自动关闭时间" Description="右下角通知自动关闭时间（3-30 秒）"
+                                 IsVisible="{Binding NotificationPosition, Converter={x:Static converters:NotificationPositionToVisibilityConverter.Instance}}">
+          <ui:SettingsExpanderItem.IconSource>
+            <ui:SymbolIconSource Symbol="Clock"/>
+          </ui:SettingsExpanderItem.IconSource>
+          <ui:SettingsExpanderItem.Footer>
+            <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+              <ui:NumberBox Value="{Binding NotificationAutoCloseSeconds}"
+                            Minimum="3" Maximum="30" SmallChange="1"
+                            SpinButtonPlacementMode="Inline"
+                            Width="140"/>
+              <TextBlock Text="秒" FontSize="12" VerticalAlignment="Center"
+                         Foreground="{DynamicResource TextSecondaryBrush}"/>
+            </StackPanel>
+          </ui:SettingsExpanderItem.Footer>
+        </ui:SettingsExpanderItem>
+      </ui:SettingsExpander>
 
     </StackPanel>
   </ScrollViewer>

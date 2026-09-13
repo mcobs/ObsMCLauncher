@@ -18,11 +18,13 @@ using Avalonia.Styling;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using ObsMCLauncher.Core.Media;
 using ObsMCLauncher.Core.Models;
 using ObsMCLauncher.Core.Services;
 using ObsMCLauncher.Core.Services.Download;
 using ObsMCLauncher.Core.Services.Mirror;
 using ObsMCLauncher.Core.Utils;
+using ObsMCLauncher.Desktop.Models;
 using ObsMCLauncher.Desktop.Services;
 using ObsMCLauncher.Desktop.ViewModels.Notifications;
 
@@ -31,11 +33,49 @@ namespace ObsMCLauncher.Desktop.ViewModels;
 /// <summary>字体下拉项：Family 供预览渲染，Display 供显示，IsDefault 标记默认字体</summary>
 public sealed record FontFamilyItem(Avalonia.Media.FontFamily Family, string Display, bool IsDefault);
 
-public partial class SettingsViewModel : ViewModelBase, IDisposable
+/// <summary>轮播间隔下拉项。<c>Seconds</c> 即写回 <c>WallpaperSlideIntervalSeconds</c> 的值</summary>
+/// <param name="Seconds">秒数：正数 = 间隔，0 = 关闭，-1 = 每次启动</param>
+/// <param name="Label">下拉显示文字</param>
+public sealed record SlideIntervalOption(int Seconds, string Label)
+{
+    /// <summary>"自定义…"项的哨兵值。选到它时同一 Footer 内联显示 NumberBox</summary>
+    public const int CustomSentinel = int.MinValue;
+
+    /// <summary>是否是"自定义…"项</summary>
+    public bool IsCustom => Seconds == CustomSentinel;
+}
+
+/// <summary>轮播顺序下拉项</summary>
+/// <param name="Mode">写回 <c>WallpaperSlideMode</c> 的值</param>
+/// <param name="Label">下拉显示文字</param>
+public sealed record SlideModeOption(int Mode, string Label);
+
+/// <summary>解码尺寸上限下拉项</summary>
+/// <param name="Edge">长边像素，0 = 不限制</param>
+/// <param name="Label">下拉显示文字</param>
+public sealed record DecodeEdgeOption(int Edge, string Label);
+
+public partial class SettingsViewModel : ViewModelBase, IDisposable, IWallpaperCardHost
 {
     private readonly NotificationService _notificationService;
     private bool _isInitializing;
     private CancellationTokenSource? _saveNotifyCts;
+
+    // ===== 背景壁纸（阶段 4 卡片网格）=====
+    /// <summary>缩略图生成器（首帧 + 磁盘缓存），整个设置页共用一份</summary>
+    private readonly WallpaperThumbnailer _thumbnailer = new();
+
+    /// <summary>卡片重建的取消源：反复增删时作废旧一轮探测，避免旧结果盖新列表</summary>
+    private CancellationTokenSource? _wallpaperCardsCts;
+
+    /// <summary>已订阅的壁纸服务；<c>null</c> 表示主窗口尚未就绪</summary>
+    private WallpaperService? _wallpaperService;
+
+    /// <summary>当前正在显示的那一张（跟随服务与轮播实时变化）</summary>
+    private WallpaperItemViewModel? _currentWallpaperCard;
+
+    /// <summary>拖拽落点高亮的卡片。DragOver 每帧都触发，靠它去重避免通知风暴</summary>
+    private WallpaperItemViewModel? _wallpaperDropTarget;
 
     [ObservableProperty]
     private int _selectedSettingsTab;
@@ -68,11 +108,20 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(Density)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(AnimationLevel)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperEnabled)));
-        OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperPath)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperPlayAnimated)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperSlideIntervalSeconds)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(SelectedSlideIntervalOption)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(SelectedSlideModeOption)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(SelectedDecodeEdgeOption)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperTransitionMs)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperMaxFps)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperPauseOnUnfocused)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperPauseOnBattery)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperOpacity)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperStretch)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperExtendToNav)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(NavBackgroundOpacity)));
+        SyncSlideIntervalSelection();
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(SelectedFontItem)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(SelectedFontWeight)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(MaxMemory)));
@@ -105,6 +154,10 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
 
         UpdateGameDirectoryDisplayText();
         _ = ReloadJavaOptionsAsync();
+
+        // 壁纸卡片随配置重来：缩略图与"当前显示"徽标都要重新对齐
+        AttachWallpaperService();
+        LoadWallpaperCards();
 
         Status = "设置已重新加载";
         _isInitializing = false;
@@ -160,6 +213,10 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
         // 应用已保存的壁纸配置
         ApplyWallpaper();
 
+        // 卡片网格：订阅服务以跟随"当前正在显示"的那一张，并异步装载缩略图
+        AttachWallpaperService();
+        LoadWallpaperCards();
+
         // 字体列表与应用已保存的字体设置
         LoadFontFamilies();
         ApplyFont();
@@ -172,7 +229,8 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
 
         BrowseGameDirectoryCommand = new AsyncRelayCommand(BrowseGameDirectoryAsync);
         BrowseJavaPathCommand = new AsyncRelayCommand(BrowseJavaPathAsync);
-        BrowseWallpaperCommand = new AsyncRelayCommand(BrowseWallpaperAsync);
+        AddWallpapersCommand = new AsyncRelayCommand(AddWallpapersAsync);
+        DismissWallpaperRejectionCommand = new RelayCommand(DismissWallpaperRejection);
         TestDownloadSourceCommand = new AsyncRelayCommand(TestDownloadSourceAsync);
         ResetDefaultsCommand = new RelayCommand(ResetDefaults);
         SelectCenterNotificationCommand = new RelayCommand(() => NotificationPosition = NotificationPosition.Center);
@@ -387,39 +445,6 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
         }
     }
 
-    /// <summary>
-    /// 生效壁纸路径。模型层已由单个 <c>WallpaperPath</c> 改为 <c>WallpaperItems</c> 列表，
-    /// 此处保留 path 形式以兼容既有绑定——接入轮播（阶段 3）之前，列表首项即生效项。
-    /// 阶段 4 重做设置页时，会用卡片列表整体替换掉这个属性。
-    /// </summary>
-    public string WallpaperPath
-    {
-        get => _config.WallpaperItems.Count > 0 ? _config.WallpaperItems[0].Path : "";
-        set
-        {
-            var v = string.IsNullOrWhiteSpace(value) ? "" : value.Trim();
-            var current = _config.WallpaperItems.Count > 0 ? _config.WallpaperItems[0].Path : "";
-            if (current == v) return;
-
-            if (v.Length == 0)
-            {
-                _config.WallpaperItems.Clear();
-            }
-            else if (_config.WallpaperItems.Count > 0)
-            {
-                _config.WallpaperItems[0].Path = v;
-            }
-            else
-            {
-                _config.WallpaperItems.Add(new WallpaperItem { Path = v });
-            }
-
-            OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperPath)));
-            ApplyWallpaper();
-            AutoSave();
-        }
-    }
-
     public double WallpaperOpacity
     {
         get => _config.WallpaperOpacity;
@@ -483,7 +508,489 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
         }
     }
 
-    public IAsyncRelayCommand BrowseWallpaperCommand { get; }
+    // ===== 背景壁纸：卡片网格与参数（§8.3 区块结构）=====
+
+    /// <summary>卡片网格数据源。顺序即显示 / 轮播顺序</summary>
+    public ObservableCollection<WallpaperItemViewModel> WallpaperCards { get; } = [];
+
+    /// <summary>添加壁纸（多选）。APNG 与无法读取的文件在添加阶段就被拒收并汇总提示（§5.5 / D7）</summary>
+    public IAsyncRelayCommand AddWallpapersCommand { get; }
+
+    /// <summary>关闭拒收提示条</summary>
+    public IRelayCommand DismissWallpaperRejectionCommand { get; }
+
+    /// <summary>拒收提示条是否显示</summary>
+    [ObservableProperty]
+    private bool _hasWallpaperRejection;
+
+    /// <summary>拒收汇总文案（添加阶段 + 服务端探测两条来源合并，每行一条）</summary>
+    [ObservableProperty]
+    private string _wallpaperRejectionMessage = "";
+
+    /// <summary>列表为空时，在添加卡下方补一行格式说明（§8.4 空态）</summary>
+    [ObservableProperty]
+    private bool _showWallpaperFormatsHint;
+
+    /// <summary>列表含 ≥3 张动图时的资源占用提示（§8.5）</summary>
+    [ObservableProperty]
+    private bool _showAnimatedHeavyHint;
+
+    /// <summary>轮播间隔处于"自定义…"档：同一 Footer 内联显示 NumberBox</summary>
+    [ObservableProperty]
+    private bool _isCustomSlideInterval;
+
+    /// <summary>轮播间隔预设档位（§8.5 / D1）</summary>
+    public ObservableCollection<SlideIntervalOption> SlideIntervalOptions { get; } =
+    [
+        new(0, "关闭"),
+        new(30, "30 秒"),
+        new(60, "1 分钟"),
+        new(300, "5 分钟"),
+        new(900, "15 分钟"),
+        new(WallpaperRotationPlan.IntervalEachStartup, "每次启动"),
+        new(SlideIntervalOption.CustomSentinel, "自定义…")
+    ];
+
+    /// <summary>轮播顺序预设</summary>
+    public ObservableCollection<SlideModeOption> SlideModeOptions { get; } =
+    [
+        new(0, "顺序"),
+        new(1, "随机"),
+        new(2, "每次启动随机起点")
+    ];
+
+    /// <summary>解码尺寸上限预设（0 = 不限制）</summary>
+    public ObservableCollection<DecodeEdgeOption> DecodeEdgeOptions { get; } =
+    [
+        new(0, "不限制"),
+        new(1280, "1280 px"),
+        new(1920, "1920 px"),
+        new(2560, "2560 px"),
+        new(3840, "3840 px")
+    ];
+
+    /// <summary>添加阶段被拒收的条目（未入列表、未生成卡片）</summary>
+    private readonly List<WallpaperRejection> _addRejections = new();
+
+    /// <summary>用户已关掉服务端拒收提示；服务端拒收集合再变化时自动解除</summary>
+    private bool _serviceRejectionsAcknowledged;
+
+    /// <summary>
+    /// 是否播放动图动画。关闭时只显示首帧（与全局动画级别为 0 的效果一致）。
+    /// </summary>
+    public bool WallpaperPlayAnimated
+    {
+        get => _config.WallpaperPlayAnimated;
+        set
+        {
+            if (_config.WallpaperPlayAnimated != value)
+            {
+                _config.WallpaperPlayAnimated = value;
+                OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperPlayAnimated)));
+                ApplyWallpaper();
+                AutoSave();
+            }
+        }
+    }
+
+    /// <summary>轮播间隔（秒）：正数 = 间隔，0 = 关闭，-1 = 每次启动（只影响起点）</summary>
+    public int WallpaperSlideIntervalSeconds
+    {
+        get => _config.WallpaperSlideIntervalSeconds;
+        set
+        {
+            // "自定义"档的 NumberBox 限定了 Minimum=5；越界值在这里再兜一次，
+            // 但 0 与 -1 是两个有语义的特殊值，必须原样放行
+            var v = value > 0 ? Math.Clamp(value, 5, 86400) : value;
+            if (_config.WallpaperSlideIntervalSeconds == v) return;
+
+            _config.WallpaperSlideIntervalSeconds = v;
+            OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperSlideIntervalSeconds)));
+            SyncSlideIntervalSelection();
+            ApplyWallpaper();
+            AutoSave();
+        }
+    }
+
+    /// <summary>
+    /// 轮播间隔下拉选中项。无后备字段——始终由配置值反查预设项，
+    /// 这样"配置里是 90 秒（不在档位内）"会自动落到「自定义…」。
+    /// </summary>
+    public SlideIntervalOption? SelectedSlideIntervalOption
+    {
+        get => ResolveSlideIntervalOption();
+        set
+        {
+            if (value is null) return;
+
+            if (value.IsCustom)
+            {
+                // 切到自定义时**不改数值**：保留原值作为 NumberBox 的起点
+                IsCustomSlideInterval = true;
+                OnPropertyChanged(new PropertyChangedEventArgs(nameof(SelectedSlideIntervalOption)));
+                return;
+            }
+
+            IsCustomSlideInterval = false;
+            WallpaperSlideIntervalSeconds = value.Seconds;
+            OnPropertyChanged(new PropertyChangedEventArgs(nameof(SelectedSlideIntervalOption)));
+        }
+    }
+
+    /// <summary>轮播顺序下拉选中项</summary>
+    public SlideModeOption? SelectedSlideModeOption
+    {
+        get
+        {
+            var mode = _config.WallpaperSlideMode;
+            foreach (var option in SlideModeOptions)
+                if (option.Mode == mode) return option;
+            // 越界值（手改配置）在 WallpaperRotationPlan 里按"顺序"处理，UI 也如实回落到顺序
+            return SlideModeOptions.Count > 0 ? SlideModeOptions[0] : null;
+        }
+        set
+        {
+            if (value is null) return;
+            if (_config.WallpaperSlideMode == value.Mode) return;
+
+            _config.WallpaperSlideMode = value.Mode;
+            OnPropertyChanged(new PropertyChangedEventArgs(nameof(SelectedSlideModeOption)));
+            ApplyWallpaper();
+            AutoSave();
+        }
+    }
+
+    /// <summary>解码尺寸上限（长边像素，0 = 不限制）</summary>
+    public DecodeEdgeOption? SelectedDecodeEdgeOption
+    {
+        get
+        {
+            var edge = _config.WallpaperMaxDecodeEdge;
+            foreach (var option in DecodeEdgeOptions)
+                if (option.Edge == edge) return option;
+            return null;
+        }
+        set
+        {
+            if (value is null) return;
+            if (_config.WallpaperMaxDecodeEdge == value.Edge) return;
+
+            _config.WallpaperMaxDecodeEdge = value.Edge;
+            OnPropertyChanged(new PropertyChangedEventArgs(nameof(SelectedDecodeEdgeOption)));
+            ApplyWallpaper();
+            AutoSave();
+        }
+    }
+
+    /// <summary>切换过渡时长（毫秒）</summary>
+    public int WallpaperTransitionMs
+    {
+        get => _config.WallpaperTransitionMs;
+        set
+        {
+            var v = Math.Clamp(value, 0, 2000);
+            if (_config.WallpaperTransitionMs != v)
+            {
+                _config.WallpaperTransitionMs = v;
+                OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperTransitionMs)));
+                ApplyWallpaper();
+                AutoSave();
+            }
+        }
+    }
+
+    /// <summary>动图帧率上限</summary>
+    public int WallpaperMaxFps
+    {
+        get => _config.WallpaperMaxFps;
+        set
+        {
+            var v = Math.Clamp(value, 1, 60);
+            if (_config.WallpaperMaxFps != v)
+            {
+                _config.WallpaperMaxFps = v;
+                OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperMaxFps)));
+                ApplyWallpaper();
+                AutoSave();
+            }
+        }
+    }
+
+    /// <summary>窗口失焦时暂停动图</summary>
+    public bool WallpaperPauseOnUnfocused
+    {
+        get => _config.WallpaperPauseOnUnfocused;
+        set
+        {
+            if (_config.WallpaperPauseOnUnfocused != value)
+            {
+                _config.WallpaperPauseOnUnfocused = value;
+                OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperPauseOnUnfocused)));
+                ApplyWallpaper();
+                AutoSave();
+            }
+        }
+    }
+
+    /// <summary>电池供电时暂停动图（轮播定时器一并停排定）</summary>
+    public bool WallpaperPauseOnBattery
+    {
+        get => _config.WallpaperPauseOnBattery;
+        set
+        {
+            if (_config.WallpaperPauseOnBattery != value)
+            {
+                _config.WallpaperPauseOnBattery = value;
+                OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperPauseOnBattery)));
+                ApplyWallpaper();
+                AutoSave();
+            }
+        }
+    }
+
+    /// <summary>把配置值反查成下拉项；不在档位内则返回「自定义…」那一项</summary>
+    private SlideIntervalOption ResolveSlideIntervalOption()
+    {
+        var seconds = _config.WallpaperSlideIntervalSeconds;
+        foreach (var option in SlideIntervalOptions)
+            if (!option.IsCustom && option.Seconds == seconds) return option;
+
+        return SlideIntervalOptions.First(o => o.IsCustom);
+    }
+
+    /// <summary>配置里的间隔值变了（含 Reload）之后，刷新下拉选中态与自定义态</summary>
+    private void SyncSlideIntervalSelection()
+    {
+        // 直接问"反查结果是不是自定义项"，避免把档位表在两个地方各写一遍
+        IsCustomSlideInterval = ResolveSlideIntervalOption().IsCustom;
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(SelectedSlideIntervalOption)));
+    }
+
+    // ===== IWallpaperCardHost：卡片上的上移 / 下移 / 移除 / 拖拽排序 =====
+
+    /// <summary>
+    /// 按路径找卡片。拖拽负载里放的是路径而不是对象引用，
+    /// 落点回查走这里（路径在列表内唯一——添加阶段已拒收重复项）。
+    /// </summary>
+    public WallpaperItemViewModel? FindWallpaperCard(string path)
+        => WallpaperCards.FirstOrDefault(c => string.Equals(c.Path, path, StringComparison.OrdinalIgnoreCase));
+
+    /// <inheritdoc />
+    public void MoveWallpaper(WallpaperItemViewModel item, int delta)
+    {
+        var index = WallpaperCards.IndexOf(item);
+        if (index < 0) return;
+
+        var target = index + delta;
+        if (target < 0 || target >= WallpaperCards.Count) return;
+
+        WallpaperCards.Move(index, target);
+        CommitWallpaperOrder();
+    }
+
+    /// <inheritdoc />
+    public void RemoveWallpaper(WallpaperItemViewModel item)
+    {
+        if (!WallpaperCards.Remove(item)) return;
+
+        item.PropertyChanged -= OnWallpaperCardPropertyChanged;
+        item.ReleaseThumbnail();
+        CommitWallpaperOrder();
+    }
+
+    /// <inheritdoc />
+    public void MoveWallpaperTo(WallpaperItemViewModel source, WallpaperItemViewModel target)
+    {
+        var from = WallpaperCards.IndexOf(source);
+        var to = WallpaperCards.IndexOf(target);
+        if (from < 0 || to < 0 || from == to) return;
+
+        // ObservableCollection.Move 会把目标位置"让"给 source（目标原条目顺延一位），
+        // 与用户"插到这一张的位置上"的直觉一致
+        WallpaperCards.Move(from, to);
+        CommitWallpaperOrder();
+    }
+
+    /// <inheritdoc />
+    public void MoveWallpaperToEnd(WallpaperItemViewModel source)
+    {
+        var from = WallpaperCards.IndexOf(source);
+        if (from < 0 || from == WallpaperCards.Count - 1) return;
+
+        WallpaperCards.Move(from, WallpaperCards.Count - 1);
+        CommitWallpaperOrder();
+    }
+
+    /// <inheritdoc />
+    public void SetWallpaperDropTarget(WallpaperItemViewModel? item)
+    {
+        if (ReferenceEquals(_wallpaperDropTarget, item)) return;
+
+        if (_wallpaperDropTarget is { } previous) previous.IsDropTarget = false;
+        _wallpaperDropTarget = item;
+        if (item is not null) item.IsDropTarget = true;
+    }
+
+    /// <summary>卡片顺序变了：写回配置、刷新卡片状态、立刻应用到渲染层</summary>
+    private void CommitWallpaperOrder()
+    {
+        // 顺序一落地，落点高亮就没有意义了（拖拽期间 CommitWallpaperOrder 只会在 Drop 里被调一次）
+        SetWallpaperDropTarget(null);
+
+        // 按卡片顺序重排配置条目，但**复用原实例**（保住会话内的 Id，拖拽排序要用）
+        var remaining = new List<WallpaperItem>(_config.WallpaperItems);
+        var ordered = new List<WallpaperItem>(WallpaperCards.Count);
+        foreach (var card in WallpaperCards)
+        {
+            var match = remaining.FirstOrDefault(i => string.Equals(i.Path, card.Path, StringComparison.OrdinalIgnoreCase));
+            if (match is null) continue;
+            remaining.Remove(match);
+            ordered.Add(match);
+        }
+
+        _config.WallpaperItems.Clear();
+        _config.WallpaperItems.AddRange(ordered);
+        if (remaining.Count > 0)
+        {
+            // 理论上到不了这里（卡片由配置生成）；真出现了也如实写回，宁可多留不可静默丢用户配置
+            _config.WallpaperItems.AddRange(remaining);
+        }
+
+        RefreshWallpaperCards();
+        ApplyWallpaper();
+        AutoSave();
+    }
+
+    /// <summary>按配置重建卡片集合（添加 / 重载 / 顺序变更后调用）</summary>
+    private void LoadWallpaperCards()
+    {
+        _wallpaperCardsCts?.Cancel();
+        _wallpaperCardsCts?.Dispose();
+        _wallpaperCardsCts = new CancellationTokenSource();
+        var token = _wallpaperCardsCts.Token;
+
+        foreach (var card in WallpaperCards)
+        {
+            card.PropertyChanged -= OnWallpaperCardPropertyChanged;
+            card.ReleaseThumbnail();
+        }
+
+        // 卡片对象即将全部作废，落点高亮引用必须跟着断，否则会挂在一张已脱离列表的卡上
+        _wallpaperDropTarget = null;
+        WallpaperCards.Clear();
+
+        foreach (var item in _config.WallpaperItems)
+        {
+            var card = new WallpaperItemViewModel(item.Path, _thumbnailer, this);
+            card.PropertyChanged += OnWallpaperCardPropertyChanged;
+            WallpaperCards.Add(card);
+            _ = card.LoadAsync(token);
+        }
+
+        RefreshWallpaperCards();
+    }
+
+    /// <summary>刷新位置、动图计数、"当前显示"徽标与空态</summary>
+    private void RefreshWallpaperCards()
+    {
+        for (var i = 0; i < WallpaperCards.Count; i++)
+        {
+            WallpaperCards[i].Index = i;
+            WallpaperCards[i].Total = WallpaperCards.Count;
+        }
+
+        ShowWallpaperFormatsHint = WallpaperCards.Count == 0;
+        ShowAnimatedHeavyHint = WallpaperCards.Count(c => c.IsAnimated) >= 3;
+
+        UpdateCurrentWallpaperCard();
+    }
+
+    /// <summary>探测是异步完成的，动图计数要等 <c>IsAnimated</c> 落定后重算</summary>
+    private void OnWallpaperCardPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(WallpaperItemViewModel.IsAnimated))
+            ShowAnimatedHeavyHint = WallpaperCards.Count(c => c.IsAnimated) >= 3;
+    }
+
+    /// <summary>
+    /// 把"正在显示"的徽标对齐到渲染层当前那张。
+    /// </summary>
+    /// <remarks>
+    /// 徽标反映的是**真实显示状态**（含轮播自动切换），不是用户的点选——
+    /// 开着轮播时让用户"选中"某一张，下一次自动切换就会把它推翻，那种选中态是骗人的。
+    /// </remarks>
+    private void UpdateCurrentWallpaperCard()
+    {
+        var path = _wallpaperService?.Request?.Path;
+
+        WallpaperItemViewModel? match = null;
+        if (!string.IsNullOrEmpty(path))
+        {
+            match = WallpaperCards.FirstOrDefault(
+                c => string.Equals(c.Path, path, StringComparison.OrdinalIgnoreCase));
+        }
+
+        foreach (var card in WallpaperCards) card.IsCurrent = ReferenceEquals(card, match);
+        _currentWallpaperCard = match;
+    }
+
+    /// <summary>订阅壁纸服务：跟随"当前显示"与拒收提示。主窗口未就绪时静默跳过</summary>
+    private void AttachWallpaperService()
+    {
+        var service = NavigationStore.MainWindow?.Wallpaper;
+        if (ReferenceEquals(service, _wallpaperService)) return;
+
+        if (_wallpaperService is not null)
+        {
+            _wallpaperService.PropertyChanged -= OnWallpaperServicePropertyChanged;
+            _wallpaperService.RejectionsChanged -= OnServiceRejectionsChanged;
+        }
+
+        _wallpaperService = service;
+        if (service is not null)
+        {
+            service.PropertyChanged += OnWallpaperServicePropertyChanged;
+            service.RejectionsChanged += OnServiceRejectionsChanged;
+        }
+
+        UpdateCurrentWallpaperCard();
+        RefreshWallpaperRejectionBar();
+    }
+
+    private void OnWallpaperServicePropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(WallpaperService.Request)) return;
+        UpdateCurrentWallpaperCard();
+    }
+
+    private void OnServiceRejectionsChanged(object? sender, EventArgs e)
+    {
+        // 服务端拒收集合变了 → 之前"已关闭提示"的判断作废
+        _serviceRejectionsAcknowledged = false;
+        RefreshWallpaperRejectionBar();
+    }
+
+    /// <summary>合并"添加阶段拒收"与"服务端探测拒收"两条来源</summary>
+    private void RefreshWallpaperRejectionBar()
+    {
+        var messages = new List<string>();
+        foreach (var rejection in _addRejections) messages.Add(rejection.Message);
+
+        if (!_serviceRejectionsAcknowledged && _wallpaperService is { } service)
+        {
+            foreach (var rejection in service.Rejections) messages.Add(rejection.Message);
+        }
+
+        WallpaperRejectionMessage = string.Join("\n", messages);
+        HasWallpaperRejection = messages.Count > 0;
+    }
+
+    private void DismissWallpaperRejection()
+    {
+        _addRejections.Clear();
+        _serviceRejectionsAcknowledged = true;
+        RefreshWallpaperRejectionBar();
+    }
 
     // ===== 字体 =====
 
@@ -640,13 +1147,20 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
     /// </remarks>
     private void ApplyWallpaper()
     {
+        // 顺带确保订阅已建立：构造期主窗口若尚未就绪，这里会在第一次推送时补上
+        AttachWallpaperService();
+
         var service = NavigationStore.MainWindow?.Wallpaper;
         if (service is null) return;   // 没有主窗口（设计期 / 单测）时静默跳过
 
         Dispatcher.UIThread.Post(() => service.Apply(_config));
     }
 
-    private async Task BrowseWallpaperAsync()
+    /// <summary>
+    /// 添加壁纸（多选）。每个候选文件先做内容探测，**APNG 与无法读取的文件在入列之前就被拒收**，
+    /// 其余照常入列——绝不静默降级成"一张不动的图"（D7 / §5.5）。
+    /// </summary>
+    private async Task AddWallpapersAsync()
     {
         try
         {
@@ -656,23 +1170,78 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
             var dlg = new OpenFileDialog
             {
                 Title = "选择背景壁纸",
-                AllowMultiple = false,
-                // gif 是阶段 2 新支持的可播放动图格式；动画 webp 走 webp 项。
-                // 动画 PNG（APNG）也在 png 里，但添加后会被拒收并给出提示（设计文档 D7）
-                Filters = new() { new FileDialogFilter { Name = "图片", Extensions = { "png", "jpg", "jpeg", "webp", "bmp", "gif" } } }
+                AllowMultiple = true,
+                // apng 与 png 共用扩展名：动画 PNG 会在探测阶段被识别并拒收，并给出可操作提示（D7）
+                Filters = new() { new FileDialogFilter { Name = "图片", Extensions = { "png", "apng", "jpg", "jpeg", "webp", "bmp", "gif" } } }
             };
             var result = await dlg.ShowAsync(desktop.MainWindow);
 #pragma warning restore CS0618
-            var path = result?.FirstOrDefault();
-            if (!string.IsNullOrWhiteSpace(path))
+            if (result is null || result.Length == 0) return;
+
+            _addRejections.Clear();
+            var added = 0;
+
+            foreach (var path in result)
             {
-                WallpaperEnabled = true;
-                WallpaperPath = path;
+                if (string.IsNullOrWhiteSpace(path)) continue;
+
+                // 同一文件重复添加没有意义（轮播会出现两张一样的图），静默跳过
+                if (_config.WallpaperItems.Any(i => string.Equals(i.Path, path, StringComparison.OrdinalIgnoreCase)))
+                    continue;
+
+                var fileName = Path.GetFileName(path);
+
+                if (!BackgroundResolver.IsSupportedExtension(path))
+                {
+                    _addRejections.Add(new WallpaperRejection(path, $"「{fileName}」不是支持的图片格式，已跳过。"));
+                    continue;
+                }
+
+                if (!File.Exists(path))
+                {
+                    _addRejections.Add(new WallpaperRejection(path, $"「{fileName}」不存在或已被移动，已跳过。"));
+                    continue;
+                }
+
+                var info = await Task.Run(() => BackgroundResolver.Probe(path));
+
+                if (info.IsRejected)
+                {
+                    _addRejections.Add(new WallpaperRejection(path,
+                        $"「{fileName}」是动画 PNG（APNG），当前版本不支持播放，已跳过。另存为 GIF 或动画 WebP 后即可添加。"));
+                    continue;
+                }
+
+                if (info.IsFailed)
+                {
+                    _addRejections.Add(new WallpaperRejection(path, $"「{fileName}」无法读取：{info.Error}"));
+                    continue;
+                }
+
+                _config.WallpaperItems.Add(new WallpaperItem { Path = path });
+                added++;
             }
+
+            if (added > 0)
+            {
+                // 直接改配置再统一推一次，避免经由 WallpaperEnabled 的 setter 触发多轮应用与保存
+                if (!_config.WallpaperEnabled)
+                {
+                    _config.WallpaperEnabled = true;
+                    OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperEnabled)));
+                }
+
+                LoadWallpaperCards();
+                ApplyWallpaper();
+                AutoSave();
+            }
+
+            _serviceRejectionsAcknowledged = false;
+            RefreshWallpaperRejectionBar();
         }
         catch (Exception ex)
         {
-            Status = $"选择壁纸失败: {ex.Message}";
+            Status = $"添加壁纸失败: {ex.Message}";
         }
     }
 
@@ -1388,11 +1957,20 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(Density)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(AnimationLevel)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperEnabled)));
-        OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperPath)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperOpacity)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperStretch)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperExtendToNav)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(NavBackgroundOpacity)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperPlayAnimated)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperSlideIntervalSeconds)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(SelectedSlideIntervalOption)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(SelectedSlideModeOption)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(SelectedDecodeEdgeOption)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperTransitionMs)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperMaxFps)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperPauseOnUnfocused)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperPauseOnBattery)));
+        SyncSlideIntervalSelection();
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(SelectedFontItem)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(SelectedFontWeight)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(MaxMemory)));
@@ -1432,6 +2010,7 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
         ApplyCornerRadius();
         ApplyDensity();
         ApplyAnimationLevel();
+        LoadWallpaperCards();
         ApplyWallpaper();
         ApplyFont();
 
@@ -1645,6 +2224,28 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
         {
             Application.Current.ActualThemeVariantChanged -= OnSystemThemeChanged;
         }
+
+        if (_wallpaperService is not null)
+        {
+            _wallpaperService.PropertyChanged -= OnWallpaperServicePropertyChanged;
+            _wallpaperService.RejectionsChanged -= OnServiceRejectionsChanged;
+            _wallpaperService = null;
+        }
+
+        _wallpaperCardsCts?.Cancel();
+        _wallpaperCardsCts?.Dispose();
+
+        // 卡片持有的缩略图位图是托管+非托管混合资源，交给 GC 前先显式放掉
+        foreach (var card in WallpaperCards)
+        {
+            card.PropertyChanged -= OnWallpaperCardPropertyChanged;
+            card.ReleaseThumbnail();
+        }
+
+        // 卡片对象即将全部作废，落点高亮引用必须跟着断，否则会挂在一张已脱离列表的卡上
+        _wallpaperDropTarget = null;
+        WallpaperCards.Clear();
+
         _saveNotifyCts?.Cancel();
         _saveNotifyCts?.Dispose();
         _fontApplyCts?.Cancel();

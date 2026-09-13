@@ -1,0 +1,170 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <!--
+    背景壁纸卡片网格（设计文档 §8.4 / §8.6）。
+
+    这里**只**承担卡片网格这一处自定义：参数行的外观全部由 FluentAvalonia 主题提供，
+    不再需要 settings-card / settings-row / settings-divider 那套手写样式。
+    颜色一律走 Theme.axaml 的资源键，浅色模式下由 SettingsViewModel 覆写同一批键而自动跟随。
+  -->
+
+  <Styles.Resources>
+    <!--
+      卡片底部信息层的渐隐遮罩：alpha 0 → 1。
+      配合"同为 CardBackgroundBrush 的底色"做出"文字从图里浮出来"的效果——
+      直接给半透明底会连文字一起变淡，用 OpacityMask 才能让底和字一起干净地淡出。
+    -->
+    <LinearGradientBrush x:Key="WallpaperCardCaptionMask" StartPoint="0%,0%" EndPoint="0%,100%">
+      <GradientStop Offset="0" Color="#00000000" />
+      <GradientStop Offset="0.45" Color="#00000000" />
+      <GradientStop Offset="1" Color="#FF000000" />
+    </LinearGradientBrush>
+  </Styles.Resources>
+
+  <!-- ===== 卡片容器 ===== -->
+  <Style Selector="Border.wallpaper-card">
+    <Setter Property="Background" Value="{DynamicResource CardBackgroundBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="ClipToBounds" Value="True" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="BorderBrush" Duration="0:0:0.15" />
+      </Transitions>
+    </Setter>
+  </Style>
+
+  <Style Selector="Border.wallpaper-card:pointerover">
+    <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+  </Style>
+
+  <!--
+    当前**正在显示**的那一张（含轮播自动切换）。
+    刻意不叫 ".selected"：它反映真实显示状态，而不是用户的点选——
+    开着轮播时让用户"选中"某一张，下次自动切换就会把它推翻，那种选中态是骗人的。
+  -->
+  <Style Selector="Border.wallpaper-card.current">
+    <Setter Property="BorderThickness" Value="2" />
+    <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+  </Style>
+
+  <!-- ===== 拖拽落点（§8.5 拖拽排序）=====
+       拖拽过程中，指针停在哪张卡上就把"会插到这一位"先画出来。
+       蒙版铺在缩略图上（不再加一圈描边）——因为 .current 已经占了"主色描边"这个视觉，
+       换成色块才能和"正在显示"一眼分开。 -->
+  <Style Selector="Border.wallpaper-card-drop">
+    <Setter Property="Background" Value="{DynamicResource AccentOverlayBrush}" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="IsHitTestVisible" Value="False" />
+  </Style>
+
+  <!-- ===== 底部信息层（文件名 + 徽标 + 元信息） ===== -->
+  <Style Selector="Border.wallpaper-card-caption">
+    <Setter Property="Background" Value="{DynamicResource CardBackgroundBrush}" />
+    <Setter Property="OpacityMask" Value="{StaticResource WallpaperCardCaptionMask}" />
+    <Setter Property="VerticalAlignment" Value="Bottom" />
+    <Setter Property="Padding" Value="8,20,8,7" />
+  </Style>
+
+  <!-- ===== 右上角操作组：默认隐形，悬停时浮现 ===== -->
+  <Style Selector="Panel.wallpaper-card-actions">
+    <Setter Property="Opacity" Value="0" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <DoubleTransition Property="Opacity" Duration="0:0:0.15" />
+      </Transitions>
+    </Setter>
+  </Style>
+
+  <Style Selector="Border.wallpaper-card:pointerover Panel.wallpaper-card-actions">
+    <Setter Property="Opacity" Value="1" />
+  </Style>
+
+  <!-- ===== 圆形小按钮（上移 / 下移 / 移除）=====
+       按 §8.1 只调 Width/Height/CornerRadius/Padding 与项目自己的画刷，不覆写 ControlTemplate；
+       背景靠 /template/ ContentPresenter 覆盖——与本项目 Button.ghost 同一手法。 -->
+  <Style Selector="Button.wallpaper-card-action">
+    <Setter Property="Width" Value="28" />
+    <Setter Property="Height" Value="28" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="CornerRadius" Value="14" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="White" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+  </Style>
+
+  <Style Selector="Button.wallpaper-card-action /template/ ContentPresenter">
+    <Setter Property="CornerRadius" Value="14" />
+    <Setter Property="Background" Value="#73000000" />
+  </Style>
+
+  <Style Selector="Button.wallpaper-card-action:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+  </Style>
+
+  <Style Selector="Button.wallpaper-card-action:pressed /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource AccentSecondaryBrush}" />
+  </Style>
+
+  <Style Selector="Button.wallpaper-card-action:disabled /template/ ContentPresenter">
+    <Setter Property="Background" Value="#40000000" />
+  </Style>
+
+  <!-- ===== 格式徽标胶囊 ===== -->
+  <Style Selector="Border.wallpaper-card-badge">
+    <Setter Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+    <Setter Property="CornerRadius" Value="4" />
+    <Setter Property="Padding" Value="5,1" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+
+  <!-- 动图徽标用强调色描边，与静态图区分（§8.4） -->
+  <Style Selector="Border.wallpaper-card-badge.animated">
+    <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+  </Style>
+
+  <!-- ===== 当前显示的圆形对勾徽标 ===== -->
+  <Style Selector="Border.wallpaper-card-check">
+    <Setter Property="Width" Value="20" />
+    <Setter Property="Height" Value="20" />
+    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+  </Style>
+
+  <!-- ===== 添加卡 ===== -->
+  <Style Selector="Button.wallpaper-card-add">
+    <Setter Property="Width" Value="150" />
+    <Setter Property="Height" Value="150" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="VerticalContentAlignment" Value="Stretch" />
+    <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+  </Style>
+
+  <Style Selector="Button.wallpaper-card-add /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource SubtleFillColorTertiaryBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="12" />
+  </Style>
+
+  <Style Selector="Button.wallpaper-card-add:pointerover /template/ ContentPresenter">
+    <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+    <Setter Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+  </Style>
+
+  <Style Selector="Button.wallpaper-card-add:pressed /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
+  </Style>
+
+</Styles>

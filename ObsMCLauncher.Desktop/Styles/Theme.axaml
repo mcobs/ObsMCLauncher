@@ -32,6 +32,9 @@
     <Color x:Key="AccentColor">#10B981</Color>
     <SolidColorBrush x:Key="AccentBrush" Color="#10B981"/>
     <SolidColorBrush x:Key="AccentSecondaryBrush" Color="#34D399"/>
+    <!-- 拖拽落点蒙版：主色的低透明度版本，铺在卡片缩略图上表示"松手会插到这里"。
+         因为只叠在图上，浅色/深色模式共用同一值，不需要在主题切换里覆写。 -->
+    <SolidColorBrush x:Key="AccentOverlayBrush" Color="#5910B981"/>
 
     <!-- 主页欢迎卡片渐变（运行时由设置按强调色覆盖，此处为默认绿） -->
     <Color x:Key="HomeWelcomeGradientStart">#059669</Color>

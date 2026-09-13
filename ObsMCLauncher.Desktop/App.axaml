@@ -100,6 +100,7 @@
         <fa:FluentAvaloniaTheme />
         <StyleInclude Source="avares://ObsMCLauncher.Desktop/Styles/Theme.axaml" />
         <StyleInclude Source="avares://ObsMCLauncher.Desktop/Styles/Controls.axaml" />
+        <StyleInclude Source="avares://ObsMCLauncher.Desktop/Styles/WallpaperStyles.axaml" />
         <StyleInclude Source="avares://ObsMCLauncher.Desktop/Styles/FluentDialogStyles.axaml" />
 
         <!-- 主页卡片通用动效（欢迎横幅/数据卡片） -->
