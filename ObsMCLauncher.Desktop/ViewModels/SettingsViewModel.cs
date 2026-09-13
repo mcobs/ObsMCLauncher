@@ -387,20 +387,36 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
         }
     }
 
-    /// <summary>壁纸路径展示（可能为 null）</summary>
+    /// <summary>
+    /// 生效壁纸路径。模型层已由单个 <c>WallpaperPath</c> 改为 <c>WallpaperItems</c> 列表，
+    /// 此处保留 path 形式以兼容既有绑定——接入轮播（阶段 3）之前，列表首项即生效项。
+    /// 阶段 4 重做设置页时，会用卡片列表整体替换掉这个属性。
+    /// </summary>
     public string WallpaperPath
     {
-        get => _config.WallpaperPath ?? "";
+        get => _config.WallpaperItems.Count > 0 ? _config.WallpaperItems[0].Path : "";
         set
         {
-            var v = string.IsNullOrWhiteSpace(value) ? null : value.Trim();
-            if (_config.WallpaperPath != v)
+            var v = string.IsNullOrWhiteSpace(value) ? "" : value.Trim();
+            var current = _config.WallpaperItems.Count > 0 ? _config.WallpaperItems[0].Path : "";
+            if (current == v) return;
+
+            if (v.Length == 0)
             {
-                _config.WallpaperPath = v;
-                OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperPath)));
-                ApplyWallpaper();
-                AutoSave();
+                _config.WallpaperItems.Clear();
             }
+            else if (_config.WallpaperItems.Count > 0)
+            {
+                _config.WallpaperItems[0].Path = v;
+            }
+            else
+            {
+                _config.WallpaperItems.Add(new WallpaperItem { Path = v });
+            }
+
+            OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperPath)));
+            ApplyWallpaper();
+            AutoSave();
         }
     }
 
@@ -624,16 +640,18 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
         {
             if (Application.Current?.Resources is not { } resources) return;
 
+            // 接入轮播（阶段 3）之前，生效壁纸固定为列表首项
+            var path = _config.WallpaperItems.Count > 0 ? _config.WallpaperItems[0].Path : null;
+
             var active = false;
-            if (_config.WallpaperEnabled && !string.IsNullOrWhiteSpace(_config.WallpaperPath)
-                && File.Exists(_config.WallpaperPath))
+            if (_config.WallpaperEnabled && !string.IsNullOrWhiteSpace(path) && File.Exists(path))
             {
                 try
                 {
-                    if (_wallpaperBitmap is null || _wallpaperBitmapPath != _config.WallpaperPath)
+                    if (_wallpaperBitmap is null || _wallpaperBitmapPath != path)
                     {
-                        _wallpaperBitmap = new Avalonia.Media.Imaging.Bitmap(_config.WallpaperPath);
-                        _wallpaperBitmapPath = _config.WallpaperPath;
+                        _wallpaperBitmap = new Avalonia.Media.Imaging.Bitmap(path);
+                        _wallpaperBitmapPath = path;
                     }
                     _wallpaperBrush ??= new Avalonia.Media.ImageBrush();
                     _wallpaperBrush.Source = _wallpaperBitmap;

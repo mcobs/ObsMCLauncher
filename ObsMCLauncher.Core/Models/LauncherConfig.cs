@@ -193,11 +193,14 @@ public class LauncherConfig
     /// </summary>
     public int AnimationLevel { get; set; } = 1;
 
-    /// <summary>是否启用主内容区背景壁纸</summary>
+    /// <summary>是否启用主内容区背景壁纸（只表示开关意愿，是否真正生效见 <see cref="IsWallpaperActive"/>）</summary>
     public bool WallpaperEnabled { get; set; } = false;
 
-    /// <summary>壁纸图片路径（本地文件）</summary>
-    public string? WallpaperPath { get; set; }
+    /// <summary>
+    /// 壁纸条目列表（顺序即显示 / 轮播顺序；空表示无壁纸）。
+    /// 取代原 <c>WallpaperPath</c> 单路径字段。
+    /// </summary>
+    public List<WallpaperItem> WallpaperItems { get; set; } = [];
 
     /// <summary>主内容壁纸透明度（0-1）</summary>
     public double WallpaperOpacity { get; set; } = 0.35;
@@ -210,6 +213,41 @@ public class LauncherConfig
 
     /// <summary>导航栏背景透明度（0-1，越小越透出壁纸），仅扩展时生效</summary>
     public double NavBackgroundOpacity { get; set; } = 0.7;
+
+    /// <summary>是否播放动图动画（false 时只显示首帧）</summary>
+    public bool WallpaperPlayAnimated { get; set; } = true;
+
+    /// <summary>动图帧率上限（1-60，默认 24）</summary>
+    public int WallpaperMaxFps { get; set; } = 24;
+
+    /// <summary>
+    /// 解码长边上限像素（0=不限制，默认 1920）。
+    /// **只能向下夹紧**：实际解码尺寸 = min(源长边, 窗口物理长边, 本值)。
+    /// 实测 codec 不支持升采样（返回 InvalidScale），因此对小图设更大的值不会放大解码结果。
+    /// </summary>
+    public int WallpaperMaxDecodeEdge { get; set; } = 1920;
+
+    /// <summary>轮播间隔秒数（0=不轮播，默认 0）。支持任意秒数，UI 另提供预设档位</summary>
+    public int WallpaperSlideIntervalSeconds { get; set; } = 0;
+
+    /// <summary>轮播顺序：0=顺序 1=随机 2=每次启动随机起点</summary>
+    public int WallpaperSlideMode { get; set; } = 0;
+
+    /// <summary>轮播过渡时长毫秒（0-2000，默认 600）</summary>
+    public int WallpaperTransitionMs { get; set; } = 600;
+
+    /// <summary>窗口失焦时暂停动图</summary>
+    public bool WallpaperPauseOnUnfocused { get; set; } = false;
+
+    /// <summary>电池供电时暂停动图</summary>
+    public bool WallpaperPauseOnBattery { get; set; } = true;
+
+    /// <summary>
+    /// 壁纸是否实际生效：开关打开且列表非空。
+    /// 这样"列表被清空但开关仍开着"不会产生歧义——UI 显示空态，渲染层不加载任何内容。
+    /// </summary>
+    [JsonIgnore]
+    public bool IsWallpaperActive => WallpaperEnabled && WallpaperItems.Count > 0;
 
     /// <summary>自定义字体名称，空表示使用系统默认字体</summary>
     public string? CustomFontFamily { get; set; }
