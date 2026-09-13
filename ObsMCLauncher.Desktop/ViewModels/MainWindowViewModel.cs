@@ -133,6 +133,12 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         // 恢复上次的导航栏状态（窗口宽度自适应逻辑由 NavigationView 阈值接管）
         IsPaneOpen = !config.IsNavCollapsed;
 
+        // 壁纸（含轮播）的首次生效放在这里，不挂在设置页的构造上。
+        // 设置页是"改配置"的地方，不是"启动壁纸"的地方——把启动藏在它的构造函数里太隐晦，
+        // 一旦设置页改成延后创建，壁纸与轮播就永远不会启动，且没有任何报错。
+        // 下面 SettingsViewModel 构造时还会再推一次同样的快照，Apply 是幂等的（重排一次而已）。
+        Wallpaper.Apply(config);
+
         AccountManagement = new AccountManagementViewModel();
         VersionDownload = new VersionDownloadViewModel(dispatcher, Notifications);
         Settings = new SettingsViewModel(Notifications, _homeViewModel);

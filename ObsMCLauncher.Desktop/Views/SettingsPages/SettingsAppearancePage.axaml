@@ -311,6 +311,25 @@
               </ui:ItemsRepeater.ItemTemplate>
             </ui:ItemsRepeater>
 
+            <!--
+              轮播状态：常显的一行。
+              轮播默认关闭、参数又收在「轮播与性能」折叠栏里，不给这行说明，
+              用户找不到入口时只会得出"这个功能没做"的结论。
+              「切换下一张」让验证不必等一个完整间隔——间隔是以分钟计的。
+            -->
+            <StackPanel Orientation="Horizontal" Spacing="10"
+                        IsVisible="{Binding ShowWallpaperRotationStatus, Mode=OneWay}">
+              <TextBlock Text="{Binding WallpaperRotationStatus, Mode=OneWay}" FontSize="11"
+                         Foreground="{DynamicResource TextSecondaryBrush}"
+                         VerticalAlignment="Center"/>
+              <Button Command="{Binding SwitchToNextWallpaperCommand}"
+                      IsEnabled="{Binding IsWallpaperRotating, Mode=OneWay}"
+                      FontSize="11" Padding="10,3" CornerRadius="6"
+                      ToolTip.Tip="立刻切到下一张，不用等间隔到点">
+                <TextBlock Text="切换下一张" FontSize="11"/>
+              </Button>
+            </StackPanel>
+
             <!-- 添加卡 + 空态格式说明 -->
             <StackPanel Orientation="Horizontal" Spacing="10">
               <Button Classes="wallpaper-card-add"

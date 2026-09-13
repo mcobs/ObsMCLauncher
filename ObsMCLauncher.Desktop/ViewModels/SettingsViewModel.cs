@@ -231,6 +231,7 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable, IWallpaperC
         BrowseJavaPathCommand = new AsyncRelayCommand(BrowseJavaPathAsync);
         AddWallpapersCommand = new AsyncRelayCommand(AddWallpapersAsync);
         DismissWallpaperRejectionCommand = new RelayCommand(DismissWallpaperRejection);
+        SwitchToNextWallpaperCommand = new RelayCommand(() => _wallpaperService?.AdvanceNow());
         TestDownloadSourceCommand = new AsyncRelayCommand(TestDownloadSourceAsync);
         ResetDefaultsCommand = new RelayCommand(ResetDefaults);
         SelectCenterNotificationCommand = new RelayCommand(() => NotificationPosition = NotificationPosition.Center);
@@ -518,6 +519,29 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable, IWallpaperC
 
     /// <summary>关闭拒收提示条</summary>
     public IRelayCommand DismissWallpaperRejectionCommand { get; }
+
+    /// <summary>
+    /// 立刻切到下一张（不等定时器）。
+    /// </summary>
+    /// <remarks>
+    /// 存在的理由：轮播间隔以分钟计，让用户干等一个完整间隔才能确认"轮播到底有没有在工作"
+    /// 是不合理的。**看不见的状态等于不存在的功能**——这是"轮播好像没用"最常见的原因。
+    /// </remarks>
+    public IRelayCommand SwitchToNextWallpaperCommand { get; }
+
+    /// <summary>当前是否真的在轮播（≥2 张候选且间隔为正数）</summary>
+    [ObservableProperty]
+    private bool _isWallpaperRotating;
+
+    /// <summary>
+    /// 轮播状态的一行说明。空串表示不显示（列表不足 2 张时轮播本身无意义）。
+    /// </summary>
+    [ObservableProperty]
+    private string _wallpaperRotationStatus = "";
+
+    /// <summary>是否显示轮播状态行（列表不足 2 张时隐藏——单张谈不上轮播）</summary>
+    [ObservableProperty]
+    private bool _showWallpaperRotationStatus;
 
     /// <summary>拒收提示条是否显示</summary>
     [ObservableProperty]
@@ -903,6 +927,7 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable, IWallpaperC
         ShowAnimatedHeavyHint = WallpaperCards.Count(c => c.IsAnimated) >= 3;
 
         UpdateCurrentWallpaperCard();
+        UpdateRotationStatus();
     }
 
     /// <summary>探测是异步完成的，动图计数要等 <c>IsAnimated</c> 落定后重算</summary>
@@ -961,6 +986,64 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable, IWallpaperC
     {
         if (e.PropertyName != nameof(WallpaperService.Request)) return;
         UpdateCurrentWallpaperCard();
+
+        // 轮播状态跟着"服务真的推进了没有"刷新：只有解析落地之后 IsRotating 才是准的
+        UpdateRotationStatus();
+    }
+
+    /// <summary>
+    /// 刷新"轮播到底开没开、多久切一次"这行说明。
+    /// </summary>
+    /// <remarks>
+    /// 刻意做成常显的一行文字而不是只留在折叠栏里：轮播默认关闭，参数又收在
+    /// 「轮播与性能」折叠栏中，用户找不到入口时只会得出"这个功能没做"的结论。
+    /// </remarks>
+    private void UpdateRotationStatus()
+    {
+        IsWallpaperRotating = _wallpaperService?.IsRotating == true;
+        ShowWallpaperRotationStatus = WallpaperCards.Count >= 2;
+
+        if (!ShowWallpaperRotationStatus)
+        {
+            // 单张谈不上轮播，给一行说明反而是噪音
+            WallpaperRotationStatus = "";
+            return;
+        }
+
+        var mode = WallpaperRotationPlan.ParseOrder(_config.WallpaperSlideMode) switch
+        {
+            WallpaperSlideOrder.Random => "随机",
+            WallpaperSlideOrder.RandomStart => "每次启动随机起点",
+            _ => "顺序"
+        };
+
+        var seconds = _config.WallpaperSlideIntervalSeconds;
+
+        // 设了间隔却还是没轮播，只有一种可能：可用的图不足 2 张（其余被拒收或已损坏）。
+        // 这种情况必须说破——否则用户看到"间隔 30 秒"却等不到切换，只会以为功能坏了。
+        if (seconds > 0 && !IsWallpaperRotating)
+        {
+            WallpaperRotationStatus = "已设置间隔，但可用图片不足 2 张，暂不轮播";
+            return;
+        }
+
+        WallpaperRotationStatus = seconds switch
+        {
+            WallpaperRotationPlan.IntervalDisabled
+                => "未启用轮播 · 可在「轮播与性能」中设置间隔",
+            WallpaperRotationPlan.IntervalEachStartup
+                => $"每次启动时换一张 · {mode}",
+            _ => $"切换间隔 {DescribeInterval(seconds)} · {mode}"
+        };
+    }
+
+    /// <summary>间隔的人类可读写法；不在预设档位里（自定义值）时退回「N 秒」</summary>
+    private string DescribeInterval(int seconds)
+    {
+        foreach (var option in SlideIntervalOptions)
+            if (!option.IsCustom && option.Seconds == seconds) return option.Label;
+
+        return $"{seconds} 秒";
     }
 
     private void OnServiceRejectionsChanged(object? sender, EventArgs e)

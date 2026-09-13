@@ -44,6 +44,18 @@ public sealed class WallpaperHost : Panel
     public static readonly StyledProperty<bool> PauseOnUnfocusedProperty =
         AvaloniaProperty.Register<WallpaperHost, bool>(nameof(PauseOnUnfocused));
 
+    /// <summary>
+    /// 仅由**窗口状态**（最小化 / 失焦）引起的暂停，不含外部暂停。
+    /// </summary>
+    /// <remarks>
+    /// 对外只读，靠 <c>Mode=OneWayToSource</c> 回推给 <c>WallpaperService.WindowPause</c>：
+    /// 只有控件知道自己挂在哪个窗口上，服务不该去猜窗口状态。
+    /// 阶段 5 补这条接线的原因：轮播定时器同样会周期性唤醒 CPU，
+    /// 窗口都最小化了还照切不误，与 §6.5 的省电结论冲突。
+    /// </remarks>
+    public static readonly StyledProperty<bool> IsWindowPausedProperty =
+        AvaloniaProperty.Register<WallpaperHost, bool>(nameof(IsWindowPaused));
+
     private readonly WallpaperLayer _layerA = new();
     private readonly WallpaperLayer _layerB = new();
     private WallpaperLayer _active;
@@ -81,6 +93,13 @@ public sealed class WallpaperHost : Panel
     {
         get => GetValue(PauseOnUnfocusedProperty);
         set => SetValue(PauseOnUnfocusedProperty, value);
+    }
+
+    /// <summary>仅由窗口状态（最小化 / 失焦）引起的暂停，不含外部暂停</summary>
+    public bool IsWindowPaused
+    {
+        get => GetValue(IsWindowPausedProperty);
+        private set => SetValue(IsWindowPausedProperty, value);
     }
 
     /// <summary>当前生效层上已解码的帧数（诊断）</summary>
@@ -157,6 +176,9 @@ public sealed class WallpaperHost : Panel
         var unfocused = PauseOnUnfocused && _window is { IsActive: false };
         var paused = ExternalPause || minimized || unfocused;
 
+        // 回推给服务，让轮播定时器也跟着停（只有控件知道窗口状态）
+        IsWindowPaused = minimized || unfocused;
+
         _layerA.SetPaused(paused);
         _layerB.SetPaused(paused);
     }
@@ -191,7 +213,10 @@ public sealed class WallpaperHost : Panel
         var incoming = ReferenceEquals(_active, _layerA) ? _layerB : _layerA;
 
         incoming.SetRequest(request);
-        incoming.SetPaused(ExternalPause || IsWindowPaused());
+        // 用属性而不是再算一遍：属性在 UpdatePauseState 里统一更新，
+        // 两条路径各算一次迟早会算出不一样的结果
+        UpdatePauseState();
+        incoming.SetPaused(ExternalPause || IsWindowPaused);
 
         var previous = _active;
         _active = incoming;
@@ -237,9 +262,6 @@ public sealed class WallpaperHost : Panel
            && a.MaxFps == b.MaxFps
            && a.MaxDecodeEdge == b.MaxDecodeEdge
            && ReferenceEquals(a.Info, b.Info);
-
-    private bool IsWindowPaused()
-        => _window?.WindowState == WindowState.Minimized || (PauseOnUnfocused && _window is { IsActive: false });
 }
 
 /// <summary>

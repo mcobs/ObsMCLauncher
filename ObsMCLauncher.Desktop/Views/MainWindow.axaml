@@ -151,7 +151,8 @@
         <controls:WallpaperHost Grid.Row="0"
                                 Request="{Binding Wallpaper.Request}"
                                 ExternalPause="{Binding Wallpaper.ExternalPause}"
-                                PauseOnUnfocused="{Binding Wallpaper.PauseOnUnfocused}" />
+                                PauseOnUnfocused="{Binding Wallpaper.PauseOnUnfocused}"
+                                IsWindowPaused="{Binding Wallpaper.WindowPause, Mode=OneWayToSource}" />
 
         <ui:NavigationView x:Name="MainNav"
                            Grid.Row="0"

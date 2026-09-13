@@ -56,8 +56,31 @@ public sealed class WallpaperService : INotifyPropertyChanged, IDisposable
     /// <summary>当前要显示的壁纸；<c>null</c> 表示没有可显示的内容</summary>
     public WallpaperRenderRequest? Request { get; private set; }
 
-    /// <summary>外部暂停（目前只有"电池供电"；远程桌面与游戏进程见设计文档 §6.5，属阶段 5）</summary>
+    /// <summary>外部暂停（电池供电）</summary>
     public bool ExternalPause { get; private set; }
+
+    private bool _windowPause;
+
+    /// <summary>
+    /// 由窗口状态（最小化 / 失焦）引起的暂停，宿主通过 <c>OneWayToSource</c> 回推。
+    /// </summary>
+    /// <remarks>
+    /// 阶段 5 补上：轮播定时器同样会周期性唤醒 CPU，窗口已最小化还照切不误说不过去。
+    /// 与 <see cref="ExternalPause"/> 分开存，是因为两者的来源与语义不同：
+    /// 电池暂停是"省电策略"，窗口暂停是"没人看得见"。
+    /// </remarks>
+    public bool WindowPause
+    {
+        get => _windowPause;
+        set
+        {
+            if (_windowPause == value) return;
+            _windowPause = value;
+
+            if (value) _scheduler.Stop();
+            else if (_snapshot is { } snapshot) ScheduleNext(snapshot);
+        }
+    }
 
     /// <summary>窗口失焦时是否暂停</summary>
     public bool PauseOnUnfocused { get; private set; }
@@ -195,8 +218,9 @@ public sealed class WallpaperService : INotifyPropertyChanged, IDisposable
     /// </remarks>
     private void ScheduleNext(WallpaperSnapshot snapshot)
     {
-        // 暂停期间不排定：轮播定时器同样会周期性唤醒 CPU，与省电策略（§6.5）冲突
-        if (ExternalPause)
+        // 暂停期间不排定：轮播定时器同样会周期性唤醒 CPU，与省电策略（§6.5）冲突。
+        // 窗口暂停（最小化 / 失焦）同理——那时没人看得见切换，白耗电。
+        if (ExternalPause || WindowPause)
         {
             _scheduler.Stop();
             return;
@@ -219,6 +243,23 @@ public sealed class WallpaperService : INotifyPropertyChanged, IDisposable
         var token = _applyToken;
         _scheduler.Schedule(dwellMs, () => Advance(snapshot, token));
     }
+
+    /// <summary>
+    /// 立刻切到下一张，不等定时器到点。
+    /// </summary>
+    /// <remarks>
+    /// 给设置页的「切换下一张」按钮用：轮播间隔以分钟计，
+    /// 让用户干等一个完整间隔才能确认"轮播到底有没有在工作"是不合理的。
+    /// 未启用轮播时什么都不做（语义与定时器一致：<c>IsRotating</c> 为假就不推进）。
+    /// </remarks>
+    public void AdvanceNow()
+    {
+        if (_disposed || _snapshot is not { } snapshot) return;
+        Dispatcher.UIThread.Post(() => Advance(snapshot, _applyToken));
+    }
+
+    /// <summary>当前是否真的在轮播（≥2 个候选且间隔为正数）</summary>
+    public bool IsRotating => _plan is { IsRotating: true };
 
     /// <summary>轮播定时器到点：切到下一项，并排定再下一次</summary>
     private void Advance(WallpaperSnapshot snapshot, int token)
