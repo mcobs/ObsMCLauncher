@@ -201,6 +201,11 @@ public partial class MainWindow : Window
         if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             _shutdownRequested = true;
+
+            // 先停壁纸：它会 Join 后台解码线程并释放非托管帧缓冲，
+            // 不能让解码线程在窗口/合成器拆除期间继续写内存（设计文档 §5.3「资源释放」）
+            _vm?.Wallpaper.Dispose();
+
             desktop.Shutdown();
         }
     }

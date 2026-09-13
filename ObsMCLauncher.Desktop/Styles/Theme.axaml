@@ -23,8 +23,8 @@
     <FontFamily x:Key="ContentControlThemeFontFamily">avares://ObsMCLauncher.Desktop/Assets/Fonts/#HarmonyOS Sans SC, HarmonyOS Sans SC, Microsoft YaHei UI, PingFang SC, Noto Sans SC, Segoe UI, sans-serif</FontFamily>
     <FontWeight x:Key="GlobalFontWeight">Normal</FontWeight>
 
-    <!-- 壁纸资源默认值：运行时由 SettingsViewModel 按配置覆盖 -->
-    <sys:Boolean x:Key="IsMainWallpaperVisible">False</sys:Boolean>
+    <!-- 壁纸不再走全局资源：改由 Controls/WallpaperHost 承载（静态 Image + 动图合成器），
+         导航栏让位所需的 NavigationView*PaneBackground 由 WallpaperService 按配置覆写 -->
     <!-- FA 左展开态导航栏实际读取的背景键，默认给不透明底色防止透出窗口底 -->
     <SolidColorBrush x:Key="NavigationViewExpandedPaneBackground" Color="#141619"/>
 

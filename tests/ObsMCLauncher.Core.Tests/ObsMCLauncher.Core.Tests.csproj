@@ -21,6 +21,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- 动态背景测试素材（探针 .temp/probe/assets 的少量样本）：
+         tiny.gif 合法 8 帧 GIF、anim_dirty.webp 40 帧动画 WebP、
+         static.png 静态 PNG、anim_dirty.png 合法 APNG（验证 D7 拒收路径） -->
+    <Content Include="WallpaperAssets\**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Using Include="Xunit" />
   </ItemGroup>
 

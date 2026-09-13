@@ -629,89 +629,22 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
         });
     }
 
-    // 壁纸位图与画刷缓存：调透明度/拉伸时直接复用，避免反复解码大图
-    private Avalonia.Media.Imaging.Bitmap? _wallpaperBitmap;
-    private string? _wallpaperBitmapPath;
-    private Avalonia.Media.ImageBrush? _wallpaperBrush;
-
+    /// <summary>
+    /// 把最新配置推给 <c>WallpaperService</c>：解析、绘制、动图生命周期、导航栏让位与省电策略
+    /// 全部收口在服务里，设置页只负责"配置改了就推一份快照"。
+    /// </summary>
+    /// <remarks>
+    /// 原先这里同时做"解码 → 写 <c>MainWallpaperBrush</c> 全局资源 → 算导航栏透明度"三件事，
+    /// 那套结构承载不了动图（<c>ImageBrush.Source</c> 只接受单帧位图，动图没有单一帧的概念），
+    /// 因此在本阶段整体搬进服务；设置页只留下这一个推送点。
+    /// </remarks>
     private void ApplyWallpaper()
     {
-        Dispatcher.UIThread.Post(() =>
-        {
-            if (Application.Current?.Resources is not { } resources) return;
+        var service = NavigationStore.MainWindow?.Wallpaper;
+        if (service is null) return;   // 没有主窗口（设计期 / 单测）时静默跳过
 
-            // 接入轮播（阶段 3）之前，生效壁纸固定为列表首项
-            var path = _config.WallpaperItems.Count > 0 ? _config.WallpaperItems[0].Path : null;
-
-            var active = false;
-            if (_config.WallpaperEnabled && !string.IsNullOrWhiteSpace(path) && File.Exists(path))
-            {
-                try
-                {
-                    if (_wallpaperBitmap is null || _wallpaperBitmapPath != path)
-                    {
-                        _wallpaperBitmap = new Avalonia.Media.Imaging.Bitmap(path);
-                        _wallpaperBitmapPath = path;
-                    }
-                    _wallpaperBrush ??= new Avalonia.Media.ImageBrush();
-                    _wallpaperBrush.Source = _wallpaperBitmap;
-                    _wallpaperBrush.Stretch = StretchMap(_config.WallpaperStretch);
-                    _wallpaperBrush.Opacity = _config.WallpaperOpacity;
-                    resources["MainWallpaperBrush"] = _wallpaperBrush;
-                    resources["IsMainWallpaperVisible"] = true;
-                    active = true;
-                }
-                catch
-                {
-                    _wallpaperBitmap = null;
-                    _wallpaperBitmapPath = null;
-                    _wallpaperBrush = null;
-                }
-            }
-
-            if (!active)
-            {
-                _wallpaperBitmap = null;
-                _wallpaperBitmapPath = null;
-                _wallpaperBrush = null;
-                resources["MainWallpaperBrush"] = null;
-                resources["IsMainWallpaperVisible"] = false;
-            }
-
-            // 壁纸生效时主内容区背景让位，否则恢复主题底色
-            resources["NavBackgroundBrush"] = active
-                ? new SolidColorBrush(Colors.Transparent)
-                : new SolidColorBrush(ResolveNavBgColor());
-
-            // 左侧导航栏。FA 展开态实际读取 ExpandedPaneBackground，
-            // DefaultPaneBackground 只覆盖左迷你/顶栏场景，两个键必须同步写
-            var paneOpacity = active && _config.WallpaperExtendToNav
-                ? _config.NavBackgroundOpacity
-                : 1.0;
-            resources["NavigationViewDefaultPaneBackground"] = new SolidColorBrush(ResolveNavBgColor())
-            {
-                Opacity = paneOpacity
-            };
-            resources["NavigationViewExpandedPaneBackground"] = new SolidColorBrush(ResolveNavBgColor())
-            {
-                Opacity = paneOpacity
-            };
-        });
+        Dispatcher.UIThread.Post(() => service.Apply(_config));
     }
-
-    /// <summary>导航栏背景基准色（深/浅跟随主题）</summary>
-    private Color ResolveNavBgColor()
-        => Application.Current?.ActualThemeVariant == ThemeVariant.Light
-            ? Color.Parse("#FFFFFF")
-            : Color.Parse("#141619");
-
-    private static Avalonia.Media.Stretch StretchMap(int mode) => mode switch
-    {
-        0 => Avalonia.Media.Stretch.Fill,
-        2 => Avalonia.Media.Stretch.UniformToFill,
-        3 => Avalonia.Media.Stretch.None,
-        _ => Avalonia.Media.Stretch.Uniform
-    };
 
     private async Task BrowseWallpaperAsync()
     {
@@ -724,7 +657,9 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable
             {
                 Title = "选择背景壁纸",
                 AllowMultiple = false,
-                Filters = new() { new FileDialogFilter { Name = "图片", Extensions = { "png", "jpg", "jpeg", "webp", "bmp" } } }
+                // gif 是阶段 2 新支持的可播放动图格式；动画 webp 走 webp 项。
+                // 动画 PNG（APNG）也在 png 里，但添加后会被拒收并给出提示（设计文档 D7）
+                Filters = new() { new FileDialogFilter { Name = "图片", Extensions = { "png", "jpg", "jpeg", "webp", "bmp", "gif" } } }
             };
             var result = await dlg.ShowAsync(desktop.MainWindow);
 #pragma warning restore CS0618

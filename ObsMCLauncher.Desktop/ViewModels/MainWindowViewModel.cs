@@ -53,6 +53,15 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     public DialogService Dialogs { get; } = new();
 
+    /// <summary>
+    /// 壁纸服务：把配置翻译成"要画什么"，并统一管动图生命周期、省电策略与导航栏让位。
+    /// </summary>
+    /// <remarks>
+    /// 由主窗口的 ViewModel 持有，生命周期与主窗口一致。属性初始化器保证它在构造函数体
+    /// （<see cref="Settings"/> 构造时就会推第一份快照）之前就已就绪。
+    /// </remarks>
+    public Services.WallpaperService Wallpaper { get; } = new();
+
     public string NavVersionText => $"v{ObsMCLauncher.Core.Utils.VersionInfo.ShortVersion}";
 
     [ObservableProperty]
@@ -606,6 +615,9 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         {
             if (disposing)
             {
+                // 先停壁纸：它会 Join 解码线程并释放非托管帧缓冲，
+                // 必须赶在视觉树被拆掉、页面被释放之前完成
+                Wallpaper?.Dispose();
                 Notifications?.Dispose();
                 DownloadManager?.Dispose();
                 foreach (var item in NavItems)

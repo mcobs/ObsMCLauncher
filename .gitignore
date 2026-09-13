@@ -276,11 +276,13 @@ plugin-market-example.json
 INTRODUCTION.md
 FEATURES.md
 UPDATE_SYSTEM_DESIGN.md
+DYNAMIC_BACKGROUND_DESIGN.md
 .trae/
 .vs/
 ObsMCLauncher-main/
 AGENTS.md
 .temp/
+docs/
 
 # WorkBuddy workspace data (memory, project metadata, local state)
 .workbuddy/

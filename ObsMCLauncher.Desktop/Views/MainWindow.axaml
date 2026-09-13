@@ -3,6 +3,7 @@
         xmlns:vm="using:ObsMCLauncher.Desktop.ViewModels"
         xmlns:views="using:ObsMCLauncher.Desktop.Views"
         xmlns:ui="using:FluentAvalonia.UI.Controls"
+        xmlns:controls="using:ObsMCLauncher.Desktop.Controls"
         xmlns:converters="using:ObsMCLauncher.Desktop.Converters"
         xmlns:notif="using:ObsMCLauncher.Desktop.ViewModels.Notifications"
         xmlns:download="using:ObsMCLauncher.Core.Services.Download"
@@ -146,12 +147,11 @@
             ClipToBounds="True">
     <Grid x:Name="RootGrid" RowDefinitions="*">
 
-        <!-- 主内容区壁纸底层（仅在启用壁纸时显示） -->
-        <Border Grid.Row="0" IsVisible="{DynamicResource IsMainWallpaperVisible}">
-            <Border.Background>
-                <DynamicResourceExtension ResourceKey="MainWallpaperBrush"/>
-            </Border.Background>
-        </Border>
+        <!-- 主内容区壁纸底层：静态图与动图统一由 WallpaperHost 承载（含交叉淡入与省电暂停） -->
+        <controls:WallpaperHost Grid.Row="0"
+                                Request="{Binding Wallpaper.Request}"
+                                ExternalPause="{Binding Wallpaper.ExternalPause}"
+                                PauseOnUnfocused="{Binding Wallpaper.PauseOnUnfocused}" />
 
         <ui:NavigationView x:Name="MainNav"
                            Grid.Row="0"

@@ -21,6 +21,9 @@
     <PackageReference Include="Markdig" Version="0.38.0" />
     <PackageReference Include="Avalonia" Version="11.3.11" />
     <PackageReference Include="Velopack" Version="1.1.1" />
+    <!-- 动态背景解码（Core/Media）：原本已是 Avalonia.Desktop → Avalonia.Skia 的传递依赖，
+         这里提升为直接引用并锁死 3.116.1，不新增任何二进制（原生库随 Avalonia.Skia 一同发布） -->
+    <PackageReference Include="SkiaSharp" Version="3.116.1" />
     <!-- Windows DPAPI（ProtectedData）：敏感令牌静态加密；非 Windows 平台调用会抛 PlatformNotSupportedException，由运行时分支保护 -->
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
   </ItemGroup>
