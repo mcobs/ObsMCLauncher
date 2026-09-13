@@ -55,6 +55,8 @@ public sealed record WallpaperRenderRequest(
 /// <param name="PauseOnUnfocused">失焦时暂停</param>
 /// <param name="PauseOnBattery">电池供电时暂停</param>
 /// <param name="AnimationLevel">全局动画级别（0 = 禁用，壁纸只显示首帧）</param>
+/// <param name="SlideIntervalSeconds">轮播间隔秒数（0 = 关闭，-1 = 每次启动）</param>
+/// <param name="SlideMode">轮播顺序（0 = 顺序，1 = 随机，2 = 随机起点）</param>
 public sealed record WallpaperSnapshot(
     bool Enabled,
     IReadOnlyList<string> Items,
@@ -68,7 +70,9 @@ public sealed record WallpaperSnapshot(
     int TransitionMs,
     bool PauseOnUnfocused,
     bool PauseOnBattery,
-    int AnimationLevel)
+    int AnimationLevel,
+    int SlideIntervalSeconds,
+    int SlideMode)
 {
     /// <summary>从配置对象取快照</summary>
     public static WallpaperSnapshot From(LauncherConfig config)
@@ -89,7 +93,9 @@ public sealed record WallpaperSnapshot(
             config.WallpaperTransitionMs,
             config.WallpaperPauseOnUnfocused,
             config.WallpaperPauseOnBattery,
-            config.AnimationLevel);
+            config.AnimationLevel,
+            config.WallpaperSlideIntervalSeconds,
+            config.WallpaperSlideMode);
     }
 
     /// <summary>

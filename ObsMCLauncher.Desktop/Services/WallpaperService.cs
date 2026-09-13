@@ -34,9 +34,16 @@ public sealed class WallpaperService : INotifyPropertyChanged, IDisposable
     private const string LogService = "Wallpaper";
 
     private readonly PowerStatusMonitor _power = new();
+    private readonly WallpaperRotationScheduler _scheduler = new();
     private readonly List<WallpaperRejection> _rejections = new();
 
     private WallpaperSnapshot? _snapshot;
+
+    // 轮播状态：当前快照下"通过探测"的候选、决定换哪张的纯逻辑、以及正显示的下标
+    private List<WallpaperCandidate> _candidates = [];
+    private WallpaperRotationPlan? _plan;
+    private int _currentIndex = -1;
+
     private int _applyToken;
     private bool _disposed;
 
@@ -84,6 +91,9 @@ public sealed class WallpaperService : INotifyPropertyChanged, IDisposable
         PauseOnUnfocused = snapshot.PauseOnUnfocused;
         UpdateExternalPause();
 
+        // 新配置到达：作废尚未触发的轮播排定（已在途的异步解析靠 token 作废）
+        _scheduler.Stop();
+
         var token = ++_applyToken;
         _ = ResolveAndApplyAsync(snapshot, token);
     }
@@ -114,45 +124,134 @@ public sealed class WallpaperService : INotifyPropertyChanged, IDisposable
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
             if (_disposed || token != _applyToken) return;   // 已有更新的请求，丢弃这次结果
-            PublishResolved(resolved);
+            PublishResolved(snapshot, resolved);
         });
     }
 
     /// <summary>把解析结果落到属性与全局资源上（UI 线程）</summary>
-    private void PublishResolved(ResolvedWallpaper resolved)
+    private void PublishResolved(WallpaperSnapshot snapshot, ResolvedWallpaper resolved)
     {
         PublishRejections(resolved.Rejections);
 
-        if (resolved.Request is null)
+        if (resolved.Candidates.Count == 0)
         {
+            _candidates = [];
+            _plan = null;
+            _currentIndex = -1;
+            _scheduler.Stop();
+
             Request = null;
             LastError = resolved.Error;
-            ApplyNavigationResources(active: false);
+            ApplyNavigationResources(snapshot, active: false);
             Raise(nameof(Request));
             Raise(nameof(IsActive));
             if (resolved.Error is not null) DebugLogger.Warn(LogService, resolved.Error);
             return;
         }
 
-        Request = resolved.Request;
+        _candidates = resolved.Candidates;
+
+        // 轮播只在候选集规模已知时才有意义，所以起点由这里（而非探测线程）决定
+        _plan = new WallpaperRotationPlan(_candidates.Count, snapshot.SlideIntervalSeconds, snapshot.SlideMode);
+        _currentIndex = Math.Max(0, _plan.InitialIndex());
+
+        ShowCurrent(snapshot);
+        ScheduleNext(snapshot);
+    }
+
+    /// <summary>把当前项推给呈现层（UI 线程）；首次应用与轮播切换共用这条路径</summary>
+    private void ShowCurrent(WallpaperSnapshot snapshot)
+    {
+        if (_currentIndex < 0 || _currentIndex >= _candidates.Count) return;
+
+        var candidate = _candidates[_currentIndex];
+
+        Request = new WallpaperRenderRequest(
+            candidate.Path,
+            candidate.Info,
+            WallpaperSnapshot.ToStretch(snapshot.Stretch),
+            Math.Clamp(snapshot.Opacity, 0, 1),
+            snapshot.ShouldPlayAnimated,
+            Math.Clamp(snapshot.MaxFps, 1, 60),
+            snapshot.MaxDecodeEdge,
+            Math.Clamp(snapshot.TransitionMs, 0, 2000));
+
         LastError = null;
-        ApplyNavigationResources(active: true);
+        ApplyNavigationResources(snapshot, active: true);
         Raise(nameof(Request));
         Raise(nameof(IsActive));
 
         DebugLogger.Info(LogService,
-            $"壁纸已应用：{Path.GetFileName(resolved.Request.Path)}（{resolved.Request.Info.Describe()}，" +
-            $"动画={(resolved.Request.IsAnimated ? "开" : "关")}）");
+            $"壁纸已应用：[{_currentIndex + 1}/{_candidates.Count}] {Path.GetFileName(candidate.Path)}" +
+            $"（{candidate.Info.Describe()}，动画={(Request.IsAnimated ? "开" : "关")}）");
     }
 
-    /// <summary>纯函数式的解析（后台线程执行，不做任何 UI 接触）</summary>
+    /// <summary>
+    /// 按当前项的驻留时长排定下一次切换；不轮播（单张 / 间隔为 <c>0</c> 或 <c>-1</c>）或已暂停时取消排定。
+    /// </summary>
+    /// <remarks>
+    /// 只在**真正播放动画**时按"动图播完再切"计算驻留，否则（关闭动图 / 全局动画级别为 0）
+    /// 就是普通间隔——此时只显示首帧，谈不上"播完"。
+    /// </remarks>
+    private void ScheduleNext(WallpaperSnapshot snapshot)
+    {
+        // 暂停期间不排定：轮播定时器同样会周期性唤醒 CPU，与省电策略（§6.5）冲突
+        if (ExternalPause)
+        {
+            _scheduler.Stop();
+            return;
+        }
+
+        if (_plan is not { IsRotating: true } plan || _currentIndex < 0 || _currentIndex >= _candidates.Count)
+        {
+            _scheduler.Stop();
+            return;
+        }
+
+        var info = snapshot.ShouldPlayAnimated ? _candidates[_currentIndex].Info : null;
+        var dwellMs = WallpaperRotationPlan.ResolveDwellMs(plan.IntervalSeconds, info);
+        if (dwellMs <= 0)
+        {
+            _scheduler.Stop();
+            return;
+        }
+
+        var token = _applyToken;
+        _scheduler.Schedule(dwellMs, () => Advance(snapshot, token));
+    }
+
+    /// <summary>轮播定时器到点：切到下一项，并排定再下一次</summary>
+    private void Advance(WallpaperSnapshot snapshot, int token)
+    {
+        if (_disposed || token != _applyToken) return;
+        if (_plan is not { IsRotating: true } plan) return;
+
+        var next = plan.NextIndex(_currentIndex);
+        if (next < 0 || next >= _candidates.Count || next == _currentIndex) return;
+
+        _currentIndex = next;
+        ShowCurrent(snapshot);     // 换 Path → WallpaperHost 走交叉淡入
+        ScheduleNext(snapshot);
+    }
+
+    /// <summary>
+    /// 纯函数式的解析（后台线程执行，不做任何 UI 接触）：把条目列表过滤成候选集。
+    /// </summary>
+    /// <remarks>
+    /// 这里**一次性探测全部条目**而不是"找到第一个能用的就返回"，有两个原因：
+    /// 轮播要在启动时就确定候选集规模（否则随机模式可能挑到不可用项、表现为"同一张连出两次"），
+    /// 拒收提示也需要一次给全（阶段 4 的 InfoBar 只弹一次）。
+    /// 探测结果按「路径 + 大小 + 最后写入时间」在 <see cref="BackgroundResolver"/> 内缓存，
+    /// 因此这次全量探测只在快照变化时付一次，之后每次轮播切换都是缓存命中。
+    /// </remarks>
     private static ResolvedWallpaper Resolve(WallpaperSnapshot snapshot)
     {
         var rejections = new List<WallpaperRejection>();
         if (!snapshot.Enabled || snapshot.Items.Count == 0)
-            return new ResolvedWallpaper(null, rejections, null);
+            return new ResolvedWallpaper([], rejections, null);
 
-        // 阶段 3 会把"取首个可用项"换成按 WallpaperSlide* 参数的轮播调度
+        var candidates = new List<WallpaperCandidate>(snapshot.Items.Count);
+
         foreach (var path in snapshot.Items)
         {
             if (string.IsNullOrWhiteSpace(path)) continue;
@@ -186,20 +285,12 @@ public sealed class WallpaperService : INotifyPropertyChanged, IDisposable
                 continue;
             }
 
-            var request = new WallpaperRenderRequest(
-                path,
-                info,
-                WallpaperSnapshot.ToStretch(snapshot.Stretch),
-                Math.Clamp(snapshot.Opacity, 0, 1),
-                snapshot.ShouldPlayAnimated,
-                Math.Clamp(snapshot.MaxFps, 1, 60),
-                snapshot.MaxDecodeEdge,
-                Math.Clamp(snapshot.TransitionMs, 0, 2000));
-
-            return new ResolvedWallpaper(request, rejections, null);
+            candidates.Add(new WallpaperCandidate(path, info));
         }
 
-        return new ResolvedWallpaper(null, rejections, "壁纸列表中没有可用的文件");
+        return candidates.Count == 0
+            ? new ResolvedWallpaper(candidates, rejections, "壁纸列表中没有可用的文件")
+            : new ResolvedWallpaper(candidates, rejections, null);
     }
 
     // ────────────────────────────────────────────────────────────────
@@ -210,7 +301,7 @@ public sealed class WallpaperService : INotifyPropertyChanged, IDisposable
     /// 壁纸生效时主内容区背景让位（透明），否则恢复主题底色；
     /// 左侧导航栏按 <c>WallpaperExtendToNav</c> / <c>NavBackgroundOpacity</c> 降不透明度。
     /// </summary>
-    private void ApplyNavigationResources(bool active)
+    private void ApplyNavigationResources(WallpaperSnapshot? snapshot, bool active)
     {
         if (Application.Current?.Resources is not { } resources) return;
 
@@ -219,8 +310,8 @@ public sealed class WallpaperService : INotifyPropertyChanged, IDisposable
             ? new SolidColorBrush(Colors.Transparent)
             : new SolidColorBrush(baseColor);
 
-        var paneOpacity = active && _snapshot?.ExtendToNav == true
-            ? Math.Clamp(_snapshot.NavBackgroundOpacity, 0, 1)
+        var paneOpacity = active && snapshot?.ExtendToNav == true
+            ? Math.Clamp(snapshot.NavBackgroundOpacity, 0, 1)
             : 1.0;
 
         // FA 展开态实际读取 ExpandedPaneBackground，DefaultPaneBackground 只覆盖左迷你/顶栏场景，两个键必须同步写
@@ -248,6 +339,10 @@ public sealed class WallpaperService : INotifyPropertyChanged, IDisposable
         ExternalPause = pause;
         DebugLogger.Info(LogService, pause ? "电池供电，动图已暂停" : "恢复市电，动图继续播放");
         Raise(nameof(ExternalPause));
+
+        // 轮播跟随同一个暂停开关：暂停时不再排定，恢复后按当前项重新排定
+        if (pause) _scheduler.Stop();
+        else if (_snapshot is { } snapshot) ScheduleNext(snapshot);
     }
 
     // ────────────────────────────────────────────────────────────────
@@ -274,10 +369,15 @@ public sealed class WallpaperService : INotifyPropertyChanged, IDisposable
         _disposed = true;
         _applyToken++;
 
+        _scheduler.Dispose();
+
         _power.Changed -= OnPowerSourceChanged;
         _power.Dispose();
 
         Request = null;
+        _candidates = [];
+        _plan = null;
+        _currentIndex = -1;
         _rejections.Clear();
 
         // 通知宿主清空：让呈现层（含后台解码线程）在窗口拆除前同步释放
@@ -285,5 +385,8 @@ public sealed class WallpaperService : INotifyPropertyChanged, IDisposable
         Raise(nameof(IsActive));
     }
 
-    private sealed record ResolvedWallpaper(WallpaperRenderRequest? Request, List<WallpaperRejection> Rejections, string? Error);
+    private sealed record ResolvedWallpaper(List<WallpaperCandidate> Candidates, List<WallpaperRejection> Rejections, string? Error);
+
+    /// <summary>一个通过扩展名粗筛与内容探测的候选条目（轮播就是在这些条目间推进）</summary>
+    private sealed record WallpaperCandidate(string Path, AnimatedImageInfo Info);
 }
