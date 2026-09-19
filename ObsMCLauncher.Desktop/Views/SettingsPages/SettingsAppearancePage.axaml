@@ -14,8 +14,11 @@
     同一页出现两套视觉语言比"少一个自定义外观"糟得多。
     参数行一律是 ui:SettingsExpanderItem，右侧控件槽是 Footer，Content 是行标题。
 
-    区块顺序：主题 / 个性 / 字体 / 【1】背景壁纸 / 【2】显示设置 / 【3】动图播放 / 【4】轮播与性能 / 通知。
-    两个参数折叠栏（【2】【4】）默认折叠，让默认视野只剩"开关 + 卡片网格"。
+    区块顺序：主题 / 个性 / 字体 / 背景壁纸 / 通知。
+
+    「显示」「动图」「轮播」三组原先是各自独立的顶层折叠栏。它们本质都是壁纸的子设置，
+    与「背景壁纸」平铺成 8 个顶层栏反而更难找，现已合并进「背景壁纸」栏；
+    栏内再做成**嵌套折叠栏**（默认收起），避免把"顶层拥挤"换成"栏内拥挤"。
   -->
 
   <ScrollViewer VerticalScrollBarVisibility="Auto">
@@ -146,7 +149,7 @@
         </ui:SettingsExpanderItem>
       </ui:SettingsExpander>
 
-      <!-- ===================== 【1】背景壁纸 ===================== -->
+      <!-- ===================== 背景壁纸（含 显示 / 动图 / 轮播 三个分组） ===================== -->
       <ui:SettingsExpander Header="背景壁纸"
                            Description="为启动器主界面设置本地图片或动图"
                            IsExpanded="True">
@@ -313,7 +316,7 @@
 
             <!--
               轮播状态：常显的一行。
-              轮播默认关闭、参数又收在「轮播与性能」折叠栏里，不给这行说明，
+              轮播默认关闭、参数又收在下面「轮播」分组里，不给这行说明，
               用户找不到入口时只会得出"这个功能没做"的结论。
               「切换下一张」让验证不必等一个完整间隔——间隔是以分钟计的。
             -->
@@ -362,192 +365,190 @@
 
           </StackPanel>
         </ui:SettingsExpanderItem>
-      </ui:SettingsExpander>
+        <!--
+          以下三组原先各自是顶层折叠栏。合并进本栏后又不能平铺成 13 行——那是把"顶层拥挤"
+          换成了"栏内拥挤"。所以做成**嵌套折叠栏**：默认收起只占三行，展开哪组看哪组。
+        -->
+        <ui:SettingsExpander Header="显示"
+                             Description="壁纸的透明程度、拉伸方式与导航栏延伸"
+                             IsExpanded="False">
+          <ui:SettingsExpander.IconSource>
+            <ui:SymbolIconSource Symbol="View"/>
+          </ui:SettingsExpander.IconSource>
 
-      <!-- ===================== 【2】显示设置（默认折叠） ===================== -->
-      <ui:SettingsExpander Header="显示设置"
-                           Description="壁纸在主界面上的呈现方式"
-                           IsExpanded="False">
-        <ui:SettingsExpander.IconSource>
-          <ui:SymbolIconSource Symbol="Image"/>
-        </ui:SettingsExpander.IconSource>
+          <ui:SettingsExpanderItem Content="不透明度" Description="壁纸的透明程度">
+            <ui:SettingsExpanderItem.Footer>
+              <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                <Slider Width="150" Minimum="0" Maximum="1" TickFrequency="0.05"
+                        IsSnapToTickEnabled="True"
+                        Value="{Binding WallpaperOpacity, Mode=TwoWay}"/>
+                <TextBlock Text="{Binding WallpaperOpacity, StringFormat={}{0:P0}}"
+                           FontSize="12" VerticalAlignment="Center"
+                           Foreground="{DynamicResource TextSecondaryBrush}"/>
+              </StackPanel>
+            </ui:SettingsExpanderItem.Footer>
+          </ui:SettingsExpanderItem>
 
-        <ui:SettingsExpanderItem Content="不透明度" Description="壁纸的透明程度">
-          <ui:SettingsExpanderItem.Footer>
-            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-              <Slider Width="150" Minimum="0" Maximum="1" TickFrequency="0.05"
-                      IsSnapToTickEnabled="True"
-                      Value="{Binding WallpaperOpacity, Mode=TwoWay}"/>
-              <TextBlock Text="{Binding WallpaperOpacity, StringFormat={}{0:P0}}"
-                         FontSize="12" VerticalAlignment="Center"
-                         Foreground="{DynamicResource TextSecondaryBrush}"/>
-            </StackPanel>
-          </ui:SettingsExpanderItem.Footer>
-        </ui:SettingsExpanderItem>
+          <ui:SettingsExpanderItem Content="显示方式" Description="壁纸的拉伸方式">
+            <ui:SettingsExpanderItem.Footer>
+              <ComboBox Width="140" SelectedIndex="{Binding WallpaperStretch}" VerticalAlignment="Center">
+                <ComboBoxItem Content="拉伸填充"/>
+                <ComboBoxItem Content="适应缩放"/>
+                <ComboBoxItem Content="裁剪填充"/>
+                <ComboBoxItem Content="原始大小"/>
+              </ComboBox>
+            </ui:SettingsExpanderItem.Footer>
+          </ui:SettingsExpanderItem>
 
-        <ui:SettingsExpanderItem Content="显示方式" Description="壁纸的拉伸方式">
-          <ui:SettingsExpanderItem.Footer>
-            <ComboBox Width="140" SelectedIndex="{Binding WallpaperStretch}" VerticalAlignment="Center">
-              <ComboBoxItem Content="拉伸填充"/>
-              <ComboBoxItem Content="适应缩放"/>
-              <ComboBoxItem Content="裁剪填充"/>
-              <ComboBoxItem Content="原始大小"/>
-            </ComboBox>
-          </ui:SettingsExpanderItem.Footer>
-        </ui:SettingsExpanderItem>
+          <ui:SettingsExpanderItem Content="扩展到导航栏" Description="将壁纸延伸到左侧导航栏区域">
+            <ui:SettingsExpanderItem.Footer>
+              <ToggleSwitch IsChecked="{Binding WallpaperExtendToNav, Mode=TwoWay}"
+                            OnContent="" OffContent="" VerticalAlignment="Center"/>
+            </ui:SettingsExpanderItem.Footer>
+          </ui:SettingsExpanderItem>
 
-        <ui:SettingsExpanderItem Content="扩展到导航栏" Description="将壁纸延伸到左侧导航栏区域">
-          <ui:SettingsExpanderItem.Footer>
-            <ToggleSwitch IsChecked="{Binding WallpaperExtendToNav, Mode=TwoWay}"
-                          OnContent="" OffContent="" VerticalAlignment="Center"/>
-          </ui:SettingsExpanderItem.Footer>
-        </ui:SettingsExpanderItem>
+          <ui:SettingsExpanderItem Content="导航栏透明度" Description="扩展到导航栏时，导航栏背景的透明程度">
+            <ui:SettingsExpanderItem.Footer>
+              <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                <Slider Width="150" Minimum="0.1" Maximum="1" TickFrequency="0.05"
+                        IsSnapToTickEnabled="True"
+                        IsEnabled="{Binding WallpaperExtendToNav}"
+                        Value="{Binding NavBackgroundOpacity, Mode=TwoWay}"/>
+                <TextBlock Text="{Binding NavBackgroundOpacity, StringFormat={}{0:P0}}"
+                           FontSize="12" VerticalAlignment="Center"
+                           Foreground="{DynamicResource TextSecondaryBrush}"/>
+              </StackPanel>
+            </ui:SettingsExpanderItem.Footer>
+          </ui:SettingsExpanderItem>
+        </ui:SettingsExpander>
 
-        <ui:SettingsExpanderItem Content="导航栏透明度" Description="扩展到导航栏时，导航栏背景的透明程度">
-          <ui:SettingsExpanderItem.Footer>
-            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-              <Slider Width="150" Minimum="0.1" Maximum="1" TickFrequency="0.05"
-                      IsSnapToTickEnabled="True"
-                      IsEnabled="{Binding WallpaperExtendToNav}"
-                      Value="{Binding NavBackgroundOpacity, Mode=TwoWay}"/>
-              <TextBlock Text="{Binding NavBackgroundOpacity, StringFormat={}{0:P0}}"
-                         FontSize="12" VerticalAlignment="Center"
-                         Foreground="{DynamicResource TextSecondaryBrush}"/>
-            </StackPanel>
-          </ui:SettingsExpanderItem.Footer>
-        </ui:SettingsExpanderItem>
-      </ui:SettingsExpander>
+        <ui:SettingsExpander Header="动图"
+                             Description="动图的播放开关与资源占用提示"
+                             IsExpanded="False">
+          <ui:SettingsExpander.IconSource>
+            <ui:SymbolIconSource Symbol="Play"/>
+          </ui:SettingsExpander.IconSource>
 
-      <!-- ===================== 【3】动图播放 ===================== -->
-      <ui:SettingsExpander Header="动图播放"
-                           Description="GIF / 动画 WebP 的播放行为"
-                           IsExpanded="True">
-        <ui:SettingsExpander.IconSource>
-          <ui:PathIconSource Data="M12 2C6.48 2 2 6.48 2 12S6.48 22 12 22 22 17.52 22 12 17.52 2 12 2M10 16.5V7.5L16 12L10 16.5Z"/>
-        </ui:SettingsExpander.IconSource>
+          <ui:SettingsExpanderItem Content="播放动图"
+                                   Description="关闭后只显示第一帧，仍会按「轮播」里的参数切换图片">
+            <ui:SettingsExpanderItem.Footer>
+              <ToggleSwitch IsChecked="{Binding WallpaperPlayAnimated, Mode=TwoWay}"
+                            OnContent="" OffContent="" VerticalAlignment="Center"/>
+            </ui:SettingsExpanderItem.Footer>
+          </ui:SettingsExpanderItem>
 
-        <ui:SettingsExpander.Footer>
-          <ToggleSwitch IsChecked="{Binding WallpaperPlayAnimated, Mode=TwoWay}"
-                        OnContent="" OffContent=""
-                        VerticalAlignment="Center"/>
-        </ui:SettingsExpander.Footer>
-
-        <ui:SettingsExpanderItem>
-          <StackPanel Spacing="8" HorizontalAlignment="Stretch">
-            <TextBlock Text="关闭后只显示第一帧，仍会按「轮播与性能」里的参数切换图片。"
-                       FontSize="11"
-                       Foreground="{DynamicResource TextSecondaryBrush}"
-                       TextWrapping="Wrap"/>
-
-            <!-- 一次添加多张动图时的资源提示；关闭动图播放后不再提醒 -->
+          <!--
+            一次添加多张动图时的资源提示；只在真的会占资源时才出现（关闭动图播放后不再提醒）。
+            关掉时整行收起、不留空白行——Expander 里的空 item 会白占一条高。
+          -->
+          <ui:SettingsExpanderItem IsVisible="{Binding ShowAnimatedHeavyHint, Mode=OneWay}">
             <ui:InfoBar IsOpen="{Binding ShowAnimatedHeavyHint, Mode=OneWay}"
                         IsClosable="False"
                         Severity="Informational"
                         Title="已添加多张动图"
-                        Message="同时播放多张动图会占用较多资源，建议配合轮播使用（轮播与性能 → 轮播间隔）。"/>
-          </StackPanel>
-        </ui:SettingsExpanderItem>
-      </ui:SettingsExpander>
+                        Message="同时播放多张动图会占用较多资源，建议配合轮播使用（轮播 → 轮播间隔）。"/>
+          </ui:SettingsExpanderItem>
+        </ui:SettingsExpander>
 
-      <!-- ===================== 【4】轮播与性能（默认折叠） ===================== -->
-      <ui:SettingsExpander Header="轮播与性能"
-                           Description="切换节奏与动图资源占用"
-                           IsExpanded="False">
-        <ui:SettingsExpander.IconSource>
-          <ui:PathIconSource Data="M12 2C6.49 2 2 6.49 2 12S6.49 22 12 22S22 17.51 22 12S17.51 2 12 2M12 20C7.59 20 4 16.41 4 12S7.59 4 12 4S20 7.59 20 12S16.41 20 12 20M12.5 7V12.25L17 14.92L16.25 16.15L11 13V7H12.5Z"/>
-        </ui:SettingsExpander.IconSource>
+        <ui:SettingsExpander Header="轮播"
+                             Description="多张壁纸之间的切换节奏、顺序与性能选项"
+                             IsExpanded="False">
+          <ui:SettingsExpander.IconSource>
+            <ui:SymbolIconSource Symbol="Clock"/>
+          </ui:SettingsExpander.IconSource>
 
-        <ui:SettingsExpanderItem Content="轮播间隔" Description="多张图片之间的切换节奏；选「自定义…」可填任意秒数">
-          <ui:SettingsExpanderItem.Footer>
-            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-              <ui:FAComboBox Width="130"
-                             ItemsSource="{Binding SlideIntervalOptions}"
-                             SelectedItem="{Binding SelectedSlideIntervalOption, Mode=TwoWay}">
-                <ui:FAComboBox.ItemTemplate>
-                  <DataTemplate x:DataType="vm:SlideIntervalOption">
+          <ui:SettingsExpanderItem Content="轮播间隔" Description="多张图片之间的切换节奏；选「自定义…」可填任意秒数">
+            <ui:SettingsExpanderItem.Footer>
+              <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                <ComboBox Width="130"
+                          ItemsSource="{Binding SlideIntervalOptions}"
+                          SelectedItem="{Binding SelectedSlideIntervalOption, Mode=TwoWay}">
+                  <ComboBox.ItemTemplate>
+                    <DataTemplate x:DataType="vm:SlideIntervalOption">
+                      <TextBlock Text="{Binding Label}"/>
+                    </DataTemplate>
+                  </ComboBox.ItemTemplate>
+                </ComboBox>
+
+                <ui:NumberBox Width="110"
+                              Minimum="5" Maximum="86400" SmallChange="5"
+                              SpinButtonPlacementMode="Inline"
+                              IsVisible="{Binding IsCustomSlideInterval}"
+                              Value="{Binding WallpaperSlideIntervalSeconds, Mode=TwoWay}"/>
+                <TextBlock Text="秒" FontSize="12" VerticalAlignment="Center"
+                           IsVisible="{Binding IsCustomSlideInterval}"
+                           Foreground="{DynamicResource TextSecondaryBrush}"/>
+              </StackPanel>
+            </ui:SettingsExpanderItem.Footer>
+          </ui:SettingsExpanderItem>
+
+          <ui:SettingsExpanderItem Content="轮播顺序" Description="顺序推进、每次随机，还是每次启动换一个起点">
+            <ui:SettingsExpanderItem.Footer>
+              <ComboBox Width="170"
+                        ItemsSource="{Binding SlideModeOptions}"
+                        SelectedItem="{Binding SelectedSlideModeOption, Mode=TwoWay}">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate x:DataType="vm:SlideModeOption">
                     <TextBlock Text="{Binding Label}"/>
                   </DataTemplate>
-                </ui:FAComboBox.ItemTemplate>
-              </ui:FAComboBox>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+            </ui:SettingsExpanderItem.Footer>
+          </ui:SettingsExpanderItem>
 
-              <ui:NumberBox Width="110"
-                            Minimum="5" Maximum="86400" SmallChange="5"
-                            SpinButtonPlacementMode="Inline"
-                            IsVisible="{Binding IsCustomSlideInterval}"
-                            Value="{Binding WallpaperSlideIntervalSeconds, Mode=TwoWay}"/>
-              <TextBlock Text="秒" FontSize="12" VerticalAlignment="Center"
-                         IsVisible="{Binding IsCustomSlideInterval}"
-                         Foreground="{DynamicResource TextSecondaryBrush}"/>
-            </StackPanel>
-          </ui:SettingsExpanderItem.Footer>
-        </ui:SettingsExpanderItem>
+          <ui:SettingsExpanderItem Content="切换过渡" Description="两张图片之间的交叉淡入时长">
+            <ui:SettingsExpanderItem.Footer>
+              <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                <Slider Width="150" Minimum="0" Maximum="2000" TickFrequency="50"
+                        IsSnapToTickEnabled="True"
+                        Value="{Binding WallpaperTransitionMs, Mode=TwoWay}"/>
+                <TextBlock Text="{Binding WallpaperTransitionMs, StringFormat={}{0} ms}"
+                           FontSize="12" VerticalAlignment="Center"
+                           Foreground="{DynamicResource TextSecondaryBrush}"/>
+              </StackPanel>
+            </ui:SettingsExpanderItem.Footer>
+          </ui:SettingsExpanderItem>
 
-        <ui:SettingsExpanderItem Content="轮播顺序" Description="顺序推进、每次随机，还是每次启动换一个起点">
-          <ui:SettingsExpanderItem.Footer>
-            <ui:FAComboBox Width="170"
-                           ItemsSource="{Binding SlideModeOptions}"
-                           SelectedItem="{Binding SelectedSlideModeOption, Mode=TwoWay}">
-              <ui:FAComboBox.ItemTemplate>
-                <DataTemplate x:DataType="vm:SlideModeOption">
-                  <TextBlock Text="{Binding Label}"/>
-                </DataTemplate>
-              </ui:FAComboBox.ItemTemplate>
-            </ui:FAComboBox>
-          </ui:SettingsExpanderItem.Footer>
-        </ui:SettingsExpanderItem>
+          <ui:SettingsExpanderItem Content="帧率上限" Description="动图的播放帧率上限，调低可省电">
+            <ui:SettingsExpanderItem.Footer>
+              <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                <ui:NumberBox Width="120" Minimum="1" Maximum="60" SmallChange="1"
+                              SpinButtonPlacementMode="Inline"
+                              Value="{Binding WallpaperMaxFps, Mode=TwoWay}"/>
+                <TextBlock Text="fps" FontSize="12" VerticalAlignment="Center"
+                           Foreground="{DynamicResource TextSecondaryBrush}"/>
+              </StackPanel>
+            </ui:SettingsExpanderItem.Footer>
+          </ui:SettingsExpanderItem>
 
-        <ui:SettingsExpanderItem Content="切换过渡" Description="两张图片之间的交叉淡入时长">
-          <ui:SettingsExpanderItem.Footer>
-            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-              <Slider Width="150" Minimum="0" Maximum="2000" TickFrequency="50"
-                      IsSnapToTickEnabled="True"
-                      Value="{Binding WallpaperTransitionMs, Mode=TwoWay}"/>
-              <TextBlock Text="{Binding WallpaperTransitionMs, StringFormat={}{0} ms}"
-                         FontSize="12" VerticalAlignment="Center"
-                         Foreground="{DynamicResource TextSecondaryBrush}"/>
-            </StackPanel>
-          </ui:SettingsExpanderItem.Footer>
-        </ui:SettingsExpanderItem>
+          <ui:SettingsExpanderItem Content="解码尺寸上限" Description="动图的解码长边上限；只能向下夹紧，小图不会被放大">
+            <ui:SettingsExpanderItem.Footer>
+              <ComboBox Width="140"
+                        ItemsSource="{Binding DecodeEdgeOptions}"
+                        SelectedItem="{Binding SelectedDecodeEdgeOption, Mode=TwoWay}">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate x:DataType="vm:DecodeEdgeOption">
+                    <TextBlock Text="{Binding Label}"/>
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+            </ui:SettingsExpanderItem.Footer>
+          </ui:SettingsExpanderItem>
 
-        <ui:SettingsExpanderItem Content="帧率上限" Description="动图的播放帧率上限，调低可省电">
-          <ui:SettingsExpanderItem.Footer>
-            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-              <ui:NumberBox Width="120" Minimum="1" Maximum="60" SmallChange="1"
-                            SpinButtonPlacementMode="Inline"
-                            Value="{Binding WallpaperMaxFps, Mode=TwoWay}"/>
-              <TextBlock Text="fps" FontSize="12" VerticalAlignment="Center"
-                         Foreground="{DynamicResource TextSecondaryBrush}"/>
-            </StackPanel>
-          </ui:SettingsExpanderItem.Footer>
-        </ui:SettingsExpanderItem>
+          <ui:SettingsExpanderItem Content="失焦时暂停" Description="窗口失去焦点时暂停动图，避免后台空转">
+            <ui:SettingsExpanderItem.Footer>
+              <ToggleSwitch IsChecked="{Binding WallpaperPauseOnUnfocused, Mode=TwoWay}"
+                            OnContent="" OffContent="" VerticalAlignment="Center"/>
+            </ui:SettingsExpanderItem.Footer>
+          </ui:SettingsExpanderItem>
 
-        <ui:SettingsExpanderItem Content="解码尺寸上限" Description="动图的解码长边上限；只能向下夹紧，小图不会被放大">
-          <ui:SettingsExpanderItem.Footer>
-            <ui:FAComboBox Width="140"
-                           ItemsSource="{Binding DecodeEdgeOptions}"
-                           SelectedItem="{Binding SelectedDecodeEdgeOption, Mode=TwoWay}">
-              <ui:FAComboBox.ItemTemplate>
-                <DataTemplate x:DataType="vm:DecodeEdgeOption">
-                  <TextBlock Text="{Binding Label}"/>
-                </DataTemplate>
-              </ui:FAComboBox.ItemTemplate>
-            </ui:FAComboBox>
-          </ui:SettingsExpanderItem.Footer>
-        </ui:SettingsExpanderItem>
-
-        <ui:SettingsExpanderItem Content="失焦时暂停" Description="窗口失去焦点时暂停动图，避免后台空转">
-          <ui:SettingsExpanderItem.Footer>
-            <ToggleSwitch IsChecked="{Binding WallpaperPauseOnUnfocused, Mode=TwoWay}"
-                          OnContent="" OffContent="" VerticalAlignment="Center"/>
-          </ui:SettingsExpanderItem.Footer>
-        </ui:SettingsExpanderItem>
-
-        <ui:SettingsExpanderItem Content="电池供电时暂停" Description="笔记本切换到电池供电时暂停动图与轮播">
-          <ui:SettingsExpanderItem.Footer>
-            <ToggleSwitch IsChecked="{Binding WallpaperPauseOnBattery, Mode=TwoWay}"
-                          OnContent="" OffContent="" VerticalAlignment="Center"/>
-          </ui:SettingsExpanderItem.Footer>
-        </ui:SettingsExpanderItem>
+          <ui:SettingsExpanderItem Content="电池供电时暂停" Description="笔记本切换到电池供电时暂停动图与轮播">
+            <ui:SettingsExpanderItem.Footer>
+              <ToggleSwitch IsChecked="{Binding WallpaperPauseOnBattery, Mode=TwoWay}"
+                            OnContent="" OffContent="" VerticalAlignment="Center"/>
+            </ui:SettingsExpanderItem.Footer>
+          </ui:SettingsExpanderItem>
+        </ui:SettingsExpander>
       </ui:SettingsExpander>
 
       <!-- ===================== 通知 ===================== -->

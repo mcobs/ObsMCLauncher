@@ -487,8 +487,13 @@
     用来在手写的 Border + Grid 上仿 ClassIsland 的卡片外观。
 
     设置页现已全部迁移到 FluentAvalonia 规范（ui:SettingsExpander / ui:SettingsExpanderItem），
-    这些样式的最后一个使用点已移除，故一并删除——留着只会让后来者误以为还有第二种写法。
+    那些样式的最后一个使用点已移除，故一并删除——留着只会让后来者误以为还有第二种写法。
     参数行的外观现在由 FluentAvalonia 主题提供。
+
+    栏内分组同理，**不要**用 TextBlock 之类自造标题：
+    SettingsExpander.Items 里任何非 SettingsExpanderItem 的子项，FA 都会自动套一层
+    SettingsExpanderItem 容器（Padding 16,10 + MinHeight 48 + 与参数行同色底），
+    结果就是一个 51px 高的"假参数行"。要分组就用嵌套 ui:SettingsExpander（默认收起）。
   -->
 
 </Styles>

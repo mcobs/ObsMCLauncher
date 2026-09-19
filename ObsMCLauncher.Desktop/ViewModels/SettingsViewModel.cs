@@ -213,6 +213,12 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable, IWallpaperC
         // 应用已保存的壁纸配置
         ApplyWallpaper();
 
+        // 「轮播间隔」下拉的选中项是**反查**出来的（没有后备字段），但"是不是自定义档"
+        // 落在 IsCustomSlideInterval 上，只有 setter / Reload / ResetDefaults 会写它。
+        // 构造时不补一次，配置里存着非档位值（如 5 秒）就会出现
+        // "下拉显示「自定义…」、右边的秒数输入框却不显示"——等于数值看不见也改不了。
+        SyncSlideIntervalSelection();
+
         // 卡片网格：订阅服务以跟随"当前正在显示"的那一张，并异步装载缩略图
         AttachWallpaperService();
         LoadWallpaperCards();
@@ -996,7 +1002,7 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable, IWallpaperC
     /// </summary>
     /// <remarks>
     /// 刻意做成常显的一行文字而不是只留在折叠栏里：轮播默认关闭，参数又收在
-    /// 「轮播与性能」折叠栏中，用户找不到入口时只会得出"这个功能没做"的结论。
+    /// 「背景壁纸 → 轮播」分组中，用户找不到入口时只会得出"这个功能没做"的结论。
     /// </remarks>
     private void UpdateRotationStatus()
     {
@@ -1030,7 +1036,7 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable, IWallpaperC
         WallpaperRotationStatus = seconds switch
         {
             WallpaperRotationPlan.IntervalDisabled
-                => "未启用轮播 · 可在「轮播与性能」中设置间隔",
+                => "未启用轮播 · 可在「轮播」分组中设置间隔",
             WallpaperRotationPlan.IntervalEachStartup
                 => $"每次启动时换一张 · {mode}",
             _ => $"切换间隔 {DescribeInterval(seconds)} · {mode}"
