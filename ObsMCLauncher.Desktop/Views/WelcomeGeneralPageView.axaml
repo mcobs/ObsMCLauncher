@@ -1,0 +1,89 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ObsMCLauncher.Desktop.ViewModels"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
+             xmlns:converters="using:ObsMCLauncher.Desktop.Converters"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="700" d:DesignHeight="480"
+             x:Class="ObsMCLauncher.Desktop.Views.WelcomeGeneralPageView"
+             x:DataType="vm:WelcomeGeneralPageViewModel">
+
+    <!-- 向导「通用」页：更新与安全。行结构见 WelcomeAppearancePageView 的注释。 -->
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Classes="wizard-card" VerticalAlignment="Center" Margin="0 8">
+            <TextBlock Classes="wizard-title" Text="{Binding Title}" />
+            <TextBlock Classes="wizard-subtitle" Text="{Binding Subtitle}" />
+
+            <StackPanel Classes="wizard-rows">
+                <ui:SettingsExpander Header="自动检查更新"
+                                     Description="启动时检查启动器有没有新版本">
+                    <ui:SettingsExpander.IconSource>
+                        <ui:SymbolIconSource Symbol="Sync" />
+                    </ui:SettingsExpander.IconSource>
+                    <ui:SettingsExpander.Footer>
+                        <ToggleSwitch IsChecked="{Binding AutoCheckUpdate, Mode=TwoWay}"
+                                      OnContent="" OffContent="" VerticalAlignment="Center" />
+                    </ui:SettingsExpander.Footer>
+                </ui:SettingsExpander>
+
+                <ui:SettingsExpander Header="更新通道"
+                                     Description="选正式版最稳；预览版更新最快但可能有坑">
+                    <ui:SettingsExpander.IconSource>
+                        <ui:SymbolIconSource Symbol="CloudDownload" />
+                    </ui:SettingsExpander.IconSource>
+                    <ui:SettingsExpander.Footer>
+                        <ComboBox Width="150"
+                                  ItemsSource="{Binding UpdateChannelOptions}"
+                                  SelectedItem="{Binding SelectedUpdateChannel, Mode=TwoWay}"
+                                  VerticalAlignment="Center">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Converter={x:Static converters:EnumToChineseTextConverter.Instance}}" />
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                    </ui:SettingsExpander.Footer>
+                </ui:SettingsExpander>
+
+                <ui:SettingsExpander Header="文件哈希校验"
+                                     Description="下载完成后校验 SHA-1 / SHA-256，能发现下载被截断或篡改">
+                    <ui:SettingsExpander.IconSource>
+                        <ui:SymbolIconSource Symbol="Checkmark" />
+                    </ui:SettingsExpander.IconSource>
+                    <ui:SettingsExpander.Footer>
+                        <ToggleSwitch IsChecked="{Binding EnableFileHashVerification, Mode=TwoWay}"
+                                      OnContent="" OffContent="" VerticalAlignment="Center" />
+                    </ui:SettingsExpander.Footer>
+                </ui:SettingsExpander>
+
+                <ui:SettingsExpander Header="跳过 SSL 证书验证"
+                                     Description="关闭后无法访问证书异常的镜像；仅在网络环境异常时才建议开启">
+                    <ui:SettingsExpander.IconSource>
+                        <ui:SymbolIconSource Symbol="AlertOff" />
+                    </ui:SettingsExpander.IconSource>
+                    <ui:SettingsExpander.Footer>
+                        <ToggleSwitch IsChecked="{Binding SkipSslValidation, Mode=TwoWay}"
+                                      OnContent="" OffContent="" VerticalAlignment="Center" />
+                    </ui:SettingsExpander.Footer>
+                </ui:SettingsExpander>
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Center" Margin="0 12 0 0">
+                <Button Classes="wizard-nav"
+                        Command="{Binding BackCommand}"
+                        IsVisible="{Binding CanGoBack}"
+                        ToolTip.Tip="上一步">
+                    <ui:SymbolIcon Symbol="ChevronLeft" FontSize="18" />
+                </Button>
+                <Button Classes="wizard-nav accent"
+                        Command="{Binding NextCommand}"
+                        ToolTip.Tip="{Binding NextToolTip}">
+                    <ui:SymbolIcon Symbol="ChevronRight" FontSize="18" />
+                </Button>
+            </StackPanel>
+        </StackPanel>
+    </ScrollViewer>
+
+</UserControl>

@@ -5,7 +5,8 @@ namespace ObsMCLauncher.Desktop.ViewModels;
 
 /// <summary>
 /// 欢迎首页（Frame 第一页）：问候 + 下一步 + 底部版本号/数据迁移入口。
-/// 下一步进入开源许可页；数据迁移入口先经过许可页再进迁移页。
+/// 下一步进入设置流程（许可 → 外观 → 通用 → 游戏 → 下载 → 完成）；
+/// 数据迁移入口先经过许可页再进迁移页。
 /// </summary>
 public partial class WelcomePageViewModel : ViewModelBase
 {
@@ -32,12 +33,12 @@ public partial class WelcomePageViewModel : ViewModelBase
     [RelayCommand]
     private void Next()
     {
-        _owner.RequestNavigate(_owner.LicensePage);
+        _owner.BeginSetupFlow();
     }
 
     [RelayCommand]
     private void Migration()
     {
-        _owner.RequestMigration();
+        _owner.BeginMigrationFlow();
     }
 }

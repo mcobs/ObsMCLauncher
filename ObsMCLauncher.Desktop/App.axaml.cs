@@ -65,9 +65,13 @@ public partial class App : Application
                 config.Save();
             }
 
+            // 欢迎向导在设置页里改过的选项会写进配置文件，而主界面的 VM 此时已经持有一份
+            // 更早加载的副本；向导完成后必须让它重读一次，否则设置页之后任何一次自动保存
+            // 都会把向导的改动整体覆盖回去（例如强调色被改回旧值）
+            var mainViewModel = new MainWindowViewModel();
             var mainWindow = new MainWindow
             {
-                DataContext = new MainWindowViewModel(),
+                DataContext = mainViewModel,
             };
 
             if (!config.WelcomeCompleted)
@@ -78,6 +82,8 @@ public partial class App : Application
                 {
                     if (welcome.IsCompleted)
                     {
+                        mainViewModel.Settings.Reload();
+
                         // MainWindow 是普通属性，运行期重新赋值不会自动 Show，需手动显示
                         desktop.MainWindow = mainWindow;
                         mainWindow.Show();
@@ -109,6 +115,14 @@ public partial class App : Application
         Avalonia.Threading.Dispatcher.UIThread.Post(() =>
         {
             var welcome = new WelcomeWindow(isFirstRun: false);
+            welcome.Closed += (_, _) =>
+            {
+                if (welcome.IsCompleted)
+                {
+                    // 向导改过配置，主界面持有的旧副本要重读（同首次启动那条路径）
+                    NavigationStore.MainWindow?.Settings.Reload();
+                }
+            };
             welcome.Show();
         });
     }

@@ -1,0 +1,56 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ObsMCLauncher.Desktop.ViewModels"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="700" d:DesignHeight="480"
+             x:Class="ObsMCLauncher.Desktop.Views.WelcomeFinishPageView"
+             x:DataType="vm:WelcomeFinishPageViewModel">
+
+    <!-- 向导最后一步：纯文字完成页。点「完成」结束流程并写入 WelcomeCompleted。 -->
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Classes="wizard-card" VerticalAlignment="Center" Margin="0 8"
+                    Spacing="8">
+            <TextBlock Classes="wizard-title" Text="{Binding Title}" />
+            <TextBlock Classes="wizard-subtitle" Text="{Binding Subtitle}" />
+
+            <Border Background="{DynamicResource LayerFillColorPrimaryBrush}"
+                    BorderBrush="{DynamicResource CardBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="{DynamicResource CardCornerRadius}"
+                    Padding="20"
+                    Margin="0 4">
+                <StackPanel Spacing="8">
+                    <TextBlock Text="感谢你使用 ObsMCLauncher。"
+                               FontSize="14"
+                               Foreground="{DynamicResource TextBrush}"
+                               TextWrapping="Wrap" />
+                    <TextBlock Text="接下来可以做的事：在「下载」里装一个游戏版本，在「账号」里登录微软账户或添加离线账户，主页布局也能在设置里自由调整。"
+                               FontSize="12"
+                               Foreground="{DynamicResource TextSecondaryBrush}"
+                               TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding Version}"
+                               FontSize="12"
+                               Foreground="{DynamicResource TextTertiaryBrush}" />
+                </StackPanel>
+            </Border>
+
+            <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Center" Margin="0 12 0 0">
+                <Button Classes="wizard-nav"
+                        Command="{Binding BackCommand}"
+                        IsVisible="{Binding CanGoBack}"
+                        ToolTip.Tip="上一步">
+                    <ui:SymbolIcon Symbol="ChevronLeft" FontSize="18" />
+                </Button>
+                <Button Classes="wizard-nav accent"
+                        Command="{Binding NextCommand}"
+                        ToolTip.Tip="{Binding NextToolTip}">
+                    <ui:SymbolIcon Symbol="Checkmark" FontSize="18" />
+                </Button>
+            </StackPanel>
+        </StackPanel>
+    </ScrollViewer>
+
+</UserControl>

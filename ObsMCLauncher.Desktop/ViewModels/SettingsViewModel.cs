@@ -203,8 +203,8 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable, IWallpaperC
             }
         };
 
-        // 应用保存的主题模式
-        ApplyThemeMode(_config.ThemeMode);
+        // 外观（主题 / 强调色 / 圆角 / 密度 / 动画）统一走 AppearanceApplier
+        ApplyThemeMode(_config);
 
         // 启动时应用已保存的自定义强调色
         ApplyAccentColor();
@@ -350,7 +350,7 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable, IWallpaperC
                 _config.ThemeMode = value;
                 OnPropertyChanged(new PropertyChangedEventArgs(nameof(ThemeMode)));
 
-                ApplyThemeMode(value);
+                ApplyThemeMode(_config);
                 AutoSave();
             }
         }
@@ -362,7 +362,7 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable, IWallpaperC
         get => ResolveAccentHex();
         set
         {
-            var hex = NormalizeHex(value);
+            var hex = AppearanceApplier.NormalizeHex(value);
             if (hex == null) return;
             SetAccentHex(hex);
         }
@@ -1338,93 +1338,26 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable, IWallpaperC
         }
     }
 
-    private Color ResolveAccentColor()
-        => Color.TryParse(ResolveAccentHex(), out var c) ? c : Color.Parse("#10B981");
+    // ===== 外观应用 =====
+    // 实现统一在 AppearanceApplier（设置页与设置向导「外观」页共用同一套，避免两份实现漂移）。
+    // 下面这几个包装只负责把「当前配置 + 壁纸推送回调」传进去：主题资源会重写导航/内容背景，
+    // 壁纸必须在其之后重新推送，所以回调不能省。
 
-    private string ResolveAccentHex()
-        => string.IsNullOrWhiteSpace(_config.AccentColor) ? "#10B981" : _config.AccentColor;
+    private string ResolveAccentHex() => AppearanceApplier.ResolveAccentHex(_config);
 
-    /// <summary>把任意输入规整为 #RRGGBB，无法解析返回 null</summary>
-    private static string? NormalizeHex(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value)) return null;
-        var s = value.Trim();
-        if (s.StartsWith("#")) s = s[1..];
-        if (s.Length == 3 && int.TryParse(s, System.Globalization.NumberStyles.HexNumber, null, out _))
-            s = string.Concat(s.Select(ch => new string(ch, 2)));
-        if (s.Length != 6 || !int.TryParse(s, System.Globalization.NumberStyles.HexNumber, null, out _))
-            return null;
-        return $"#{s.ToUpperInvariant()}";
-    }
+    private Color ResolveAccentColor() => AppearanceApplier.ResolveAccentColor(_config);
 
-    /// <summary>应用强调色到主题资源与 FluentAvalonia 控件强调色</summary>
-    private void ApplyAccentColor()
-    {
-        if (Application.Current == null) return;
-        Dispatcher.UIThread.Post(() =>
-        {
-            if (Application.Current?.Styles.OfType<FluentAvalonia.Styling.FluentAvaloniaTheme>().FirstOrDefault()
-                    is { } faTheme)
-            {
-                faTheme.CustomAccentColor = ResolveAccentColor();
-            }
+    private void ApplyThemeMode(LauncherConfig config) => AppearanceApplier.ApplyThemeMode(config, ApplyWallpaper);
 
-            // 主页欢迎卡片渐变跟随强调色：起点为压暗后的同色系
-            if (Application.Current?.Resources is { } resources)
-            {
-                var accent = ResolveAccentColor();
-                resources["HomeWelcomeGradientStart"] = Darken(accent, 0.7);
-                resources["HomeWelcomeGradientEnd"] = accent;
-            }
+    private void ApplyAccentColor() => AppearanceApplier.ApplyAccentColor(_config, ApplyWallpaper);
 
-            UpdateThemeResources(_config.ThemeMode);
-        });
-    }
+    private void UpdateThemeResources() => AppearanceApplier.UpdateThemeResources(_config, ApplyWallpaper);
 
-    /// <summary>按比例压暗颜色（factor 越小越暗，0.7 表示保留 70% 亮度）</summary>
-    private static Color Darken(Color c, double factor)
-        => Color.FromRgb(
-            (byte)Math.Round(c.R * factor),
-            (byte)Math.Round(c.G * factor),
-            (byte)Math.Round(c.B * factor));
+    private void ApplyCornerRadius() => AppearanceApplier.ApplyCornerRadius(_config);
 
-    /// <summary>圆角半径应用到全局圆角资源（主要容器读取）</summary>
-    private void ApplyCornerRadius()
-    {
-        if (Application.Current?.Resources is not { } resources) return;
-        var r = _config.CornerRadius;
-        // 柔和的层级差异：控件略小、浮层适中、卡片取设定值
-        resources["ControlCornerRadius"] = new CornerRadius(Math.Max(0, r - 4));
-        resources["OverlayCornerRadius"] = new CornerRadius(r);
-        resources["CardCornerRadius"] = new CornerRadius(r);
-    }
+    private void ApplyDensity() => AppearanceApplier.ApplyDensity(_config);
 
-    /// <summary>密度应用到主要界面留白资源（紧凑=小、宽松=大）</summary>
-    private void ApplyDensity()
-    {
-        if (Application.Current?.Resources is not { } resources) return;
-        var baseMargin = _config.Density switch
-        {
-            0 => 12,
-            1 => 20,
-            _ => 28
-        };
-        resources["ContentMargin"] = new Thickness(baseMargin);
-        resources["InnerSpacing"] = _config.Density switch { 0 => 8, 1 => 12, _ => 16 };
-    }
-
-    /// <summary>动画级别应用到全局动画开关（主要过渡读取）</summary>
-    private void ApplyAnimationLevel()
-    {
-        if (Application.Current?.Resources is not { } resources) return;
-        resources["EnabledAnimations"] = _config.AnimationLevel != 0;
-        // 华丽与标准共用动画时长，禁用时由 EnabledAnimations 关闭
-        resources["DefaultTransitionDuration"] = TimeSpan.FromSeconds(_config.AnimationLevel switch
-        {
-            2 => 0.45,
-            _ => 0.25
-        });
-    }
+    private void ApplyAnimationLevel() => AppearanceApplier.ApplyAnimationLevel(_config);
 
     public int MaxMemory
     {
@@ -2120,6 +2053,11 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable, IWallpaperC
             NavigationStore.MainWindow.Notifications.AutoCloseSeconds = 5;
         }
 
+        // 主题与强调色同样要落回全局资源。旧实现这里只重算了圆角/密度/动画，
+        // 于是「恢复默认设置」后主题与强调色视觉上要等到重启才生效
+        ApplyThemeMode(_config);
+        ApplyAccentColor();
+
         ApplyCornerRadius();
         ApplyDensity();
         ApplyAnimationLevel();
@@ -2130,208 +2068,12 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable, IWallpaperC
         AutoSave();
     }
 
-    private void ApplyThemeMode(int themeMode)
-    {
-        if (Application.Current == null) return;
-
-        Dispatcher.UIThread.Post(() =>
-        {
-            // 设置主题变体
-            Application.Current.RequestedThemeVariant = themeMode switch
-            {
-                0 => ThemeVariant.Dark,
-                1 => ThemeVariant.Light,
-                _ => ThemeVariant.Default
-            };
-
-            // 手动更新主题资源
-            UpdateThemeResources(themeMode);
-        });
-    }
-
-    private void UpdateThemeResources(int themeMode)
-    {
-        if (Application.Current == null) return;
-
-        var resources = Application.Current.Resources;
-        if (resources == null) return;
-
-        // 对于跟随系统模式，需要检测实际的主题
-        bool isLightTheme;
-        if (themeMode == 2)
-        {
-            // 跟随系统：根据实际主题变体决定
-            var actualTheme = Application.Current.ActualThemeVariant;
-            isLightTheme = actualTheme == ThemeVariant.Light;
-        }
-        else
-        {
-            // 0=深色, 1=浅色
-            isLightTheme = themeMode == 1;
-        }
-
-        if (isLightTheme)
-        {
-            ApplyLightTheme(resources);
-        }
-        else
-        {
-            ApplyDarkTheme(resources);
-        }
-
-        // 主题资源会重写导航/内容背景，壁纸相关状态需要在其后重新应用
-        ApplyWallpaper();
-    }
-
-    private void ApplyLightTheme(IResourceDictionary resources)
-    {
-        // 三级表面色阶：浅色模式明度递增（灰 -> 浅灰 -> 纯白），层级清晰
-        resources["LayerFillColorDefaultBrush"] = new SolidColorBrush(Color.Parse("#F1F5F9"));
-        resources["LayerFillColorAltBrush"] = new SolidColorBrush(Color.Parse("#F8FAFC"));
-        resources["LayerFillColorPrimaryBrush"] = new SolidColorBrush(Color.Parse("#FFFFFF"));
-        resources["LayerFillColorSecondaryBrush"] = new SolidColorBrush(Color.Parse("#E8ECF1"));
-
-        // 兼容旧 key，全部对齐到三级表面色阶
-        resources["BackgroundBrush"] = new SolidColorBrush(Color.Parse("#F8FAFC"));
-        resources["SurfaceBrush"] = new SolidColorBrush(Color.Parse("#FFFFFF"));
-        resources["SurfaceElevatedBrush"] = new SolidColorBrush(Color.Parse("#F1F5F9"));
-        resources["SurfaceHoverBrush"] = new SolidColorBrush(Color.Parse("#E8ECF1"));
-        resources["NavHoverBrush"] = new SolidColorBrush(Color.Parse("#E8ECF1"));
-        resources["TextBrush"] = new SolidColorBrush(Color.Parse("#0F172A"));
-        resources["TextSecondaryBrush"] = new SolidColorBrush(Color.Parse("#475569"));
-        resources["TextTertiaryBrush"] = new SolidColorBrush(Color.Parse("#94A3B8"));
-        resources["BorderBrush"] = new SolidColorBrush(Color.Parse("#E2E8F0"));
-        resources["DividerBrush"] = new SolidColorBrush(Color.Parse("#F1F5F9"));
-        resources["InputBackgroundBrush"] = new SolidColorBrush(Color.Parse("#FFFFFF"));
-        resources["InputForegroundBrush"] = new SolidColorBrush(Color.Parse("#0F172A"));
-        resources["GlassmorphismBackgroundBrush"] = new SolidColorBrush(Color.Parse("#FFFFFF")) { Opacity = 0.92 };
-        resources["GlassmorphismBorderBrush"] = new SolidColorBrush(Color.Parse("#000000")) { Opacity = 0.06 };
-        resources["SystemControlBackgroundBaseHighBrush"] = new SolidColorBrush(Color.Parse("#F8FAFC"));
-        resources["SystemControlBackgroundAltHighBrush"] = new SolidColorBrush(Color.Parse("#FFFFFF"));
-        resources["SystemControlBackgroundBaseLowBrush"] = new SolidColorBrush(Color.Parse("#E8ECF1"));
-        resources["SystemControlBackgroundBaseMediumBrush"] = new SolidColorBrush(Color.Parse("#F1F5F9"));
-        resources["SystemControlForegroundBaseHighBrush"] = new SolidColorBrush(Color.Parse("#0F172A"));
-        resources["SystemControlForegroundBaseLowBrush"] = new SolidColorBrush(Color.Parse("#E2E8F0"));
-        resources["NavItemSelectedBackgroundBrush"] = new SolidColorBrush(ResolveAccentColor()) { Opacity = 0.10 };
-
-        // 导航栏 / 标题栏 / 窗口 / 卡片背景，浅色模式下必须同步更新，否则会残留深色底
-        resources["NavBackgroundBrush"] = new SolidColorBrush(Color.Parse("#FFFFFF"));
-        resources["NavBorderBrush"] = new SolidColorBrush(Color.Parse("#E2E8F0"));
-        resources["TitleBarBackgroundBrush"] = new SolidColorBrush(Color.Parse("#FFFFFF"));
-        resources["TitleBarBorderBrush"] = new SolidColorBrush(Color.Parse("#E2E8F0"));
-        resources["TitleBarButtonHoverBrush"] = new SolidColorBrush(Colors.Black) { Opacity = 0.06 };
-        resources["TitleBarButtonPressedBrush"] = new SolidColorBrush(Colors.Black) { Opacity = 0.10 };
-        resources["WindowBackgroundBrush"] = new SolidColorBrush(Color.Parse("#F8FAFC"));
-        resources["CardBackgroundBrush"] = new SolidColorBrush(Color.Parse("#FFFFFF"));
-        resources["CardBorderBrush"] = new SolidColorBrush(Color.Parse("#E2E8F0"));
-
-        // FluentAvalonia 控件资源（NavigationView / SettingsExpander 等）
-        resources["NavigationViewDefaultPaneBackground"] = new SolidColorBrush(Color.Parse("#F8FAFC"));
-        resources["NavigationViewContentBackground"] = new SolidColorBrush(Colors.Transparent);
-        resources["CardStrokeColorDefaultBrush"] = new SolidColorBrush(Color.Parse("#E2E8F0"));
-        resources["DividerStrokeColorDefaultBrush"] = new SolidColorBrush(Color.Parse("#F1F5F9"));
-        resources["TextFillColorPrimaryBrush"] = new SolidColorBrush(Color.Parse("#0F172A"));
-        resources["TextFillColorSecondaryBrush"] = new SolidColorBrush(Color.Parse("#475569"));
-        resources["TextFillColorTertiaryBrush"] = new SolidColorBrush(Color.Parse("#94A3B8"));
-        resources["SubtleFillColorSecondaryBrush"] = new SolidColorBrush(Color.Parse("#E8ECF1"));
-        resources["SubtleFillColorTertiaryBrush"] = new SolidColorBrush(Color.Parse("#F1F5F9"));
-        resources["ControlFillColorDefaultBrush"] = new SolidColorBrush(Color.Parse("#FFFFFF"));
-        resources["InfoBarInformationalSeverityBackgroundBrush"] = new SolidColorBrush(Color.Parse("#FFFFFF"));
-
-        ApplyTabViewTheme(resources, isLight: true, ResolveAccentColor());
-    }
-
-    private void ApplyDarkTheme(IResourceDictionary resources)
-    {
-        // 三级表面色阶：深色模式每级约 +5% 亮度
-        resources["LayerFillColorDefaultBrush"] = new SolidColorBrush(Color.Parse("#0B0D10"));
-        resources["LayerFillColorAltBrush"] = new SolidColorBrush(Color.Parse("#141619"));
-        resources["LayerFillColorPrimaryBrush"] = new SolidColorBrush(Color.Parse("#1C1F26"));
-        resources["LayerFillColorSecondaryBrush"] = new SolidColorBrush(Color.Parse("#252830"));
-
-        // 兼容旧 key，全部对齐到三级表面色阶
-        resources["BackgroundBrush"] = new SolidColorBrush(Color.Parse("#0B0D10"));
-        resources["SurfaceBrush"] = new SolidColorBrush(Color.Parse("#141619"));
-        resources["SurfaceElevatedBrush"] = new SolidColorBrush(Color.Parse("#1C1F26"));
-        resources["SurfaceHoverBrush"] = new SolidColorBrush(Color.Parse("#252830"));
-        resources["NavHoverBrush"] = new SolidColorBrush(Color.Parse("#252830"));
-        resources["TextBrush"] = new SolidColorBrush(Color.Parse("#F1F5F9"));
-        resources["TextSecondaryBrush"] = new SolidColorBrush(Color.Parse("#94A3B8"));
-        resources["TextTertiaryBrush"] = new SolidColorBrush(Color.Parse("#64748B"));
-        resources["BorderBrush"] = new SolidColorBrush(Color.Parse("#2A2E37"));
-        resources["DividerBrush"] = new SolidColorBrush(Color.Parse("#1E2128"));
-        resources["InputBackgroundBrush"] = new SolidColorBrush(Color.Parse("#141619"));
-        resources["InputForegroundBrush"] = new SolidColorBrush(Color.Parse("#F1F5F9"));
-        resources["GlassmorphismBackgroundBrush"] = new SolidColorBrush(Color.Parse("#141619")) { Opacity = 0.88 };
-        resources["GlassmorphismBorderBrush"] = new SolidColorBrush(Color.Parse("#FFFFFF")) { Opacity = 0.08 };
-        resources["SystemControlBackgroundBaseHighBrush"] = new SolidColorBrush(Color.Parse("#0B0D10"));
-        resources["SystemControlBackgroundAltHighBrush"] = new SolidColorBrush(Color.Parse("#141619"));
-        resources["SystemControlBackgroundBaseLowBrush"] = new SolidColorBrush(Color.Parse("#252830"));
-        resources["SystemControlBackgroundBaseMediumBrush"] = new SolidColorBrush(Color.Parse("#1C1F26"));
-        resources["SystemControlForegroundBaseHighBrush"] = new SolidColorBrush(Color.Parse("#F1F5F9"));
-        resources["SystemControlForegroundBaseLowBrush"] = new SolidColorBrush(Color.Parse("#2A2E37"));
-        resources["NavItemSelectedBackgroundBrush"] = new SolidColorBrush(ResolveAccentColor()) { Opacity = 0.08 };
-
-        // 导航栏 / 标题栏 / 窗口 / 卡片背景，深色模式下同步恢复
-        resources["NavBackgroundBrush"] = new SolidColorBrush(Color.Parse("#141619"));
-        resources["NavBorderBrush"] = new SolidColorBrush(Color.Parse("#1E2128"));
-        resources["TitleBarBackgroundBrush"] = new SolidColorBrush(Color.Parse("#141619"));
-        resources["TitleBarBorderBrush"] = new SolidColorBrush(Color.Parse("#1E2128"));
-        resources["TitleBarButtonHoverBrush"] = new SolidColorBrush(Colors.White) { Opacity = 0.09 };
-        resources["TitleBarButtonPressedBrush"] = new SolidColorBrush(Colors.White) { Opacity = 0.16 };
-        resources["WindowBackgroundBrush"] = new SolidColorBrush(Color.Parse("#0B0D10"));
-        resources["CardBackgroundBrush"] = new SolidColorBrush(Color.Parse("#1C1F26"));
-        resources["CardBorderBrush"] = new SolidColorBrush(Color.Parse("#2A2E37"));
-
-        // FluentAvalonia 控件资源（NavigationView / SettingsExpander 等）
-        resources["NavigationViewDefaultPaneBackground"] = new SolidColorBrush(Color.Parse("#141619"));
-        resources["NavigationViewContentBackground"] = new SolidColorBrush(Colors.Transparent);
-        resources["CardStrokeColorDefaultBrush"] = new SolidColorBrush(Color.Parse("#2A2E37"));
-        resources["DividerStrokeColorDefaultBrush"] = new SolidColorBrush(Color.Parse("#1E2128"));
-        resources["TextFillColorPrimaryBrush"] = new SolidColorBrush(Color.Parse("#F1F5F9"));
-        resources["TextFillColorSecondaryBrush"] = new SolidColorBrush(Color.Parse("#94A3B8"));
-        resources["TextFillColorTertiaryBrush"] = new SolidColorBrush(Color.Parse("#64748B"));
-        resources["SubtleFillColorSecondaryBrush"] = new SolidColorBrush(Color.Parse("#252830"));
-        resources["SubtleFillColorTertiaryBrush"] = new SolidColorBrush(Color.Parse("#1C1F26"));
-        resources["ControlFillColorDefaultBrush"] = new SolidColorBrush(Color.Parse("#141619"));
-        resources["InfoBarInformationalSeverityBackgroundBrush"] = new SolidColorBrush(Color.Parse("#1C1F26"));
-
-        ApplyTabViewTheme(resources, isLight: false, ResolveAccentColor());
-    }
-
-    /// <summary>
-    /// FluentAvalonia TabView 主题资源：让 tab 选择栏跟随应用三级表面色阶，
-    /// 避免 Fluent 默认暖灰（#282828 等）与冷色系主题产生隔阂。
-    /// 选中 tab 与内容区共用「页面底色」，tab 条与顶部标题栏同色。
-    /// </summary>
-    private static void ApplyTabViewTheme(IResourceDictionary resources, bool isLight, Color accentColor)
-    {
-        var accent = new SolidColorBrush(accentColor);
-
-        resources["TabViewBackground"] = new SolidColorBrush(Color.Parse(isLight ? "#FFFFFF" : "#141619"));
-        resources["TabViewBorderBrush"] = new SolidColorBrush(Color.Parse(isLight ? "#F1F5F9" : "#1E2128"));
-        resources["TabViewItemHeaderBackground"] = Brushes.Transparent;
-        resources["TabViewItemHeaderBackgroundSelected"] = new SolidColorBrush(Color.Parse(isLight ? "#F8FAFC" : "#0B0D10"));
-        resources["TabViewItemHeaderBackgroundPointerOver"] = new SolidColorBrush(accentColor) { Opacity = isLight ? 0.10 : 0.08 };
-        resources["TabViewItemHeaderBackgroundPressed"] = new SolidColorBrush(Color.Parse(isLight ? "#F1F5F9" : "#1C1F26"));
-
-        resources["TabViewItemHeaderForeground"] = new SolidColorBrush(Color.Parse(isLight ? "#475569" : "#94A3B8"));
-        resources["TabViewItemHeaderForegroundSelected"] = accent;
-        resources["TabViewItemHeaderForegroundPointerOver"] = new SolidColorBrush(Color.Parse(isLight ? "#0F172A" : "#F1F5F9"));
-        resources["TabViewItemHeaderForegroundPressed"] = new SolidColorBrush(Color.Parse(isLight ? "#94A3B8" : "#64748B"));
-
-        resources["TabViewItemIconForeground"] = new SolidColorBrush(Color.Parse(isLight ? "#475569" : "#94A3B8"));
-        resources["TabViewItemIconForegroundSelected"] = accent;
-        resources["TabViewItemIconForegroundPointerOver"] = new SolidColorBrush(Color.Parse(isLight ? "#0F172A" : "#F1F5F9"));
-        resources["TabViewItemIconForegroundPressed"] = new SolidColorBrush(Color.Parse(isLight ? "#94A3B8" : "#64748B"));
-    }
-
     private void OnSystemThemeChanged(object? sender, EventArgs e)
     {
         // 只有在跟随系统模式下才响应系统主题变化
         if (_config.ThemeMode == 2)
         {
-            UpdateThemeResources(2);
+            UpdateThemeResources();
         }
     }
 

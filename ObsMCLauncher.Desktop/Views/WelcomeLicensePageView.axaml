@@ -23,13 +23,8 @@
     </UserControl.Styles>
 
     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="520">
-        <TextBlock Text="同意许可条款"
-                   HorizontalAlignment="Center"
-                   Margin="0 0 0 4"
-                   FontSize="24" FontWeight="SemiBold" />
-        <TextBlock Text="要继续使用 ObsMCLauncher，您必须阅读并同意以下许可条款。"
-                   HorizontalAlignment="Center"
-                   TextWrapping="Wrap" />
+        <TextBlock Classes="wizard-title" Text="{Binding Title}" />
+        <TextBlock Classes="wizard-subtitle" Text="{Binding Subtitle}" />
 
         <CheckBox IsChecked="{Binding Agreed}"
                   HorizontalAlignment="Center"
@@ -44,9 +39,9 @@
             </StackPanel>
         </CheckBox>
 
-        <Button Command="{Binding ContinueCommand}"
-                IsEnabled="{Binding Agreed}"
-                ToolTip.Tip="下一步"
+        <!-- 未勾选同意时 NextCommand 由 CanExecute 自动置灰 -->
+        <Button Command="{Binding NextCommand}"
+                ToolTip.Tip="{Binding NextToolTip}"
                 Width="48" Height="48"
                 CornerRadius="24"
                 Classes="accent"

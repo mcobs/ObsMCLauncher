@@ -1,20 +1,18 @@
 using System;
 using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
 using ObsMCLauncher.Core.Utils;
 
 namespace ObsMCLauncher.Desktop.ViewModels;
 
 /// <summary>
-/// 欢迎流程：开源许可页。展示 LICENSE 全文，同意后按入口继续
-/// （正常流程直接完成，数据迁移入口进入数据迁移页）。
+/// 欢迎流程：开源许可页（两条流程的第 1 步）。
+/// 展示 LICENSE 全文，勾选同意后才能前进——去设置流程的第一页，或去数据迁移页，
+/// 由 <see cref="WelcomeViewModel"/> 当前的流程模式决定。
 /// </summary>
-public partial class WelcomeLicensePageViewModel : ViewModelBase
+public partial class WelcomeLicensePageViewModel : WelcomeStepViewModel
 {
     private const string LicenseResourceName = "ObsMCLauncher.Desktop.LICENSE.txt";
-
-    private readonly WelcomeViewModel _owner;
 
     /// <summary>许可全文（程序集内嵌入的 LICENSE 文件）</summary>
     public string LicenseText { get; }
@@ -24,10 +22,15 @@ public partial class WelcomeLicensePageViewModel : ViewModelBase
     private bool agreed;
 
     public WelcomeLicensePageViewModel(WelcomeViewModel owner)
+        : base(owner, "同意许可条款", "要继续使用 ObsMCLauncher，您必须阅读并同意以下许可条款。")
     {
-        _owner = owner;
         LicenseText = LoadLicenseText();
     }
+
+    /// <summary>未勾选同意时不能前进</summary>
+    public override bool CanGoNext => Agreed;
+
+    partial void OnAgreedChanged(bool value) => NextCommand.NotifyCanExecuteChanged();
 
     private static string LoadLicenseText()
     {
@@ -45,23 +48,6 @@ public partial class WelcomeLicensePageViewModel : ViewModelBase
         {
             DebugLogger.Error("WelcomeLicense", $"加载许可文本失败: {ex.Message}");
             return "（未能加载许可文本）";
-        }
-    }
-
-    [RelayCommand]
-    private void Continue()
-    {
-        if (!Agreed)
-            return;
-
-        if (_owner.ContinueToMigration)
-        {
-            _owner.ContinueToMigration = false;
-            _owner.RequestNavigate(_owner.MigrationPage);
-        }
-        else
-        {
-            _owner.Complete();
         }
     }
 }

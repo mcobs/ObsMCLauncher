@@ -1,0 +1,117 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ObsMCLauncher.Desktop.ViewModels"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
+             xmlns:converters="using:ObsMCLauncher.Desktop.Converters"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="700" d:DesignHeight="480"
+             x:Class="ObsMCLauncher.Desktop.Views.WelcomeGamePageView"
+             x:DataType="vm:WelcomeGamePageViewModel">
+
+    <!--
+      向导「游戏」页。文件夹位置这一行的副标题直接显示**当前生效的目录**，
+      让用户一眼看到数据会落在哪；选「自定义」时下面多出一行路径输入。
+    -->
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Classes="wizard-card" VerticalAlignment="Center" Margin="0 8">
+            <TextBlock Classes="wizard-title" Text="{Binding Title}" />
+            <TextBlock Classes="wizard-subtitle" Text="{Binding Subtitle}" />
+
+            <StackPanel Classes="wizard-rows">
+                <ui:SettingsExpander Header="游戏文件夹位置"
+                                     Description="{Binding GameDirectoryDisplay}">
+                    <ui:SettingsExpander.IconSource>
+                        <ui:SymbolIconSource Symbol="FolderLink" />
+                    </ui:SettingsExpander.IconSource>
+                    <ui:SettingsExpander.Footer>
+                        <ComboBox Width="180"
+                                  ItemsSource="{Binding GameDirectoryLocationOptions}"
+                                  SelectedItem="{Binding GameDirectoryLocation, Mode=TwoWay}"
+                                  VerticalAlignment="Center">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Converter={x:Static converters:EnumToChineseTextConverter.Instance}}" />
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                    </ui:SettingsExpander.Footer>
+                </ui:SettingsExpander>
+
+                <ui:SettingsExpander Header="自定义文件夹"
+                                     Description="游戏文件将放在这个目录下"
+                                     IsVisible="{Binding IsCustomGameDirectory}">
+                    <ui:SettingsExpander.IconSource>
+                        <ui:SymbolIconSource Symbol="Edit" />
+                    </ui:SettingsExpander.IconSource>
+                    <ui:SettingsExpander.Footer>
+                        <Grid ColumnDefinitions="*,Auto" Width="420">
+                            <TextBox Grid.Column="0"
+                                     Text="{Binding CustomGameDirectory, Mode=TwoWay}"
+                                     Watermark="选择一个空目录或已有的 .minecraft 目录"
+                                     FontSize="12"
+                                     Margin="0 0 8 0" />
+                            <Button Grid.Column="1" Content="浏览" Width="72"
+                                    Click="BrowseGameDirectoryButton_OnClick" />
+                        </Grid>
+                    </ui:SettingsExpander.Footer>
+                </ui:SettingsExpander>
+
+                <ui:SettingsExpander Header="版本隔离"
+                                     Description="开启后每个版本使用独立的 mods / saves 等文件夹">
+                    <ui:SettingsExpander.IconSource>
+                        <ui:SymbolIconSource Symbol="Library" />
+                    </ui:SettingsExpander.IconSource>
+                    <ui:SettingsExpander.Footer>
+                        <ComboBox Width="260"
+                                  ItemsSource="{Binding GameDirectoryTypeOptions}"
+                                  SelectedItem="{Binding GameDirectoryType, Mode=TwoWay}"
+                                  VerticalAlignment="Center">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Converter={x:Static converters:EnumToChineseTextConverter.Instance}}" />
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                    </ui:SettingsExpander.Footer>
+                </ui:SettingsExpander>
+
+                <ui:SettingsExpander Header="最大内存分配"
+                                     Description="按物理内存的一半左右填比较稳妥；之后可在设置里再改">
+                    <ui:SettingsExpander.IconSource>
+                        <ui:SymbolIconSource Symbol="Calculator" />
+                    </ui:SettingsExpander.IconSource>
+                    <ui:SettingsExpander.Footer>
+                        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                            <Slider Width="180" Minimum="1024" Maximum="65536"
+                                    TickFrequency="1024" IsSnapToTickEnabled="True"
+                                    Value="{Binding MaxMemory, Mode=TwoWay}" />
+                            <TextBox Text="{Binding MaxMemory, Mode=TwoWay}" Width="70"
+                                     FontSize="12"
+                                     HorizontalContentAlignment="Right"
+                                     Watermark="MB" />
+                            <TextBlock Text="MB" VerticalAlignment="Center"
+                                       Foreground="{DynamicResource TextSecondaryBrush}" />
+                        </StackPanel>
+                    </ui:SettingsExpander.Footer>
+                </ui:SettingsExpander>
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Center" Margin="0 12 0 0">
+                <Button Classes="wizard-nav"
+                        Command="{Binding BackCommand}"
+                        IsVisible="{Binding CanGoBack}"
+                        ToolTip.Tip="上一步">
+                    <ui:SymbolIcon Symbol="ChevronLeft" FontSize="18" />
+                </Button>
+                <Button Classes="wizard-nav accent"
+                        Command="{Binding NextCommand}"
+                        ToolTip.Tip="{Binding NextToolTip}">
+                    <ui:SymbolIcon Symbol="ChevronRight" FontSize="18" />
+                </Button>
+            </StackPanel>
+        </StackPanel>
+    </ScrollViewer>
+
+</UserControl>

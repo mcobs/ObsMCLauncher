@@ -1,0 +1,114 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ObsMCLauncher.Desktop.ViewModels"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="700" d:DesignHeight="480"
+             x:Class="ObsMCLauncher.Desktop.Views.WelcomeAppearancePageView"
+             x:DataType="vm:WelcomeAppearancePageViewModel">
+
+    <!--
+      向导「外观」页。每一行是一个平级的 ui:SettingsExpander
+      （Header 行标题 / Description 副标题 / IconSource 行首图标 / Footer 右侧控件槽），
+      与 ClassIsland 的向导设置页写法一致。
+      这里的改动会即时落到全局资源上，所以用户当场就能看到效果。
+    -->
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Classes="wizard-card" VerticalAlignment="Center" Margin="0 8">
+            <TextBlock Classes="wizard-title" Text="{Binding Title}" />
+            <TextBlock Classes="wizard-subtitle" Text="{Binding Subtitle}" />
+
+            <StackPanel Classes="wizard-rows">
+                <ui:SettingsExpander Header="主题模式"
+                                     Description="启动器的整体配色">
+                    <ui:SettingsExpander.IconSource>
+                        <ui:SymbolIconSource Symbol="DarkTheme" />
+                    </ui:SettingsExpander.IconSource>
+                    <ui:SettingsExpander.Footer>
+                        <ComboBox Width="160" SelectedIndex="{Binding ThemeMode, Mode=TwoWay}"
+                                  VerticalAlignment="Center">
+                            <ComboBoxItem Content="深色模式" />
+                            <ComboBoxItem Content="浅色模式" />
+                            <ComboBoxItem Content="跟随系统" />
+                        </ComboBox>
+                    </ui:SettingsExpander.Footer>
+                </ui:SettingsExpander>
+
+                <ui:SettingsExpander Header="强调色"
+                                     Description="高亮按钮、选中态等强调元素使用的颜色">
+                    <ui:SettingsExpander.IconSource>
+                        <ui:SymbolIconSource Symbol="ColorFill" />
+                    </ui:SettingsExpander.IconSource>
+                    <ui:SettingsExpander.Footer>
+                        <ColorPicker Color="{Binding AccentColorValue, Mode=TwoWay}"
+                                     VerticalAlignment="Center" />
+                    </ui:SettingsExpander.Footer>
+                </ui:SettingsExpander>
+
+                <ui:SettingsExpander Header="圆角半径"
+                                     Description="主要容器与卡片的圆角大小">
+                    <ui:SettingsExpander.IconSource>
+                        <ui:SymbolIconSource Symbol="Ruler" />
+                    </ui:SettingsExpander.IconSource>
+                    <ui:SettingsExpander.Footer>
+                        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                            <Slider Width="150" Minimum="0" Maximum="28" TickFrequency="1"
+                                    IsSnapToTickEnabled="True"
+                                    Value="{Binding CornerRadius, Mode=TwoWay}" />
+                            <TextBlock Text="{Binding CornerRadius}" FontSize="12"
+                                       Foreground="{DynamicResource TextSecondaryBrush}"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+                    </ui:SettingsExpander.Footer>
+                </ui:SettingsExpander>
+
+                <ui:SettingsExpander Header="界面密度"
+                                     Description="主要界面的留白与间距">
+                    <ui:SettingsExpander.IconSource>
+                        <ui:SymbolIconSource Symbol="List" />
+                    </ui:SettingsExpander.IconSource>
+                    <ui:SettingsExpander.Footer>
+                        <ComboBox Width="140" SelectedIndex="{Binding Density, Mode=TwoWay}"
+                                  VerticalAlignment="Center">
+                            <ComboBoxItem Content="紧凑" />
+                            <ComboBoxItem Content="标准" />
+                            <ComboBoxItem Content="宽松" />
+                        </ComboBox>
+                    </ui:SettingsExpander.Footer>
+                </ui:SettingsExpander>
+
+                <ui:SettingsExpander Header="动画级别"
+                                     Description="主要过渡动画的启用与强度">
+                    <ui:SettingsExpander.IconSource>
+                        <ui:SymbolIconSource Symbol="Play" />
+                    </ui:SettingsExpander.IconSource>
+                    <ui:SettingsExpander.Footer>
+                        <ComboBox Width="140" SelectedIndex="{Binding AnimationLevel, Mode=TwoWay}"
+                                  VerticalAlignment="Center">
+                            <ComboBoxItem Content="禁用" />
+                            <ComboBoxItem Content="标准" />
+                            <ComboBoxItem Content="华丽" />
+                        </ComboBox>
+                    </ui:SettingsExpander.Footer>
+                </ui:SettingsExpander>
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Center" Margin="0 12 0 0">
+                <Button Classes="wizard-nav"
+                        Command="{Binding BackCommand}"
+                        IsVisible="{Binding CanGoBack}"
+                        ToolTip.Tip="上一步">
+                    <ui:SymbolIcon Symbol="ChevronLeft" FontSize="18" />
+                </Button>
+                <Button Classes="wizard-nav accent"
+                        Command="{Binding NextCommand}"
+                        ToolTip.Tip="{Binding NextToolTip}">
+                    <ui:SymbolIcon Symbol="ChevronRight" FontSize="18" />
+                </Button>
+            </StackPanel>
+        </StackPanel>
+    </ScrollViewer>
+
+</UserControl>

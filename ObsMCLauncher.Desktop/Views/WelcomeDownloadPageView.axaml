@@ -1,0 +1,99 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ObsMCLauncher.Desktop.ViewModels"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
+             xmlns:converters="using:ObsMCLauncher.Desktop.Converters"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="700" d:DesignHeight="480"
+             x:Class="ObsMCLauncher.Desktop.Views.WelcomeDownloadPageView"
+             x:DataType="vm:WelcomeDownloadPageViewModel">
+
+    <!-- 向导「下载」页：下载源 / 镜像策略 / 并发数 / 资源文件。 -->
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Classes="wizard-card" VerticalAlignment="Center" Margin="0 8">
+            <TextBlock Classes="wizard-title" Text="{Binding Title}" />
+            <TextBlock Classes="wizard-subtitle" Text="{Binding Subtitle}" />
+
+            <StackPanel Classes="wizard-rows">
+                <ui:SettingsExpander Header="下载源"
+                                     Description="从官方的 Mojang 服务器下载，或走国内镜像">
+                    <ui:SettingsExpander.IconSource>
+                        <ui:SymbolIconSource Symbol="Cloud" />
+                    </ui:SettingsExpander.IconSource>
+                    <ui:SettingsExpander.Footer>
+                        <ComboBox Width="180"
+                                  ItemsSource="{Binding DownloadSourceOptions}"
+                                  SelectedItem="{Binding DownloadSource, Mode=TwoWay}"
+                                  VerticalAlignment="Center">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Converter={x:Static converters:EnumToChineseTextConverter.Instance}}" />
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                    </ui:SettingsExpander.Footer>
+                </ui:SettingsExpander>
+
+                <ui:SettingsExpander Header="社区镜像源"
+                                     Description="镜像源下载更快，但内容未经 Mojang 签名">
+                    <ui:SettingsExpander.IconSource>
+                        <ui:SymbolIconSource Symbol="CloudSync" />
+                    </ui:SettingsExpander.IconSource>
+                    <ui:SettingsExpander.Footer>
+                        <ComboBox Width="180"
+                                  ItemsSource="{Binding MirrorSourceModeOptions}"
+                                  SelectedItem="{Binding MirrorSourceMode, Mode=TwoWay}"
+                                  VerticalAlignment="Center">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Converter={x:Static converters:EnumToChineseTextConverter.Instance}}" />
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                    </ui:SettingsExpander.Footer>
+                </ui:SettingsExpander>
+
+                <ui:SettingsExpander Header="最大下载线程"
+                                     Description="同时下载的文件数量，太大反而容易被限速">
+                    <ui:SettingsExpander.IconSource>
+                        <ui:SymbolIconSource Symbol="TwoPage" />
+                    </ui:SettingsExpander.IconSource>
+                    <ui:SettingsExpander.Footer>
+                        <ComboBox Width="120"
+                                  ItemsSource="{Binding MaxDownloadThreadsOptions}"
+                                  SelectedItem="{Binding MaxDownloadThreads, Mode=TwoWay}"
+                                  VerticalAlignment="Center" />
+                    </ui:SettingsExpander.Footer>
+                </ui:SettingsExpander>
+
+                <ui:SettingsExpander Header="完整下载资源文件"
+                                     Description="连同声音、语言、纹理一起下载，进游戏不会缺贴图">
+                    <ui:SettingsExpander.IconSource>
+                        <ui:SymbolIconSource Symbol="SelectAll" />
+                    </ui:SettingsExpander.IconSource>
+                    <ui:SettingsExpander.Footer>
+                        <ToggleSwitch IsChecked="{Binding DownloadAssetsWithGame, Mode=TwoWay}"
+                                      OnContent="" OffContent="" VerticalAlignment="Center" />
+                    </ui:SettingsExpander.Footer>
+                </ui:SettingsExpander>
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Center" Margin="0 12 0 0">
+                <Button Classes="wizard-nav"
+                        Command="{Binding BackCommand}"
+                        IsVisible="{Binding CanGoBack}"
+                        ToolTip.Tip="上一步">
+                    <ui:SymbolIcon Symbol="ChevronLeft" FontSize="18" />
+                </Button>
+                <Button Classes="wizard-nav accent"
+                        Command="{Binding NextCommand}"
+                        ToolTip.Tip="{Binding NextToolTip}">
+                    <ui:SymbolIcon Symbol="ChevronRight" FontSize="18" />
+                </Button>
+            </StackPanel>
+        </StackPanel>
+    </ScrollViewer>
+
+</UserControl>

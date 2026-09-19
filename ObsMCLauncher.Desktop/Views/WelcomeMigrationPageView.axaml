@@ -69,6 +69,16 @@
                                                  ShowAsMonochrome="False" />
                         </ui:SettingsExpander.IconSource>
                     </ui:SettingsExpander>
+
+                    <!-- 向导层面的回退：退回上一步（许可页）。本页的选择靠点击来源卡片前进 -->
+                    <Button Classes="wizard-nav"
+                            Command="{Binding BackCommand}"
+                            IsVisible="{Binding CanGoBack}"
+                            ToolTip.Tip="上一步"
+                            HorizontalAlignment="Center"
+                            Margin="0 12 0 0">
+                        <ui:SymbolIcon Symbol="ChevronLeft" FontSize="18" />
+                    </Button>
                 </StackPanel>
             </Border>
 
@@ -127,7 +137,7 @@
                     </CheckBox>
 
                     <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Center">
-                        <Button Command="{Binding BackCommand}"
+                        <Button Command="{Binding PreviousStepCommand}"
                                 ToolTip.Tip="上一步"
                                 Width="48" Height="48"
                                 CornerRadius="24"

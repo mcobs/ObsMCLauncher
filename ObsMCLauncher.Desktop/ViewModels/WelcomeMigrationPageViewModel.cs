@@ -34,13 +34,12 @@ public class MigrationDetailRow
 }
 
 /// <summary>
-/// 欢迎流程：数据迁移页（仅导入）。仿 ClassIsland 数据迁移向导，Carousel 分步：
-/// 选择导入来源 → 配置导入（主程序路径 + 数据项） → 导入中 → 导入完成。
+/// 欢迎流程：数据迁移页（仅导入），也是向导的一个步骤。仿 ClassIsland 数据迁移向导，
+/// Carousel 分步：选择导入来源 → 配置导入（主程序路径 + 数据项） → 导入中 → 导入完成。
+/// 完成后前进到完成页。
 /// </summary>
-public partial class WelcomeMigrationPageViewModel : ViewModelBase
+public partial class WelcomeMigrationPageViewModel : WelcomeStepViewModel
 {
-    private readonly WelcomeViewModel _owner;
-
     /// <summary>导入中页面的最短展示时长：即便导入瞬间完成，动画也完整播放</summary>
     private static readonly TimeSpan MinimumProgressDuration = TimeSpan.FromSeconds(1.5);
 
@@ -107,18 +106,21 @@ public partial class WelcomeMigrationPageViewModel : ViewModelBase
     private static bool IsWindows => RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
 
     public WelcomeMigrationPageViewModel(WelcomeViewModel owner)
+        : base(owner, "数据迁移", "从 Plain Craft Launcher 或 Hello Minecraft! Launcher 导入数据。")
     {
-        _owner = owner;
         AutoDetect();
     }
 
     /// <summary>选定导入来源，进入配置页</summary>
     [RelayCommand]
-    private void Next() => PageIndex = 1;
+    private void ConfigureStep() => PageIndex = 1;
 
-    /// <summary>返回来源选择页</summary>
+    /// <summary>
+    /// 返回来源选择页：这是**本页 Carousel 内部**的上一步（配置页 → 来源页），
+    /// 与向导级的「上一步」（退回许可页，走基类 BackCommand）是两码事，故单独命名。
+    /// </summary>
     [RelayCommand]
-    private void Back() => PageIndex = 0;
+    private void PreviousStep() => PageIndex = 0;
 
     /// <summary>Carousel 当前页索引（0 选择来源 / 1 配置导入 / 2 导入中 / 3 完成）</summary>
     [ObservableProperty]
@@ -198,9 +200,9 @@ public partial class WelcomeMigrationPageViewModel : ViewModelBase
         _ => PclMigrationService.Migrate(SourceDirectory, ImportAppSettings, ImportGameSettings)
     };
 
-    /// <summary>完成向导，结束欢迎流程</summary>
+    /// <summary>完成导入，前进到向导的完成页</summary>
     [RelayCommand]
-    private void Finish() => _owner.Complete();
+    private void Finish() => Owner.GoNext();
 
     /// <summary>浏览选择主程序（由视图调用文件选择器后回填）</summary>
     public void SetSourceExecutable(string path)
