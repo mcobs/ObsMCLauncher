@@ -163,6 +163,10 @@
     <SolidColorBrush x:Key="TitleBarBackgroundBrush" Color="#141619"/>
     <SolidColorBrush x:Key="TitleBarBorderBrush" Color="#1E2128"/>
 
+    <!-- 自绘标题栏的系统按钮底：悬停/按下用低透明度叠层，深色叠白、浅色叠黑 -->
+    <SolidColorBrush x:Key="TitleBarButtonHoverBrush" Color="#FFFFFF" Opacity="0.09"/>
+    <SolidColorBrush x:Key="TitleBarButtonPressedBrush" Color="#FFFFFF" Opacity="0.16"/>
+
     <!-- ===== FluentAvalonia 控件资源（NavigationView / SettingsExpander 等），深色默认值 ===== -->
     <SolidColorBrush x:Key="NavigationViewDefaultPaneBackground" Color="#141619"/>
     <SolidColorBrush x:Key="NavigationViewContentBackground" Color="Transparent"/>

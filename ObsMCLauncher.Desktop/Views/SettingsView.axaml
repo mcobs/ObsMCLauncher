@@ -22,10 +22,18 @@
         </ui:NavigationViewItem.IconSource>
       </ui:NavigationViewItem>
 
-      <ui:NavigationViewItem Content="通用" Tag="General">
+      <!-- 二级导航：父项自己也是页面（Tag 命中 PageMap），子项是它下面的细分页 -->
+      <ui:NavigationViewItem Content="通用" Tag="General" IsExpanded="True">
         <ui:NavigationViewItem.IconSource>
           <ui:SymbolIconSource Symbol="Settings"/>
         </ui:NavigationViewItem.IconSource>
+        <ui:NavigationViewItem.MenuItems>
+          <ui:NavigationViewItem Content="窗口" Tag="Advanced">
+            <ui:NavigationViewItem.IconSource>
+              <ui:SymbolIconSource Symbol="NewWindow"/>
+            </ui:NavigationViewItem.IconSource>
+          </ui:NavigationViewItem>
+        </ui:NavigationViewItem.MenuItems>
       </ui:NavigationViewItem>
 
       <ui:NavigationViewItem Content="外观" Tag="Appearance">
@@ -45,7 +53,8 @@
           <ui:SymbolIconSource Symbol="Download"/>
         </ui:NavigationViewItem.IconSource>
       </ui:NavigationViewItem>
-    </ui:NavigationView.MenuItems>
+
+      </ui:NavigationView.MenuItems>
 
     <ui:Frame x:Name="SettingsFrame" IsNavigationStackEnabled="True"/>
 

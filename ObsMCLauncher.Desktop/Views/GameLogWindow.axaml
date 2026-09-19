@@ -3,6 +3,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
+        xmlns:controls="using:ObsMCLauncher.Desktop.Controls"
         x:Class="ObsMCLauncher.Desktop.Views.GameLogWindow"
         Title="游戏日志"
         Width="900"
@@ -18,7 +19,12 @@
     </Style>
   </Window.Styles>
 
-  <Grid RowDefinitions="*,Auto">
+  <Grid RowDefinitions="Auto,*">
+
+    <!-- 自绘标题栏：系统标题栏模式下整条收起，行高塌陷为 0 -->
+    <controls:WindowTitleBar Grid.Row="0" />
+
+    <Grid Grid.Row="1" RowDefinitions="*,Auto">
 
     <Border Grid.Row="0" Background="{DynamicResource BackgroundBrush}">
       <ScrollViewer x:Name="LogScrollViewer"
@@ -63,5 +69,6 @@
       </Grid>
     </Border>
 
+    </Grid>
   </Grid>
 </Window>

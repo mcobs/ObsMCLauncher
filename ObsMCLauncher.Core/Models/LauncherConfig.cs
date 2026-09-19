@@ -271,6 +271,11 @@ public class LauncherConfig
 
     public int NotificationAutoCloseSeconds { get; set; } = 5;
 
+    /// <summary>
+    /// 是否使用操作系统原生标题栏。默认 false：所有窗口统一走启动器自定义标题栏。
+    /// </summary>
+    public bool UseSystemTitleBar { get; set; } = false;
+
     public List<ServerInfo> Servers { get; set; } = [];
 
     public List<HomeCardConfig> HomeCards { get; set; } = [];

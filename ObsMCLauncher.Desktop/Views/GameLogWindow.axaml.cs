@@ -12,6 +12,7 @@ using Avalonia.Media;
 using Avalonia.Styling;
 using Avalonia.Threading;
 using Avalonia.Platform.Storage;
+using ObsMCLauncher.Desktop.Services;
 
 namespace ObsMCLauncher.Desktop.Views;
 
@@ -97,6 +98,8 @@ public partial class GameLogWindow : Window
     public GameLogWindow()
     {
         InitializeComponent();
+
+        WindowChrome.Apply(this);
 
         if (Application.Current != null)
         {

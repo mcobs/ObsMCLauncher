@@ -151,6 +151,10 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable, IWallpaperC
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(IsNavCollapsed)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(NotificationPosition)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(NotificationAutoCloseSeconds)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(UseSystemTitleBar)));
+
+        // 配置可能刚被换掉，标题栏策略跟着回一次
+        WindowChrome.SetUseSystemTitleBar(_config.UseSystemTitleBar);
 
         UpdateGameDirectoryDisplayText();
         _ = ReloadJavaOptionsAsync();
@@ -1803,6 +1807,22 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable, IWallpaperC
         }
     }
 
+    /// <summary>是否使用操作系统原生标题栏。开关直接驱动 WindowChrome，现存窗口即时换框</summary>
+    public bool UseSystemTitleBar
+    {
+        get => _config.UseSystemTitleBar;
+        set
+        {
+            if (_config.UseSystemTitleBar == value) return;
+
+            _config.UseSystemTitleBar = value;
+            OnPropertyChanged(new PropertyChangedEventArgs(nameof(UseSystemTitleBar)));
+
+            WindowChrome.SetUseSystemTitleBar(value);
+            AutoSave();
+        }
+    }
+
     public static string GetDirectoryLocationText(DirectoryLocation location) => location switch
     {
         DirectoryLocation.AppData => OperatingSystem.IsWindows() ? "%APPDATA%\\.minecraft（默认）"
@@ -2086,6 +2106,10 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable, IWallpaperC
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(IsNavCollapsed)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(NotificationPosition)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(NotificationAutoCloseSeconds)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(UseSystemTitleBar)));
+
+        // 配置可能刚被换掉，标题栏策略跟着回一次
+        WindowChrome.SetUseSystemTitleBar(_config.UseSystemTitleBar);
 
         UpdateGameDirectoryDisplayText();
         _ = ReloadJavaOptionsAsync();
@@ -2195,6 +2219,8 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable, IWallpaperC
         resources["NavBorderBrush"] = new SolidColorBrush(Color.Parse("#E2E8F0"));
         resources["TitleBarBackgroundBrush"] = new SolidColorBrush(Color.Parse("#FFFFFF"));
         resources["TitleBarBorderBrush"] = new SolidColorBrush(Color.Parse("#E2E8F0"));
+        resources["TitleBarButtonHoverBrush"] = new SolidColorBrush(Colors.Black) { Opacity = 0.06 };
+        resources["TitleBarButtonPressedBrush"] = new SolidColorBrush(Colors.Black) { Opacity = 0.10 };
         resources["WindowBackgroundBrush"] = new SolidColorBrush(Color.Parse("#F8FAFC"));
         resources["CardBackgroundBrush"] = new SolidColorBrush(Color.Parse("#FFFFFF"));
         resources["CardBorderBrush"] = new SolidColorBrush(Color.Parse("#E2E8F0"));
@@ -2251,6 +2277,8 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable, IWallpaperC
         resources["NavBorderBrush"] = new SolidColorBrush(Color.Parse("#1E2128"));
         resources["TitleBarBackgroundBrush"] = new SolidColorBrush(Color.Parse("#141619"));
         resources["TitleBarBorderBrush"] = new SolidColorBrush(Color.Parse("#1E2128"));
+        resources["TitleBarButtonHoverBrush"] = new SolidColorBrush(Colors.White) { Opacity = 0.09 };
+        resources["TitleBarButtonPressedBrush"] = new SolidColorBrush(Colors.White) { Opacity = 0.16 };
         resources["WindowBackgroundBrush"] = new SolidColorBrush(Color.Parse("#0B0D10"));
         resources["CardBackgroundBrush"] = new SolidColorBrush(Color.Parse("#1C1F26"));
         resources["CardBorderBrush"] = new SolidColorBrush(Color.Parse("#2A2E37"));

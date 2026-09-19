@@ -14,6 +14,7 @@ using FluentAvalonia.UI.Controls.Primitives;
 using FluentAvalonia.UI.Media.Animation;
 using FluentAvalonia.UI.Navigation;
 using ObsMCLauncher.Core.Models;
+using ObsMCLauncher.Desktop.Services;
 using ObsMCLauncher.Desktop.ViewModels;
 
 namespace ObsMCLauncher.Desktop.Views;
@@ -27,6 +28,8 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+
+        WindowChrome.Apply(this);
 
         PropertyChanged += OnWindowPropertyChanged;
         Closing += MainWindow_Closing;

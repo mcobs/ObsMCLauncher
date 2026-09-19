@@ -21,6 +21,7 @@ public partial class SettingsView : UserControl
         ["Appearance"] = typeof(SettingsAppearancePage),
         ["Download"] = typeof(SettingsDownloadPage),
         ["General"] = typeof(SettingsGeneralPage),
+        ["Advanced"] = typeof(SettingsAdvancedPage),
     };
 
     private bool _initialized;
@@ -44,27 +45,71 @@ public partial class SettingsView : UserControl
             tab = 0;
         }
 
-        SettingsNav.SelectedItem = SettingsNav.MenuItems[tab];
+        // 折叠分组本身没有页面，落到它的第一个子项上
+        var target = ResolveTabItem(tab);
+        SettingsNav.SelectedItem = target ?? SettingsNav.MenuItems[0];
+        if (target != null)
+        {
+            ExpandParent(target);
+        }
+
         FixSelectionIndicatorGhosts();
+    }
+
+    /// <summary>把菜单索引还原成可导航的项：分组项取它的第一个子项</summary>
+    private NavigationViewItem? ResolveTabItem(int tab)
+    {
+        if (SettingsNav.MenuItems.Count == 0) return null;
+
+        if (SettingsNav.MenuItems[tab] is not NavigationViewItem item) return null;
+
+        if (item.Tag is string tag && PageMap.ContainsKey(tag)) return item;
+
+        return item.MenuItems.OfType<NavigationViewItem>().FirstOrDefault();
     }
 
     private void OnSelectionChanged(object? sender, NavigationViewSelectionChangedEventArgs e)
     {
-        if (e.SelectedItemContainer is NavigationViewItem item &&
-            item.Tag is string tag &&
-            PageMap.TryGetValue(tag, out var pageType))
+        if (e.SelectedItemContainer is not NavigationViewItem item ||
+            item.Tag is not string tag ||
+            !PageMap.TryGetValue(tag, out var pageType))
         {
-            if (SettingsFrame.CurrentSourcePageType != pageType)
+            return;
+        }
+
+        if (SettingsFrame.CurrentSourcePageType != pageType)
+        {
+            SettingsFrame.Navigate(pageType);
+        }
+
+        if (DataContext is SettingsViewModel vm)
+        {
+            // 子项不在 MenuItems 里，索引得按父级算，否则会写成 -1
+            var index = SettingsNav.MenuItems.IndexOf(item);
+            if (index < 0 && FindParent(item) is { } parent)
             {
-                SettingsFrame.Navigate(pageType);
+                index = SettingsNav.MenuItems.IndexOf(parent);
             }
 
-            if (DataContext is SettingsViewModel vm)
+            if (index >= 0)
             {
-                vm.SelectedSettingsTab = SettingsNav.MenuItems.IndexOf(item);
+                vm.SelectedSettingsTab = index;
             }
+        }
 
-            Dispatcher.UIThread.Post(FixSelectionIndicatorGhosts);
+        ExpandParent(item);
+        Dispatcher.UIThread.Post(FixSelectionIndicatorGhosts);
+    }
+
+    private NavigationViewItem? FindParent(NavigationViewItem child)
+        => SettingsNav.MenuItems.OfType<NavigationViewItem>()
+            .FirstOrDefault(parent => parent.MenuItems.Contains(child));
+
+    private void ExpandParent(NavigationViewItem child)
+    {
+        if (FindParent(child) is { } parent)
+        {
+            parent.IsExpanded = true;
         }
     }
 

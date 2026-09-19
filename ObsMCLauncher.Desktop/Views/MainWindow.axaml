@@ -145,7 +145,12 @@
             BoxShadow="{DynamicResource WindowShadow}"
             CornerRadius="0"
             ClipToBounds="True">
-    <Grid x:Name="RootGrid" RowDefinitions="*">
+    <Grid RowDefinitions="Auto,*">
+
+        <!-- 自绘标题栏：系统标题栏模式下整条收起，行高塌陷为 0 -->
+        <controls:WindowTitleBar Grid.Row="0" />
+
+    <Grid x:Name="RootGrid" Grid.Row="1" RowDefinitions="*">
 
         <!-- 主内容区壁纸底层：静态图与动图统一由 WallpaperHost 承载（含交叉淡入与省电暂停） -->
         <controls:WallpaperHost Grid.Row="0"
@@ -625,6 +630,7 @@
             </ItemsControl.ItemTemplate>
         </ItemsControl>
 
+    </Grid>
     </Grid>
     </Border>
 

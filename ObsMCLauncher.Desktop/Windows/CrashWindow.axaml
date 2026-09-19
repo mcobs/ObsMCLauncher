@@ -1,6 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:ObsMCLauncher.Desktop.ViewModels"
+        xmlns:controls="using:ObsMCLauncher.Desktop.Controls"
         x:Class="ObsMCLauncher.Desktop.Windows.CrashWindow"
         x:DataType="vm:CrashWindowViewModel"
         Title="程序崩溃了"
@@ -12,7 +13,12 @@
 <Window.Styles>
   </Window.Styles>
 
-  <Grid RowDefinitions="*,Auto">
+  <Grid RowDefinitions="Auto,*">
+
+    <!-- 自绘标题栏：系统标题栏模式下整条收起，行高塌陷为 0 -->
+    <controls:WindowTitleBar Grid.Row="0" />
+
+    <Grid Grid.Row="1" RowDefinitions="*,Auto">
 
     <!-- 内容区域 -->
     <Grid Grid.Row="0" Margin="20">
@@ -89,6 +95,7 @@
                 Background="#DC3545" Height="34" Padding="16,0"/>
       </Grid>
     </Border>
+    </Grid>
   </Grid>
 
 </Window>

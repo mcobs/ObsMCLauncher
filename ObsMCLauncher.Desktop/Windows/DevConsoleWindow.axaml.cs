@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Input;
+using ObsMCLauncher.Desktop.Services;
 using ObsMCLauncher.Desktop.ViewModels;
 
 namespace ObsMCLauncher.Desktop.Windows;
@@ -9,6 +10,9 @@ public partial class DevConsoleWindow : Window
     public DevConsoleWindow()
     {
         InitializeComponent();
+
+        WindowChrome.Apply(this);
+
         DataContext = new DevConsoleViewModel(this);
     }
 

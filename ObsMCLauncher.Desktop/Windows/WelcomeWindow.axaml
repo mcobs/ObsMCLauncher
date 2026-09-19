@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:ObsMCLauncher.Desktop.ViewModels"
         xmlns:ui="using:FluentAvalonia.UI.Controls"
+        xmlns:controls="using:ObsMCLauncher.Desktop.Controls"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" d:DesignWidth="760" d:DesignHeight="560"
@@ -37,10 +38,13 @@
             BoxShadow="{DynamicResource WindowShadow}"
             CornerRadius="0"
             ClipToBounds="True">
-        <Grid RowDefinitions="*">
+        <Grid RowDefinitions="Auto,*">
+
+            <!-- 自绘标题栏：系统标题栏模式下整条收起，行高塌陷为 0 -->
+            <controls:WindowTitleBar Grid.Row="0" />
 
             <!-- 内容区 -->
-            <Grid Grid.Row="0" Background="{DynamicResource BackgroundBrush}">
+            <Grid Grid.Row="1" Background="{DynamicResource BackgroundBrush}">
 
                 <!-- 主内容区：窗口打开后加 anim 类淡入，内部 Frame 做分页导航（开场字母动画、版本号与数据迁移入口都在欢迎首页内） -->
                 <Border x:Name="ContentRoot" Classes="welcome-content">

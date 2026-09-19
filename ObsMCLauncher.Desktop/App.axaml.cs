@@ -11,6 +11,7 @@ using Avalonia.Markup.Xaml;
 using Avalonia.Media;
 using Avalonia.VisualTree;
 using FluentAvalonia.Styling;
+using ObsMCLauncher.Desktop.Services;
 using ObsMCLauncher.Desktop.ViewModels;
 using ObsMCLauncher.Desktop.Views;
 using ObsMCLauncher.Desktop.Views.SettingsPages;
@@ -52,6 +53,9 @@ public partial class App : Application
             ObsMCLauncher.Core.Bootstrap.LauncherBootstrap.Initialize();
 
             ObsMCLauncher.Core.Services.UpdateService.Initialize(config.UpdateChannel);
+
+            // 标题栏策略必须在任何窗口创建前定好：默认自定义标题栏，配置里开了才用系统标题栏
+            WindowChrome.Initialize(config.UseSystemTitleBar);
 
             // 首次启动：默认使用深色主题（0=深色），并立即落盘
             // （必须在创建 MainWindowViewModel 之前，主题由 SettingsViewModel 构造时应用）

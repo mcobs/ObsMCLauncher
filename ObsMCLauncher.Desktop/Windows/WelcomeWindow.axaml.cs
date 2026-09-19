@@ -6,6 +6,7 @@ using Avalonia.Media;
 using FluentAvalonia.UI.Controls;
 using FluentAvalonia.UI.Media.Animation;
 using FluentAvalonia.UI.Navigation;
+using ObsMCLauncher.Desktop.Services;
 using ObsMCLauncher.Desktop.ViewModels;
 
 namespace ObsMCLauncher.Desktop.Windows;
@@ -33,6 +34,8 @@ public partial class WelcomeWindow : Window
     public WelcomeWindow(bool isFirstRun = false)
     {
         InitializeComponent();
+
+        WindowChrome.Apply(this);
 
         _vm = new WelcomeViewModel(isFirstRun);
         DataContext = _vm;

@@ -1,0 +1,121 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="ObsMCLauncher.Desktop.Controls.WindowTitleBar">
+
+  <!--
+    自绘标题栏。默认所有窗口都挂这一条，只有设置里打开「使用系统标题栏」时才整条收起。
+    样式对齐 Windows 11 原生：32 高、按钮 46x32、最小化/最大化悬停是低透明度叠层、
+    关闭悬停是红色底 + 白色叉。背景固定用 WindowBackgroundBrush，保证与窗口底色一致。
+  -->
+
+  <UserControl.Styles>
+    <Style Selector="Button.caption">
+      <Setter Property="Width" Value="46" />
+      <Setter Property="Height" Value="32" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="CornerRadius" Value="0" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border Background="{TemplateBinding Background}">
+            <ContentPresenter Content="{TemplateBinding Content}"
+                              ContentTemplate="{TemplateBinding ContentTemplate}"
+                              HorizontalAlignment="Center"
+                              VerticalAlignment="Center" />
+          </Border>
+        </ControlTemplate>
+      </Setter>
+    </Style>
+
+    <!--
+      描边色必须走样式，不能写在 Path 上：元素上的局部值优先级高于样式，
+      会让下面 :pointerover 的白色失效，悬停时叉叉不会变白。
+    -->
+    <Style Selector="Button.caption Path">
+      <Setter Property="Stroke" Value="{DynamicResource TextBrush}" />
+    </Style>
+
+    <Style Selector="Button.caption:pointerover">
+      <Setter Property="Background" Value="{DynamicResource TitleBarButtonHoverBrush}" />
+    </Style>
+
+    <Style Selector="Button.caption:pressed">
+      <Setter Property="Background" Value="{DynamicResource TitleBarButtonPressedBrush}" />
+    </Style>
+
+    <Style Selector="Button.caption.close:pointerover">
+      <Setter Property="Background" Value="#C42B1C" />
+    </Style>
+
+    <Style Selector="Button.caption.close:pressed">
+      <Setter Property="Background" Value="#B0241A" />
+    </Style>
+
+    <Style Selector="Button.caption.close:pointerover Path">
+      <Setter Property="Stroke" Value="#FFFFFF" />
+    </Style>
+
+    <Style Selector="Button.caption.close:pressed Path">
+      <Setter Property="Stroke" Value="#FFFFFF" />
+    </Style>
+  </UserControl.Styles>
+
+  <Border x:Name="BarRoot"
+          Height="32"
+          Background="{DynamicResource WindowBackgroundBrush}"
+          PointerPressed="BarRoot_PointerPressed">
+    <Grid ColumnDefinitions="Auto,*,Auto">
+
+      <!-- 图标 + 标题，点哪都能拖窗口 -->
+      <StackPanel Grid.Column="0"
+                  Orientation="Horizontal"
+                  Spacing="8"
+                  Margin="12,0,8,0"
+                  VerticalAlignment="Center">
+        <!-- 用 app_icon.ico 而不是 logo.png：logo.png 是 1920 见方的写实渲染图，
+             缩到 16 会糊成一团；ICO 本身就是给图标尺寸用的。 -->
+        <Image x:Name="AppIcon"
+               Width="16"
+               Height="16"
+               VerticalAlignment="Center"
+               Source="avares://ObsMCLauncher.Desktop/Assets/app_icon.ico" />
+        <TextBlock x:Name="TitleText"
+                   FontSize="12"
+                   VerticalAlignment="Center"
+                   TextTrimming="CharacterEllipsis"
+                   Foreground="{DynamicResource TextSecondaryBrush}" />
+      </StackPanel>
+
+      <!-- 右侧系统按钮 -->
+      <StackPanel Grid.Column="2" Orientation="Horizontal">
+        <Button x:Name="MinimizeButton" Classes="caption" Click="MinimizeButton_Click" ToolTip.Tip="最小化">
+          <Path Data="M0,5.5 H10"
+                StrokeThickness="1"
+                Stretch="None"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center" />
+        </Button>
+
+        <Button x:Name="MaximizeButton" Classes="caption" Click="MaximizeButton_Click" ToolTip.Tip="最大化">
+          <Path x:Name="MaximizeGlyph"
+                Data="M0.5,0.5 H9.5 V9.5 H0.5 Z"
+                StrokeThickness="1"
+                Stretch="None"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center" />
+        </Button>
+
+        <Button x:Name="CloseButton" Classes="caption close" Click="CloseButton_Click" ToolTip.Tip="关闭">
+          <Path Data="M0.5,0.5 L9.5,9.5 M9.5,0.5 L0.5,9.5"
+                StrokeThickness="1"
+                Stretch="None"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center" />
+        </Button>
+      </StackPanel>
+    </Grid>
+  </Border>
+</UserControl>

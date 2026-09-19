@@ -1,0 +1,40 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ObsMCLauncher.Desktop.ViewModels"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
+             x:Class="ObsMCLauncher.Desktop.Views.SettingsPages.SettingsAdvancedPage"
+             x:DataType="vm:SettingsViewModel">
+
+  <!--
+    窗口设置页（挂在「通用」二级导航下）。视觉语言与通用/外观页保持一致：顶层 ui:SettingsExpander，
+    参数行一律 ui:SettingsExpanderItem（Content 行标题 / Description 副标题 /
+    IconSource 行首图标 / Footer 右侧控件槽）。
+  -->
+
+  <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <StackPanel Margin="12,16,12,24" Spacing="16">
+
+      <TextBlock Text="窗口设置" FontSize="22" FontWeight="SemiBold"/>
+
+      <!-- ===== 窗口 ===== -->
+      <ui:SettingsExpander Header="窗口" Description="启动器窗口的标题栏与外观行为" IsExpanded="True">
+        <ui:SettingsExpander.IconSource>
+          <ui:SymbolIconSource Symbol="NewWindow"/>
+        </ui:SettingsExpander.IconSource>
+
+        <ui:SettingsExpanderItem Content="使用系统标题栏"
+                                 Description="开启后改用操作系统原生标题栏；关闭时使用启动器自定义标题栏，切换后立即生效">
+          <ui:SettingsExpanderItem.IconSource>
+            <ui:SymbolIconSource Symbol="FullScreenMaximize"/>
+          </ui:SettingsExpanderItem.IconSource>
+          <ui:SettingsExpanderItem.Footer>
+            <ToggleSwitch IsChecked="{Binding UseSystemTitleBar, Mode=TwoWay}"
+                          OnContent="" OffContent="" VerticalAlignment="Center"/>
+          </ui:SettingsExpanderItem.Footer>
+        </ui:SettingsExpanderItem>
+      </ui:SettingsExpander>
+
+    </StackPanel>
+  </ScrollViewer>
+
+</UserControl>
