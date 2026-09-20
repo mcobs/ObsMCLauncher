@@ -250,7 +250,10 @@ public interface IPluginContext
     /// <param name="title">标题</param>
     /// <param name="message">消息内容</param>
     /// <param name="type">通知类型：info, success, warning, error, progress</param>
-    /// <param name="durationSeconds">持续时间（秒），null表示无限，默认3秒</param>
+    /// <param name="durationSeconds">
+    /// 持续时间（秒）：null / 省略时按类型取默认时长（进度类默认不自动关闭，其余约 3–5 秒并尊重用户设置）；
+    /// 传 0 或负数表示不自动关闭，需调用 <see cref="CloseNotification"/> 手动关闭。
+    /// </param>
     /// <returns>通知ID，用于更新或关闭</returns>
     string ShowNotification(string title, string message, string type = "info", int? durationSeconds = null);
 

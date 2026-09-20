@@ -12,29 +12,27 @@
 - [插件结构](#插件结构)
 - [插件接口](#插件接口)
 - [API 参考](#api-参考)
-  - [事件系统](#1-事件系统)
-  - [注册UI标签页](#2-注册ui标签页)
-  - [注册主页卡片](#3-注册主页卡片)
-  - [目录获取](#4-目录获取)
-  - [启动器版本信息](#5-启动器版本信息)
-  - [通知系统](#6-通知系统)
-  - [自定义命令](#7-自定义命令)
-  - [日志写入](#8-日志写入)
-  - [获取已安装版本列表](#9-获取已安装版本列表)
-  - [获取当前账户信息](#10-获取当前账户信息)
-  - [游戏启动生命周期钩子](#11-游戏启动生命周期钩子)
-  - [提交下载请求](#12-提交下载请求)
-  - [其他增强 API](#13-其他增强-api)
-  - [崩溃数据 API](#14-崩溃数据-api)
-  - [崩溃事件](#15-崩溃事件)
-  - [UI 槽位](#16-ui-槽位)
-  - [任意 UI 访问](#17-任意-ui-访问)
-  - [API 版本](#18-api-版本)
+  - [API 总览](#api-总览)
+  - [1. 目录、版本与兼容性](#1-目录版本与兼容性)
+  - [2. 事件系统](#2-事件系统)
+  - [3. UI 扩展](#3-ui-扩展)
+    - [3.1 注册标签页](#31-注册标签页)
+    - [3.2 注册主页卡片](#32-注册主页卡片)
+    - [3.3 自定义命令](#33-自定义命令)
+    - [3.4 UI 槽位](#34-ui-槽位)
+    - [3.5 任意 UI 访问](#35-任意-ui-访问)
+    - [3.6 打开链接与页面跳转](#36-打开链接与页面跳转)
+  - [4. 通知系统](#4-通知系统)
+  - [5. 游戏启动生命周期钩子](#5-游戏启动生命周期钩子)
+  - [6. 下载](#6-下载)
+  - [7. 崩溃系统](#7-崩溃系统)
+  - [8. 日志与配置](#8-日志与配置)
 - [开发流程](#开发流程)
 - [测试插件](#测试插件)
 - [用户安装插件](#用户安装插件)
 - [发布流程](#发布流程)
 - [示例插件](#示例插件)
+- [UI 框架说明](#ui-框架说明)
 - [常见问题](#常见问题)
 
 ---
@@ -79,8 +77,6 @@ ObsMCLauncher 采用基于 .NET Assembly 的插件系统，支持开发者使用
 ---
 
 ## 📁 插件目录位置
-
-### 插件安装目录
 
 ObsMCLauncher 的插件目录是**固定的**，位于启动器运行目录下的 `OMCL\plugins\` 文件夹：
 
@@ -161,6 +157,9 @@ YourPlugin/
 }
 ```
 
+> 字段名一律 **camelCase**（`minLauncherVersion`，不是 `MinLauncherVersion`）。
+> 缺少 `id` / `name` / `version` 的插件会被启动器拒绝加载。
+
 ### 字段说明
 
 | 字段 | 类型 | 必需 | 说明 |
@@ -171,13 +170,34 @@ YourPlugin/
 | `author` | string | ✅ | 作者名称 |
 | `description` | string | ✅ | 简短描述（不超过 200 字） |
 | `repository` | string | ⭕ | 源代码仓库 URL |
-| `minLauncherVersion` | string | ⭕ | 最低启动器版本要求（默认 1.0.0） |
+| `minLauncherVersion` | string | ⭕ | 最低启动器版本要求（默认 1.0.0），见 [1. 目录、版本与兼容性](#1-目录版本与兼容性) |
 | `dependencies` | array | ⭕ | 依赖的其他插件ID列表 |
 | `tags` | array | ⭕ | 标签列表，支持平台标签：`Windows`、`Linux`、`macOS` |
 | `category` | string | ⭕ | 分类ID |
 | `homepage` | string | ⭕ | 插件主页 URL |
 | `license` | string | ⭕ | 开源协议 |
 | `icon` | string | ⭕ | 图标文件名（默认 icon.png） |
+
+> 程序集查找：启动器按 `{插件ID}.dll` 查找入口程序集，找不到时回退到插件目录内任意 `.dll`。
+> 是否启用由插件目录下的 `.disabled` 标记文件决定，见 [用户安装插件](#用户安装插件)。
+
+### 加载机制
+
+plugin.json 里**没有入口字段**，启动器也不需要你声明入口类：
+
+1. 扫描 `OMCL\plugins\` 下的每个子文件夹
+2. 读 `plugin.json` 并校验：`id` 与文件夹名一致、格式合规、不与已加载插件重复、`minLauncherVersion` 不高于当前启动器、声明的依赖插件已加载
+3. 要求根目录有 `README.md`（缺失会被判为加载失败）
+4. 定位程序集 `{插件ID}.dll`（找不到则用目录里第一个 `.dll`）；目录里有 `.disabled` 文件则跳过加载
+5. `Assembly.LoadFrom` 载入后，**取程序集中第一个实现了 `ILauncherPlugin` 的具体类**（非接口、非抽象），用 `Activator.CreateInstance` 创建实例，再调用 `OnLoad(context)`
+
+因此有两条硬约束：
+
+- 插件主类必须有 **public 无参构造函数**；
+- **一个程序集只会被取一个插件类**——想在一个 DLL 里塞多个插件是不行的，请拆成多个插件文件夹。
+
+校验失败、缺少 README、找不到插件类、或 `OnLoad` 抛异常时，启动器会在插件目录下写入 `.disabled` 标记，下次启动直接跳过（删掉该文件可重试）。
+注意依赖是按文件夹枚举顺序加载的，所以 `dependencies` 里声明的插件若排在后面，依赖方会首次加载失败被禁用，重启一次通常即可正常。
 
 ---
 
@@ -207,112 +227,80 @@ namespace ObsMCLauncher.Core.Plugins
 
 ### IPluginContext 接口
 
-通过插件上下文访问启动器功能：
+通过插件上下文访问启动器功能。完整定义见 [`ObsMCLauncher.Core/Plugins/IPluginContext.cs`](ObsMCLauncher.Core/Plugins/IPluginContext.cs)，
+下面各章按使用场景逐一说明。
 
 ```csharp
 namespace ObsMCLauncher.Core.Plugins
 {
     public interface IPluginContext
     {
+        // 事件名称常量：IPluginContext.EventNames.GameLaunched 等
+        public static class EventNames { /* ... */ }
+
+        // 目录、版本（见 1）
         string LauncherVersion { get; }
         string PluginDataDirectory { get; }
         string LauncherBaseDirectory { get; }
         string LauncherDataDirectory { get; }
         string GameDirectory { get; }
+        int ApiVersion { get; }
 
-        void RegisterTab(string title, string tabId, string? icon = null, object? payload = null);
+        // 事件（见 2）
         void SubscribeEvent(string eventName, Action<object?> handler);
         void UnsubscribeEvent(string eventName, Action<object?> handler);
         void PublishEvent(string eventName, object? eventData);
 
-        void RegisterHomeCard(
-            string cardId,
-            string title,
-            string description,
-            string? icon = null,
-            string? commandId = null,
-            object? payload = null);
-
-        void RegisterHomeCard(
-            string cardId,
-            string title,
-            string description,
-            string? icon,
-            string? commandId,
-            object? payload,
-            HomeCardSize defaultSize);
-
+        // UI 扩展（见 3）
+        void RegisterTab(string title, string tabId, string? icon = null, object? payload = null);
+        void RegisterTab(string title, string tabId, object? customContent, string? icon = null, object? payload = null);
+        void UnregisterTab(string tabId);
+        void RegisterHomeCard(string cardId, string title, string description,
+            string? icon = null, string? commandId = null, object? payload = null);
+        void RegisterHomeCard(string cardId, string title, string description,
+            string? icon, string? commandId, object? payload, HomeCardSize defaultSize);
         void UnregisterHomeCard(string cardId);
+        void RegisterCommand(string commandId, Action<object?> handler);
+        void UnregisterCommand(string commandId);
+        bool AddSlotContent(string slotId, string itemId, object content, int order = 0);
+        bool RemoveSlotContent(string slotId, string itemId);
+        void ClearSlotContent(string slotId);
+        IReadOnlyList<string> GetSlotIds();
+        object? GetSlotHost(string slotId);
+        object? GetUiRoot();
+        object? TryFindControlByName(string name);
+        void RunOnUiThread(Action action);
+        bool OpenUrl(string url);
+        void NavigateTo(string page);
 
-        void ShowNotification(string title, string message, string type = "info", int? durationSeconds = null);
+        // 通知（见 4）
+        string ShowNotification(string title, string message, string type = "info", int? durationSeconds = null);
         void UpdateNotification(string notificationId, string message, double? progress = null);
         void CloseNotification(string notificationId);
 
-        void RegisterCommand(string commandId, Action<object?> handler);
-        void UnregisterCommand(string commandId);
-
-        // ===== 扩展 API=====
-
-        /// <summary>写入启动器统一日志</summary>
-        void LogMessage(PluginLogLevel level, string message);
-
-        /// <summary>获取已安装版本只读列表；无任何版本或异常时返回空列表</summary>
-        IReadOnlyList<PluginVersionInfo> GetInstalledVersions();
-
-        /// <summary>获取当前默认/选中的账户精简信息（不含任何令牌）；未选中时返回 null</summary>
-        PluginAccountInfo? GetCurrentAccount();
-
-        /// <summary>注册游戏启动生命周期钩子</summary>
+        // 启动生命周期钩子（见 5）
         void RegisterGameLaunchHook(string hookId, GameLaunchPhase phase, Action<GameLaunchHookContext> handler);
-
-        /// <summary>注销启动生命周期钩子</summary>
         void UnregisterGameLaunchHook(string hookId);
+        void RegisterGameLaunchHookAsync(string hookId, GameLaunchPhase phase, Func<GameLaunchHookContext, Task> handler);
+        void UnregisterGameLaunchHookAsync(string hookId);
 
-        /// <summary>提交下载请求给启动器下载管理器；返回任务ID，被拒绝时返回空字符串</summary>
+        // 下载（见 6）
         string RequestDownload(PluginDownloadRequest request);
+        PluginDownloadTaskStatus? GetDownloadTaskStatus(string taskId);
 
-        /// <summary>
-        /// 全局事件名称常量
-        /// </summary>
-        public static class EventNames
-        {
-            public const string GameLaunched = "GameLaunched";
-            public const string GameClosed = "GameClosed";
-            public const string VersionDownloaded = "VersionDownloaded";
-            public const string VersionInstalling = "VersionInstalling";
-            public const string VersionInstalled = "VersionInstalled";
-            public const string AccountChanged = "AccountChanged";
-            public const string DownloadProgress = "DownloadProgress";
-
-            /// <summary>崩溃已确认（报告是否落盘已确定），负载为 PluginCrashReportInfo</summary>
-            public const string CrashDetected = "CrashDetected";
-        }
-
-        // ===== API 版本（见 18. API 版本）=====
-
-        int ApiVersion { get; }
-
-        // ===== 崩溃数据 API（见 14. 崩溃数据 API）=====
-
+        // 崩溃（见 7）
         IReadOnlyList<PluginCrashReportInfo> GetCrashReports(string? versionId = null);
         PluginCrashAnalysis? AnalyzeCrashReport(string reportPath);
         string? ReadCrashReportText(string reportPath, int maxChars = 200_000, bool sanitize = true);
         string SanitizeCrashReportText(string text);
         PluginSlotContext? GetActiveCrashContext();
 
-        // ===== UI 槽位（见 16. UI 槽位）=====
-
-        bool AddSlotContent(string slotId, string itemId, object content, int order = 0);
-        bool RemoveSlotContent(string slotId, string itemId);
-        void ClearSlotContent(string slotId);
-        IReadOnlyList<string> GetSlotIds();
-        object? GetSlotHost(string slotId);
-
-        // ===== 任意 UI 访问（见 17. 任意 UI 访问）=====
-
-        object? GetUiRoot();
-        object? TryFindControlByName(string name);
-        void RunOnUiThread(Action action);
+        // 日志与配置（见 8）
+        void LogMessage(PluginLogLevel level, string message);
+        T? GetConfig<T>();
+        void SaveConfig<T>(T config);
+        IReadOnlyList<PluginVersionInfo> GetInstalledVersions();
+        PluginAccountInfo? GetCurrentAccount();
     }
 }
 ```
@@ -321,7 +309,115 @@ namespace ObsMCLauncher.Core.Plugins
 
 ## 🔧 API 参考
 
-### 1. 事件系统
+### API 总览
+
+| 分组 | API | 一句话说明 | 章节 |
+|------|-----|-----------|------|
+| 目录 | `PluginDataDirectory` / `LauncherBaseDirectory` / `LauncherDataDirectory` / `GameDirectory` | 插件数据、启动器基础、启动器数据、当前游戏目录 | [1](#1-目录版本与兼容性) |
+| 版本 | `LauncherVersion` / `ApiVersion` | 完整版本字符串 / 插件 API 版本（主版本号） | [1](#1-目录版本与兼容性) |
+| 事件 | `SubscribeEvent` / `UnsubscribeEvent` / `PublishEvent` | 订阅、退订、发布事件 | [2](#2-事件系统) |
+| UI | `RegisterTab` / `UnregisterTab` | 在「更多」页增删标签页 | [3.1](#31-注册标签页) |
+| UI | `RegisterHomeCard` / `UnregisterHomeCard` | 在主页增删卡片 | [3.2](#32-注册主页卡片) |
+| UI | `RegisterCommand` / `UnregisterCommand` | 注册供卡片点击触发的命令 | [3.3](#33-自定义命令) |
+| UI | `AddSlotContent` / `RemoveSlotContent` / `ClearSlotContent` / `GetSlotIds` / `GetSlotHost` | 把控件挂进启动器预留槽位 | [3.4](#34-ui-槽位) |
+| UI | `GetUiRoot` / `TryFindControlByName` / `RunOnUiThread` | 不受槽位限制地访问与修改任意 UI | [3.5](#35-任意-ui-访问) |
+| UI | `OpenUrl` / `NavigateTo` | 打开外部链接 / 跳转内部页面 | [3.6](#36-打开链接与页面跳转) |
+| 通知 | `ShowNotification` / `UpdateNotification` / `CloseNotification` | 显示、更新、关闭通知 | [4](#4-通知系统) |
+| 钩子 | `RegisterGameLaunchHook(Async)` / `UnregisterGameLaunchHook(Async)` | 启动前/启动后/退出/崩溃时回调 | [5](#5-游戏启动生命周期钩子) |
+| 下载 | `RequestDownload` / `GetDownloadTaskStatus` | 提交下载请求、轮询任务状态 | [6](#6-下载) |
+| 崩溃 | `GetCrashReports` / `AnalyzeCrashReport` / `ReadCrashReportText` / `SanitizeCrashReportText` / `GetActiveCrashContext` | 列出、分析、读取、脱敏崩溃报告 | [7](#7-崩溃系统) |
+| 日志 | `LogMessage` | 写入启动器统一日志 | [8](#8-日志与配置) |
+| 配置 | `GetConfig<T>` / `SaveConfig<T>` | 读写插件自己的 config.json | [8](#8-日志与配置) |
+| 查询 | `GetInstalledVersions` / `GetCurrentAccount` | 已安装版本列表 / 当前账户（不含令牌） | [8](#8-日志与配置) |
+
+> 所有 API 调用（包括回调内部抛出的异常）都由启动器统一 try-catch，不会传播到调用方。
+
+### 1. 目录、版本与兼容性
+
+#### 目录 API
+
+`IPluginContext` 提供以下目录 API（均已正确处理 Velopack 部署，不会返回会被更新整体替换的 `current` 目录）：
+
+| API | 说明 |
+| --- | --- |
+| `PluginDataDirectory` | 当前插件的专属数据目录（`<启动器基础目录>/OMCL/plugins/{插件ID}`），插件配置和数据应保存在这里 |
+| `LauncherBaseDirectory` | 启动器基础目录（Velopack 安装模式下自动定位到 `current` 的父级） |
+| `LauncherDataDirectory` | 启动器数据目录（`<启动器基础目录>/OMCL`，存放启动器配置/账户/缓存） |
+| `GameDirectory` | 当前激活的游戏目录（`.minecraft` 根目录，随用户在设置中的切换实时变化） |
+
+```csharp
+public void OnLoad(IPluginContext context)
+{
+    // 1. 插件自己的数据目录（推荐：插件数据一律放在这里）
+    string dataDir = context.PluginDataDirectory;
+
+    var configPath = Path.Combine(dataDir, "config.json");
+    File.WriteAllText(configPath, "{}");
+
+    var dataFolder = Path.Combine(dataDir, "data");
+    Directory.CreateDirectory(dataFolder);
+
+    // 2. 启动器基础目录 / 数据目录
+    string baseDir = context.LauncherBaseDirectory;   // 例如 .../ObsMCLauncher/
+    string omclDir = context.LauncherDataDirectory;   // 例如 .../ObsMCLauncher/OMCL
+
+    // 3. 当前游戏目录（.minecraft）
+    string gameDir = context.GameDirectory;
+    var modsDir = Path.Combine(gameDir, "mods");
+}
+```
+
+> ⚠️ 生产环境下启动器运行在 Velopack 的 `current` 子目录中（更新时该目录会被整体替换）。
+> 上述 API 返回的路径都已自动跳出 `current`。插件**不要**自行拼接
+> `AppContext.BaseDirectory` 来定位数据目录，否则数据会写入 `current` 内并在更新时丢失。
+
+#### 版本与兼容性
+
+```csharp
+// 完整版本字符串
+string version = context.LauncherVersion;          // 如 "1.2.3"
+if (new Version(version) < new Version("1.1.0"))
+{
+    // 启动器版本过低
+}
+
+// 插件 API 版本 = 启动器主版本号（v1.2.3 → 1；带 -preview / -beta 后缀时取主干第一段）
+int api = context.ApiVersion;
+```
+
+版本语义：
+
+| 变化 | 含义 |
+|------|------|
+| **主版本递进**（1 → 2） | 插件 API **可能发生破坏性变更**（删改已有成员），需要重新适配 |
+| 次版本 / 修订号变化 | 只**新增**成员，不改动已有成员，已编译的插件继续可用 |
+
+因此插件侧的判断很简单：
+
+```csharp
+// 只在需要的大版本上启用某功能
+if (_context.ApiVersion >= 1)
+{
+    var reports = _context.GetCrashReports();
+}
+```
+
+> 新能力只会往 `IPluginContext` **增加**成员（插件只是消费方，不需要自己实现该接口），
+> 所以小版本升级不会让现有插件失效；出现破坏性变更时主版本会递进。
+
+反方向——"本插件要求启动器至少多新"——在 `plugin.json` 里声明（字段名 camelCase）：
+
+```json
+{
+  "id": "my.plugin",
+  "minLauncherVersion": "1.2.0"
+}
+```
+
+启动器加载插件时会据此拒绝版本过旧的插件。若某个新 API 在旧启动器上不存在，调用它会在运行时抛出
+`MissingMethodException`；不想写 try/catch 的话，就用上面的 `minLauncherVersion` 把门槛立起来。
+
+### 2. 事件系统
 
 订阅和发布事件。建议使用 `IPluginContext.EventNames` 常量避免拼写错误：
 
@@ -381,6 +477,7 @@ private void OnDownloadProgress(object? eventData)
 | `VersionInstalled` | `EventNames.VersionInstalled` | 版本安装完成/失败 | `VersionInstalledEventArgs` |
 | `AccountChanged` | `EventNames.AccountChanged` | 账户变更 | `AccountChangedEventArgs` |
 | `DownloadProgress` | `EventNames.DownloadProgress` | 下载进度更新 | `DownloadProgressEventArgs` |
+| `CrashDetected` | `EventNames.CrashDetected` | 崩溃已确认（报告落盘状态已确定） | `PluginCrashReportInfo`，见 [7. 崩溃系统](#7-崩溃系统) |
 
 **VersionInstallingEventArgs** 属性：
 - `McVersion` - Minecraft 版本号
@@ -432,7 +529,27 @@ private void DisableSubscription(IPluginContext context)
 > 说明：插件卸载或禁用时，启动器会自动清理该插件的所有事件订阅，无需手动退订。
 > `UnsubscribeEvent` 的 `handler` 须与订阅时传入的是同一个方法引用（实例方法会隐式捕获 `this`）。
 
-### 2. 注册UI标签页
+### 3. UI 扩展
+
+往启动器界面里加东西有四档自由度，越往下越自由、兼容性风险也越高：
+
+| 方式 | 位置 | 生命周期 | 兼容性 |
+|------|------|---------|--------|
+| [3.1 标签页](#31-注册标签页) | 「更多」页新增一个 Tab | 启动器管理 | 稳定 |
+| [3.2 主页卡片](#32-注册主页卡片) | 主页卡片网格 | 启动器管理 | 稳定 |
+| [3.4 UI 槽位](#34-ui-槽位) | 既有页面的预留容器 | 启动器管理 | 稳定（槽位 id 有保证） |
+| [3.5 任意 UI 访问](#35-任意-ui-访问) | 视觉树上任意位置 | 插件自己负责 | 随版本变化，需容错 |
+
+四种方式都需要给插件项目加 Avalonia 包引用才能创建控件：
+
+```xml
+<ItemGroup>
+  <ProjectReference Include="path\to\ObsMCLauncher.Core.csproj" />
+  <PackageReference Include="Avalonia" Version="11.3.11" />
+</ItemGroup>
+```
+
+#### 3.1 注册标签页
 
 插件可以在"更多"页面添加自己的标签页：
 
@@ -443,7 +560,7 @@ public void OnLoad(IPluginContext context)
     context.RegisterTab(
         "我的插件",           // 标签页标题
         "my-plugin-tab",     // 标签页ID（唯一）
-        "Star",              // 图标名称（可选）
+        "Star",              // 图标名称（可选，Material Design 图标名）
         null                 // 自定义数据（可选）
     );
 }
@@ -476,10 +593,11 @@ public void OnLoad(IPluginContext context)
 - 标签页会显示在"更多"页面的顶部导航栏
 - `tabId` 必须唯一，建议使用插件ID作为前缀
 - 图标使用 Material Design 图标名称
-- 传入 `Control` 对象时，标签页直接渲染该控件（方案A）
+- 传入 `Control` 对象时，标签页直接渲染该控件
 - 不传 `Control` 时，标签页显示默认文本信息
+- `UnregisterTab(tabId)` 可主动注销
 
-### 3. 注册主页卡片
+#### 3.2 注册主页卡片
 
 插件可以在主页添加自定义卡片：
 
@@ -505,7 +623,7 @@ public void OnUnload()
 **命令ID支持的格式**：
 - `url:https://example.com` - 打开外部网页链接
 - `navigate:multiplayer` - 跳转到启动器内部页面（支持的页面：`multiplayer`、`resources`、`accounts`、`versions`、`settings`、`more`）
-- `command:{pluginId}.{commandId}` - 执行插件注册的自定义命令
+- `command:{pluginId}.{commandId}` - 执行插件注册的自定义命令，见 [3.3](#33-自定义命令)
 - 留空或null - 卡片不可点击（仅展示信息）
 
 **示例**：
@@ -574,94 +692,7 @@ context.RegisterHomeCard(
 - 主页支持自定义布局：用户可以添加、删除、拖动卡片组件（账号选择、版本选择、启动按钮等操作区为固定结构，不参与自定义）
 - 未指定尺寸的旧签名调用等同于 `Medium`
 
-### 4. 目录获取
-
-`IPluginContext` 提供以下目录 API（均已正确处理 Velopack 部署，不会返回会被更新整体替换的 `current` 目录）：
-
-| API | 说明 |
-| --- | --- |
-| `PluginDataDirectory` | 当前插件的专属数据目录（`<启动器基础目录>/OMCL/plugins/{插件ID}`），插件配置和数据应保存在这里 |
-| `LauncherBaseDirectory` | 启动器基础目录（Velopack 安装模式下自动定位到 `current` 的父级） |
-| `LauncherDataDirectory` | 启动器数据目录（`<启动器基础目录>/OMCL`，存放启动器配置/账户/缓存） |
-| `GameDirectory` | 当前激活的游戏目录（`.minecraft` 根目录，随用户在设置中的切换实时变化） |
-
-```csharp
-public void OnLoad(IPluginContext context)
-{
-    // 1. 插件自己的数据目录（推荐：插件数据一律放在这里）
-    string dataDir = context.PluginDataDirectory;
-    
-    var configPath = Path.Combine(dataDir, "config.json");
-    File.WriteAllText(configPath, "{}");
-    
-    var dataFolder = Path.Combine(dataDir, "data");
-    Directory.CreateDirectory(dataFolder);
-
-    // 2. 启动器基础目录 / 数据目录
-    string baseDir = context.LauncherBaseDirectory;   // 例如 .../ObsMCLauncher/
-    string omclDir = context.LauncherDataDirectory;   // 例如 .../ObsMCLauncher/OMCL
-
-    // 3. 当前游戏目录（.minecraft）
-    string gameDir = context.GameDirectory;
-    var modsDir = Path.Combine(gameDir, "mods");
-}
-```
-
-> ⚠️ 生产环境下启动器运行在 Velopack 的 `current` 子目录中（更新时该目录会被整体替换）。
-> 上述 API 返回的路径都已自动跳出 `current`。插件**不要**自行拼接
-> `AppContext.BaseDirectory` 来定位数据目录，否则数据会写入 `current` 内并在更新时丢失。
-
-### 5. 启动器版本信息
-
-```csharp
-public void OnLoad(IPluginContext context)
-{
-    string version = context.LauncherVersion;
-    
-    if (new Version(version) < new Version("1.1.0"))
-    {
-        System.Diagnostics.Debug.WriteLine("启动器版本过低");
-    }
-}
-```
-
-### 6. 通知系统
-
-插件可以显示、更新和关闭通知：
-
-```csharp
-public void OnLoad(IPluginContext context)
-{
-    // 显示简单通知（默认3秒后自动关闭）
-    context.ShowNotification("提示", "操作成功", "success");
-    
-    // 显示错误通知（5秒后关闭）
-    context.ShowNotification("错误", "操作失败", "error", 5);
-    
-    // 显示进度通知（无限持续时间）
-    var notifId = context.ShowNotification("下载中", "正在下载...", "progress", null);
-    
-    // 更新通知
-    context.UpdateNotification(notifId, "下载中 50%", 50);
-    
-    // 关闭通知
-    context.CloseNotification(notifId);
-}
-```
-
-**通知类型**：
-- `info` - 信息通知（蓝色）
-- `success` - 成功通知（绿色）
-- `warning` - 警告通知（黄色）
-- `error` - 错误通知（红色）
-- `progress` - 进度通知（带进度条）
-
-**持续时间**：
-- 不传或传 `null`：默认3秒自动关闭
-- 传具体秒数：指定秒数后关闭
-- 传 `0` 或负数：无限持续时间，需手动关闭
-
-### 7. 自定义命令
+#### 3.3 自定义命令
 
 插件可以注册自定义命令，供主页卡片或其他交互触发：
 
@@ -706,7 +737,400 @@ public void OnUnload()
 - 卡片使用 `command:{pluginId}.{commandId}` 格式引用命令
 - `payload` 参数来自卡片的 `Payload` 属性
 
-### 8. 日志写入
+#### 3.4 UI 槽位
+
+把自绘控件挂进启动器既有页面的预留位置。
+
+当前**保证有宿主容器**的槽位：
+
+| slotId | 位置 |
+|--------|------|
+| `crash.dialog.actions` | 崩溃弹窗的按钮行 |
+| `crash.dialog.analysis.after` | 崩溃弹窗里分析结论的下方 |
+| `crash.page.analysis.after` | 「更多 → 崩溃分析」页分析详情下方 |
+| `crash.page.toolbar` | 「更多 → 崩溃分析」页顶部工具栏 |
+
+```csharp
+using Avalonia.Controls;
+
+public void OnLoad(IPluginContext context)
+{
+    var button = new Button { Content = "用我的插件分析" };
+    button.Click += (_, _) => AnalyzeCurrent(context);
+
+    // 注册进槽位；order 小的排前面
+    context.AddSlotContent("crash.dialog.actions", "analyze-btn", button, order: -1);
+
+    // 也可以拿到宿主容器自己增删（容器里同时有启动器控件和插件内容）
+    if (context.GetSlotHost("crash.dialog.actions") is Panel host)
+    {
+        host.Children.Add(new TextBlock { Text = "插件已就绪" });
+    }
+}
+
+public void OnUnload()
+{
+    // 卸载时清理：不清理的话会留下控件引用
+    _context.ClearSlotContent("crash.dialog.actions");
+}
+```
+
+说明：
+
+- **slotId 是开放字符串**：不在上表里的 id 也能注册（记一条警告），但只有当该 id 的宿主出现时才会渲染。想完全自己决定挂在哪，请用 [3.5](#35-任意-ui-访问) 的 `GetUiRoot()`。
+- 槽位内容的 `DataContext` 若为空，启动器会填一个 `PluginSlotContext`（`SlotId` / `CrashReportPath` / `VersionId`），插件据此知道"当前是哪份报告"；也可用 `GetActiveCrashContext()` 主动查询。
+- 插件禁用 / 卸载时，启动器会自动清理其所有槽位内容。
+
+#### 3.5 任意 UI 访问
+
+**不需要启动器预先开槽位**——拿到 UI 根后，插件可以自己遍历视觉树、往任意容器增删控件、改任意控件属性：
+
+```csharp
+using Avalonia.Controls;
+using Avalonia.VisualTree;
+
+// 主窗口（Avalonia Window）；没有窗口时返回 null
+if (_context.GetUiRoot() is Window root)
+{
+    // 按 x:Name 找控件（名字由启动器维护，比自己遍历稳一点）
+    if (_context.TryFindControlByName("CrashDialogHeader") is TextBlock header)
+    {
+        header.Text = "插件改过的标题";
+    }
+
+    // 自己遍历：把某个按钮改成不可见
+    var target = root.GetVisualDescendants()
+                     .OfType<Button>()
+                     .FirstOrDefault(b => b.Content is "打开游戏日志文件夹");
+    if (target != null) target.IsVisible = false;
+}
+
+// 从别的线程操作 UI 时，用这个把回调调度到 UI 线程
+_context.RunOnUiThread(() => MyUpdate());
+```
+
+风险与建议（这条路径是"完全自由"的，代价由插件承担）：
+
+- 页面结构可能随版本变化，**找不到控件就跳过**，不要假设它一定存在；
+- 改动启动器自己的控件（隐藏、改文案）会影响用户，请谨慎；
+- 所有 UI 操作都要在 UI 线程执行（用 `RunOnUiThread`）；
+- 插件卸载时不会自动撤销这类修改，请在 `OnUnload` 里还原。
+
+#### 3.6 打开链接与页面跳转
+
+```csharp
+// 用系统默认浏览器打开链接（仅 http/https）
+bool ok = _context.OpenUrl("https://example.com");
+
+// 跳转到启动器内部页面：home / multiplayer / resources / accounts / versions / settings / more
+_context.NavigateTo("resources");
+```
+
+> 卡片点击也能做到同样的事，用 `url:` / `navigate:` 命令 ID，见 [3.2](#32-注册主页卡片)。
+
+### 4. 通知系统
+
+插件可以显示、更新和关闭通知：
+
+```csharp
+public void OnLoad(IPluginContext context)
+{
+    // 显示简单通知（默认时长后自动关闭）
+    context.ShowNotification("提示", "操作成功", "success");
+
+    // 显示错误通知（5秒后关闭）
+    context.ShowNotification("错误", "操作失败", "error", 5);
+
+    // 显示进度通知（不自动关闭，需手动 CloseNotification）
+    var notifId = context.ShowNotification("下载中", "正在下载...", "progress", 0);
+
+    // 更新通知
+    context.UpdateNotification(notifId, "下载中 50%", 50);
+
+    // 关闭通知
+    context.CloseNotification(notifId);
+}
+```
+
+**通知类型**：
+- `info` - 信息通知（蓝色）
+- `success` - 成功通知（绿色）
+- `warning` - 警告通知（黄色）
+- `error` - 错误通知（红色）
+- `progress` - 进度通知（带进度条）
+
+**持续时间**（`durationSeconds`）：
+
+| 取值 | 行为 |
+|------|------|
+| 不传 / `null` | 按类型取默认时长（进度类默认不自动关闭；其余约 3–5 秒，并尊重用户的通知设置） |
+| 正数 | 指定秒数后自动关闭 |
+| `0` 或负数 | **不自动关闭**，需显式 `CloseNotification` |
+
+### 5. 游戏启动生命周期钩子
+
+注册游戏启动生命周期钩子，在启动前/启动后/退出/崩溃时执行自定义逻辑。可在启动前修改 JVM/游戏参数，或拦截启动。
+
+**方法签名**：
+
+```csharp
+void RegisterGameLaunchHook(string hookId, GameLaunchPhase phase, Action<GameLaunchHookContext> handler);
+void UnregisterGameLaunchHook(string hookId);
+
+// 回调需要执行耗时/网络操作时用异步版本，避免阻塞启动流程
+void RegisterGameLaunchHookAsync(string hookId, GameLaunchPhase phase, Func<GameLaunchHookContext, Task> handler);
+void UnregisterGameLaunchHookAsync(string hookId);
+```
+
+**参数**：
+
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| `hookId` | `string` | 钩子唯一标识（在插件内唯一） |
+| `phase` | `GameLaunchPhase` | 触发阶段（见下表） |
+| `handler` | `Action<GameLaunchHookContext>` / `Func<GameLaunchHookContext, Task>` | 回调函数，接收钩子上下文 |
+
+**GameLaunchPhase 枚举**：
+
+| 阶段 | 说明 | 可修改字段 |
+|------|------|-----------|
+| `BeforeLaunch` | 启动前（可拦截启动） | `CancelLaunch` / `ExtraJvmArguments` / `ExtraGameArguments` |
+| `AfterLaunch` | 游戏进程已启动 | - |
+| `OnExited` | 游戏进程退出 | `ExitCode` |
+| `OnCrash` | 检测到崩溃 | `ExitCode` / `CrashReport` |
+
+**GameLaunchHookContext 字段**：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `VersionId` | `string` | 启动的版本ID |
+| `McVersion` | `string` | Minecraft 版本号 |
+| `GameDirectory` | `string` | 游戏运行目录 |
+| `JavaPath` | `string` | Java 可执行文件路径 |
+| `ExitCode` | `int` | 进程退出码（仅 `OnExited` / `OnCrash` 有效；正常退出为 0） |
+| `CrashReport` | `string?` | 崩溃报告内容（仅 `OnCrash` 有效，可能为 null） |
+| `CancelLaunch` | `bool` | 设为 true 中止启动（仅 `BeforeLaunch` 有效） |
+| `ExtraJvmArguments` | `List<string>` | 追加 JVM 参数（仅 `BeforeLaunch` 有效） |
+| `ExtraGameArguments` | `List<string>` | 追加游戏参数（仅 `BeforeLaunch` 有效） |
+
+**同步 vs 异步**：同步钩子会在启动流程中被阻塞等待，**回调里不要做网络请求、大量 IO 或 `.Wait()`**，
+这类操作请改用 `RegisterGameLaunchHookAsync`。两者的其它规则（触发顺序、`CancelLaunch` 拦截、异常隔离）一致，
+同步与异步钩子按 `{pluginId}.{hookId}` 字典序混合触发。
+
+**触发顺序**：同一阶段有多个钩子时，按 `{pluginId}.{hookId}` 字典序触发。`BeforeLaunch` 阶段被某个钩子设为 `CancelLaunch = true` 后，后续 `BeforeLaunch` 钩子不再调用。
+
+**异常处理**：单个钩子抛出异常不会影响其他钩子执行，异常由启动器统一记录。
+
+**示例**：
+
+```csharp
+public void OnLoad(IPluginContext context)
+{
+    // 启动前追加 JVM 参数
+    context.RegisterGameLaunchHook("add-jvm-args",
+        GameLaunchPhase.BeforeLaunch, OnBeforeLaunch);
+
+    // 启动后记录日志
+    context.RegisterGameLaunchHook("log-launched",
+        GameLaunchPhase.AfterLaunch, OnAfterLaunch);
+
+    // 崩溃时上传报告（需要网络 → 异步钩子）
+    context.RegisterGameLaunchHookAsync("upload-crash",
+        GameLaunchPhase.OnCrash, OnCrashAsync);
+}
+
+private void OnBeforeLaunch(GameLaunchHookContext ctx)
+{
+    // 为低版本 Minecraft 强制使用 Java 8（演示用，实际应通过 JavaDetector）
+    if (ctx.McVersion.StartsWith("1.12."))
+    {
+        ctx.ExtraJvmArguments.Add("-Djava.util.Arrays.useLegacyMergeSort=true");
+    }
+
+    // 危险操作：取消启动（需谨慎）
+    // ctx.CancelLaunch = true;
+}
+
+private void OnAfterLaunch(GameLaunchHookContext ctx)
+{
+    _context?.LogMessage(PluginLogLevel.Info, $"游戏已启动: {ctx.VersionId}");
+    _context?.LogMessage(PluginLogLevel.Debug, $"Java: {ctx.JavaPath}");
+}
+
+private async Task OnCrashAsync(GameLaunchHookContext ctx)
+{
+    _context?.LogMessage(PluginLogLevel.Error, $"游戏崩溃，退出码 {ctx.ExitCode}");
+
+    // 需要确保拿到报告文件时，请改用 CrashDetected 事件，见「7. 崩溃系统」
+    if (string.IsNullOrEmpty(ctx.CrashReport)) return;
+
+    await UploadCrashReportAsync(ctx.VersionId, ctx.CrashReport);
+}
+
+public void OnUnload()
+{
+    // 钩子在插件卸载时自动清理，无需手动注销
+    // 但如需动态卸载，可调用：
+    // _context?.UnregisterGameLaunchHook("add-jvm-args");
+    // _context?.UnregisterGameLaunchHookAsync("upload-crash");
+}
+```
+
+### 6. 下载
+
+将下载请求提交给启动器下载管理器统一调度，复用启动器的多线程下载、断点续传、SHA-1 校验能力。适用于插件更新自身资源、下载整合包、获取模组等场景。
+
+**方法签名**：
+
+```csharp
+string RequestDownload(PluginDownloadRequest request);
+PluginDownloadTaskStatus? GetDownloadTaskStatus(string taskId);
+```
+
+**PluginDownloadRequest 字段**：
+
+| 字段 | 类型 | 必需 | 说明 |
+|------|------|------|------|
+| `Url` | `string` | ✅ | 下载 URL（**仅允许 http/https 协议**） |
+| `FileName` | `string` | ✅ | 保存文件名（**禁含路径分隔符** `/` `\` `:`） |
+| `TargetDirectory` | `string` | ✅ | 目标保存目录（启动器会校验是否在允许范围内） |
+| `TaskName` | `string` | ⭕ | 任务显示名称（不传则使用 FileName） |
+| `Sha1` | `string?` | ⭕ | SHA-1 校验值（提供时启动器会自动校验完整性） |
+| `AutoStart` | `bool` | ⭕ | 是否立即开始下载，默认 `true`；`false` 表示仅创建任务 |
+
+**返回值**：`string` - 下载任务ID；URL/文件名/目录非法或被拒绝时返回空字符串 `""`
+
+**安全约束**：
+- 仅允许 `http://` 和 `https://` 协议（拒绝 `file:///`、`ftp://`、`data:` 等）
+- 文件名禁含路径分隔符，防止路径遍历攻击
+- 目标目录需在启动器允许的范围内（一般为插件数据目录、游戏目录等）
+- 回调异常时返回空字符串，不抛出异常
+
+**查询任务状态 / 订阅进度**：
+
+```csharp
+public void OnLoad(IPluginContext context)
+{
+    // 下载插件资源到插件数据目录
+    var dataDir = context.PluginDataDirectory;
+    var resourcesDir = Path.Combine(dataDir, "resources");
+    Directory.CreateDirectory(resourcesDir);
+
+    var taskId = context.RequestDownload(new PluginDownloadRequest
+    {
+        Url = "https://example.com/plugin-assets/textures.zip",
+        FileName = "textures.zip",
+        TargetDirectory = resourcesDir,
+        TaskName = "插件资源包",
+        Sha1 = "a1b2c3d4e5f6...", // 可选，提供时自动校验
+        AutoStart = true
+    });
+
+    if (string.IsNullOrEmpty(taskId))
+    {
+        context.LogMessage(PluginLogLevel.Error, "下载请求被拒绝");
+        return;
+    }
+
+    context.LogMessage(PluginLogLevel.Info, $"下载任务已创建: {taskId}");
+
+    // ① 订阅下载进度事件（推荐）
+    context.SubscribeEvent(IPluginContext.EventNames.DownloadProgress, OnDownloadProgress);
+}
+
+private void OnDownloadProgress(object? eventData)
+{
+    if (eventData is DownloadProgressEventArgs args)
+    {
+        _context?.LogMessage(PluginLogLevel.Debug,
+            $"[{args.TaskName}] {args.Progress:F1}% - {args.DownloadSpeed / 1024} KB/s");
+    }
+}
+
+// ② 也可以按 taskId 主动轮询
+var status = _context.GetDownloadTaskStatus(taskId);
+if (status != null)
+{
+    // status.Status: Downloading / Completed / Failed / Cancelled
+    _context.LogMessage(PluginLogLevel.Info, $"{taskId} -> {status.Status} {status.Progress:F0}%");
+}
+```
+
+**常见拒绝原因**：
+
+| 原因 | 解决方案 |
+|------|---------|
+| URL 为空或非 http/https 协议 | 检查 URL 拼接，确保以 `http://` 或 `https://` 开头 |
+| 文件名含 `/` `\` `:` | 仅传文件名，目录信息放到 `TargetDirectory` |
+| 目标目录不在启动器允许范围 | 使用 `context.PluginDataDirectory` 或其子目录 |
+| 下载管理器回调未注入 | 一般是启动器初始化未完成，稍后再试 |
+
+### 7. 崩溃系统
+
+三个入口，按需选择：
+
+| | `GameLaunchPhase.OnCrash` 钩子 | `EventNames.CrashDetected` 事件 | 崩溃数据 API |
+|---|---|---|---|
+| 触发时机 | 游戏进程一退出就触发 | 启动器**等过报告落盘**之后触发（约 1–3 秒） | 插件主动调用 |
+| 报告路径 | `ctx.CrashReport`，**可能是 null**（报告还没写完） | `PluginCrashReportInfo.ReportFound` 明确告诉有没有找到 | `GetCrashReports()` 列出历史报告 |
+| 适合 | 只想"知道游戏崩了" | 需要**拿到报告文件**才能干活 | 主动遍历/分析历史报告 |
+
+```csharp
+// ① 启动钩子：进程一退出就回调，ctx.CrashReport 是尽力查找的结果
+_context.RegisterGameLaunchHookAsync("my-crash-hook", GameLaunchPhase.OnCrash, async ctx =>
+{
+    _context.LogMessage(PluginLogLevel.Warning, $"游戏崩溃，退出码 {ctx.ExitCode}");
+    if (ctx.CrashReport != null) { /* 报告可能还没写完，这里只是尽力 */ }
+});
+
+// ② CrashDetected：报告落盘状态已确定
+_context.SubscribeEvent(IPluginContext.EventNames.CrashDetected, data =>
+{
+    if (data is PluginCrashReportInfo info && info.ReportFound)
+    {
+        var text = _context.ReadCrashReportText(info.ReportPath);
+        // 拿到内容后做你自己的处理
+    }
+});
+```
+
+**崩溃数据 API**（都在启动器内核中完成，无界面依赖、不会弹窗）：
+
+```csharp
+// 列出崩溃报告；传版本 ID 限定，传 null 查全部
+IReadOnlyList<PluginCrashReportInfo> reports = _context.GetCrashReports();
+
+// 用启动器内置规则引擎分析（同步、纯本地、无网络）
+PluginCrashAnalysis? analysis = _context.AnalyzeCrashReport(reports[0].ReportPath);
+
+// 读原文（默认脱敏、默认最多 20 万字符，上限 2,000,000）
+string? text = _context.ReadCrashReportText(reports[0].ReportPath, maxChars: 100_000);
+
+// 手动脱敏：发往外部服务前建议再过一遍
+string safe = _context.SanitizeCrashReportText(text!);
+
+// 取"用户当前正在看的崩溃上下文"（弹窗 / 崩溃分析页当前选中的报告）
+PluginSlotContext? active = _context.GetActiveCrashContext();
+```
+
+**返回的数据（精简字段）**：
+
+| 类型 | 字段 |
+|------|------|
+| `PluginCrashReportInfo` | `ReportPath`、`FileName`、`VersionId`、`Kind`（`Minecraft` / `JvmFatalError`）、`CreatedTime`、`SizeBytes`、`ReportFound`、`ExitCode` |
+| `PluginCrashAnalysis` | `Headline`、`MinecraftVersion`、`LoaderInfo`、`JavaVersion`、`OperatingSystem`、`CrashTime`、`Description`、`ExceptionSummary`、`Causes`、`SuspectedMods`、`RawPreview` |
+| `PluginCrashCause` | `Category`、`Title`、`Evidence`、`Suggestion`、`Confidence`（`High` / `Medium` / `Low`） |
+
+注意：
+
+- `ReadCrashReportText` 的 `sanitize` 默认 `true`，会抹掉用户名、`--accessToken`、用户目录路径等；**先脱敏再截断**，所以返回长度不会超过 `maxChars`。要原始内容请显式传 `sanitize: false`。
+- 脱敏只处理"凭据 / 路径"这类**有明确模式**的字段，不会抹掉正文里任意出现的用户名。发给第三方前请自行检查。
+- 报告文件可能已被用户删除，`ReadCrashReportText` / `AnalyzeCrashReport` 找不到文件时分别返回 `null`，请判空。
+- 崩溃后启动器**总是**弹出询问是否分析的弹窗（没有开关），与插件的行为互不影响。
+
+### 8. 日志与配置
+
+#### 日志写入
 
 将插件日志写入启动器统一日志系统，便于排查插件问题。日志与启动器自身日志同源，可在启动器的"开发控制台"或日志文件中查看。
 
@@ -745,19 +1169,31 @@ public void OnLoad(IPluginContext context)
 }
 ```
 
-### 9. 获取已安装版本列表
+#### 插件配置读写
+
+配置存于插件数据目录下的 `config.json`：
+
+```csharp
+public class MyConfig
+{
+    public string Name { get; set; } = "";
+    public int Max { get; set; } = 10;
+}
+
+// 读取（文件不存在或解析失败时返回 default）
+var cfg = _context.GetConfig<MyConfig>() ?? new MyConfig();
+
+// 写入
+_context.SaveConfig(new MyConfig { Name = "demo", Max = 20 });
+```
+
+#### 查询已安装版本
 
 获取启动器中已安装的 Minecraft 版本只读列表，用于插件展示版本信息、按版本执行操作（如备份、迁移、统计）。
-
-**方法签名**：
 
 ```csharp
 IReadOnlyList<PluginVersionInfo> GetInstalledVersions();
 ```
-
-**返回值**：`IReadOnlyList<PluginVersionInfo>` - 已安装版本只读列表
-
-**PluginVersionInfo 字段**：
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
@@ -769,42 +1205,22 @@ IReadOnlyList<PluginVersionInfo> GetInstalledVersions();
 
 **安全说明**：仅返回版本元数据，不包含任何账户、令牌、JVM 参数等敏感字段。回调异常或未注入时返回空列表。
 
-**示例**：
-
 ```csharp
-public void OnLoad(IPluginContext context)
+var versions = context.GetInstalledVersions();
+context.LogMessage(PluginLogLevel.Info, $"共 {versions.Count} 个已安装版本");
+
+// 仅备份 Forge 版本
+foreach (var v in versions.Where(v => v.LoaderType == "forge"))
 {
-    var versions = context.GetInstalledVersions();
-    context.LogMessage(PluginLogLevel.Info, $"共 {versions.Count} 个已安装版本");
-
-    foreach (var v in versions)
-    {
-        context.LogMessage(PluginLogLevel.Debug,
-            $"{v.VersionId} ({v.LoaderType}) - {v.McVersion}");
-    }
-
-    // 仅备份 Forge 版本
-    var forgeVersions = versions.Where(v => v.LoaderType == "forge").ToList();
-    foreach (var v in forgeVersions)
-    {
-        BackupVersion(v.VersionDirectory);
-    }
+    BackupVersion(v.VersionDirectory);
 }
 ```
 
-### 10. 获取当前账户信息
-
-获取当前默认/选中的账户精简信息，用于插件显示用户名、UUID，或按账户执行操作。
-
-**方法签名**：
+#### 查询当前账户
 
 ```csharp
 PluginAccountInfo? GetCurrentAccount();
 ```
-
-**返回值**：`PluginAccountInfo?` - 账户精简信息；未选中账户或异常时返回 `null`
-
-**PluginAccountInfo 字段**：
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
@@ -816,460 +1232,16 @@ PluginAccountInfo? GetCurrentAccount();
 
 **安全说明**：**不返回任何令牌字段**（不含 Access Token / Xbox Live Token / Minecraft Services Token）。如需发起微软 API 请求，请让用户自行授权。
 
-**示例**：
-
 ```csharp
-public void OnLoad(IPluginContext context)
+var account = context.GetCurrentAccount();
+if (account == null)
 {
-    var account = context.GetCurrentAccount();
-    if (account == null)
-    {
-        context.LogMessage(PluginLogLevel.Warning, "未选中账户");
-        return;
-    }
-
-    context.LogMessage(PluginLogLevel.Info,
-        $"当前账户: {account.Username} ({account.AccountType})");
-    context.LogMessage(PluginLogLevel.Debug, $"UUID: {account.UUID}");
-}
-```
-
-### 11. 游戏启动生命周期钩子
-
-注册游戏启动生命周期钩子，在启动前/启动后/退出/崩溃时执行自定义逻辑。可在启动前修改 JVM/游戏参数，或拦截启动。
-
-**方法签名**：
-
-```csharp
-void RegisterGameLaunchHook(string hookId, GameLaunchPhase phase, Action<GameLaunchHookContext> handler);
-void UnregisterGameLaunchHook(string hookId);
-```
-
-**参数**：
-
-| 参数 | 类型 | 说明 |
-|------|------|------|
-| `hookId` | `string` | 钩子唯一标识（在插件内唯一） |
-| `phase` | `GameLaunchPhase` | 触发阶段（见下表） |
-| `handler` | `Action<GameLaunchHookContext>` | 回调函数，接收钩子上下文 |
-
-**GameLaunchPhase 枚举**：
-
-| 阶段 | 说明 | 可修改字段 |
-|------|------|-----------|
-| `BeforeLaunch` | 启动前（可拦截启动） | `CancelLaunch` / `ExtraJvmArguments` / `ExtraGameArguments` |
-| `AfterLaunch` | 游戏进程已启动 | - |
-| `OnExited` | 游戏进程退出 | `ExitCode` |
-| `OnCrash` | 检测到崩溃 | `ExitCode` / `CrashReport` |
-
-**GameLaunchHookContext 字段**：
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `VersionId` | `string` | 启动的版本ID |
-| `McVersion` | `string` | Minecraft 版本号 |
-| `GameDirectory` | `string` | 游戏运行目录 |
-| `JavaPath` | `string` | Java 可执行文件路径 |
-| `ExitCode` | `int` | 进程退出码（仅 `OnExited` / `OnCrash` 有效；正常退出为 0） |
-| `CrashReport` | `string?` | 崩溃报告内容（仅 `OnCrash` 有效） |
-| `CancelLaunch` | `bool` | 设为 true 中止启动（仅 `BeforeLaunch` 有效） |
-| `ExtraJvmArguments` | `List<string>` | 追加 JVM 参数（仅 `BeforeLaunch` 有效） |
-| `ExtraGameArguments` | `List<string>` | 追加游戏参数（仅 `BeforeLaunch` 有效） |
-
-**触发顺序**：同一阶段有多个钩子时，按 `{pluginId}.{hookId}` 字典序触发。`BeforeLaunch` 阶段被某个钩子设为 `CancelLaunch = true` 后，后续 `BeforeLaunch` 钩子不再调用。
-
-**异常处理**：单个钩子抛出异常不会影响其他钩子执行，异常由启动器统一记录。
-
-**示例**：
-
-```csharp
-public void OnLoad(IPluginContext context)
-{
-    // 启动前追加 JVM 参数
-    context.RegisterGameLaunchHook("add-jvm-args",
-        GameLaunchPhase.BeforeLaunch, OnBeforeLaunch);
-
-    // 启动后记录日志
-    context.RegisterGameLaunchHook("log-launched",
-        GameLaunchPhase.AfterLaunch, OnAfterLaunch);
-
-    // 崩溃时上传报告
-    context.RegisterGameLaunchHook("upload-crash",
-        GameLaunchPhase.OnCrash, OnCrash);
+    context.LogMessage(PluginLogLevel.Warning, "未选中账户");
+    return;
 }
 
-private void OnBeforeLaunch(GameLaunchHookContext ctx)
-{
-    // 为低版本 Minecraft 强制使用 Java 8（演示用，实际应通过 JavaDetector）
-    if (ctx.McVersion.StartsWith("1.12."))
-    {
-        ctx.ExtraJvmArguments.Add("-Djava.util.Arrays.useLegacyMergeSort=true");
-    }
-
-    // 启用插件调试模式时追加调试参数
-    ctx.ExtraJvmArguments.Add("-Dplugin.debug=true");
-
-    // 危险操作：取消启动（需谨慎）
-    // ctx.CancelLaunch = true;
-}
-
-private void OnAfterLaunch(GameLaunchHookContext ctx)
-{
-    _context?.LogMessage(PluginLogLevel.Info, $"游戏已启动: {ctx.VersionId}");
-    _context?.LogMessage(PluginLogLevel.Debug, $"Java: {ctx.JavaPath}");
-}
-
-private void OnCrash(GameLaunchHookContext ctx)
-{
-    _context?.LogMessage(PluginLogLevel.Error,
-        $"游戏崩溃，退出码 {ctx.ExitCode}");
-    _context?.LogMessage(PluginLogLevel.Debug, $"崩溃报告:\n{ctx.CrashReport}");
-
-    // 上传崩溃报告到自己的服务器
-    UploadCrashReport(ctx.VersionId, ctx.CrashReport);
-}
-
-public void OnUnload()
-{
-    // 钩子在插件卸载时自动清理，无需手动注销
-    // 但如需动态卸载，可调用：
-    // _context?.UnregisterGameLaunchHook("add-jvm-args");
-}
+context.LogMessage(PluginLogLevel.Info, $"当前账户: {account.Username} ({account.AccountType})");
 ```
-
-### 12. 提交下载请求
-
-将下载请求提交给启动器下载管理器统一调度，复用启动器的多线程下载、断点续传、SHA-1 校验能力。适用于插件更新自身资源、下载整合包、获取模组等场景。
-
-**方法签名**：
-
-```csharp
-string RequestDownload(PluginDownloadRequest request);
-```
-
-**参数**：`PluginDownloadRequest` 对象
-
-**PluginDownloadRequest 字段**：
-
-| 字段 | 类型 | 必需 | 说明 |
-|------|------|------|------|
-| `Url` | `string` | ✅ | 下载 URL（**仅允许 http/https 协议**） |
-| `FileName` | `string` | ✅ | 保存文件名（**禁含路径分隔符** `/` `\` `:`） |
-| `TargetDirectory` | `string` | ✅ | 目标保存目录（启动器会校验是否在允许范围内） |
-| `TaskName` | `string` | ⭕ | 任务显示名称（不传则使用 FileName） |
-| `Sha1` | `string?` | ⭕ | SHA-1 校验值（提供时启动器会自动校验完整性） |
-| `AutoStart` | `bool` | ⭕ | 是否立即开始下载，默认 `true`；`false` 表示仅创建任务 |
-
-**返回值**：`string` - 下载任务ID；URL/文件名/目录非法或被拒绝时返回空字符串 `""`
-
-**安全约束**：
-- 仅允许 `http://` 和 `https://` 协议（拒绝 `file:///`、`ftp://`、`data:` 等）
-- 文件名禁含路径分隔符，防止路径遍历攻击
-- 目标目录需在启动器允许的范围内（一般为插件数据目录、游戏目录等）
-- 回调异常时返回空字符串，不抛出异常
-
-**示例**：
-
-```csharp
-public void OnLoad(IPluginContext context)
-{
-    // 下载插件资源到插件数据目录
-    var dataDir = context.PluginDataDirectory;
-    var resourcesDir = Path.Combine(dataDir, "resources");
-    Directory.CreateDirectory(resourcesDir);
-
-    var taskId = context.RequestDownload(new PluginDownloadRequest
-    {
-        Url = "https://example.com/plugin-assets/textures.zip",
-        FileName = "textures.zip",
-        TargetDirectory = resourcesDir,
-        TaskName = "插件资源包",
-        Sha1 = "a1b2c3d4e5f6...", // 可选，提供时自动校验
-        AutoStart = true
-    });
-
-    if (string.IsNullOrEmpty(taskId))
-    {
-        context.LogMessage(PluginLogLevel.Error, "下载请求被拒绝");
-        return;
-    }
-
-    context.LogMessage(PluginLogLevel.Info, $"下载任务已创建: {taskId}");
-
-    // 订阅下载进度事件
-    context.SubscribeEvent(IPluginContext.EventNames.DownloadProgress, OnDownloadProgress);
-}
-
-private void OnDownloadProgress(object? eventData)
-{
-    if (eventData is DownloadProgressEventArgs args)
-    {
-        _context?.LogMessage(PluginLogLevel.Debug,
-            $"[{args.TaskName}] {args.Progress:F1}% - {args.DownloadSpeed / 1024} KB/s");
-    }
-}
-```
-
-**常见拒绝原因**：
-
-| 原因 | 解决方案 |
-|------|---------|
-| URL 为空或非 http/https 协议 | 检查 URL 拼接，确保以 `http://` 或 `https://` 开头 |
-| 文件名含 `/` `\` `:` | 仅传文件名，目录信息放到 `TargetDirectory` |
-| 目标目录不在启动器允许范围 | 使用 `context.PluginDataDirectory` 或其子目录 |
-| 下载管理器回调未注入 | 一般是启动器初始化未完成，稍后再试 |
-
-### 13. 其他增强 API
-
-以下为插件开发中常用的便捷 API。
-
-**配置读写（存于插件数据目录下的 `config.json`）：**
-
-```csharp
-public class MyConfig
-{
-    public string Name { get; set; } = "";
-    public int Max { get; set; } = 10;
-}
-
-// 读取（文件不存在时返回 default）
-var cfg = _context.GetConfig<MyConfig>() ?? new MyConfig();
-
-// 写入
-_context.SaveConfig(new MyConfig { Name = "demo", Max = 20 });
-```
-
-**打开外部链接 / 跳转内部页面：**
-
-```csharp
-// 用系统默认浏览器打开链接（仅 http/https）
-bool ok = _context.OpenUrl("https://example.com");
-
-// 跳转到启动器内部页面：home / multiplayer / resources / accounts / versions / settings / more
-_context.NavigateTo("resources");
-```
-
-**查询下载任务状态（配合 `RequestDownload` 返回的任务 ID 轮询进度）：**
-
-```csharp
-string taskId = _context.RequestDownload(new PluginDownloadRequest { ... });
-
-// 略作延迟后查询
-var status = _context.GetDownloadTaskStatus(taskId);
-if (status != null)
-{
-    // status.Status: Downloading / Completed / Failed / Cancelled
-    _context.LogMessage(PluginLogLevel.Info, $"{taskId} -> {status.Status} {status.Progress:F0}%");
-}
-```
-
-**异步启动生命周期钩子：**
-
-同步钩子（`RegisterGameLaunchHook`）会在启动流程中被阻塞等待。若回调需要执行耗时/网络操作，请改用异步版本，避免卡住启动流程：
-
-```csharp
-// 若回调需要网络/耗时操作，请使用异步钩子，避免阻塞启动流程
-context.RegisterGameLaunchHookAsync("upload-on-crash", GameLaunchPhase.OnCrash, async ctx =>
-{
-    // 上报崩溃报告需要网络请求，适合用异步钩子
-    await UploadCrashReportAsync(ctx.VersionId, ctx.CrashReport);
-});
-```
-
-> `RegisterGameLaunchHookAsync` 的其它规则（触发顺序、`CancelLaunch` 拦截、异常隔离）与同步钩子一致；异步钩子与同步钩子按 `{pluginId}.{hookId}` 字典序混合触发。
-
-### 14. 崩溃数据 API
-
-读取崩溃报告并做自己的处理（例如把日志交给外部服务分析）。**这些方法都在启动器内核中完成，无界面依赖、不会弹窗。**
-
-```csharp
-// 列出崩溃报告；传版本 ID 限定，传 null 查全部
-IReadOnlyList<PluginCrashReportInfo> reports = _context.GetCrashReports();
-
-// 用启动器内置规则引擎分析（同步、纯本地、无网络）
-PluginCrashAnalysis? analysis = _context.AnalyzeCrashReport(reports[0].ReportPath);
-
-// 读原文（默认脱敏、默认最多 20 万字符）
-string? text = _context.ReadCrashReportText(reports[0].ReportPath, maxChars: 100_000);
-
-// 手动脱敏：发往外部服务前建议再过一遍
-string safe = _context.SanitizeCrashReportText(text!);
-```
-
-**返回的数据（精简字段）：**
-
-| 类型 | 字段 |
-|------|------|
-| `PluginCrashReportInfo` | `ReportPath`、`FileName`、`VersionId`、`Kind`（`Minecraft` / `JvmFatalError`）、`CreatedTime`、`SizeBytes`、`ReportFound`、`ExitCode` |
-| `PluginCrashAnalysis` | `Headline`、`MinecraftVersion`、`LoaderInfo`、`JavaVersion`、`OperatingSystem`、`CrashTime`、`Description`、`ExceptionSummary`、`Causes`、`SuspectedMods`、`RawPreview` |
-| `PluginCrashCause` | `Category`、`Title`、`Evidence`、`Suggestion`、`Confidence`（`High` / `Medium` / `Low`） |
-
-注意：
-
-- `ReadCrashReportText` 的 `sanitize` 默认 `true`，会抹掉用户名、`--accessToken`、用户目录路径等；**先脱敏再截断**，所以返回长度不会超过 `maxChars`。要原始内容请显式传 `sanitize: false`。
-- 脱敏只处理"凭据 / 路径"这类**有明确模式**的字段，不会抹掉正文里任意出现的用户名。发给第三方前请自行检查。
-- 报告文件可能已被用户删除，`ReadCrashReportText` / `AnalyzeCrashReport` 找不到文件时分别返回 `null`，请判空。
-
-### 15. 崩溃事件
-
-两个入口，按需选择：
-
-| | `GameLaunchPhase.OnCrash` 钩子 | `EventNames.CrashDetected` 事件 |
-|---|---|---|
-| 触发时机 | 游戏进程一退出就触发 | 启动器**等过报告落盘**之后触发（约 1–3 秒） |
-| 报告路径 | `ctx.CrashReport`，**可能是 null**（报告还没写完） | `PluginCrashReportInfo.ReportFound` 明确告诉有没有找到 |
-| 适合 | 只想"知道游戏崩了" | 需要**拿到报告文件**才能干活 |
-
-```csharp
-// ① 启动钩子：进程一退出就回调，ctx.CrashReport 是尽力查找的结果
-_context.RegisterGameLaunchHookAsync("my-crash-hook", GameLaunchPhase.OnCrash, async ctx =>
-{
-    _context.LogMessage(PluginLogLevel.Warning, $"游戏崩溃，退出码 {ctx.ExitCode}");
-    if (ctx.CrashReport != null) { /* 报告可能还没写完，这里只是尽力 */ }
-});
-
-// ② CrashDetected：报告落盘状态已确定
-_context.SubscribeEvent(IPluginContext.EventNames.CrashDetected, data =>
-{
-    if (data is PluginCrashReportInfo info && info.ReportFound)
-    {
-        var text = _context.ReadCrashReportText(info.ReportPath);
-        // 拿到内容后做你自己的处理
-    }
-});
-```
-
-> 崩溃后启动器**总是**弹出询问是否分析的弹窗（没有开关），与插件的行为互不影响。
-
-### 16. UI 槽位
-
-把自绘控件挂进启动器既有页面的预留位置。需要先给插件项目加上 Avalonia 引用，控件才能创建：
-
-```xml
-<ItemGroup>
-  <ProjectReference Include="path\to\ObsMCLauncher.Core.csproj" />
-  <PackageReference Include="Avalonia" Version="11.3.11" />
-</ItemGroup>
-```
-
-当前**保证有宿主容器**的槽位：
-
-| slotId | 位置 |
-|--------|------|
-| `crash.dialog.actions` | 崩溃弹窗的按钮行 |
-| `crash.dialog.analysis.after` | 崩溃弹窗里分析结论的下方 |
-| `crash.page.analysis.after` | 「更多 → 崩溃分析」页分析详情下方 |
-| `crash.page.toolbar` | 「更多 → 崩溃分析」页顶部工具栏 |
-
-```csharp
-using Avalonia.Controls;
-
-public void OnLoad(IPluginContext context)
-{
-    var button = new Button { Content = "用我的插件分析" };
-    button.Click += (_, _) => AnalyzeCurrent(context);
-
-    // 注册进槽位；order 小的排前面
-    context.AddSlotContent("crash.dialog.actions", "analyze-btn", button, order: -1);
-
-    // 也可以拿到宿主容器自己增删（容器里同时有启动器控件和插件内容）
-    if (context.GetSlotHost("crash.dialog.actions") is Panel host)
-    {
-        host.Children.Add(new TextBlock { Text = "插件已就绪" });
-    }
-}
-
-public void OnUnload()
-{
-    // 卸载时清理：不清理的话会留下控件引用
-    _context.ClearSlotContent("crash.dialog.actions");
-}
-```
-
-说明：
-
-- **slotId 是开放字符串**：不在上表里的 id 也能注册（记一条警告），但只有当该 id 的宿主出现时才会渲染。想完全自己决定挂在哪，请用下一节的 `GetUiRoot()`。
-- 槽位内容的 `DataContext` 若为空，启动器会填一个 `PluginSlotContext`（`SlotId` / `CrashReportPath` / `VersionId`），插件据此知道"当前是哪份报告"；也可用 `GetActiveCrashContext()` 主动查询。
-- 插件禁用 / 卸载时，启动器会自动清理其所有槽位内容。
-
-### 17. 任意 UI 访问
-
-**不需要启动器预先开槽位**——拿到 UI 根后，插件可以自己遍历视觉树、往任意容器增删控件、改任意控件属性：
-
-```csharp
-using Avalonia.Controls;
-using Avalonia.VisualTree;
-
-// 主窗口（Avalonia Window）；没有窗口时返回 null
-if (_context.GetUiRoot() is Window root)
-{
-    // 按 x:Name 找控件（名字由启动器维护，比自己遍历稳一点）
-    if (_context.TryFindControlByName("CrashDialogHeader") is TextBlock header)
-    {
-        header.Text = "插件改过的标题";
-    }
-
-    // 自己遍历：把某个按钮改成不可见
-    var target = root.GetVisualDescendants()
-                     .OfType<Button>()
-                     .FirstOrDefault(b => b.Content is "打开游戏日志文件夹");
-    if (target != null) target.IsVisible = false;
-}
-
-// 从别的线程操作 UI 时，用这个把回调调度到 UI 线程
-_context.RunOnUiThread(() => MyUpdate());
-```
-
-风险与建议（这条路径是"完全自由"的，代价由插件承担）：
-
-- 页面结构可能随版本变化，**找不到控件就跳过**，不要假设它一定存在；
-- 改动启动器自己的控件（隐藏、改文案）会影响用户，请谨慎；
-- 所有 UI 操作都要在 UI 线程执行（用 `RunOnUiThread`）；
-- 插件卸载时不会自动撤销这类修改，请在 `OnUnload` 里还原。
-
-### 18. API 版本
-
-`ApiVersion` 就是**启动器版本的主版本号**，没有细分的能力开关：
-
-```csharp
-// v1.2.3 → 1（若版本号带 -preview / -beta 等后缀，取主干第一段）
-int api = _context.ApiVersion;
-
-// 需要完整版本字符串（例如做更细的判断）用它
-string full = _context.LauncherVersion;   // 如 "1.2.0"
-```
-
-版本语义：
-
-| 变化 | 含义 |
-|------|------|
-| **主版本递进**（1 → 2） | 插件 API **可能发生破坏性变更**（删改已有成员），需要重新适配 |
-| 次版本 / 修订号变化 | 只**新增**成员，不改动已有成员，已编译的插件继续可用 |
-
-因此插件侧的判断很简单：
-
-```csharp
-// 只在需要的大版本上启用某功能
-if (_context.ApiVersion >= 1)
-{
-    var reports = _context.GetCrashReports();
-}
-```
-
-> 新能力只会往 `IPluginContext` **增加**成员（插件只是消费方，不需要自己实现该接口），
-> 所以小版本升级不会让现有插件失效；出现破坏性变更时主版本会递进。
-
-反方向——"本插件要求启动器至少多新"——在 `plugin.json` 里声明（该字段一直存在）：
-
-```json
-{
-  "Id": "my.plugin",
-  "MinLauncherVersion": "1.2.0"
-}
-```
-
-启动器加载插件时会据此拒绝版本过旧的插件。若某个新 API 在旧启动器上不存在，调用它会在运行时抛出
-`MissingMethodException`；不想写 try/catch 的话，就用上面的 `MinLauncherVersion` 把门槛立起来。
 
 ---
 
@@ -1301,6 +1273,8 @@ dotnet add reference path/to/ObsMCLauncher.Core.dll
 </Project>
 ```
 
+用到 UI 扩展（[3. UI 扩展](#3-ui-扩展)）时再加 Avalonia 包引用。
+
 ### 3. 实现插件接口
 
 创建 `Plugin.cs`：
@@ -1319,40 +1293,41 @@ namespace YourPlugin
         public string Version => "1.0.0";
         public string Author => "Your Name";
         public string Description => "A brief description of your plugin.";
-        
+
         private IPluginContext? _context;
-        
+
         public void OnLoad(IPluginContext context)
         {
             _context = context;
-            
-            System.Diagnostics.Debug.WriteLine($"[{Name}] 插件已加载");
-            
-            context.SubscribeEvent("GameLaunched", OnGameLaunched);
-            
+
+            context.LogMessage(PluginLogLevel.Info, $"[{Name}] 插件已加载");
+
+            // 推荐用 EventNames 常量，避免拼写错误
+            context.SubscribeEvent(IPluginContext.EventNames.GameLaunched, OnGameLaunched);
+
             context.RegisterHomeCard(
                 "example-card",
                 "示例卡片",
                 "这是一个插件卡片示例",
-                "Star"
+                "🌟"
             );
         }
-        
+
         public void OnUnload()
         {
             _context?.UnregisterHomeCard("example-card");
-            System.Diagnostics.Debug.WriteLine($"[{Name}] 插件已卸载");
+            _context?.LogMessage(PluginLogLevel.Info, $"[{Name}] 插件已卸载");
         }
-        
+
         public void OnShutdown()
         {
-            var configPath = Path.Combine(_context!.PluginDataDirectory, "config.json");
-            File.WriteAllText(configPath, "{}");
+            // 用配置 API 落盘，省得自己拼路径
+            _context?.SaveConfig(new { LastExit = DateTime.Now });
         }
-        
+
         private void OnGameLaunched(object? eventData)
         {
-            System.Diagnostics.Debug.WriteLine($"[{Name}] 游戏已启动");
+            _context?.LogMessage(PluginLogLevel.Debug, $"[{Name}] 游戏已启动: {eventData}");
         }
     }
 }
@@ -1360,20 +1335,7 @@ namespace YourPlugin
 
 ### 4. 创建 plugin.json
 
-```json
-{
-  "id": "your-plugin-id",
-  "name": "Your Plugin Name",
-  "version": "1.0.0",
-  "author": "Your Name",
-  "description": "A brief description of your plugin.",
-  "repository": "https://github.com/yourusername/your-plugin",
-  "minLauncherVersion": "1.0.0",
-  "dependencies": [],
-  "tags": ["Windows", "工具"],
-  "category": "utility"
-}
-```
+字段名与格式见 [插件结构 › plugin.json 格式](#pluginjson-格式)，复制到插件项目根目录即可。
 
 ### 5. 编译插件
 
@@ -1388,7 +1350,8 @@ dotnet build -c Release
 ### 本地测试
 
 1. **找到启动器运行目录**
-   - 开发环境：`H:\projects\ObsMCLauncher\bin\Debug\net8.0\`
+   - 开发环境：`ObsMCLauncher.Desktop` 的编译输出目录（如 `{仓库}/ObsMCLauncher.Desktop/bin/Debug/net8.0/`）
+   - 正式环境：启动器安装目录下的 `current` 同级目录（见 [1. 目录、版本与兼容性](#1-目录版本与兼容性)）
 
 2. **创建插件文件夹**
    ```
@@ -1405,7 +1368,35 @@ dotnet build -c Release
 
 ### 调试
 
-使用 Visual Studio 附加到 `ObsMCLauncher.Desktop` 进程进行调试。
+使用 Visual Studio 附加到 `ObsMCLauncher.Desktop` 进程进行调试。配合 `context.LogMessage(PluginLogLevel.Debug, ...)` 输出调试信息，可在启动器的"开发控制台"或日志文件中查看。
+
+---
+
+## 📥 用户安装插件
+
+1. 从插件市场或 Release 页面下载插件 ZIP
+2. 解压到 `OMCL\plugins\` 下，**文件夹名必须与插件 ID 一致**：
+   ```
+   OMCL\plugins\your-plugin-id\
+       ├── your-plugin-id.dll
+       ├── plugin.json
+       └── README.md
+   ```
+3. 重启启动器
+
+**临时禁用**：在插件文件夹里放一个名为 `.disabled` 的空文件，启动器会跳过该插件；删掉这个文件即可重新启用。
+启动器在插件加载失败时也会自动写入 `.disabled`，避免反复崩溃。
+
+**卸载**：在启动器里删除插件时，启动器会先热卸载插件实例（调用 `OnUnload` 并清理它注册的命令 / 钩子 / 事件订阅 / 槽位内容），再删除插件文件夹。
+由于程序集是 `Assembly.LoadFrom` 载入的、DLL 在进程生命周期内被占用，删除有时会失败——此时启动器会在插件目录留下一个
+`.delete_on_restart` 标记，**下次启动扫描插件时删掉整个目录**。
+
+| 标记文件 | 含义 |
+|----------|------|
+| `.disabled` | 跳过加载（下次启动生效）；删掉即可恢复 |
+| `.delete_on_restart` | 下次启动扫描时删除整个插件目录（卸载时文件被占用才会留下） |
+
+> 对插件作者的含义：不要在 `OnUnload` 里假设文件还能访问或还能重新加载；也不要指望卸载后程序集能被真正释放——同一个进程里同一插件不会被二次加载。
 
 ---
 
@@ -1415,11 +1406,21 @@ dotnet build -c Release
 
 ```bash
 dotnet build -c Release
+```
 
-cd bin/Release/net8.0/
+Windows（PowerShell）：
 
+```powershell
 Compress-Archive -Path YourPlugin.dll,plugin.json,README.md -DestinationPath YourPlugin.zip
 ```
+
+macOS / Linux：
+
+```bash
+zip YourPlugin.zip YourPlugin.dll plugin.json README.md
+```
+
+> ZIP 里的文件应在**根目录**——用户解压后应直接得到插件文件夹，而不是多套一层目录。
 
 ### 2. GitHub Release
 
@@ -1449,12 +1450,12 @@ namespace HelloPlugin
         public string Version => "1.0.0";
         public string Author => "Your Name";
         public string Description => "A simple example plugin.";
-        
+
         public void OnLoad(IPluginContext context)
         {
-            System.Diagnostics.Debug.WriteLine("[HelloPlugin] Hello from plugin!");
+            context.ShowNotification("Hello", "插件已加载", "success");
         }
-        
+
         public void OnUnload() { }
         public void OnShutdown() { }
     }
@@ -1465,7 +1466,6 @@ namespace HelloPlugin
 
 ```csharp
 using ObsMCLauncher.Core.Plugins;
-using System.Diagnostics;
 
 namespace EventPlugin
 {
@@ -1476,50 +1476,49 @@ namespace EventPlugin
         public string Version => "1.0.0";
         public string Author => "Your Name";
         public string Description => "Demonstrates event subscription.";
-        
+
         private IPluginContext? _context;
-        
+
         public void OnLoad(IPluginContext context)
         {
             _context = context;
-            
-            context.SubscribeEvent("GameLaunched", OnGameLaunched);
-            context.SubscribeEvent("GameClosed", OnGameClosed);
-            
-            Debug.WriteLine("[EventPlugin] Subscribed to events");
+
+            // 用 EventNames 常量，不写魔法字符串
+            context.SubscribeEvent(IPluginContext.EventNames.GameLaunched, OnGameLaunched);
+            context.SubscribeEvent(IPluginContext.EventNames.GameClosed, OnGameClosed);
+
+            context.LogMessage(PluginLogLevel.Debug, "[EventPlugin] Subscribed to events");
         }
-        
+
         public void OnUnload()
         {
-            Debug.WriteLine("[EventPlugin] Unloaded");
+            _context?.LogMessage(PluginLogLevel.Debug, "[EventPlugin] Unloaded");
         }
-        
-        public void OnShutdown()
-        {
-            Debug.WriteLine("[EventPlugin] Shutdown");
-        }
-        
+
+        public void OnShutdown() { }
+
         private void OnGameLaunched(object? eventData)
         {
-            Debug.WriteLine($"[EventPlugin] Game launched: {eventData}");
+            _context?.LogMessage(PluginLogLevel.Debug, $"[EventPlugin] Game launched: {eventData}");
         }
-        
+
         private void OnGameClosed(object? eventData)
         {
-            Debug.WriteLine($"[EventPlugin] Game closed: {eventData}");
+            _context?.LogMessage(PluginLogLevel.Debug, $"[EventPlugin] Game closed: {eventData}");
         }
     }
 }
 ```
 
-### 启动钩子插件（使用扩展 API）
+### 启动钩子插件（扩展 API 综合）
 
-演示使用 `RegisterGameLaunchHook` 在游戏启动前追加 JVM 参数、崩溃时上传报告：
+演示使用启动钩子在游戏启动前追加 JVM 参数、崩溃时异步上传报告：
 
 ```csharp
 using System;
 using System.IO;
 using System.Net.Http;
+using System.Threading.Tasks;
 using ObsMCLauncher.Core.Plugins;
 
 namespace CrashReporterPlugin
@@ -1543,13 +1542,13 @@ namespace CrashReporterPlugin
             context.RegisterGameLaunchHook("add-args",
                 GameLaunchPhase.BeforeLaunch, OnBeforeLaunch);
 
-            // 崩溃时上传报告
-            context.RegisterGameLaunchHook("upload-report",
-                GameLaunchPhase.OnCrash, OnCrash);
-
             // 启动后展示当前账户信息
             context.RegisterGameLaunchHook("show-account",
                 GameLaunchPhase.AfterLaunch, OnAfterLaunch);
+
+            // 上传报告要走网络 → 用异步钩子，不要阻塞启动流程
+            context.RegisterGameLaunchHookAsync("upload-report",
+                GameLaunchPhase.OnCrash, OnCrashAsync);
         }
 
         private void OnBeforeLaunch(GameLaunchHookContext ctx)
@@ -1569,32 +1568,31 @@ namespace CrashReporterPlugin
             }
         }
 
-        private void OnCrash(GameLaunchHookContext ctx)
+        private async Task OnCrashAsync(GameLaunchHookContext ctx)
         {
-            _context?.LogMessage(PluginLogLevel.Error,
-                $"检测到崩溃，退出码 {ctx.ExitCode}");
+            var context = _context;
+            if (context == null) return;
 
-            var reportPath = Path.Combine(ctx.GameDirectory, "crash-reports",
-                $"crash-{DateTime.Now:yyyy-MM-dd_HH.mm.ss}.txt");
+            context.LogMessage(PluginLogLevel.Error, $"检测到崩溃，退出码 {ctx.ExitCode}");
+
+            // ctx.CrashReport 是尽力查找的结果，可能还没落盘；
+            // 一定要拿到报告文件时请改订阅 EventNames.CrashDetected。
+            if (string.IsNullOrEmpty(ctx.CrashReport)) return;
 
             try
             {
-                // 保存崩溃报告到游戏目录
-                Directory.CreateDirectory(Path.GetDirectoryName(reportPath)!);
-                File.WriteAllText(reportPath, ctx.CrashReport ?? "(no report)");
-
-                // 上传到自己的服务器
                 using var http = new HttpClient();
                 var content = new MultipartFormDataContent
                 {
                     { new StringContent(ctx.VersionId), "version" },
-                    { new StringContent(ctx.CrashReport ?? ""), "report" }
+                    // 发往自己的服务前先脱敏
+                    { new StringContent(context.SanitizeCrashReportText(ctx.CrashReport)), "report" }
                 };
-                http.PostAsync("https://your-server.com/api/crash", content).Wait();
+                await http.PostAsync("https://your-server.com/api/crash", content);
             }
             catch (Exception ex)
             {
-                _context?.LogMessage(PluginLogLevel.Error, $"上传崩溃报告失败: {ex.Message}");
+                context.LogMessage(PluginLogLevel.Error, $"上传崩溃报告失败: {ex.Message}");
             }
         }
 
@@ -1610,13 +1608,12 @@ namespace CrashReporterPlugin
 
 ### 版本备份插件（综合使用扩展 API）
 
-演示综合使用 `GetInstalledVersions` / `RequestDownload` / `LogMessage`：
+演示综合使用 `GetInstalledVersions` / `RegisterCommand` / `LogMessage`：
 
 ```csharp
 using System;
 using System.IO;
 using System.IO.Compression;
-using System.Linq;
 using ObsMCLauncher.Core.Plugins;
 
 namespace BackupPlugin
@@ -1732,7 +1729,7 @@ ObsMCLauncher 使用 **Avalonia UI** 框架开发，支持跨平台运行（Wind
 
 插件开发时请注意：
 - 使用 `Path.Combine()` 处理文件路径，确保跨平台兼容性
-- UI 操作需在 UI 线程执行，使用 `Avalonia.Threading.Dispatcher.UIThread.Post()`
+- UI 操作需在 UI 线程执行，用 `context.RunOnUiThread(...)`（不必自行引用 `Avalonia.Threading.Dispatcher`），参见 [3.5 任意 UI 访问](#35-任意-ui-访问)
 
 ---
 
@@ -1740,50 +1737,27 @@ ObsMCLauncher 使用 **Avalonia UI** 框架开发，支持跨平台运行（Wind
 
 ### Q: 插件可以访问哪些启动器功能？
 
-A: 插件通过 `IPluginContext` 可以访问：
-- 事件订阅和发布
-- UI 扩展（标签页、主页卡片）
-- 插件数据目录
-- 启动器版本信息
-- **统一日志写入**（`LogMessage`）
-- **已安装版本列表查询**（`GetInstalledVersions`）
-- **当前账户信息获取**（`GetCurrentAccount`，不含令牌）
-- **游戏启动生命周期钩子**（`RegisterGameLaunchHook`，可拦截启动/追加 JVM 参数/接收崩溃报告）
-- **下载请求提交**（`RequestDownload`，复用启动器多线程下载/SHA-1 校验）
-- **崩溃数据**（`GetCrashReports` / `AnalyzeCrashReport` / `ReadCrashReportText` / `SanitizeCrashReportText`）
-- **UI 扩展**（槽位 `AddSlotContent`，或不受限制的 `GetUiRoot` / `TryFindControlByName`）
-- **API 版本**（`ApiVersion`，取启动器主版本号）
-- 通知系统、自定义命令
+A: 见 [API 总览](#api-总览)，按场景的说明在 [API 参考](#api-参考) 各章。
 
 ### Q: 插件如何拿到崩溃日志？
 
-A: 两种时机，按需选择：
-
-- 只想"知道游戏崩了"：注册 `GameLaunchPhase.OnCrash` 钩子，`ctx.CrashReport` 是尽力查找的路径（**可能为 null**，报告还没写完）；
-- 需要**拿到报告文件**：订阅 `IPluginContext.EventNames.CrashDetected`，启动器等过报告落盘才发，`PluginCrashReportInfo.ReportFound` 明确告诉有没有找到。
-
-读内容用 `ReadCrashReportText`（默认脱敏、默认上限 20 万字符），用启动器内置规则先跑一遍就用 `AnalyzeCrashReport`。
+A: 两种时机——只想"知道游戏崩了"用 `GameLaunchPhase.OnCrash` 钩子（报告可能为 null）；需要**拿到报告文件**就订阅 `EventNames.CrashDetected`。详见 [7. 崩溃系统](#7-崩溃系统)。
 
 ### Q: 插件怎么把 UI 放进启动器已有页面？
 
-A: 两条路：
-
-1. **槽位**（推荐）：`AddSlotContent(slotId, itemId, 控件)`，挂到 `crash.dialog.actions`、`crash.page.toolbar` 等预留位置，生命周期由启动器管理（禁用/卸载自动清理）；
-2. **任意访问**：`GetUiRoot()` 拿到主窗口后自己遍历视觉树增删控件——不受槽位限制，但页面结构随版本变化，兼容性由插件自身保证。
-
-两条路都需要给插件项目加 Avalonia 包引用才能创建控件。
+A: 优先用 [3.4 UI 槽位](#34-ui-槽位)（生命周期由启动器管理）；槽位不够用再走 [3.5 任意 UI 访问](#35-任意-ui-访问)（自由但兼容性自负）。
 
 ### Q: 插件如何保存数据？
 
-A: 使用 `context.PluginDataDirectory` 获取专属数据目录，在该目录下保存配置和数据文件。
+A: 用 `context.PluginDataDirectory` 下的自有文件，或直接用配置 API `GetConfig<T>` / `SaveConfig<T>`，见 [8. 日志与配置](#8-日志与配置)。
 
 ### Q: 插件可以添加新的 UI 页面吗？
 
-A: 可以，使用 `context.RegisterTab()` 在"更多"页面注册标签页，支持传入 Avalonia `Control` 作为自定义 UI。
+A: 可以，用 `context.RegisterTab()` 在"更多"页面注册标签页，支持传入 Avalonia `Control` 作为自定义 UI，见 [3.1](#31-注册标签页)。
 
 ### Q: 插件可以拦截游戏启动吗？
 
-A: 可以，注册 `GameLaunchPhase.BeforeLaunch` 钩子，在回调中设置 `ctx.CancelLaunch = true` 即可中止启动。后续 `BeforeLaunch` 钩子也会停止调用。请谨慎使用，避免影响用户体验。
+A: 可以，注册 `GameLaunchPhase.BeforeLaunch` 钩子，在回调中设置 `ctx.CancelLaunch = true` 即可中止启动（后续 `BeforeLaunch` 钩子也会停止调用）。请谨慎使用，避免影响用户体验。
 
 ### Q: 插件可以获取用户的微软访问令牌吗？
 
@@ -1791,11 +1765,15 @@ A: **不能**。`GetCurrentAccount()` 仅返回 `Username` / `AccountType` / `UU
 
 ### Q: 插件下载文件会被沙箱限制吗？
 
-A: `RequestDownload` 强制要求 `http://` 或 `https://` 协议、文件名禁含路径分隔符、目标目录需在启动器允许范围内（一般为插件数据目录或游戏目录）。这是为了防止路径遍历和敏感协议攻击。
+A: `RequestDownload` 强制要求 `http://` 或 `https://` 协议、文件名禁含路径分隔符、目标目录需在启动器允许范围内。见 [6. 下载](#6-下载)。
 
 ### Q: 插件钩子触发顺序是怎样的？
 
-A: 同一阶段有多个钩子时，按 `{pluginId}.{hookId}` 字典序触发。`BeforeLaunch` 阶段被某个钩子设为 `CancelLaunch = true` 后，后续 `BeforeLaunch` 钩子不再调用。其他阶段（`AfterLaunch` / `OnExited` / `OnCrash`）的所有钩子都会被调用。
+A: 同一阶段按 `{pluginId}.{hookId}` 字典序触发，同步与异步钩子混排。`BeforeLaunch` 被取消后，后续 `BeforeLaunch` 钩子不再调用；其他阶段的所有钩子都会被调用。见 [5](#5-游戏启动生命周期钩子)。
+
+### Q: 用户怎么临时禁用插件？
+
+A: 在插件目录下放一个 `.disabled` 文件即可，见 [用户安装插件](#用户安装插件)。
 
 ### Q: 插件出错会导致启动器崩溃吗？
 
@@ -1803,7 +1781,7 @@ A: 不会，启动器会捕获插件异常并隔离错误，只会禁用有问�
 
 ### Q: 如何调试插件？
 
-A: 使用 Visual Studio 附加到 `ObsMCLauncher.Desktop` 进程进行调试。同时推荐使用 `context.LogMessage(PluginLogLevel.Debug, ...)` 输出调试信息，可在启动器的"开发控制台"或日志文件中查看。
+A: 使用 Visual Studio 附加到 `ObsMCLauncher.Desktop` 进程进行调试；同时推荐用 `context.LogMessage(PluginLogLevel.Debug, ...)` 输出调试信息，可在启动器的"开发控制台"或日志文件中查看。
 
 ---
 

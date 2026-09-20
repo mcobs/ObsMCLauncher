@@ -19,9 +19,6 @@ public class PluginMetadata
     [JsonPropertyName("description")]
     public string Description { get; set; } = string.Empty;
 
-    [JsonPropertyName("entry")]
-    public string? Entry { get; set; }
-
     [JsonPropertyName("minLauncherVersion")]
     public string? MinLauncherVersion { get; set; }
 
@@ -45,7 +42,4 @@ public class PluginMetadata
 
     [JsonPropertyName("icon")]
     public string? Icon { get; set; }
-
-    [JsonPropertyName("enabled")]
-    public bool Enabled { get; set; } = true;
 }
