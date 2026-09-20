@@ -130,7 +130,7 @@
               </ui:SettingsExpanderItem.IconSource>
             </ui:SettingsExpanderItem>
 
-            <ui:SettingsExpanderItem Content="版权" Description="(c) 2025 ObsMCLauncher">
+            <ui:SettingsExpanderItem Content="版权" Description="(c) 2026 ObsMCLauncher">
               <ui:SettingsExpanderItem.IconSource>
                 <ui:PathIconSource Data="M12 2C6.48 2 2 6.48 2 12S6.48 22 12 22 22 17.52 22 12 17.52 2 12 2M12 20C7.59 20 4 16.41 4 12S7.59 4 12 4 20 7.59 20 12 16.41 20 12 20M11 7H13V13H11V7M11 15H13V17H11V15Z"/>
               </ui:SettingsExpanderItem.IconSource>
