@@ -4,13 +4,17 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using ObsMCLauncher.Core.Models;
 using ObsMCLauncher.Core.Plugins;
 using ObsMCLauncher.Core.Services.Accounts;
+using ObsMCLauncher.Desktop.Services;
 using ObsMCLauncher.Desktop.ViewModels.Dialogs;
 using ObsMCLauncher.Desktop.ViewModels.Notifications;
 using ObsMCLauncher.Core.Utils;
@@ -288,6 +292,8 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             DebugLogger.Info("MainWindow", $"插件已禁用: {pluginId}");
 
             ObsMCLauncher.Core.Services.HomeComponentRegistry.RemovePluginComponents(pluginId);
+            // 槽位内容也要清，否则会留下已卸载插件的控件引用
+            PluginSlotRegistry.ClearPluginSlotContent(pluginId);
 
             Avalonia.Threading.Dispatcher.UIThread.Post(() =>
             {
@@ -306,12 +312,65 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             DebugLogger.Info("MainWindow", $"插件已移除: {pluginId}");
 
             ObsMCLauncher.Core.Services.HomeComponentRegistry.RemovePluginComponents(pluginId);
+            PluginSlotRegistry.ClearPluginSlotContent(pluginId);
 
             Avalonia.Threading.Dispatcher.UIThread.Post(() =>
             {
                 _moreViewModel?.RemoveAllPluginTabs(pluginId);
                 _homeViewModel?.RemoveAllPluginCards(pluginId);
             });
+        };
+
+        // ===== 崩溃数据 / 桌面层扩展回调 =====
+
+        // 崩溃数据（列表/分析/读取/脱敏）由 PluginContext 自身完成，这里不用接线。
+
+        // 槽位宿主容器：插件拿到后可直接增删改其中的控件（含启动器自己的控件）
+        PluginContext.OnGetSlotHost = slotId => Controls.PluginSlotHost.TryGetMountedHost(slotId);
+
+        // UI 根：插件拿到主窗口后可自行遍历/修改任意控件（不受槽位限制）
+        PluginContext.OnGetUiRoot = () =>
+        {
+            if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+            {
+                return desktop.MainWindow;
+            }
+            return null;
+        };
+
+        // 按控件名查找：在已打开的窗口里找 Name 匹配的控件
+        PluginContext.OnFindControlByName = name =>
+        {
+            if (string.IsNullOrWhiteSpace(name)) return null;
+            if (Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop)
+            {
+                return null;
+            }
+
+            foreach (var window in desktop.Windows)
+            {
+                var found = window.GetVisualDescendants()
+                    .OfType<Control>()
+                    .FirstOrDefault(c => string.Equals(c.Name, name, StringComparison.Ordinal));
+                if (found != null) return found;
+            }
+            return null;
+        };
+
+        // 当前崩溃上下文（崩溃弹窗 / 崩溃分析页正在看的那份报告）
+        PluginContext.OnGetActiveCrashContext = () => PluginCrashContextService.Current;
+
+        // UI 线程调度：已在 UI 线程直接执行，否则投递
+        PluginContext.OnRunOnUiThread = action =>
+        {
+            if (Avalonia.Threading.Dispatcher.UIThread.CheckAccess())
+            {
+                action();
+            }
+            else
+            {
+                Avalonia.Threading.Dispatcher.UIThread.Post(action);
+            }
         };
 
         // 插件日志写入启动器统一日志

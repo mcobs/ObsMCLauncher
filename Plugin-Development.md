@@ -24,6 +24,12 @@
   - [获取当前账户信息](#10-获取当前账户信息)
   - [游戏启动生命周期钩子](#11-游戏启动生命周期钩子)
   - [提交下载请求](#12-提交下载请求)
+  - [其他增强 API](#13-其他增强-api)
+  - [崩溃数据 API](#14-崩溃数据-api)
+  - [崩溃事件](#15-崩溃事件)
+  - [UI 槽位](#16-ui-槽位)
+  - [任意 UI 访问](#17-任意-ui-访问)
+  - [API 版本](#18-api-版本)
 - [开发流程](#开发流程)
 - [测试插件](#测试插件)
 - [用户安装插件](#用户安装插件)
@@ -41,7 +47,9 @@ ObsMCLauncher 采用基于 .NET Assembly 的插件系统，支持开发者使用
 
 - ✅ 原生性能，无沙箱限制
 - ✅ 完整访问启动器 API
-- ✅ 支持 UI 扩展（基于 Avalonia）
+- ✅ 支持 UI 扩展（基于 Avalonia，可挂进既有页面，也可自行遍历修改界面）
+- ✅ 崩溃报告读取与内置规则分析（可用于自建分析/上报服务）
+- ✅ 崩溃后自动询问、可订阅崩溃事件
 - ✅ 事件驱动架构
 - ✅ 配置文件支持
 - ✅ 跨平台支持（Windows/macOS/Linux）
@@ -275,7 +283,36 @@ namespace ObsMCLauncher.Core.Plugins
             public const string VersionInstalled = "VersionInstalled";
             public const string AccountChanged = "AccountChanged";
             public const string DownloadProgress = "DownloadProgress";
+
+            /// <summary>崩溃已确认（报告是否落盘已确定），负载为 PluginCrashReportInfo</summary>
+            public const string CrashDetected = "CrashDetected";
         }
+
+        // ===== API 版本（见 18. API 版本）=====
+
+        int ApiVersion { get; }
+
+        // ===== 崩溃数据 API（见 14. 崩溃数据 API）=====
+
+        IReadOnlyList<PluginCrashReportInfo> GetCrashReports(string? versionId = null);
+        PluginCrashAnalysis? AnalyzeCrashReport(string reportPath);
+        string? ReadCrashReportText(string reportPath, int maxChars = 200_000, bool sanitize = true);
+        string SanitizeCrashReportText(string text);
+        PluginSlotContext? GetActiveCrashContext();
+
+        // ===== UI 槽位（见 16. UI 槽位）=====
+
+        bool AddSlotContent(string slotId, string itemId, object content, int order = 0);
+        bool RemoveSlotContent(string slotId, string itemId);
+        void ClearSlotContent(string slotId);
+        IReadOnlyList<string> GetSlotIds();
+        object? GetSlotHost(string slotId);
+
+        // ===== 任意 UI 访问（见 17. 任意 UI 访问）=====
+
+        object? GetUiRoot();
+        object? TryFindControlByName(string name);
+        void RunOnUiThread(Action action);
     }
 }
 ```
@@ -1041,6 +1078,199 @@ context.RegisterGameLaunchHookAsync("upload-on-crash", GameLaunchPhase.OnCrash, 
 
 > `RegisterGameLaunchHookAsync` 的其它规则（触发顺序、`CancelLaunch` 拦截、异常隔离）与同步钩子一致；异步钩子与同步钩子按 `{pluginId}.{hookId}` 字典序混合触发。
 
+### 14. 崩溃数据 API
+
+读取崩溃报告并做自己的处理（例如把日志交给外部服务分析）。**这些方法都在启动器内核中完成，无界面依赖、不会弹窗。**
+
+```csharp
+// 列出崩溃报告；传版本 ID 限定，传 null 查全部
+IReadOnlyList<PluginCrashReportInfo> reports = _context.GetCrashReports();
+
+// 用启动器内置规则引擎分析（同步、纯本地、无网络）
+PluginCrashAnalysis? analysis = _context.AnalyzeCrashReport(reports[0].ReportPath);
+
+// 读原文（默认脱敏、默认最多 20 万字符）
+string? text = _context.ReadCrashReportText(reports[0].ReportPath, maxChars: 100_000);
+
+// 手动脱敏：发往外部服务前建议再过一遍
+string safe = _context.SanitizeCrashReportText(text!);
+```
+
+**返回的数据（精简字段）：**
+
+| 类型 | 字段 |
+|------|------|
+| `PluginCrashReportInfo` | `ReportPath`、`FileName`、`VersionId`、`Kind`（`Minecraft` / `JvmFatalError`）、`CreatedTime`、`SizeBytes`、`ReportFound`、`ExitCode` |
+| `PluginCrashAnalysis` | `Headline`、`MinecraftVersion`、`LoaderInfo`、`JavaVersion`、`OperatingSystem`、`CrashTime`、`Description`、`ExceptionSummary`、`Causes`、`SuspectedMods`、`RawPreview` |
+| `PluginCrashCause` | `Category`、`Title`、`Evidence`、`Suggestion`、`Confidence`（`High` / `Medium` / `Low`） |
+
+注意：
+
+- `ReadCrashReportText` 的 `sanitize` 默认 `true`，会抹掉用户名、`--accessToken`、用户目录路径等；**先脱敏再截断**，所以返回长度不会超过 `maxChars`。要原始内容请显式传 `sanitize: false`。
+- 脱敏只处理"凭据 / 路径"这类**有明确模式**的字段，不会抹掉正文里任意出现的用户名。发给第三方前请自行检查。
+- 报告文件可能已被用户删除，`ReadCrashReportText` / `AnalyzeCrashReport` 找不到文件时分别返回 `null`，请判空。
+
+### 15. 崩溃事件
+
+两个入口，按需选择：
+
+| | `GameLaunchPhase.OnCrash` 钩子 | `EventNames.CrashDetected` 事件 |
+|---|---|---|
+| 触发时机 | 游戏进程一退出就触发 | 启动器**等过报告落盘**之后触发（约 1–3 秒） |
+| 报告路径 | `ctx.CrashReport`，**可能是 null**（报告还没写完） | `PluginCrashReportInfo.ReportFound` 明确告诉有没有找到 |
+| 适合 | 只想"知道游戏崩了" | 需要**拿到报告文件**才能干活 |
+
+```csharp
+// ① 启动钩子：进程一退出就回调，ctx.CrashReport 是尽力查找的结果
+_context.RegisterGameLaunchHookAsync("my-crash-hook", GameLaunchPhase.OnCrash, async ctx =>
+{
+    _context.LogMessage(PluginLogLevel.Warning, $"游戏崩溃，退出码 {ctx.ExitCode}");
+    if (ctx.CrashReport != null) { /* 报告可能还没写完，这里只是尽力 */ }
+});
+
+// ② CrashDetected：报告落盘状态已确定
+_context.SubscribeEvent(IPluginContext.EventNames.CrashDetected, data =>
+{
+    if (data is PluginCrashReportInfo info && info.ReportFound)
+    {
+        var text = _context.ReadCrashReportText(info.ReportPath);
+        // 拿到内容后做你自己的处理
+    }
+});
+```
+
+> 崩溃后启动器**总是**弹出询问是否分析的弹窗（没有开关），与插件的行为互不影响。
+
+### 16. UI 槽位
+
+把自绘控件挂进启动器既有页面的预留位置。需要先给插件项目加上 Avalonia 引用，控件才能创建：
+
+```xml
+<ItemGroup>
+  <ProjectReference Include="path\to\ObsMCLauncher.Core.csproj" />
+  <PackageReference Include="Avalonia" Version="11.3.11" />
+</ItemGroup>
+```
+
+当前**保证有宿主容器**的槽位：
+
+| slotId | 位置 |
+|--------|------|
+| `crash.dialog.actions` | 崩溃弹窗的按钮行 |
+| `crash.dialog.analysis.after` | 崩溃弹窗里分析结论的下方 |
+| `crash.page.analysis.after` | 「更多 → 崩溃分析」页分析详情下方 |
+| `crash.page.toolbar` | 「更多 → 崩溃分析」页顶部工具栏 |
+
+```csharp
+using Avalonia.Controls;
+
+public void OnLoad(IPluginContext context)
+{
+    var button = new Button { Content = "用我的插件分析" };
+    button.Click += (_, _) => AnalyzeCurrent(context);
+
+    // 注册进槽位；order 小的排前面
+    context.AddSlotContent("crash.dialog.actions", "analyze-btn", button, order: -1);
+
+    // 也可以拿到宿主容器自己增删（容器里同时有启动器控件和插件内容）
+    if (context.GetSlotHost("crash.dialog.actions") is Panel host)
+    {
+        host.Children.Add(new TextBlock { Text = "插件已就绪" });
+    }
+}
+
+public void OnUnload()
+{
+    // 卸载时清理：不清理的话会留下控件引用
+    _context.ClearSlotContent("crash.dialog.actions");
+}
+```
+
+说明：
+
+- **slotId 是开放字符串**：不在上表里的 id 也能注册（记一条警告），但只有当该 id 的宿主出现时才会渲染。想完全自己决定挂在哪，请用下一节的 `GetUiRoot()`。
+- 槽位内容的 `DataContext` 若为空，启动器会填一个 `PluginSlotContext`（`SlotId` / `CrashReportPath` / `VersionId`），插件据此知道"当前是哪份报告"；也可用 `GetActiveCrashContext()` 主动查询。
+- 插件禁用 / 卸载时，启动器会自动清理其所有槽位内容。
+
+### 17. 任意 UI 访问
+
+**不需要启动器预先开槽位**——拿到 UI 根后，插件可以自己遍历视觉树、往任意容器增删控件、改任意控件属性：
+
+```csharp
+using Avalonia.Controls;
+using Avalonia.VisualTree;
+
+// 主窗口（Avalonia Window）；没有窗口时返回 null
+if (_context.GetUiRoot() is Window root)
+{
+    // 按 x:Name 找控件（名字由启动器维护，比自己遍历稳一点）
+    if (_context.TryFindControlByName("CrashDialogHeader") is TextBlock header)
+    {
+        header.Text = "插件改过的标题";
+    }
+
+    // 自己遍历：把某个按钮改成不可见
+    var target = root.GetVisualDescendants()
+                     .OfType<Button>()
+                     .FirstOrDefault(b => b.Content is "打开游戏日志文件夹");
+    if (target != null) target.IsVisible = false;
+}
+
+// 从别的线程操作 UI 时，用这个把回调调度到 UI 线程
+_context.RunOnUiThread(() => MyUpdate());
+```
+
+风险与建议（这条路径是"完全自由"的，代价由插件承担）：
+
+- 页面结构可能随版本变化，**找不到控件就跳过**，不要假设它一定存在；
+- 改动启动器自己的控件（隐藏、改文案）会影响用户，请谨慎；
+- 所有 UI 操作都要在 UI 线程执行（用 `RunOnUiThread`）；
+- 插件卸载时不会自动撤销这类修改，请在 `OnUnload` 里还原。
+
+### 18. API 版本
+
+`ApiVersion` 就是**启动器版本的主版本号**，没有细分的能力开关：
+
+```csharp
+// v1.2.3 → 1（若版本号带 -preview / -beta 等后缀，取主干第一段）
+int api = _context.ApiVersion;
+
+// 需要完整版本字符串（例如做更细的判断）用它
+string full = _context.LauncherVersion;   // 如 "1.2.0"
+```
+
+版本语义：
+
+| 变化 | 含义 |
+|------|------|
+| **主版本递进**（1 → 2） | 插件 API **可能发生破坏性变更**（删改已有成员），需要重新适配 |
+| 次版本 / 修订号变化 | 只**新增**成员，不改动已有成员，已编译的插件继续可用 |
+
+因此插件侧的判断很简单：
+
+```csharp
+// 只在需要的大版本上启用某功能
+if (_context.ApiVersion >= 1)
+{
+    var reports = _context.GetCrashReports();
+}
+```
+
+> 新能力只会往 `IPluginContext` **增加**成员（插件只是消费方，不需要自己实现该接口），
+> 所以小版本升级不会让现有插件失效；出现破坏性变更时主版本会递进。
+
+反方向——"本插件要求启动器至少多新"——在 `plugin.json` 里声明（该字段一直存在）：
+
+```json
+{
+  "Id": "my.plugin",
+  "MinLauncherVersion": "1.2.0"
+}
+```
+
+启动器加载插件时会据此拒绝版本过旧的插件。若某个新 API 在旧启动器上不存在，调用它会在运行时抛出
+`MissingMethodException`；不想写 try/catch 的话，就用上面的 `MinLauncherVersion` 把门槛立起来。
+
 ---
 
 ## 💻 开发流程
@@ -1449,6 +1679,51 @@ namespace BackupPlugin
 }
 ```
 
+### 崩溃分析插件（崩溃 API + UI 槽位）
+
+崩溃后从弹窗里提供一个"交给我的服务分析"的入口：
+
+```csharp
+using Avalonia.Controls;
+using ObsMCLauncher.Core.Plugins;
+
+public class MyCrashPlugin : ILauncherPlugin
+{
+    private IPluginContext _context = null!;
+
+    public string Id => "my.crashplugin";
+    public string Name => "崩溃分析示例";
+    public string Version => "1.0.0";
+    public string Author => "You";
+    public string Description => "把崩溃日志交给自己的服务分析";
+
+    public void OnLoad(IPluginContext context)
+    {
+        _context = context;
+
+        var button = new Button { Content = "用我的服务分析" };
+        button.Click += async (_, _) =>
+        {
+            // 取当前上下文（用户正在看哪份报告）
+            var path = context.GetActiveCrashContext()?.CrashReportPath;
+            if (string.IsNullOrEmpty(path)) return;
+
+            // 默认已脱敏，再手动过一遍更保险
+            var text = context.SanitizeCrashReportText(
+                context.ReadCrashReportText(path, maxChars: 100_000) ?? "");
+
+            var result = await CallMyServiceAsync(text);   // 你自己的实现
+            context.ShowNotification("分析结果", result, "info");
+        };
+
+        context.AddSlotContent("crash.dialog.actions", "analyze-btn", button);
+    }
+
+    public void OnUnload() => _context?.ClearSlotContent("crash.dialog.actions");
+    public void OnShutdown() { }
+}
+```
+
 ---
 
 ## ⚠️ UI 框架说明
@@ -1475,7 +1750,28 @@ A: 插件通过 `IPluginContext` 可以访问：
 - **当前账户信息获取**（`GetCurrentAccount`，不含令牌）
 - **游戏启动生命周期钩子**（`RegisterGameLaunchHook`，可拦截启动/追加 JVM 参数/接收崩溃报告）
 - **下载请求提交**（`RequestDownload`，复用启动器多线程下载/SHA-1 校验）
+- **崩溃数据**（`GetCrashReports` / `AnalyzeCrashReport` / `ReadCrashReportText` / `SanitizeCrashReportText`）
+- **UI 扩展**（槽位 `AddSlotContent`，或不受限制的 `GetUiRoot` / `TryFindControlByName`）
+- **API 版本**（`ApiVersion`，取启动器主版本号）
 - 通知系统、自定义命令
+
+### Q: 插件如何拿到崩溃日志？
+
+A: 两种时机，按需选择：
+
+- 只想"知道游戏崩了"：注册 `GameLaunchPhase.OnCrash` 钩子，`ctx.CrashReport` 是尽力查找的路径（**可能为 null**，报告还没写完）；
+- 需要**拿到报告文件**：订阅 `IPluginContext.EventNames.CrashDetected`，启动器等过报告落盘才发，`PluginCrashReportInfo.ReportFound` 明确告诉有没有找到。
+
+读内容用 `ReadCrashReportText`（默认脱敏、默认上限 20 万字符），用启动器内置规则先跑一遍就用 `AnalyzeCrashReport`。
+
+### Q: 插件怎么把 UI 放进启动器已有页面？
+
+A: 两条路：
+
+1. **槽位**（推荐）：`AddSlotContent(slotId, itemId, 控件)`，挂到 `crash.dialog.actions`、`crash.page.toolbar` 等预留位置，生命周期由启动器管理（禁用/卸载自动清理）；
+2. **任意访问**：`GetUiRoot()` 拿到主窗口后自己遍历视觉树增删控件——不受槽位限制，但页面结构随版本变化，兼容性由插件自身保证。
+
+两条路都需要给插件项目加 Avalonia 包引用才能创建控件。
 
 ### Q: 插件如何保存数据？
 

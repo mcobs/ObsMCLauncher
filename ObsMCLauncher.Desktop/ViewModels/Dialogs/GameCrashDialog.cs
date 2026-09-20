@@ -4,6 +4,7 @@ using Avalonia;
 using Avalonia.Controls;
 using FluentAvalonia.UI.Controls;
 using ObsMCLauncher.Core.Services.Crash;
+using ObsMCLauncher.Desktop.Services;
 using ObsMCLauncher.Desktop.ViewModels;
 using ObsMCLauncher.Desktop.ViewModels.Notifications;
 using ObsMCLauncher.Desktop.Views;
@@ -63,7 +64,10 @@ public sealed class GameCrashDialog
 
         Dialog.PrimaryButtonClick += OnPrimaryButtonClick;
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
-        Dialog.Closed += (_, _) => _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
+        Dialog.Closed += OnDialogClosed;
+
+        // 告诉插件"用户正在看这份崩溃"
+        PluginCrashContextService.SetCrashContext(info.ReportPath, info.VersionId);
 
         SyncButtons();
 
@@ -73,6 +77,13 @@ public sealed class GameCrashDialog
     }
 
     public Task<ContentDialogResult> ShowAsync() => Dialog.ShowAsync(_host);
+
+    private void OnDialogClosed(ContentDialog sender, ContentDialogClosedEventArgs args)
+    {
+        _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
+        // 只在上下文仍指向本弹窗的报告时清空，避免把崩溃分析页的上下文一起清掉
+        PluginCrashContextService.ClearIf(_viewModel.SlotContext.CrashReportPath);
+    }
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {

@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:ObsMCLauncher.Desktop.ViewModels"
              xmlns:views="using:ObsMCLauncher.Desktop.Views"
+             xmlns:controls="using:ObsMCLauncher.Desktop.Controls"
              xmlns:ui="using:FluentAvalonia.UI.Controls"
              x:Class="ObsMCLauncher.Desktop.Views.GameCrashDialogContent"
              x:DataType="vm:GameCrashViewModel">
@@ -18,10 +19,16 @@
       <StackPanel Orientation="Horizontal" Spacing="10">
         <ui:SymbolIcon Symbol="Alert" FontSize="20" Foreground="#F59E0B"
                        VerticalAlignment="Top" Margin="0,1,0,0"/>
-        <TextBlock Text="{Binding SubHeaderText}" FontSize="13"
+        <TextBlock Name="CrashDialogHeader" Text="{Binding SubHeaderText}" FontSize="13"
                    Foreground="{DynamicResource TextSecondaryBrush}"
                    TextWrapping="Wrap" VerticalAlignment="Center"/>
       </StackPanel>
+
+      <!-- 插件槽位：崩溃弹窗的操作行（插件可在此挂"用 AI 分析"之类的入口） -->
+      <controls:PluginSlotHost SlotId="crash.dialog.actions"
+                               SlotContext="{Binding SlotContext}"
+                               Orientation="Horizontal" Spacing="8"
+                               Margin="0,10,0,0"/>
 
       <!-- ① 询问态 -->
       <StackPanel IsVisible="{Binding IsPromptState}" Margin="0,14,0,0">
@@ -89,6 +96,12 @@
                   Classes="ghost" Padding="10,4" FontSize="12"/>
         </StackPanel>
         <views:CrashAnalysisPanel DataContext="{Binding Analysis}"/>
+
+        <!-- 插件槽位：分析结论下方（插件自己的分析结果放这里） -->
+        <controls:PluginSlotHost SlotId="crash.dialog.analysis.after"
+                                 SlotContext="{Binding SlotContext}"
+                                 Orientation="Vertical" Spacing="8"
+                                 Margin="0,12,0,0"/>
       </StackPanel>
 
       <!-- ④ 未找到报告 -->

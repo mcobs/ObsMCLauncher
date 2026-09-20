@@ -11,8 +11,10 @@ using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using ObsMCLauncher.Core.Models;
+using ObsMCLauncher.Core.Plugins;
 using ObsMCLauncher.Core.Services.Crash;
 using ObsMCLauncher.Core.Utils;
+using ObsMCLauncher.Desktop.Services;
 using ObsMCLauncher.Desktop.ViewModels.Notifications;
 
 namespace ObsMCLauncher.Desktop.ViewModels;
@@ -40,6 +42,10 @@ public partial class CrashReportsViewModel : ViewModelBase
 
     [ObservableProperty]
     private CrashAnalysisResult? _analysis;
+
+    /// <summary>槽位上下文：告诉插件"当前在看哪份报告"（作为插件内容的 DataContext）</summary>
+    [ObservableProperty]
+    private PluginSlotContext? _slotContext;
 
     /// <summary>当前分析对象显示名（列表项文件名或外部文件路径）</summary>
     [ObservableProperty]
@@ -107,7 +113,23 @@ public partial class CrashReportsViewModel : ViewModelBase
     partial void OnSelectedReportChanged(CrashReportInfo? value)
     {
         if (value == null) return;
+        UpdateSlotContext(value.FullPath, value.VersionName);
         _ = AnalyzeAsync(value.FullPath, value.FileName);
+    }
+
+    /// <summary>同步槽位上下文（插件内容据此知道当前报告），并更新"当前崩溃上下文"</summary>
+    private void UpdateSlotContext(string? reportPath, string? versionId)
+    {
+        SlotContext = string.IsNullOrEmpty(reportPath)
+            ? null
+            : new PluginSlotContext
+            {
+                SlotId = string.Empty,
+                CrashReportPath = reportPath,
+                VersionId = versionId
+            };
+
+        PluginCrashContextService.SetCrashContext(reportPath, versionId);
     }
 
     private async Task RefreshReportsAsync()
@@ -205,6 +227,7 @@ public partial class CrashReportsViewModel : ViewModelBase
 
             // 取消列表选中态，避免选中项变化覆盖外部分析结果
             SelectedReport = null;
+            UpdateSlotContext(path, null);
             await AnalyzeAsync(path, Path.GetFileName(path));
         }
         catch (Exception ex)

@@ -36,7 +36,100 @@ public interface IPluginContext
 
         /// <summary>下载进度更新</summary>
         public const string DownloadProgress = "DownloadProgress";
+
+        /// <summary>
+        /// 崩溃已确认（进程退出码非 0）。
+        /// 事件数据为 <see cref="PluginCrashReportInfo"/>：此时启动器已经等过报告落盘，
+        /// <see cref="PluginCrashReportInfo.ReportFound"/> 明确告诉插件有没有找到报告文件。
+        /// </summary>
+        public const string CrashDetected = "CrashDetected";
     }
+
+    /// <summary>
+    /// 插件 API 版本 = 启动器主版本号（v1.2.3 → 1）。
+    /// 大版本递进意味着插件 API 可能有破坏性变更；小版本只新增、不改动。
+    /// 需要完整版本字符串请用 <see cref="LauncherVersion"/>。
+    /// </summary>
+    int ApiVersion { get; }
+
+    /// <summary>
+    /// 获取崩溃报告列表（只读快照），按时间倒序。
+    /// </summary>
+    /// <param name="versionId">限定版本；传 null 表示所有版本（含游戏主目录）</param>
+    IReadOnlyList<PluginCrashReportInfo> GetCrashReports(string? versionId = null);
+
+    /// <summary>
+    /// 用启动器内置规则引擎分析一份崩溃报告。
+    /// 同步、纯本地、无网络；报告不存在或无法解析时返回 null。
+    /// </summary>
+    /// <param name="reportPath">报告文件的完整路径</param>
+    PluginCrashAnalysis? AnalyzeCrashReport(string reportPath);
+
+    /// <summary>
+    /// 读取报告原文（用于交给自己的模型/服务分析）。
+    /// </summary>
+    /// <param name="reportPath">报告文件的完整路径</param>
+    /// <param name="maxChars">最多返回的字符数，超出截断；上限 2,000,000</param>
+    /// <param name="sanitize">是否脱敏（默认 true）：抹掉用户名与 accessToken 等隐私字段</param>
+    /// <returns>文件不存在时返回 null</returns>
+    string? ReadCrashReportText(string reportPath, int maxChars = 200_000, bool sanitize = true);
+
+    /// <summary>
+    /// 手动对一段文本做脱敏（发送到外部服务前建议再过一遍）。
+    /// </summary>
+    string SanitizeCrashReportText(string text);
+
+    /// <summary>
+    /// 取"用户当前正在看的崩溃上下文"（崩溃弹窗 / 崩溃分析页当前选中的报告）。
+    /// 槽位里的插件控件也会拿到同样内容的 DataContext；无上下文时返回 null。
+    /// </summary>
+    PluginSlotContext? GetActiveCrashContext();
+
+    /// <summary>
+    /// 把自绘控件注册进启动器的具名槽位。
+    /// 槽位 id 是**开放字符串**：<see cref="PluginSlotRegistry.KnownSlots"/> 只是"启动器保证有宿主容器"的那几个，
+    /// 其它 id 也能登记，只是要等该 id 的宿主出现才会渲染。
+    /// 想完全自己决定挂在哪、改什么，请用 <see cref="GetUiRoot"/> / <see cref="TryFindControlByName"/>。
+    /// </summary>
+    /// <param name="slotId">槽位标识</param>
+    /// <param name="itemId">插件内唯一的内容标识；同 id 重复注册视为更新</param>
+    /// <param name="content">Avalonia 控件实例</param>
+    /// <param name="order">排序值，小的在前</param>
+    bool AddSlotContent(string slotId, string itemId, object content, int order = 0);
+
+    /// <summary>移除自己注册的一条槽位内容</summary>
+    bool RemoveSlotContent(string slotId, string itemId);
+
+    /// <summary>清空本插件在某个槽位里的全部内容</summary>
+    void ClearSlotContent(string slotId);
+
+    /// <summary>当前可用的槽位 id 列表</summary>
+    IReadOnlyList<string> GetSlotIds();
+
+    /// <summary>
+    /// 取槽位宿主容器（Avalonia Panel），拿到后可自行增删改其中的控件——
+    /// 容器里既有插件内容也有启动器自己的控件，所以这也是"直接改启动器 UI"的入口。
+    /// 槽位当前没有挂载（页面未打开）时返回 null；页面挂载/卸载会变化，插件应容错重试。
+    /// </summary>
+    object? GetSlotHost(string slotId);
+
+    /// <summary>
+    /// 取 UI 根（启动器主窗口，Avalonia Window）。
+    /// 这是**不受槽位限制**的入口：拿到后插件可自己遍历视觉树，往任意容器增删控件、改任意控件属性——
+    /// 也就是"直接修改页面组件"的完全形态，不需要启动器预先开任何槽位。
+    /// 代价是页面结构会随版本变化，兼容风险由插件自己承担。
+    /// </summary>
+    object? GetUiRoot();
+
+    /// <summary>
+    /// 按控件名（XAML 的 x:Name / Name）在已打开的窗口里查找控件。
+    /// 适合"我知道要找哪个控件"的场景，比自己遍历树稳一点（名字由启动器维护）。
+    /// 找不到或窗口没打开时返回 null。
+    /// </summary>
+    object? TryFindControlByName(string name);
+
+    /// <summary>把回调调度到 UI 线程执行；已在 UI 线程时直接执行</summary>
+    void RunOnUiThread(Action action);
     /// <summary>
     /// 获取启动器版本信息
     /// </summary>

@@ -6,6 +6,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Threading;
+using ObsMCLauncher.Core.Plugins;
 using ObsMCLauncher.Core.Services.Crash;
 using ObsMCLauncher.Core.Utils;
 using ObsMCLauncher.Desktop.ViewModels.Dialogs;
@@ -53,6 +54,13 @@ public static class CrashAnalysisPromptService
 
             DebugLogger.Info("GameCrash",
                 $"版本 {versionId} 退出代码 {exitCode}，报告：{(info.ReportFound ? info.ReportPath : "<未找到>")}");
+
+            // 通知插件：崩溃已确认。
+            // 放在"等过报告落盘"之后发，所以 ReportFound 是可信的——
+            // 需要立刻知道"游戏崩了"的插件用 OnCrash 启动钩子，需要报告文件的插件订阅这个事件。
+            PluginContext.TriggerGlobalEvent(
+                IPluginContext.EventNames.CrashDetected,
+                PluginCrashMapper.ToPlugin(info));
 
             await Dispatcher.UIThread.InvokeAsync(() =>
             {

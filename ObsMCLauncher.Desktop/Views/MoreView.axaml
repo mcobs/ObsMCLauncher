@@ -6,6 +6,7 @@
              xmlns:core="using:ObsMCLauncher.Core.Plugins"
              xmlns:coremodels="using:ObsMCLauncher.Core.Models"
              xmlns:views="using:ObsMCLauncher.Desktop.Views"
+             xmlns:controls="using:ObsMCLauncher.Desktop.Controls"
              xmlns:mdxaml="https://github.com/whistyun/Markdown.Avalonia"
              x:Class="ObsMCLauncher.Desktop.Views.MoreView"
              x:DataType="vm:MoreViewModel"
@@ -865,7 +866,7 @@
           <!-- 左侧：版本筛选 + 报告列表 -->
           <Border Grid.Column="0" Background="{DynamicResource SurfaceBrush}" CornerRadius="12"
                   BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
-            <Grid RowDefinitions="Auto,Auto,Auto,*">
+            <Grid RowDefinitions="Auto,Auto,Auto,Auto,*">
 
               <!-- 筛选 + 刷新 -->
               <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="12,12,12,10">
@@ -887,11 +888,17 @@
                 </StackPanel>
               </Button>
 
-              <ProgressBar Grid.Row="2" IsIndeterminate="True" Height="3" VerticalAlignment="Top"
+              <!-- 插件槽位：崩溃分析页工具栏 -->
+              <controls:PluginSlotHost Grid.Row="2" SlotId="crash.page.toolbar"
+                                       SlotContext="{Binding SlotContext}"
+                                       Orientation="Horizontal" Spacing="8"
+                                       Margin="12,0,12,8"/>
+
+              <ProgressBar Grid.Row="3" IsIndeterminate="True" Height="3" VerticalAlignment="Top"
                            Margin="12,0,12,0" IsVisible="{Binding IsLoading}"/>
 
               <!-- 报告列表 -->
-              <ListBox Grid.Row="3" ItemsSource="{Binding Reports}" SelectedItem="{Binding SelectedReport}"
+              <ListBox Grid.Row="4" ItemsSource="{Binding Reports}" SelectedItem="{Binding SelectedReport}"
                        Background="Transparent" BorderThickness="0" Padding="8,4,8,8">
                 <ListBox.ItemTemplate>
                   <DataTemplate x:DataType="coremodels:CrashReportInfo">
@@ -922,7 +929,7 @@
               </ListBox>
 
               <!-- 空状态 -->
-              <StackPanel Grid.Row="3" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="10"
+              <StackPanel Grid.Row="4" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="10"
                           IsVisible="{Binding IsEmpty}" Margin="16">
                 <ui:SymbolIcon Symbol="Document" FontSize="40" Foreground="{DynamicResource TextTertiaryBrush}"/>
                 <TextBlock Text="未发现崩溃报告" FontSize="13"
@@ -957,6 +964,12 @@
                                IsVisible="{Binding IsAnalyzing}"/>
 
                   <views:CrashAnalysisPanel DataContext="{Binding Analysis}"/>
+
+                  <!-- 插件槽位：分析详情下方 -->
+                  <controls:PluginSlotHost SlotId="crash.page.analysis.after"
+                                           SlotContext="{Binding SlotContext}"
+                                           Orientation="Vertical" Spacing="8"
+                                           Margin="0,12,0,0"/>
 
                   <!-- 操作按钮（仅对列表中选中的报告可用） -->
                   <WrapPanel Margin="0,14,0,0"

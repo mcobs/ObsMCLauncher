@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 using ObsMCLauncher.Core.Models;
+using ObsMCLauncher.Core.Services.Crash;
 using ObsMCLauncher.Core.Utils;
 
 namespace ObsMCLauncher.Core.Plugins;
@@ -64,6 +65,35 @@ public class PluginContext : IPluginContext
 
     /// <summary>查询下载任务状态回调；任务不存在返回 null</summary>
     public static Func<string, PluginDownloadTaskStatus?>? OnGetDownloadTaskStatus { get; set; }
+
+    // ===== 崩溃 / 桌面层扩展回调（由 Desktop 层注入；未注入时相关 API 退化为安全默认值）=====
+
+    /// <summary>
+    /// 取"用户当前正在看的崩溃上下文"回调（崩溃弹窗 / 崩溃分析页）。
+    /// 返回 null 表示当前没有崩溃上下文。
+    /// </summary>
+    public static Func<PluginSlotContext?>? OnGetActiveCrashContext { get; set; }
+
+    /// <summary>
+    /// 取槽位宿主容器回调；参数为 slotId，返回桌面层的 Avalonia Panel。
+    /// 槽位当前未挂载时返回 null（页面没打开）。
+    /// </summary>
+    public static Func<string, object?>? OnGetSlotHost { get; set; }
+
+    /// <summary>
+    /// 把回调调度到 UI 线程执行（Desktop 注入）。
+    /// 未注入时 <see cref="RunOnUiThread"/> 直接同步执行。
+    /// </summary>
+    public static Action<Action>? OnRunOnUiThread { get; set; }
+
+    /// <summary>
+    /// 取 UI 根（主窗口）回调。
+    /// 插件拿到后可以自己遍历视觉树、往任意容器增删控件——这是"不受槽位限制"的那条路。
+    /// </summary>
+    public static Func<object?>? OnGetUiRoot { get; set; }
+
+    /// <summary>按控件名查找控件回调；找不到返回 null</summary>
+    public static Func<string, object?>? OnFindControlByName { get; set; }
 
     public PluginContext(string pluginId)
     {
@@ -409,6 +439,134 @@ public class PluginContext : IPluginContext
         UnregisterGameLaunchHook(hookId);
     }
 
+    // ==================== API 版本 ====================
+
+    // 直接跟启动器主版本号走（v1.2.3 → 1）：大版本递进才可能有破坏性变更
+    public int ApiVersion => PluginApi.Version;
+
+    // ==================== 崩溃数据 API ====================
+    // 以下四个方法自身就能完成（扫描 / 分析 / 读取 / 脱敏都在 Core 内），
+    // 不依赖桌面层接线，因此在无 UI 环境下也可用、可直接单测。
+
+    /// <summary>游戏目录提供者（测试可注入临时目录；生产默认读配置）</summary>
+    internal static Func<string> GameDirectoryProvider { get; set; } = () => LauncherConfig.Load().GameDirectory;
+
+    public IReadOnlyList<PluginCrashReportInfo> GetCrashReports(string? versionId = null)
+    {
+        try
+        {
+            var gameDirectory = GameDirectoryProvider();
+            var reports = CrashReportScanner.Instance.GetCrashReports(gameDirectory, versionId);
+            return reports.Select(r => PluginCrashMapper.ToPlugin(r)).ToList();
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Error("PluginContext", $"插件 {_pluginId} 获取崩溃报告列表失败: {ex.Message}");
+            return Array.Empty<PluginCrashReportInfo>();
+        }
+    }
+
+    public PluginCrashAnalysis? AnalyzeCrashReport(string reportPath)
+    {
+        if (string.IsNullOrWhiteSpace(reportPath) || !File.Exists(reportPath)) return null;
+
+        try
+        {
+            var result = CrashReportAnalyzer.Instance.AnalyzeFile(reportPath);
+            var dto = PluginCrashMapper.ToPlugin(result);
+            dto.ReportPath = reportPath;
+            return dto;
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Error("PluginContext", $"插件 {_pluginId} 分析崩溃报告失败（{reportPath}）: {ex.Message}");
+            return null;
+        }
+    }
+
+    public string? ReadCrashReportText(string reportPath, int maxChars = 200_000, bool sanitize = true)
+    {
+        if (string.IsNullOrWhiteSpace(reportPath) || !File.Exists(reportPath)) return null;
+
+        try
+        {
+            const int hardLimitBytes = 2 * 1024 * 1024;
+            maxChars = Math.Clamp(maxChars, 1_000, 2_000_000);
+
+            using var stream = new FileStream(reportPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            var length = (int)Math.Min(stream.Length, hardLimitBytes);
+            var buffer = new byte[length];
+            var read = 0;
+            while (read < length)
+            {
+                var n = stream.Read(buffer, read, length - read);
+                if (n <= 0) break;
+                read += n;
+            }
+
+            var text = System.Text.Encoding.UTF8.GetString(buffer, 0, read);
+
+            // 先脱敏再截断：占位符（<token>）可能比原文长，先截后脱敏会让返回长度超过 maxChars
+            if (sanitize)
+            {
+                text = CrashReportSanitizer.Sanitize(text);
+            }
+            if (text.Length > maxChars)
+            {
+                text = text[..maxChars];
+            }
+
+            return text;
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Error("PluginContext", $"插件 {_pluginId} 读取崩溃报告失败（{reportPath}）: {ex.Message}");
+            return null;
+        }
+    }
+
+    public string SanitizeCrashReportText(string text) => CrashReportSanitizer.Sanitize(text);
+
+    public PluginSlotContext? GetActiveCrashContext() => OnGetActiveCrashContext?.Invoke();
+
+    // ==================== 槽位 UI API ====================
+
+    public bool AddSlotContent(string slotId, string itemId, object content, int order = 0) =>
+        PluginSlotRegistry.AddSlotContent(slotId, _pluginId, itemId, content, order);
+
+    public bool RemoveSlotContent(string slotId, string itemId) =>
+        PluginSlotRegistry.RemoveSlotContent(slotId, _pluginId, itemId);
+
+    public void ClearSlotContent(string slotId) => PluginSlotRegistry.ClearSlotContent(slotId, _pluginId);
+
+    public IReadOnlyList<string> GetSlotIds() => PluginSlotRegistry.KnownSlots;
+
+    public object? GetSlotHost(string slotId) => OnGetSlotHost?.Invoke(slotId);
+
+    /// <summary>
+    /// 主窗口（Avalonia Window）。插件可据此自行遍历/修改视觉树中的任意控件，
+    /// 不受 <see cref="PluginSlotRegistry.KnownSlots"/> 限制。未接线（无 UI）时返回 null。
+    /// </summary>
+    public object? GetUiRoot() => OnGetUiRoot?.Invoke();
+
+    public object? TryFindControlByName(string name) =>
+        string.IsNullOrWhiteSpace(name) ? null : OnFindControlByName?.Invoke(name);
+
+    public void RunOnUiThread(Action action)
+    {
+        if (action is null) return;
+
+        var handler = OnRunOnUiThread;
+        if (handler != null)
+        {
+            handler(action);
+            return;
+        }
+
+        // 未接线（例如无 UI 的宿主/测试）：直接执行，保证插件代码不会静默丢失
+        action();
+    }
+
     /// <summary>
     /// 执行插件注册的自定义命令
     /// </summary>
@@ -605,7 +763,16 @@ public class PluginContext : IPluginContext
         {
             _asyncLaunchHooks.Clear();
         }
+        PluginSlotRegistry.ResetForTests();
     }
+
+    /// <summary>
+    /// 清空指定插件注册的全部槽位内容（插件卸载时调用，否则会残留控件引用）
+    /// </summary>
+    /// <param name="pluginId">插件ID</param>
+    /// <returns>被清除的内容条数</returns>
+    public static int RemovePluginSlots(string pluginId) =>
+        PluginSlotRegistry.ClearPluginSlotContent(pluginId);
 
     public static void TriggerGlobalEvent(string eventName, object? eventData)
     {

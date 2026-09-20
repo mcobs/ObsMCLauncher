@@ -456,6 +456,7 @@ public class PluginLoader
             PluginContext.RemovePluginCommands(pluginId);
             PluginContext.RemovePluginLaunchHooks(pluginId);
             PluginContext.RemovePluginEventHandlers(pluginId);
+            PluginContext.RemovePluginSlots(pluginId);
 
             OnPluginDisabled?.Invoke(pluginId);
 
@@ -604,6 +605,7 @@ public class PluginLoader
             PluginContext.RemovePluginCommands(pluginId);
             PluginContext.RemovePluginLaunchHooks(pluginId);
             PluginContext.RemovePluginEventHandlers(pluginId);
+            PluginContext.RemovePluginSlots(pluginId);
 
             System.Threading.Thread.Sleep(100);
 

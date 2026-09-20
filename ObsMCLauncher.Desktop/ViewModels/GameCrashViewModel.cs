@@ -5,6 +5,7 @@ using Avalonia.Controls;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using ObsMCLauncher.Core.Models;
+using ObsMCLauncher.Core.Plugins;
 using ObsMCLauncher.Core.Services.Crash;
 using ObsMCLauncher.Core.Utils;
 using ObsMCLauncher.Desktop.ViewModels.Notifications;
@@ -53,7 +54,19 @@ public partial class GameCrashViewModel : ViewModelBase
         }
 
         State = info.ReportFound ? GameCrashViewState.Prompt : GameCrashViewState.NoReport;
+
+        SlotContext = new PluginSlotContext
+        {
+            SlotId = string.Empty,
+            CrashReportPath = info.ReportPath,
+            VersionId = info.VersionId
+        };
     }
+
+    /// <summary>
+    /// 槽位上下文：作为插件内容的 DataContext，告诉插件"当前在分析哪份报告"。
+    /// </summary>
+    public PluginSlotContext SlotContext { get; }
 
     [ObservableProperty]
     private GameCrashViewState _state;

@@ -373,6 +373,9 @@ public class GameLauncher
                     }
                 };
 
+                // 记录启动时刻：崩溃钩子要靠它排除上一局留下的崩溃报告
+                var launchStartedAt = DateTime.Now;
+
                 if (!process.Start())
                 {
                     errorMessage = "无法启动Java进程，请检查Java路径是否正确";
@@ -390,7 +393,7 @@ public class GameLauncher
                 async Task HandleExitOnceAsync(int code)
                 {
                     if (Interlocked.Exchange(ref exitHandled, 1) != 0) return;
-                    await FireGameExitHooksAsync(versionId, actualMcVersion, config.GameDirectory, actualJavaPath, code);
+                    await FireGameExitHooksAsync(versionId, actualMcVersion, config.GameDirectory, actualJavaPath, code, launchStartedAt);
                     onGameExit?.Invoke(code);
                 }
 
@@ -452,7 +455,7 @@ public class GameLauncher
     /// <summary>
     /// 触发游戏退出/崩溃钩子与游戏关闭事件。退出码为 0 视为正常退出，否则视为崩溃。
     /// </summary>
-    private static async Task FireGameExitHooksAsync(string versionId, string mcVersion, string gameDir, string javaPath, int exitCode)
+    private static async Task FireGameExitHooksAsync(string versionId, string mcVersion, string gameDir, string javaPath, int exitCode, DateTime launchStartedAt)
     {
         var phase = exitCode == 0 ? GameLaunchPhase.OnExited : GameLaunchPhase.OnCrash;
         await PluginContext.TriggerGameLaunchHooksAsync(phase, new GameLaunchHookContext
@@ -461,7 +464,12 @@ public class GameLauncher
             McVersion = mcVersion,
             GameDirectory = gameDir,
             JavaPath = javaPath,
-            ExitCode = exitCode
+            ExitCode = exitCode,
+            // 崩溃报告可能还没落盘，这里只做一次非阻塞的尽力查找；
+            // 需要"报告已就绪"的插件请订阅 CrashDetected 事件（启动器等过报告落盘才发）。
+            CrashReport = exitCode == 0
+                ? null
+                : Crash.GameCrashDetector.FindNewestReport(versionId, launchStartedAt)?.FullPath
         });
         PluginContext.TriggerGlobalEvent(IPluginContext.EventNames.GameClosed, exitCode);
     }
