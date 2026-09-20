@@ -12,45 +12,25 @@ jobs:
     if: "!contains(github.event.head_commit.message, '[CI skip]') && !contains(github.event.head_commit.message, '[ci skip]')"
 
     strategy:
+      # 一个平台失败不取消其余平台——CI 的价值就是同时拿到全部平台的结论
+      fail-fast: false
       matrix:
-        os: [windows-latest, ubuntu-latest, macos-latest]
-        rid:
-          - win-x86
-          - win-x64
-          - win-arm64
-          - linux-x64
-          - linux-arm64
-          - osx-x64
-          - osx-arm64
-        exclude:
+        # 直接用 include 列出「平台 → RID」组合，省掉原来的 21 行 exclude
+        include:
           - os: windows-latest
-            rid: linux-x64
-          - os: windows-latest
-            rid: linux-arm64
-          - os: windows-latest
-            rid: osx-x64
-          - os: windows-latest
-            rid: osx-arm64
-          - os: ubuntu-latest
             rid: win-x86
-          - os: ubuntu-latest
+          - os: windows-latest
             rid: win-x64
-          - os: ubuntu-latest
+          - os: windows-latest
             rid: win-arm64
           - os: ubuntu-latest
-            rid: osx-x64
-          - os: ubuntu-latest
-            rid: osx-arm64
-          - os: macos-latest
-            rid: win-x86
-          - os: macos-latest
-            rid: win-x64
-          - os: macos-latest
-            rid: win-arm64
-          - os: macos-latest
             rid: linux-x64
-          - os: macos-latest
+          - os: ubuntu-latest
             rid: linux-arm64
+          - os: macos-latest
+            rid: osx-x64
+          - os: macos-latest
+            rid: osx-arm64
 
     runs-on: ${{ matrix.os }}
 
@@ -86,15 +66,34 @@ jobs:
       id: version
       shell: bash
       run: |
-        date=$(date +%Y%m%d)
+        # 不用 pipefail：下面的 sed|head 组合在 pipefail 下可能踩 SIGPIPE(141)
+        set -eu
+
+        # 版本号唯一真源：Directory.Build.props 的 <Version>，升版本只改那一处。
+        # 用 sed 而不是 dotnet msbuild -getProperty：后者在三种 runner 上表现不一，
+        # 且需要已 restore；sed 在 Linux / macOS(BSD sed) / Windows 上都能跑（BRE 语法）。
+        base_version="$(sed -n 's/.*<Version>\(.*\)<\/Version>.*/\1/p' Directory.Build.props | head -n 1)"
+        if [ -z "$base_version" ]; then
+          echo "::error::无法确定版本号：请检查 Directory.Build.props 中的 <Version>"
+          exit 1
+        fi
+
+        # 与 UI 实际显示的版本（VersionInfo.cs）比对，防止两处漂移
+        ui_version="$(sed -n 's/.*string Version = "\(.*\)".*/\1/p' ObsMCLauncher.Core/Utils/VersionInfo.cs | head -n 1)"
+        if [ -n "$ui_version" ] && [ "$ui_version" != "$base_version" ]; then
+          echo "::error::版本号不一致：Directory.Build.props=${base_version}，VersionInfo.cs=${ui_version}"
+          exit 1
+        fi
+
+        date="$(date +%Y%m%d)"
         short_sha="${GITHUB_SHA:0:7}"
-        version="v1.0.0-$date-$short_sha"
-        echo "version=$version" >> $GITHUB_OUTPUT
-        echo "当前版本: $version"
+        echo "version=v${base_version}-${date}-${short_sha}" >> $GITHUB_OUTPUT
+        echo "version_number=${base_version}-${date}-${short_sha}" >> $GITHUB_OUTPUT
+        echo "基础版本: ${base_version}（VersionInfo.cs: ${ui_version:-未找到}）"
 
     - name: Publish application
       run: |
-        dotnet publish ${{ env.Project_Path }} -c Release -r ${{ matrix.rid }} --self-contained false -p:DebugType=none -p:DebugSymbols=false -o ./publish/${{ matrix.rid }}
+        dotnet publish ${{ env.Project_Path }} -c Release -r ${{ matrix.rid }} --self-contained false -p:DebugType=none -p:DebugSymbols=false -p:Version=${{ steps.version.outputs.version_number }} -o ./publish/${{ matrix.rid }}
 
     - name: Set executable permission (Linux/macOS)
       if: runner.os != 'Windows'

@@ -1,0 +1,15 @@
+<Project>
+
+  <PropertyGroup>
+    <!--
+      全局版本号：解决方案下所有项目的程序集版本 / 文件版本 / 信息版本都取自这里。
+      必须与 ObsMCLauncher.Core/Utils/VersionInfo.cs 的 Version 字段保持一致
+      （UI 上显示的"关于"版本号读的是 VersionInfo，不是程序集版本）。
+
+      打 tag 发布时 release.yml 会用 -p:Version=<tag 去掉 v 前缀> 覆盖，
+      命令行全局属性优先级高于本文件，无需在此处临时修改。
+    -->
+    <Version>1.1.0</Version>
+  </PropertyGroup>
+
+</Project>
