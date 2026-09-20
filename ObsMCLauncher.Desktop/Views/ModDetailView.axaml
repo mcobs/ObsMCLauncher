@@ -63,6 +63,42 @@
       <Setter Property="Margin" Value="0,0,0,6"/>
       <Setter Property="HorizontalAlignment" Value="Left"/>
     </Style>
+
+    <!-- 前置资源行：沿用资源列表页 resource-row 的视觉语言，行高更紧凑 -->
+    <Style Selector="Border.dependency-row">
+      <Setter Property="Background" Value="{DynamicResource SurfaceElevatedBrush}"/>
+      <Setter Property="CornerRadius" Value="8"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="Padding" Value="10,7"/>
+      <Setter Property="Margin" Value="0,0,0,6"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Transitions">
+        <Transitions>
+          <BrushTransition Property="Background" Duration="0:0:0.15" Easing="CircularEaseOut"/>
+        </Transitions>
+      </Setter>
+    </Style>
+    <Style Selector="Border.dependency-row:pointerover">
+      <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}"/>
+    </Style>
+
+    <!-- 区块小标题（前置资源 / 版本列表） -->
+    <Style Selector="TextBlock.section-title">
+      <Setter Property="FontSize" Value="13"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="TextBlock.section-count">
+      <Setter Property="FontSize" Value="11"/>
+      <Setter Property="Foreground" Value="{DynamicResource TextTertiaryBrush}"/>
+      <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="TextBlock.dependency-meta">
+      <Setter Property="FontSize" Value="11"/>
+      <Setter Property="Foreground" Value="{DynamicResource TextTertiaryBrush}"/>
+      <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
   </UserControl.Styles>
 
   <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,*" Margin="20">
@@ -176,7 +212,7 @@
             <StackPanel>
               <ItemsControl ItemsSource="{Binding FilteredVersionGroups}">
                 <ItemsControl.ItemTemplate>
-                  <DataTemplate>
+                  <DataTemplate x:DataType="vm:VersionGroupViewModel">
                     <Expander IsExpanded="{Binding IsLatest}"
                               Margin="0,0,0,4"
                               HorizontalAlignment="Stretch"
@@ -195,9 +231,95 @@
                       </Expander.Header>
 
                       <StackPanel>
+                        <!-- 前置资源：本 MC 版本组内所有文件、所有加载器合并去重（PCL 口径） -->
+                        <StackPanel IsVisible="{Binding HasDependencies}" Margin="0,2,0,10">
+                          <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,6">
+                            <TextBlock Classes="section-title" Text="前置资源"/>
+                            <TextBlock Grid.Column="1" Classes="section-count" Text="{Binding DependenciesDisplay}"/>
+                          </Grid>
+
+                          <ItemsControl ItemsSource="{Binding VisibleDependencies}">
+                            <ItemsControl.ItemTemplate>
+                              <DataTemplate x:DataType="vm:DependencyItemViewModel">
+                                <Border Classes="dependency-row" Tapped="OnDependencyRowTapped">
+                                  <Grid ColumnDefinitions="Auto,*,Auto">
+
+                                    <Border Grid.Column="0" Width="36" Height="36" CornerRadius="8"
+                                            Background="{DynamicResource SurfaceHoverBrush}" VerticalAlignment="Center">
+                                      <Grid>
+                                        <ui:SymbolIcon Symbol="Library" FontSize="15"
+                                                       Foreground="{DynamicResource TextTertiaryBrush}"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        <Image Source="{Binding Icon}" Width="36" Height="36"/>
+                                      </Grid>
+                                    </Border>
+
+                                    <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
+                                      <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="Medium"
+                                                   TextTrimming="CharacterEllipsis" MaxWidth="280" VerticalAlignment="Center"/>
+                                        <Border Classes="tag" Background="{Binding SourceTagColor}">
+                                          <TextBlock Text="{Binding SourceTag}"/>
+                                        </Border>
+                                        <Border Classes="tag" Background="{Binding TypeTagColor}">
+                                          <TextBlock Text="{Binding TypeTag}"/>
+                                        </Border>
+                                      </StackPanel>
+
+                                      <TextBlock Text="{Binding Description}" FontSize="12" MaxLines="1"
+                                                 Foreground="{DynamicResource TextSecondaryBrush}"
+                                                 TextTrimming="CharacterEllipsis"
+                                                 IsVisible="{Binding IsResolved}"/>
+                                      <TextBlock Text="{Binding StatusText}" FontSize="12"
+                                                 Foreground="{DynamicResource TextTertiaryBrush}"
+                                                 TextTrimming="CharacterEllipsis"
+                                                 IsVisible="{Binding !IsResolved}"/>
+
+                                      <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,1,0,0"
+                                                  IsVisible="{Binding IsResolved}">
+                                        <StackPanel Orientation="Horizontal" Spacing="4"
+                                                    IsVisible="{Binding AuthorDisplay, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                          <ui:SymbolIcon Symbol="People" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center"/>
+                                          <TextBlock Classes="dependency-meta" Text="{Binding AuthorDisplay}"
+                                                     MaxWidth="140" TextTrimming="CharacterEllipsis"/>
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal" Spacing="4"
+                                                    IsVisible="{Binding DownloadsDisplay, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                          <ui:SymbolIcon Symbol="Download" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center"/>
+                                          <TextBlock Classes="dependency-meta" Text="{Binding DownloadsDisplay}"/>
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal" Spacing="4"
+                                                    IsVisible="{Binding LastUpdateDisplay, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                          <ui:SymbolIcon Symbol="Calendar" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center"/>
+                                          <TextBlock Classes="dependency-meta" Text="{Binding LastUpdateDisplay}"/>
+                                        </StackPanel>
+                                      </StackPanel>
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2"
+                                                VerticalAlignment="Center" IsVisible="{Binding CanNavigate}">
+                                      <TextBlock Text="详情" FontSize="11" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+                                      <ui:SymbolIcon Symbol="ChevronRight" FontSize="10" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                  </Grid>
+                                </Border>
+                              </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                          </ItemsControl>
+
+                          <Button Classes="link" FontSize="11" HorizontalAlignment="Left" Margin="0,2,0,0"
+                                  Command="{Binding ToggleDependenciesCommand}"
+                                  IsVisible="{Binding HasMoreDependencies}"
+                                  Content="{Binding DependenciesToggleText}"/>
+                        </StackPanel>
+
+                        <!-- 版本列表：与前置区块分开，避免两者混在一起 -->
+                        <TextBlock Classes="section-title" Text="版本列表" Margin="0,0,0,6"
+                                   IsVisible="{Binding HasDependencies}"/>
+
                         <ItemsControl ItemsSource="{Binding FilteredLoaderGroups}">
                           <ItemsControl.ItemTemplate>
-                            <DataTemplate>
+                            <DataTemplate x:DataType="vm:LoaderSubGroupViewModel">
                               <StackPanel Margin="0,0,0,6">
 
                                 <Border Classes="loader-chip">
@@ -205,31 +327,9 @@
                                              Foreground="{DynamicResource TextSecondaryBrush}"/>
                                 </Border>
 
-                                <!-- 公共前置依赖 -->
-                                <ui:InfoBar IsOpen="{Binding HasCommonDependencies}"
-                                            Severity="Informational"
-                                            Title="{Binding CommonDependenciesDisplay}"
-                                            IsClosable="False"
-                                            Margin="0,0,0,6">
-                                  <ItemsControl ItemsSource="{Binding CommonDependencies}">
-                                    <ItemsControl.ItemTemplate>
-                                      <DataTemplate>
-                                        <StackPanel Orientation="Horizontal" Spacing="3" Margin="0,1,0,0">
-                                          <Border Classes="tag" Background="{Binding TypeTagColor}">
-                                            <TextBlock Text="{Binding TypeTag}"/>
-                                          </Border>
-                                          <Button Classes="link" Content="{Binding Name}"
-                                                  Command="{Binding #Root.DataContext.NavigateToDependencyCommand}"
-                                                  CommandParameter="{Binding}"/>
-                                        </StackPanel>
-                                      </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                  </ItemsControl>
-                                </ui:InfoBar>
-
                                 <ItemsControl ItemsSource="{Binding Files}">
                                   <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
+                                    <DataTemplate x:DataType="vm:VersionEntryViewModel">
                                       <Border Classes="file-card">
                                         <Grid ColumnDefinitions="*,Auto">
                                           <StackPanel>
@@ -238,22 +338,6 @@
                                               <TextBlock Text="{Binding DateDisplay}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}"/>
                                               <TextBlock Text="{Binding McVersionsDisplay}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}"/>
                                               <TextBlock Text="{Binding SizeDisplay}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}"/>
-                                            </StackPanel>
-                                            <StackPanel IsVisible="{Binding HasDependencies}" Margin="0,4,0,0" Spacing="2">
-                                              <ItemsControl ItemsSource="{Binding Dependencies}">
-                                                <ItemsControl.ItemTemplate>
-                                                  <DataTemplate>
-                                                    <StackPanel Orientation="Horizontal" Spacing="3">
-                                                      <Border Classes="tag" Background="{Binding TypeTagColor}">
-                                                        <TextBlock Text="{Binding TypeTag}"/>
-                                                      </Border>
-                                                      <Button Classes="link" Content="{Binding Name}"
-                                                              Command="{Binding #Root.DataContext.NavigateToDependencyCommand}"
-                                                              CommandParameter="{Binding}"/>
-                                                    </StackPanel>
-                                                  </DataTemplate>
-                                                </ItemsControl.ItemTemplate>
-                                              </ItemsControl>
                                             </StackPanel>
                                           </StackPanel>
 

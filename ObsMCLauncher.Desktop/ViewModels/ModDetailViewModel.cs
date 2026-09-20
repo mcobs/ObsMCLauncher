@@ -106,7 +106,11 @@ public partial class ModDetailViewModel : ViewModelBase
     public IRelayCommand<DependencyItemViewModel> NavigateToDependencyCommand { get; }
     public IRelayCommand ToggleSummaryCommand { get; }
 
-    public event Action<object>? DependencyNavigationRequested;
+    /// <summary>
+    /// 依赖跳转请求。<c>RawData</c> 优先携带批量拉取时留下的完整工程对象，详情页据此不再二次请求；
+    /// <c>ResourceType</c> 是前置自身的资源类型，避免把父资源的类型套到前置上。
+    /// </summary>
+    public event Action<DependencyNavigationRequest>? DependencyNavigationRequested;
 
     public ModDetailViewModel(object rawData, string selectedVersionId, string resourceType, Action? onBack = null)
     {
@@ -243,18 +247,10 @@ public partial class ModDetailViewModel : ViewModelBase
 
     private void NavigateToDependency(DependencyItemViewModel? dep)
     {
-        if (dep == null) return;
+        // 直接用批量拉取阶段留下的完整工程对象：目标详情页头部数据齐全，不会再发一次请求
+        if (dep?.RawProject is not { } rawProject) return;
 
-        if (dep.BackendType == VersionBackendType.CurseForge && dep.CurseForgeModId > 0)
-        {
-            var fakeMod = new CurseForgeMod { Id = dep.CurseForgeModId, Name = dep.Name, Slug = "" };
-            DependencyNavigationRequested?.Invoke(fakeMod);
-        }
-        else if (dep.BackendType == VersionBackendType.Modrinth && !string.IsNullOrEmpty(dep.ProjectId))
-        {
-            var fakeHit = new ModrinthSearchHit { ProjectId = dep.ProjectId, Title = dep.Name };
-            DependencyNavigationRequested?.Invoke(fakeHit);
-        }
+        DependencyNavigationRequested?.Invoke(new DependencyNavigationRequest(rawProject, dep.ResourceType));
     }
 
     private void LoadHeader()
@@ -282,7 +278,7 @@ public partial class ModDetailViewModel : ViewModelBase
             Summary = hit.Description ?? string.Empty;
             AuthorDisplay = hit.Author ?? "未知";
             DownloadsDisplay = CurseForgeService.FormatDownloadCount(hit.Downloads);
-            LastUpdateDisplay = string.Empty;
+            LastUpdateDisplay = hit.DateModified != default ? hit.DateModified.ToString("yyyy-MM-dd") : string.Empty;
             WebsiteUrl = $"https://modrinth.com/project/{hit.ProjectId}";
             WebsiteButtonText = "访问modrinth";
 
@@ -331,6 +327,14 @@ public partial class ModDetailViewModel : ViewModelBase
         await LoadDependenciesAsync();
     }
 
+    /// <summary>前置图标的并行下载上限。单个版本组可能有几十个前置，不限制会瞬间打满连接</summary>
+    private const int MaxConcurrentIconLoads = 4;
+
+    /// <summary>
+    /// 装配"前置资源"：每个 MC 版本组一份列表，组内所有加载器、所有文件的依赖合并去重（PCL 口径）。
+    /// 元数据来自本方法内已经批量拉取的 cfMods / modrinthProjects，不再额外发请求；
+    /// 只有图标图片走 ImageCacheService（磁盘缓存，二次进入不放请求）。
+    /// </summary>
     private async Task LoadDependenciesAsync()
     {
         var cfDepModIds = new HashSet<int>();
@@ -442,285 +446,279 @@ public partial class ModDetailViewModel : ViewModelBase
         if (tasks.Count > 0)
             await Task.WhenAll(tasks).ConfigureAwait(false);
 
+        // 每个版本组合并去重（纯数据装配，可放在 UI 线程外）
+        var perGroup = new List<(VersionGroupViewModel Group, List<DependencyItemViewModel> Deps)>();
+        foreach (var group in VersionGroups)
+        {
+            var merged = new Dictionary<string, DependencyItemViewModel>(StringComparer.Ordinal);
+            foreach (var entry in group.Files)
+            {
+                foreach (var dep in BuildEntryDependencies(entry, cfMods, modrinthProjects))
+                {
+                    if (merged.TryGetValue(dep.UniqueKey, out var existing))
+                        existing.MergeFrom(dep);
+                    else
+                        merged[dep.UniqueKey] = dep;
+                }
+            }
+
+            var ordered = merged.Values
+                .OrderBy(d => d.IsRequired ? 0 : 1)   // 必需在前
+                .ThenBy(d => d.IsResolved ? 0 : 1)    // 拿到详细信息的在前
+                .ThenBy(d => d.Name, StringComparer.CurrentCulture)
+                .ToList();
+
+            perGroup.Add((group, ordered));
+        }
+
         // 集合更新统一回到 UI 线程，避免跨线程修改 ObservableCollection
         await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
         {
-        foreach (var group in VersionGroups)
-        {
-            foreach (var entry in group.Files)
+            // 按加载器分子组（仅用于渲染，前置已提升到版本组层级）
+            foreach (var group in VersionGroups)
             {
-                if (entry.BackendType == VersionBackendType.CurseForge && entry.CurseForgeFile?.Dependencies != null)
-                {
-                    foreach (var dep in entry.CurseForgeFile.Dependencies)
-                    {
-                        if (dep.ModId <= 0) continue;
-                        var isRequired = dep.RelationTypeKind is CurseForgeDependencyType.Required;
-                        var isOptional = dep.RelationTypeKind is CurseForgeDependencyType.Optional;
-                        if (!isRequired && !isOptional) continue;
-
-                        var depName = cfMods?.TryGetValue(dep.ModId, out var mod) == true ? mod.Name : $"Mod #{dep.ModId}";
-                        var translation = cfMods?.TryGetValue(dep.ModId, out var tmod) == true
-                            ? ModTranslationService.Instance.GetTranslationByCurseForgeId(tmod.Slug)
-                              ?? ModTranslationService.Instance.GetTranslationByCurseForgeId(tmod.Id)
-                            : null;
-                        if (translation != null)
-                            depName = ModTranslationService.Instance.GetDisplayName(depName, translation);
-
-                        entry.Dependencies.Add(new DependencyItemViewModel
-                        {
-                            BackendType = VersionBackendType.CurseForge,
-                            Name = depName,
-                            DependencyType = isRequired ? "必需" : "可选",
-                            IsRequired = isRequired,
-                            CurseForgeModId = dep.ModId
-                        });
-                    }
-                }
-                else if (entry.BackendType == VersionBackendType.Modrinth && entry.ModrinthVersion?.Dependencies != null)
-                {
-                    foreach (var dep in entry.ModrinthVersion.Dependencies)
-                    {
-                        if (string.IsNullOrEmpty(dep.ProjectId)) continue;
-                        if (!dep.IsRequired && !dep.IsOptional) continue;
-
-                        var depName = modrinthProjects?.TryGetValue(dep.ProjectId, out var proj) == true ? proj.Title : dep.ProjectId;
-                        var translation = ModTranslationService.Instance.GetTranslationByCurseForgeId(dep.ProjectId);
-                        if (translation != null)
-                            depName = ModTranslationService.Instance.GetDisplayName(depName, translation);
-
-                        entry.Dependencies.Add(new DependencyItemViewModel
-                        {
-                            BackendType = VersionBackendType.Modrinth,
-                            Name = depName,
-                            DependencyType = dep.IsRequired ? "必需" : "可选",
-                            IsRequired = dep.IsRequired,
-                            ProjectId = dep.ProjectId
-                        });
-                    }
-                }
-
-                if (entry.Dependencies.Count > 0)
-                {
-                    entry.HasDependencies = true;
-                    var requiredCount = entry.Dependencies.Count(d => d.IsRequired);
-                    var optionalCount = entry.Dependencies.Count(d => !d.IsRequired);
-                    var parts = new List<string>();
-                    if (requiredCount > 0) parts.Add($"{requiredCount} 个必需");
-                    if (optionalCount > 0) parts.Add($"{optionalCount} 个可选");
-                    entry.DependenciesDisplay = $"前置: {string.Join(", ", parts)}";
-                }
-            }
-        }
-
-        // 计算每个版本组的公共前置资源
-        foreach (var group in VersionGroups)
-        {
-            if (group.Files.Count == 0) continue;
-
-            var filesWithDeps = group.Files.Where(f => f.HasDependencies).ToList();
-            if (filesWithDeps.Count == 0) continue;
-
-            // 取所有有依赖的条目的依赖交集
-            var intersection = new HashSet<string>(
-                filesWithDeps[0].Dependencies.Select(d => d.UniqueKey));
-
-            for (int i = 1; i < filesWithDeps.Count; i++)
-            {
-                var currentKeys = new HashSet<string>(
-                    filesWithDeps[i].Dependencies.Select(d => d.UniqueKey));
-                intersection.IntersectWith(currentKeys);
-            }
-
-            if (intersection.Count == 0) continue;
-
-            // 从第一个条目中提取公共依赖（保留名称和类型信息）
-            var seenKeys = new HashSet<string>();
-            foreach (var entry in filesWithDeps)
-            {
-                foreach (var dep in entry.Dependencies)
-                {
-                    if (intersection.Contains(dep.UniqueKey) && seenKeys.Add(dep.UniqueKey))
-                    {
-                        group.CommonDependencies.Add(new DependencyItemViewModel
-                        {
-                            BackendType = dep.BackendType,
-                            Name = dep.Name,
-                            DependencyType = dep.DependencyType,
-                            IsRequired = dep.IsRequired,
-                            CurseForgeModId = dep.CurseForgeModId,
-                            ProjectId = dep.ProjectId
-                        });
-                    }
-                }
-            }
-
-            // 从各条目中移除已提升为公共前置的依赖，避免重复显示
-            foreach (var entry in group.Files)
-            {
-                var toRemove = entry.Dependencies
-                    .Where(d => intersection.Contains(d.UniqueKey))
+                var loaderGroups = group.Files
+                    .GroupBy(f => f.Loader)
+                    .OrderByDescending(g => g.Key, new LoaderComparer())
                     .ToList();
-                foreach (var d in toRemove)
-                    entry.Dependencies.Remove(d);
 
-                if (entry.Dependencies.Count == 0)
+                if (loaderGroups.Count <= 1)
                 {
-                    entry.HasDependencies = false;
-                    entry.DependenciesDisplay = "";
+                    // 只有一种加载器，不需要分子组
+                    var singleGroup = new LoaderSubGroupViewModel
+                    {
+                        LoaderName = loaderGroups.Count == 1 ? loaderGroups[0].Key : "通用",
+                        LoaderIcon = GetLoaderIcon(loaderGroups.Count == 1 ? loaderGroups[0].Key : "通用")
+                    };
+                    foreach (var f in loaderGroups.FirstOrDefault() ?? Enumerable.Empty<VersionEntryViewModel>())
+                        singleGroup.Files.Add(f);
+
+                    group.LoaderGroups.Add(singleGroup);
                 }
                 else
                 {
-                    var requiredCount = entry.Dependencies.Count(d => d.IsRequired);
-                    var optionalCount = entry.Dependencies.Count(d => !d.IsRequired);
-                    var parts = new List<string>();
-                    if (requiredCount > 0) parts.Add($"{requiredCount} 个必需");
-                    if (optionalCount > 0) parts.Add($"{optionalCount} 个可选");
-                    entry.DependenciesDisplay = $"前置: {string.Join(", ", parts)}";
+                    foreach (var lg in loaderGroups)
+                    {
+                        var subGroup = new LoaderSubGroupViewModel
+                        {
+                            LoaderName = lg.Key,
+                            LoaderIcon = GetLoaderIcon(lg.Key)
+                        };
+                        foreach (var f in lg)
+                            subGroup.Files.Add(f);
+
+                        group.LoaderGroups.Add(subGroup);
+                    }
                 }
+
+                group.NotifyHasLoaderGroupsChanged();
             }
 
-            group.NotifyCommonDependenciesChanged();
-        }
+            foreach (var (group, deps) in perGroup)
+            {
+                group.Dependencies.Clear();
+                foreach (var dep in deps)
+                    group.Dependencies.Add(dep);
+                group.NotifyDependenciesChanged();
+            }
 
-        // 按加载器分子组
-        foreach (var group in VersionGroups)
-        {
-            var loaderGroups = group.Files
-                .GroupBy(f => f.Loader)
-                .OrderByDescending(g => g.Key, new LoaderComparer())
+            // 构建加载器筛选列表（大小写不敏感去重）
+            var allLoaders = VersionGroups
+                .SelectMany(g => g.LoaderGroups)
+                .GroupBy(lg => lg.LoaderName, StringComparer.OrdinalIgnoreCase)
+                .Select(g => new LoaderFilterItem
+                {
+                    LoaderName = g.First().LoaderName,
+                    IconUri = GetLoaderIcon(g.First().LoaderName),
+                    Count = g.Sum(lg => lg.Files.Count)
+                })
+                .OrderBy(l => l.LoaderName, new LoaderComparer())
                 .ToList();
 
-            if (loaderGroups.Count <= 1)
+            // 记住当前选中的加载器名称，重建后恢复
+            var previousSelection = SelectedLoaderFilter?.LoaderName;
+
+            AvailableLoaders.Clear();
+            AvailableLoaders.Add(new LoaderFilterItem { LoaderName = "全部", IconUri = "", Count = allLoaders.Sum(l => l.Count) });
+            foreach (var loader in allLoaders)
+                AvailableLoaders.Add(loader);
+
+            // 恢复选中状态：优先匹配之前的选中项，否则默认选"全部"
+            SelectedLoaderFilter = string.IsNullOrEmpty(previousSelection)
+                ? AvailableLoaders.FirstOrDefault()
+                : AvailableLoaders.FirstOrDefault(l => string.Equals(l.LoaderName, previousSelection, StringComparison.OrdinalIgnoreCase))
+                  ?? AvailableLoaders.FirstOrDefault();
+        });
+
+        // 列表装配完再补图标，避免拖慢首屏
+        await LoadDependencyIconsAsync(perGroup.SelectMany(p => p.Deps).ToList(), OperationToken);
+    }
+
+    /// <summary>
+    /// 把单个文件的原始依赖转成带完整工程信息的前置项。信息全部来自本次批量拉取的
+    /// cfMods / modrinthProjects；取不到的项保留为可见但不可跳转（IsResolved=false）。
+    /// </summary>
+    private List<DependencyItemViewModel> BuildEntryDependencies(
+        VersionEntryViewModel entry,
+        Dictionary<int, CurseForgeMod>? cfMods,
+        Dictionary<string, ModrinthProject>? modrinthProjects)
+    {
+        var result = new List<DependencyItemViewModel>();
+
+        if (entry.BackendType == VersionBackendType.CurseForge && entry.CurseForgeFile?.Dependencies != null)
+        {
+            foreach (var dep in entry.CurseForgeFile.Dependencies)
             {
-                // 只有一种加载器，不需要分子组
-                var singleGroup = new LoaderSubGroupViewModel
+                if (dep.ModId <= 0) continue;
+                var isRequired = dep.RelationTypeKind is CurseForgeDependencyType.Required;
+                var isOptional = dep.RelationTypeKind is CurseForgeDependencyType.Optional;
+                if (!isRequired && !isOptional) continue;
+
+                CurseForgeMod? mod = null;
+                cfMods?.TryGetValue(dep.ModId, out mod);
+
+                var item = new DependencyItemViewModel
                 {
-                    LoaderName = loaderGroups.Count == 1 ? loaderGroups[0].Key : "通用",
-                    LoaderIcon = GetLoaderIcon(loaderGroups.Count == 1 ? loaderGroups[0].Key : "通用")
+                    BackendType = VersionBackendType.CurseForge,
+                    CurseForgeModId = dep.ModId,
+                    IsRequired = isRequired,
+                    DependencyType = isRequired ? "必需" : "可选",
+                    Name = $"Mod #{dep.ModId}",
+                    ResourceType = MapCurseForgeClassId(mod?.ClassId),
+                    RawProject = mod,
+                    IconUrl = mod?.Logo?.ThumbnailUrl ?? mod?.Logo?.Url ?? "",
+                    Description = (mod?.Summary ?? "").ReplaceLineEndings(" "),
+                    AuthorDisplay = mod?.Authors.FirstOrDefault()?.Name ?? "",
+                    DownloadsDisplay = mod != null ? CurseForgeService.FormatDownloadCount(mod.DownloadCount) : "",
+                    LastUpdateDisplay = mod is { DateModified: var date } && date != default ? date.ToString("yyyy-MM-dd") : ""
                 };
-                foreach (var f in loaderGroups.FirstOrDefault() ?? Enumerable.Empty<VersionEntryViewModel>())
-                    singleGroup.Files.Add(f);
 
-                // 将版本组的公共前置移到唯一的加载器子组
-                foreach (var dep in group.CommonDependencies)
-                    singleGroup.CommonDependencies.Add(new DependencyItemViewModel
-                    {
-                        BackendType = dep.BackendType,
-                        Name = dep.Name,
-                        DependencyType = dep.DependencyType,
-                        IsRequired = dep.IsRequired,
-                        CurseForgeModId = dep.CurseForgeModId,
-                        ProjectId = dep.ProjectId
-                    });
-                singleGroup.NotifyCommonDependenciesChanged();
+                if (mod != null)
+                {
+                    var translation = ModTranslationService.Instance.GetTranslationByCurseForgeId(mod.Slug)
+                                      ?? ModTranslationService.Instance.GetTranslationByCurseForgeId(mod.Id);
+                    item.Name = ModTranslationService.Instance.GetDisplayName(mod.Name, translation);
+                }
 
-                group.CommonDependencies.Clear();
-                group.NotifyCommonDependenciesChanged();
-
-                group.LoaderGroups.Add(singleGroup);
+                result.Add(item);
             }
-            else
+        }
+        else if (entry.BackendType == VersionBackendType.Modrinth && entry.ModrinthVersion?.Dependencies != null)
+        {
+            foreach (var dep in entry.ModrinthVersion.Dependencies)
             {
-                // 多种加载器，分别建子组并计算各子组的公共前置
-                foreach (var lg in loaderGroups)
-                {
-                    var subGroup = new LoaderSubGroupViewModel
-                    {
-                        LoaderName = lg.Key,
-                        LoaderIcon = GetLoaderIcon(lg.Key)
-                    };
-                    foreach (var f in lg)
-                        subGroup.Files.Add(f);
+                if (string.IsNullOrEmpty(dep.ProjectId)) continue;
+                if (!dep.IsRequired && !dep.IsOptional) continue;
 
-                    group.LoaderGroups.Add(subGroup);
+                ModrinthProject? project = null;
+                modrinthProjects?.TryGetValue(dep.ProjectId, out project);
+
+                var item = new DependencyItemViewModel
+                {
+                    BackendType = VersionBackendType.Modrinth,
+                    ProjectId = dep.ProjectId,
+                    IsRequired = dep.IsRequired,
+                    DependencyType = dep.IsRequired ? "必需" : "可选",
+                    Name = project?.Title ?? dep.ProjectId,
+                    ResourceType = MapModrinthProjectType(project?.ProjectType),
+                    // 用完整命中对象当导航载荷：字段齐全，目标详情页不会再请求一次
+                    RawProject = project == null ? null : new ModrinthSearchHit
+                    {
+                        ProjectId = project.Id,
+                        Title = project.Title,
+                        Description = project.Description,
+                        Downloads = project.Downloads,
+                        Author = project.Author,
+                        IconUrl = project.IconUrl,
+                        DateModified = project.DateModified
+                    },
+                    IconUrl = project?.IconUrl ?? "",
+                    Description = (project?.Description ?? "").ReplaceLineEndings(" "),
+                    AuthorDisplay = project?.Author ?? "",
+                    DownloadsDisplay = project != null ? CurseForgeService.FormatDownloadCount(project.Downloads) : "",
+                    LastUpdateDisplay = project is { DateModified: var date } && date != default ? date.ToString("yyyy-MM-dd") : ""
+                };
+
+                if (project != null)
+                {
+                    // Modrinth 工程必须用 Modrinth 的 ID 查翻译表（原来这里误用了 CurseForge 的查询）
+                    var translation = ModTranslationService.Instance.GetTranslationById(project.Id);
+                    item.Name = ModTranslationService.Instance.GetDisplayName(project.Title, translation);
                 }
 
-                // 重新分配公共前置到各加载器子组
-                if (group.CommonDependencies.Count > 0)
-                {
-                    var commonKeys = group.CommonDependencies.Select(d => d.UniqueKey).ToHashSet();
-
-                    foreach (var subGroup in group.LoaderGroups)
-                    {
-                        // 检查该子组中哪些条目有依赖
-                        var filesWithDeps = subGroup.Files.Where(f => f.Dependencies.Count > 0 || f.HasDependencies).ToList();
-
-                        // 计算该子组内的依赖交集
-                        var subGroupDepKeys = new HashSet<string>();
-                        if (filesWithDeps.Count > 0)
-                        {
-                            subGroupDepKeys = filesWithDeps[0].Dependencies.Select(d => d.UniqueKey).ToHashSet();
-                            for (int i = 1; i < filesWithDeps.Count; i++)
-                            {
-                                var currentKeys = filesWithDeps[i].Dependencies.Select(d => d.UniqueKey).ToHashSet();
-                                subGroupDepKeys.IntersectWith(currentKeys);
-                            }
-                        }
-
-                        // 将属于该子组的公共前置添加进去
-                        foreach (var dep in group.CommonDependencies)
-                        {
-                            if (commonKeys.Contains(dep.UniqueKey))
-                            {
-                                // 检查该子组是否有条目依赖此项
-                                bool anyEntryDependsOnThis = subGroup.Files.Any(f =>
-                                    f.Dependencies.Any(d => d.UniqueKey == dep.UniqueKey) ||
-                                    (f.HasDependencies == false && commonKeys.Contains(dep.UniqueKey)));
-
-                                // 如果该子组所有有依赖的条目都依赖此项，或者该子组只有一个条目
-                                if (filesWithDeps.Count == 0 || subGroupDepKeys.Contains(dep.UniqueKey) || anyEntryDependsOnThis)
-                                {
-                                    subGroup.CommonDependencies.Add(new DependencyItemViewModel
-                                    {
-                                        BackendType = dep.BackendType,
-                                        Name = dep.Name,
-                                        DependencyType = dep.DependencyType,
-                                        IsRequired = dep.IsRequired,
-                                        CurseForgeModId = dep.CurseForgeModId,
-                                        ProjectId = dep.ProjectId
-                                    });
-                                }
-                            }
-                        }
-
-                        subGroup.NotifyCommonDependenciesChanged();
-                    }
-
-                    group.CommonDependencies.Clear();
-                    group.NotifyCommonDependenciesChanged();
-                }
+                result.Add(item);
             }
-
-            group.NotifyHasLoaderGroupsChanged();
         }
 
-        // 构建加载器筛选列表（大小写不敏感去重）
-var allLoaders = VersionGroups
-    .SelectMany(g => g.LoaderGroups)
-    .GroupBy(lg => lg.LoaderName, StringComparer.OrdinalIgnoreCase)
-    .Select(g => new LoaderFilterItem
+        return result;
+    }
+
+    /// <summary>CurseForge classId → 本项目资源类型；未知回退 "Any"（下载时落到通用目录）</summary>
+    private static string MapCurseForgeClassId(int? classId) => classId switch
     {
-        LoaderName = g.First().LoaderName,
-        IconUri = GetLoaderIcon(g.First().LoaderName),
-        Count = g.Sum(lg => lg.Files.Count)
-    })
-    .OrderBy(l => l.LoaderName, new LoaderComparer())
-    .ToList();
+        6 => "Mods",
+        12 => "Textures",
+        6945 => "Datapacks",
+        6552 => "Shaders",
+        4471 => "Modpacks",
+        _ => "Any"
+    };
 
-// 记住当前选中的加载器名称，重建后恢复
-var previousSelection = SelectedLoaderFilter?.LoaderName;
+    /// <summary>Modrinth project_type → 本项目资源类型；未知回退 "Any"</summary>
+    private static string MapModrinthProjectType(string? projectType) => projectType switch
+    {
+        "mod" => "Mods",
+        "resourcepack" => "Textures",
+        "shader" => "Shaders",
+        "datapack" => "Datapacks",
+        "modpack" => "Modpacks",
+        _ => "Any"
+    };
 
-AvailableLoaders.Clear();
-AvailableLoaders.Add(new LoaderFilterItem { LoaderName = "全部", IconUri = "", Count = allLoaders.Sum(l => l.Count) });
-foreach (var loader in allLoaders)
-    AvailableLoaders.Add(loader);
+    /// <summary>
+    /// 为前置项异步补齐图标。同一 URL 只下载一次并复用到所有引用它的项上；
+    /// 并发受 MaxConcurrentIconLoads 限制，因为一个版本组可能有几十个前置。
+    /// </summary>
+    private async Task LoadDependencyIconsAsync(List<DependencyItemViewModel> items, CancellationToken cancellationToken)
+    {
+        var byUrl = items
+            .Where(i => !string.IsNullOrEmpty(i.IconUrl))
+            .GroupBy(i => i.IconUrl, StringComparer.Ordinal)
+            .ToList();
+        if (byUrl.Count == 0) return;
 
-// 恢复选中状态：优先匹配之前的选中项，否则默认选"全部"
-SelectedLoaderFilter = string.IsNullOrEmpty(previousSelection)
-    ? AvailableLoaders.FirstOrDefault()
-    : AvailableLoaders.FirstOrDefault(l => string.Equals(l.LoaderName, previousSelection, StringComparison.OrdinalIgnoreCase))
-      ?? AvailableLoaders.FirstOrDefault();
-        });
+        using var gate = new SemaphoreSlim(MaxConcurrentIconLoads);
+        var pending = byUrl.Select(async group =>
+        {
+            try
+            {
+                await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+                try
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var path = await ImageCacheService.GetImagePathAsync(group.Key).ConfigureAwait(false);
+                    if (string.IsNullOrEmpty(path) || !File.Exists(path)) return;
+
+                    await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+                    {
+                        Bitmap bitmap;
+                        try { bitmap = new Bitmap(path); }
+                        catch { return; }
+
+                        foreach (var item in group)
+                            item.Icon = bitmap;
+                    });
+                }
+                finally
+                {
+                    gate.Release();
+                }
+            }
+            catch (OperationCanceledException) { }
+            catch { }
+        }).ToList();
+
+        await Task.WhenAll(pending).ConfigureAwait(false);
     }
 
     private async Task LoadCurseForgeVersionsAsync(CurseForgeMod mod, CancellationToken cancellationToken)
@@ -1397,6 +1395,12 @@ public enum VersionBackendType
     Modrinth
 }
 
+/// <summary>
+/// 前置资源的跳转请求。带上目标资源自身的类型，避免父资源的类型被套到前置上
+/// （例如从整合包详情页点进一个 Mod 前置时，不能按"整合包"去走安装流程）。
+/// </summary>
+public sealed record DependencyNavigationRequest(object RawData, string ResourceType);
+
 public partial class VersionGroupViewModel : ObservableObject
 {
     [ObservableProperty] private string _mcVersion = string.Empty;
@@ -1414,28 +1418,53 @@ public partial class VersionGroupViewModel : ObservableObject
         }
     }
 
-    public ObservableCollection<DependencyItemViewModel> CommonDependencies { get; } = new();
+    /// <summary>前置多于这个数量时默认折叠，避免单组挂几十个前置把页面撑爆</summary>
+    public const int DependencyPreviewLimit = 8;
 
-    public bool HasCommonDependencies => CommonDependencies.Count > 0;
+    /// <summary>本 MC 版本组内所有文件、所有加载器的前置（已去重，必需在前）</summary>
+    public ObservableCollection<DependencyItemViewModel> Dependencies { get; } = new();
 
-    public string CommonDependenciesDisplay
+    public bool HasDependencies => Dependencies.Count > 0;
+
+    public string DependenciesDisplay
     {
         get
         {
-            if (CommonDependencies.Count == 0) return "";
-            var required = CommonDependencies.Count(d => d.IsRequired);
-            var optional = CommonDependencies.Count(d => !d.IsRequired);
+            if (Dependencies.Count == 0) return "";
+            var required = Dependencies.Count(d => d.IsRequired);
+            var optional = Dependencies.Count(d => !d.IsRequired);
             var parts = new List<string>();
             if (required > 0) parts.Add($"{required} 个必需");
             if (optional > 0) parts.Add($"{optional} 个可选");
-            return $"公共前置: {string.Join(", ", parts)}";
+            return string.Join(" · ", parts);
         }
     }
 
-    public void NotifyCommonDependenciesChanged()
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(VisibleDependencies))]
+    [NotifyPropertyChangedFor(nameof(DependenciesToggleText))]
+    private bool _isDependenciesExpanded;
+
+    public IEnumerable<DependencyItemViewModel> VisibleDependencies =>
+        IsDependenciesExpanded ? Dependencies : Dependencies.Take(DependencyPreviewLimit);
+
+    public bool HasMoreDependencies => Dependencies.Count > DependencyPreviewLimit;
+
+    public string DependenciesToggleText => IsDependenciesExpanded ? "收起" : $"展开全部 {Dependencies.Count} 项";
+
+    [RelayCommand]
+    private void ToggleDependencies()
     {
-        OnPropertyChanged(nameof(HasCommonDependencies));
-        OnPropertyChanged(nameof(CommonDependenciesDisplay));
+        IsDependenciesExpanded = !IsDependenciesExpanded;
+    }
+
+    public void NotifyDependenciesChanged()
+    {
+        OnPropertyChanged(nameof(HasDependencies));
+        OnPropertyChanged(nameof(DependenciesDisplay));
+        OnPropertyChanged(nameof(HasMoreDependencies));
+        OnPropertyChanged(nameof(VisibleDependencies));
+        OnPropertyChanged(nameof(DependenciesToggleText));
     }
 
     public ObservableCollection<LoaderSubGroupViewModel> LoaderGroups { get; } = new();
@@ -1474,29 +1503,6 @@ public partial class LoaderSubGroupViewModel : ObservableObject
 
     public ObservableCollection<VersionEntryViewModel> Files { get; } = new();
 
-    public ObservableCollection<DependencyItemViewModel> CommonDependencies { get; } = new();
-
-    public bool HasCommonDependencies => CommonDependencies.Count > 0;
-
-    public string CommonDependenciesDisplay
-    {
-        get
-        {
-            if (CommonDependencies.Count == 0) return "";
-            var required = CommonDependencies.Count(d => d.IsRequired);
-            var optional = CommonDependencies.Count(d => !d.IsRequired);
-            var parts = new List<string>();
-            if (required > 0) parts.Add($"{required} 个必需");
-            if (optional > 0) parts.Add($"{optional} 个可选");
-            return $"前置: {string.Join(", ", parts)}";
-        }
-    }
-
-    public void NotifyCommonDependenciesChanged()
-    {
-        OnPropertyChanged(nameof(HasCommonDependencies));
-        OnPropertyChanged(nameof(CommonDependenciesDisplay));
-    }
 }
 
 public partial class VersionEntryViewModel : ObservableObject
@@ -1510,13 +1516,9 @@ public partial class VersionEntryViewModel : ObservableObject
     [ObservableProperty] private string _dateDisplay = string.Empty;
     [ObservableProperty] private string _mcVersionsDisplay = string.Empty;
     [ObservableProperty] private string _sizeDisplay = string.Empty;
-    [ObservableProperty] private bool _hasDependencies;
-    [ObservableProperty] private string _dependenciesDisplay = string.Empty;
     [ObservableProperty] private string _loader = string.Empty;
     [ObservableProperty] private bool _isDownloading;
     [ObservableProperty] private bool _isDownloaded;
-
-    public ObservableCollection<DependencyItemViewModel> Dependencies { get; } = new();
 }
 
 public partial class DependencyItemViewModel : ObservableObject
@@ -1529,13 +1531,63 @@ public partial class DependencyItemViewModel : ObservableObject
     [ObservableProperty] private string _projectId = string.Empty;
     [ObservableProperty] private int _curseForgeModId;
 
+    /// <summary>图标地址。只用于去重与加载，不直接绑定</summary>
+    public string IconUrl { get; set; } = "";
+
+    /// <summary>加载好的图标；同一 URL 的多个前置共享同一个实例</summary>
+    [ObservableProperty] private Bitmap? _icon;
+
+    /// <summary>工程简介（单行显示）</summary>
+    public string Description { get; set; } = "";
+
+    public string AuthorDisplay { get; set; } = "";
+
+    public string DownloadsDisplay { get; set; } = "";
+
+    public string LastUpdateDisplay { get; set; } = "";
+
+    /// <summary>该前置自身的资源类型（Mods / Textures / Shaders / Datapacks / Modpacks），未知为 "Any"</summary>
+    public string ResourceType { get; set; } = "Any";
+
+    /// <summary>批量拉取阶段留下的完整工程对象，跳转时直接传下去以免二次请求；为 null 表示没取到</summary>
+    public object? RawProject { get; set; }
+
+    public bool IsResolved => RawProject != null;
+
+    /// <summary>拿不到详细信息的项仍然显示（提示不可跳转），但不响应点击</summary>
+    public bool CanNavigate => IsResolved;
+
     public string TypeTag => IsRequired ? "必需" : "可选";
     public string TypeTagColor => IsRequired ? "#E74C3C" : "#95A5A6";
+
+    public string SourceTag => BackendType == VersionBackendType.CurseForge ? "CurseForge" : "Modrinth";
+    public string SourceTagColor => BackendType == VersionBackendType.CurseForge ? "#F16436" : "#1BD96A";
+
+    public string StatusText => IsResolved ? "" : "未获取到详细信息，暂不能跳转";
 
     // 用于去重比较：同一后端 + 同一 ID 视为同一依赖
     public string UniqueKey => BackendType == VersionBackendType.CurseForge
         ? $"cf_{CurseForgeModId}"
         : $"mr_{ProjectId}";
+
+    /// <summary>同一前置出现在多个文件/多个加载器下时合并：必需优先，并补齐缺失的元信息</summary>
+    public void MergeFrom(DependencyItemViewModel other)
+    {
+        if (other.IsRequired && !IsRequired)
+        {
+            IsRequired = true;
+            DependencyType = "必需";
+        }
+
+        if (string.IsNullOrEmpty(IconUrl)) IconUrl = other.IconUrl;
+        if (string.IsNullOrEmpty(Description)) Description = other.Description;
+        if (string.IsNullOrEmpty(AuthorDisplay)) AuthorDisplay = other.AuthorDisplay;
+        if (string.IsNullOrEmpty(DownloadsDisplay)) DownloadsDisplay = other.DownloadsDisplay;
+        if (string.IsNullOrEmpty(LastUpdateDisplay)) LastUpdateDisplay = other.LastUpdateDisplay;
+        if (ResourceType == "Any") ResourceType = other.ResourceType;
+
+        RawProject ??= other.RawProject;
+    }
 }
 
 public class LoaderFilterItem

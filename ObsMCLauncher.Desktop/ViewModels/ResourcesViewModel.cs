@@ -341,16 +341,19 @@ public partial class ResourcesViewModel : ViewModelBase
         PushDetail(CreateDetailViewModel(item.RawData));
     }
 
-    private void OpenDetailByRawData(object rawData)
+    private void OpenDetailByRawData(object rawData, string? resourceTypeOverride = null)
     {
-        PushDetail(CreateDetailViewModel(rawData));
+        PushDetail(CreateDetailViewModel(rawData, resourceTypeOverride));
     }
 
-    private ModDetailViewModel CreateDetailViewModel(object rawData)
+    private ModDetailViewModel CreateDetailViewModel(object rawData, string? resourceTypeOverride = null)
     {
         var selectedVersion = SelectedVersionId ?? LauncherConfig.Load().SelectedVersion ?? string.Empty;
-        var detailVm = new ModDetailViewModel(rawData, selectedVersion, CurrentResourceType, GoBack);
-        detailVm.DependencyNavigationRequested += rawDep => OpenDetailByRawData(rawDep);
+        // 依赖跳转时用前置自身的类型（取不到则 "Any"），否则父资源的类型会被套到前置上：
+        // 例如从整合包详情页点进一个 Mod 前置，不能按"整合包"去走安装流程。
+        var resourceType = resourceTypeOverride ?? CurrentResourceType;
+        var detailVm = new ModDetailViewModel(rawData, selectedVersion, resourceType, GoBack);
+        detailVm.DependencyNavigationRequested += request => OpenDetailByRawData(request.RawData, request.ResourceType);
         return detailVm;
     }
 

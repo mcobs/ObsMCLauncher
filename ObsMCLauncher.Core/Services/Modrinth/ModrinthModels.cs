@@ -60,6 +60,10 @@ public class ModrinthProject
     [JsonPropertyName("icon_url")]
     public string? IconUrl { get; set; }
 
+    /// <summary>mod / modpack / resourcepack / shader / datapack / plugin。老缓存里可能没有该字段，故可空</summary>
+    [JsonPropertyName("project_type")]
+    public string? ProjectType { get; set; }
+
     [JsonPropertyName("author")]
     public string? Author { get; set; }
 
