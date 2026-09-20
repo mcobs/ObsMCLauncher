@@ -20,13 +20,13 @@ public static class VersionInfo
 
     public static readonly string CodeName = "GrassBlock";
 
-    public static readonly VersionStatus Status = VersionStatus.Testing;
+    public static readonly VersionStatus Status = VersionStatus.Release;
 
     public static readonly string ProductName = "ObsMCLauncher";
 
     public static readonly string FullProductName = "黑曜石MC启动器";
 
-    public static readonly DateTime ReleaseDate = new DateTime(2026, 08, 15);
+    public static readonly DateTime ReleaseDate = new DateTime(2026, 09, 20);
 
     public static string ShortVersion => Version;
 
