@@ -104,9 +104,17 @@ public partial class SettingsHomePage : UserControl
     private void PreviewScroll_ScrollChanged(object? sender, ScrollChangedEventArgs e)
     {
         var sc = PreviewScroll;
-        var overflowing = sc.Extent.Height > sc.Viewport.Height + 1;
-        var atBottom = overflowing && sc.Offset.Y >= sc.Extent.Height - sc.Viewport.Height - 1;
-        AddRowSlot.IsVisible = !atBottom;
+
+        // 判据必须"与该槽位自身是否显示无关"：槽位显示/隐藏本身就会改变 Extent，
+        // 若直接拿 Extent 判断，就会变成 显示 → Extent 变大 → 判定翻转 → 隐藏 → Extent 变小 →
+        // 判定又翻转 …… 在同一个布局 pass 内自激（Avalonia 会打 [Layout] Layout cycle detected）。
+        // 所以先扣掉它的高度，让判定在两种状态下得出同一个结论。
+        var contentHeight = sc.Extent.Height - (AddRowSlot.IsVisible ? AddRowSlot.Bounds.Height : 0);
+        var overflowing = contentHeight > sc.Viewport.Height + 1;
+        var atBottom = overflowing && sc.Offset.Y >= contentHeight - sc.Viewport.Height - 1;
+
+        var shouldShow = !atBottom;
+        if (AddRowSlot.IsVisible != shouldShow) AddRowSlot.IsVisible = shouldShow;
     }
 
     private void DeleteSelected_Click(object? sender, RoutedEventArgs e)
