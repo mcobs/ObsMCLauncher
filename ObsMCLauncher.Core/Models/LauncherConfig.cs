@@ -67,22 +67,26 @@ public class LauncherConfig
 
     public string GetRunDirectory(string versionName)
     {
+        return IsVersionIsolated(versionName)
+            ? Path.Combine(GameDirectory, "versions", versionName)
+            : GameDirectory;
+    }
+
+    /// <summary>
+    /// 判断指定版本是否启用版本隔离（优先读版本级配置，缺省回落到全局游戏目录类型）。
+    /// 截图、崩溃报告、存档等按运行目录归位的功能共用此判断。
+    /// </summary>
+    public bool IsVersionIsolated(string versionName)
+    {
         var versionPath = Path.Combine(GameDirectory, "versions", versionName);
         var versionIsolation = VersionConfigService.GetVersionIsolation(versionPath);
 
-        bool useIsolation;
         if (versionIsolation.HasValue)
         {
-            useIsolation = versionIsolation.Value;
-        }
-        else
-        {
-            useIsolation = GameDirectoryType == GameDirectoryType.VersionFolder;
+            return versionIsolation.Value;
         }
 
-        return useIsolation
-            ? Path.Combine(GameDirectory, "versions", versionName)
-            : GameDirectory;
+        return GameDirectoryType == GameDirectoryType.VersionFolder;
     }
 
     public string GetModsDirectory(string versionName) => Path.Combine(GetRunDirectory(versionName), "mods");

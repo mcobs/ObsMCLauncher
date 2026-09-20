@@ -29,6 +29,7 @@ public partial class MoreViewModel : ViewModelBase
     public AboutViewModel About { get; }
     public PluginsViewModel Plugins { get; }
     public ScreenshotsViewModel Screenshots { get; }
+    public CrashReportsViewModel CrashReports { get; }
     public ServersViewModel Servers { get; }
 
     public MoreViewModel(NotificationService notificationService, PluginLoader pluginLoader, DialogService dialogService)
@@ -41,6 +42,7 @@ public partial class MoreViewModel : ViewModelBase
         About.RequestOpenDebugConsole = OpenDebugConsole;
         Plugins = new PluginsViewModel(_pluginLoader, notificationService);
         Screenshots = new ScreenshotsViewModel(notificationService);
+        CrashReports = new CrashReportsViewModel(notificationService);
         Servers = new ServersViewModel(notificationService);
 
         Tabs = new ObservableCollection<TabItemViewModel>
@@ -48,6 +50,7 @@ public partial class MoreViewModel : ViewModelBase
             new TabItemViewModel("关于", About),
             new TabItemViewModel("插件", Plugins),
             new TabItemViewModel("截图管理", Screenshots),
+            new TabItemViewModel("崩溃分析", CrashReports),
             new TabItemViewModel("服务器收藏", Servers)
         };
 
@@ -142,6 +145,10 @@ public partial class MoreViewModel : ViewModelBase
         else if (selectedTab.Content is ScreenshotsViewModel)
         {
             _ = Screenshots.LoadAsync();
+        }
+        else if (selectedTab.Content is CrashReportsViewModel)
+        {
+            _ = CrashReports.LoadAsync();
         }
         else if (selectedTab.Content is ServersViewModel)
         {

@@ -4,6 +4,7 @@
              xmlns:converters="using:ObsMCLauncher.Desktop.Converters"
              xmlns:ui="using:FluentAvalonia.UI.Controls"
              xmlns:core="using:ObsMCLauncher.Core.Plugins"
+             xmlns:coremodels="using:ObsMCLauncher.Core.Models"
              xmlns:mdxaml="https://github.com/whistyun/Markdown.Avalonia"
              x:Class="ObsMCLauncher.Desktop.Views.MoreView"
              x:DataType="vm:MoreViewModel"
@@ -844,6 +845,259 @@
         </Border>
           </Grid>
         </ScrollViewer>
+      </Grid>
+
+      <Grid DataContext="{Binding CrashReports}">
+        <Grid.IsVisible>
+          <MultiBinding Converter="{x:Static converters:TabContentTypeConverter.Instance}" ConverterParameter="CrashReportsViewModel">
+            <Binding Path="#MoreViewControl.DataContext.Tabs"/>
+            <Binding Path="#MoreViewControl.DataContext.SelectedTabIndex"/>
+          </MultiBinding>
+        </Grid.IsVisible>
+        <Grid Margin="16" MinWidth="840">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="360"/>
+            <ColumnDefinition Width="16"/>
+            <ColumnDefinition Width="*"/>
+          </Grid.ColumnDefinitions>
+
+          <!-- 左侧：版本筛选 + 报告列表 -->
+          <Border Grid.Column="0" Background="{DynamicResource SurfaceBrush}" CornerRadius="12"
+                  BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
+            <Grid RowDefinitions="Auto,Auto,Auto,*">
+
+              <!-- 筛选 + 刷新 -->
+              <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="12,12,12,10">
+                <ComboBox Grid.Column="0" ItemsSource="{Binding Versions}"
+                          SelectedItem="{Binding SelectedVersion}"
+                          PlaceholderText="选择版本"/>
+                <Button Grid.Column="1" Content="刷新" Command="{Binding RefreshCommand}"
+                        Classes="ghost" Padding="12,4" FontSize="12" Margin="8,0,0,0"
+                        VerticalAlignment="Center"/>
+              </Grid>
+
+              <!-- 手动分析入口 -->
+              <Button Grid.Row="1" Margin="12,0,12,8" HorizontalAlignment="Stretch"
+                      HorizontalContentAlignment="Center"
+                      Command="{Binding AnalyzeExternalFileCommand}">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <ui:SymbolIcon Symbol="Find" FontSize="13" VerticalAlignment="Center"/>
+                  <TextBlock Text="分析其他报告文件..." FontSize="13" VerticalAlignment="Center"/>
+                </StackPanel>
+              </Button>
+
+              <ProgressBar Grid.Row="2" IsIndeterminate="True" Height="3" VerticalAlignment="Top"
+                           Margin="12,0,12,0" IsVisible="{Binding IsLoading}"/>
+
+              <!-- 报告列表 -->
+              <ListBox Grid.Row="3" ItemsSource="{Binding Reports}" SelectedItem="{Binding SelectedReport}"
+                       Background="Transparent" BorderThickness="0" Padding="8,4,8,8">
+                <ListBox.ItemTemplate>
+                  <DataTemplate x:DataType="coremodels:CrashReportInfo">
+                    <Grid ColumnDefinitions="Auto,*,Auto" Margin="2">
+                      <ui:SymbolIcon Grid.Column="0" Symbol="Document" FontSize="16"
+                                     Foreground="{DynamicResource TextSecondaryBrush}"
+                                     VerticalAlignment="Center" Margin="4,0,8,0"/>
+                      <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding FileName}" FontSize="13" FontWeight="Medium"
+                                   TextTrimming="CharacterEllipsis"/>
+                        <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,2,0,0">
+                          <TextBlock Text="{Binding FormattedCreatedTime}" FontSize="11"
+                                     Foreground="{DynamicResource TextSecondaryBrush}"/>
+                          <TextBlock Text="{Binding FormattedSize, StringFormat='· {0}'}" FontSize="11"
+                                     Foreground="{DynamicResource TextTertiaryBrush}"/>
+                          <TextBlock Text="{Binding VersionName, StringFormat='· {0}'}" FontSize="11"
+                                     Foreground="{DynamicResource TextTertiaryBrush}"/>
+                        </StackPanel>
+                      </StackPanel>
+                      <Border Grid.Column="2" CornerRadius="999" Padding="8,2" Margin="6,0,2,0"
+                              Background="{DynamicResource SurfaceHoverBrush}" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding KindLabel}" FontSize="10" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"/>
+                      </Border>
+                    </Grid>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+
+              <!-- 空状态 -->
+              <StackPanel Grid.Row="3" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="10"
+                          IsVisible="{Binding IsEmpty}" Margin="16">
+                <ui:SymbolIcon Symbol="Document" FontSize="40" Foreground="{DynamicResource TextTertiaryBrush}"/>
+                <TextBlock Text="未发现崩溃报告" FontSize="13"
+                           Foreground="{DynamicResource TextSecondaryBrush}"
+                           TextAlignment="Center" TextWrapping="Wrap" MaxWidth="280"/>
+                <TextBlock Text="游戏崩溃后报告会出现在这里；也可以点击上方按钮手动分析一份报告文件"
+                           FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}"
+                           TextAlignment="Center" TextWrapping="Wrap" MaxWidth="280"/>
+              </StackPanel>
+            </Grid>
+          </Border>
+
+          <!-- 右侧：分析详情 -->
+          <Border Grid.Column="2" Background="{DynamicResource SurfaceBrush}" CornerRadius="12"
+                  BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
+            <Grid>
+
+              <!-- 无选中占位 -->
+              <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="12"
+                          IsVisible="{Binding Analysis, Converter={x:Static converters:NullToBoolConverter.Instance}, ConverterParameter=Invert}">
+                <ui:SymbolIcon Symbol="Find" FontSize="44" Foreground="{DynamicResource TextTertiaryBrush}"
+                               HorizontalAlignment="Center"/>
+                <TextBlock Text="选择一份报告查看分析结果" FontSize="14"
+                           Foreground="{DynamicResource TextSecondaryBrush}"/>
+              </StackPanel>
+
+              <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                            IsVisible="{Binding Analysis, Converter={x:Static converters:NullToBoolConverter.Instance}}">
+                <StackPanel Margin="18,16,18,18">
+
+                  <!-- 结论 + 来源 -->
+                  <TextBlock Text="{Binding Analysis.Headline}" FontSize="18" FontWeight="SemiBold"
+                             TextWrapping="Wrap"/>
+                  <TextBlock Text="{Binding AnalysisSourceName, StringFormat='来源: {0}'}" FontSize="12"
+                             Foreground="{DynamicResource TextTertiaryBrush}" Margin="0,4,0,0"
+                             TextTrimming="CharacterEllipsis"/>
+
+                  <!-- 元信息 chips -->
+                  <WrapPanel Margin="0,10,0,0">
+                    <Border CornerRadius="999" Padding="10,2" Margin="0,0,6,6"
+                            Background="{DynamicResource SurfaceHoverBrush}"
+                            IsVisible="{Binding Analysis.MinecraftVersion, Converter={x:Static converters:NotNullConverter.Instance}}">
+                      <TextBlock FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}">
+                        <Run Text="MC "/><Run Text="{Binding Analysis.MinecraftVersion}"/>
+                      </TextBlock>
+                    </Border>
+                    <Border CornerRadius="999" Padding="10,2" Margin="0,0,6,6"
+                            Background="{DynamicResource SurfaceHoverBrush}"
+                            IsVisible="{Binding Analysis.LoaderInfo, Converter={x:Static converters:NotNullConverter.Instance}}">
+                      <TextBlock Text="{Binding Analysis.LoaderInfo}" FontSize="11"
+                                 Foreground="{DynamicResource TextSecondaryBrush}"/>
+                    </Border>
+                    <Border CornerRadius="999" Padding="10,2" Margin="0,0,6,6"
+                            Background="{DynamicResource SurfaceHoverBrush}"
+                            IsVisible="{Binding Analysis.JavaVersion, Converter={x:Static converters:NotNullConverter.Instance}}">
+                      <TextBlock FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}">
+                        <Run Text="Java "/><Run Text="{Binding Analysis.JavaVersion}"/>
+                      </TextBlock>
+                    </Border>
+                    <Border CornerRadius="999" Padding="10,2" Margin="0,0,6,6"
+                            Background="{DynamicResource SurfaceHoverBrush}"
+                            IsVisible="{Binding Analysis.CrashTime, Converter={x:Static converters:NotNullConverter.Instance}}">
+                      <TextBlock Text="{Binding Analysis.CrashTime}" FontSize="11"
+                                 Foreground="{DynamicResource TextSecondaryBrush}"/>
+                    </Border>
+                  </WrapPanel>
+
+                  <ProgressBar IsIndeterminate="True" Height="3" Margin="0,4,0,0"
+                               IsVisible="{Binding IsAnalyzing}"/>
+
+                  <!-- 可能原因 -->
+                  <TextBlock Text="可能原因" FontSize="14" FontWeight="SemiBold" Margin="0,14,0,8"/>
+                  <ItemsControl ItemsSource="{Binding Analysis.Causes}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="coremodels:CrashCause">
+                        <Border Background="{DynamicResource SurfaceElevatedBrush}"
+                                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                                CornerRadius="10" Padding="12,10" Margin="0,0,0,10">
+                          <Grid ColumnDefinitions="Auto,*,Auto">
+                            <ui:SymbolIcon Grid.Column="0" FontSize="18" Margin="0,2,10,0"
+                                           VerticalAlignment="Top">
+                              <ui:SymbolIcon.Symbol>
+                                <Binding Path="Category"
+                                         Converter="{x:Static converters:CrashCategoryToSymbolConverter.Instance}"/>
+                              </ui:SymbolIcon.Symbol>
+                              <ui:SymbolIcon.Foreground>
+                                <SolidColorBrush Color="{Binding Confidence, Converter={x:Static converters:CrashConfidenceToColorConverter.Instance}}"/>
+                              </ui:SymbolIcon.Foreground>
+                            </ui:SymbolIcon>
+                            <StackPanel Grid.Column="1">
+                              <WrapPanel>
+                                <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold"
+                                           TextWrapping="Wrap" Margin="0,0,8,4" MaxWidth="430"/>
+                                <Border CornerRadius="999" Padding="8,1" Margin="0,0,6,4"
+                                        Background="{DynamicResource SurfaceHoverBrush}"
+                                        VerticalAlignment="Center">
+                                  <TextBlock Text="{Binding CategoryLabel}" FontSize="10"
+                                             Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                </Border>
+                                <Border CornerRadius="999" Padding="8,1" Margin="0,0,0,4"
+                                        VerticalAlignment="Center">
+                                  <Border.Background>
+                                    <SolidColorBrush Color="{Binding Confidence, Converter={x:Static converters:CrashConfidenceToColorConverter.Instance}}"
+                                                     Opacity="0.15"/>
+                                  </Border.Background>
+                                  <TextBlock Text="{Binding ConfidenceLabel}" FontSize="10" FontWeight="SemiBold">
+                                    <TextBlock.Foreground>
+                                      <SolidColorBrush Color="{Binding Confidence, Converter={x:Static converters:CrashConfidenceToColorConverter.Instance}}"/>
+                                    </TextBlock.Foreground>
+                                  </TextBlock>
+                                </Border>
+                              </WrapPanel>
+                              <TextBlock Text="{Binding Evidence, StringFormat='证据: {0}'}" FontSize="12"
+                                         Foreground="{DynamicResource TextSecondaryBrush}"
+                                         TextWrapping="Wrap" Margin="0,0,0,4"/>
+                              <TextBlock Text="{Binding Suggestion, StringFormat='建议: {0}'}" FontSize="12"
+                                         Foreground="{DynamicResource PrimaryBrush}"
+                                         TextWrapping="Wrap"/>
+                            </StackPanel>
+                          </Grid>
+                        </Border>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+
+                  <!-- 可疑 Mod -->
+                  <StackPanel IsVisible="{Binding Analysis.SuspectedMods.Count, Converter={x:Static converters:GreaterThanZeroToIsVisibleConverter.Instance}}">
+                    <TextBlock Text="可疑 Mod" FontSize="14" FontWeight="SemiBold" Margin="0,4,0,8"/>
+                    <ItemsControl ItemsSource="{Binding Analysis.SuspectedMods}">
+                      <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                          <WrapPanel/>
+                        </ItemsPanelTemplate>
+                      </ItemsControl.ItemsPanel>
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="x:String">
+                          <Border CornerRadius="999" Padding="10,3" Margin="0,0,6,6"
+                                  Background="{DynamicResource DangerSoftBrush}">
+                            <TextBlock Text="{Binding}" FontSize="11" FontWeight="Medium"
+                                       Foreground="{DynamicResource DangerBrush}"/>
+                          </Border>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </StackPanel>
+
+                  <!-- 报告预览 -->
+                  <TextBlock Text="报告预览" FontSize="14" FontWeight="SemiBold" Margin="0,8,0,8"/>
+                  <Border Background="{DynamicResource SurfaceElevatedBrush}"
+                          BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                          CornerRadius="10" Padding="10">
+                    <ScrollViewer MaxHeight="260" VerticalScrollBarVisibility="Auto">
+                      <SelectableTextBlock Text="{Binding Analysis.RawPreview}" FontSize="11"
+                                           FontFamily="Consolas,Menlo,monospace"
+                                           Foreground="{DynamicResource TextSecondaryBrush}"/>
+                    </ScrollViewer>
+                  </Border>
+
+                  <!-- 操作按钮（仅对列表中选中的报告可用） -->
+                  <WrapPanel Margin="0,14,0,0"
+                             IsVisible="{Binding SelectedReport, Converter={x:Static converters:NullToBoolConverter.Instance}}">
+                    <Button Content="打开所在文件夹" Classes="ghost" Margin="0,0,8,8" Padding="12,6" FontSize="12"
+                            Command="{Binding OpenReportFolderCommand}" CommandParameter="{Binding SelectedReport}"/>
+                    <Button Content="查看原文" Classes="ghost" Margin="0,0,8,8" Padding="12,6" FontSize="12"
+                            Command="{Binding ViewReportCommand}" CommandParameter="{Binding SelectedReport}"/>
+                    <Button Content="复制全文" Classes="ghost" Margin="0,0,8,8" Padding="12,6" FontSize="12"
+                            Command="{Binding CopyReportCommand}" CommandParameter="{Binding SelectedReport}"/>
+                    <Button Content="删除" Classes="danger" Margin="0,0,0,8" Padding="12,6" FontSize="12"
+                            Command="{Binding DeleteReportCommand}" CommandParameter="{Binding SelectedReport}"/>
+                  </WrapPanel>
+
+                </StackPanel>
+              </ScrollViewer>
+            </Grid>
+          </Border>
+        </Grid>
       </Grid>
 
       <Panel>
