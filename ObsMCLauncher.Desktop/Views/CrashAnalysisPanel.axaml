@@ -1,0 +1,137 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:converters="using:ObsMCLauncher.Desktop.Converters"
+             xmlns:coremodels="using:ObsMCLauncher.Core.Models"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
+             x:Class="ObsMCLauncher.Desktop.Views.CrashAnalysisPanel"
+             x:DataType="coremodels:CrashAnalysisResult">
+
+  <!-- 崩溃分析结果展示（结论 + 可能原因 + 可疑 Mod + 报告预览）。
+       供「更多 → 崩溃分析」页与游戏崩溃提示窗口共用，改这里两边同时生效。 -->
+  <StackPanel>
+
+    <TextBlock Text="{Binding Headline}" FontSize="18" FontWeight="SemiBold"
+               TextWrapping="Wrap"/>
+    <TextBlock Text="{Binding FileName, StringFormat='来源: {0}'}" FontSize="12"
+               Foreground="{DynamicResource TextTertiaryBrush}" Margin="0,4,0,0"
+               TextTrimming="CharacterEllipsis"/>
+
+    <!-- 元信息 chips -->
+    <WrapPanel Margin="0,10,0,0">
+      <Border CornerRadius="999" Padding="10,2" Margin="0,0,6,6"
+              Background="{DynamicResource SurfaceHoverBrush}"
+              IsVisible="{Binding MinecraftVersion, Converter={x:Static converters:NotNullConverter.Instance}}">
+        <TextBlock FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}">
+          <Run Text="MC "/><Run Text="{Binding MinecraftVersion}"/>
+        </TextBlock>
+      </Border>
+      <Border CornerRadius="999" Padding="10,2" Margin="0,0,6,6"
+              Background="{DynamicResource SurfaceHoverBrush}"
+              IsVisible="{Binding LoaderInfo, Converter={x:Static converters:NotNullConverter.Instance}}">
+        <TextBlock Text="{Binding LoaderInfo}" FontSize="11"
+                   Foreground="{DynamicResource TextSecondaryBrush}"/>
+      </Border>
+      <Border CornerRadius="999" Padding="10,2" Margin="0,0,6,6"
+              Background="{DynamicResource SurfaceHoverBrush}"
+              IsVisible="{Binding JavaVersion, Converter={x:Static converters:NotNullConverter.Instance}}">
+        <TextBlock FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}">
+          <Run Text="Java "/><Run Text="{Binding JavaVersion}"/>
+        </TextBlock>
+      </Border>
+      <Border CornerRadius="999" Padding="10,2" Margin="0,0,6,6"
+              Background="{DynamicResource SurfaceHoverBrush}"
+              IsVisible="{Binding CrashTime, Converter={x:Static converters:NotNullConverter.Instance}}">
+        <TextBlock Text="{Binding CrashTime}" FontSize="11"
+                   Foreground="{DynamicResource TextSecondaryBrush}"/>
+      </Border>
+    </WrapPanel>
+
+    <!-- 可能原因 -->
+    <TextBlock Text="可能原因" FontSize="14" FontWeight="SemiBold" Margin="0,14,0,8"/>
+    <ItemsControl ItemsSource="{Binding Causes}">
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="coremodels:CrashCause">
+          <Border Background="{DynamicResource SurfaceElevatedBrush}"
+                  BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                  CornerRadius="10" Padding="12,10" Margin="0,0,0,10">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+              <ui:SymbolIcon Grid.Column="0" FontSize="18" Margin="0,2,10,0" VerticalAlignment="Top">
+                <ui:SymbolIcon.Symbol>
+                  <Binding Path="Category"
+                           Converter="{x:Static converters:CrashCategoryToSymbolConverter.Instance}"/>
+                </ui:SymbolIcon.Symbol>
+                <ui:SymbolIcon.Foreground>
+                  <SolidColorBrush Color="{Binding Confidence, Converter={x:Static converters:CrashConfidenceToColorConverter.Instance}}"/>
+                </ui:SymbolIcon.Foreground>
+              </ui:SymbolIcon>
+              <StackPanel Grid.Column="1">
+                <WrapPanel>
+                  <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold"
+                             TextWrapping="Wrap" Margin="0,0,8,4" MaxWidth="430"/>
+                  <Border CornerRadius="999" Padding="8,1" Margin="0,0,6,4"
+                          Background="{DynamicResource SurfaceHoverBrush}"
+                          VerticalAlignment="Center">
+                    <TextBlock Text="{Binding CategoryLabel}" FontSize="10"
+                               Foreground="{DynamicResource TextSecondaryBrush}"/>
+                  </Border>
+                  <Border CornerRadius="999" Padding="8,1" Margin="0,0,0,4"
+                          VerticalAlignment="Center">
+                    <Border.Background>
+                      <SolidColorBrush Color="{Binding Confidence, Converter={x:Static converters:CrashConfidenceToColorConverter.Instance}}"
+                                       Opacity="0.15"/>
+                    </Border.Background>
+                    <TextBlock Text="{Binding ConfidenceLabel}" FontSize="10" FontWeight="SemiBold">
+                      <TextBlock.Foreground>
+                        <SolidColorBrush Color="{Binding Confidence, Converter={x:Static converters:CrashConfidenceToColorConverter.Instance}}"/>
+                      </TextBlock.Foreground>
+                    </TextBlock>
+                  </Border>
+                </WrapPanel>
+                <TextBlock Text="{Binding Evidence, StringFormat='证据: {0}'}" FontSize="12"
+                           Foreground="{DynamicResource TextSecondaryBrush}"
+                           TextWrapping="Wrap" Margin="0,0,0,4"/>
+                <TextBlock Text="{Binding Suggestion, StringFormat='建议: {0}'}" FontSize="12"
+                           Foreground="{DynamicResource PrimaryBrush}"
+                           TextWrapping="Wrap"/>
+              </StackPanel>
+            </Grid>
+          </Border>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+
+    <!-- 可疑 Mod -->
+    <StackPanel IsVisible="{Binding SuspectedMods.Count, Converter={x:Static converters:GreaterThanZeroToIsVisibleConverter.Instance}}">
+      <TextBlock Text="可疑 Mod" FontSize="14" FontWeight="SemiBold" Margin="0,4,0,8"/>
+      <ItemsControl ItemsSource="{Binding SuspectedMods}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <WrapPanel/>
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="x:String">
+            <Border CornerRadius="999" Padding="10,3" Margin="0,0,6,6"
+                    Background="{DynamicResource DangerSoftBrush}">
+              <TextBlock Text="{Binding}" FontSize="11" FontWeight="Medium"
+                         Foreground="{DynamicResource DangerBrush}"/>
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </StackPanel>
+
+    <!-- 报告预览 -->
+    <TextBlock Text="报告预览" FontSize="14" FontWeight="SemiBold" Margin="0,8,0,8"/>
+    <Border Background="{DynamicResource SurfaceElevatedBrush}"
+            BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+            CornerRadius="10" Padding="10">
+      <ScrollViewer MaxHeight="260" VerticalScrollBarVisibility="Auto">
+        <SelectableTextBlock Text="{Binding RawPreview}" FontSize="11"
+                             FontFamily="Consolas,Menlo,monospace"
+                             Foreground="{DynamicResource TextSecondaryBrush}"/>
+      </ScrollViewer>
+    </Border>
+
+  </StackPanel>
+</UserControl>

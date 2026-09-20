@@ -382,15 +382,22 @@ public class GameLauncher
                 process.BeginOutputReadLine();
                 process.BeginErrorReadLine();
 
+                // 退出只处理一次。
+                // 进程"启动后立即退出"时 Exited 事件与下面的 HasExited 分支都会触发，
+                // 不去重就会把退出钩子、GameClosed 事件和 onGameExit 回调各跑两遍
+                // （表现为重复通知、重复弹崩溃窗口）。用 Interlocked 让两者只成功一个。
+                var exitHandled = 0;
+                async Task HandleExitOnceAsync(int code)
+                {
+                    if (Interlocked.Exchange(ref exitHandled, 1) != 0) return;
+                    await FireGameExitHooksAsync(versionId, actualMcVersion, config.GameDirectory, actualJavaPath, code);
+                    onGameExit?.Invoke(code);
+                }
+
                 if (onGameExit != null)
                 {
                     process.EnableRaisingEvents = true;
-                    process.Exited += (_, _) =>
-                    {
-                        var exitCode = process.ExitCode;
-                        _ = FireGameExitHooksAsync(versionId, actualMcVersion, config.GameDirectory, actualJavaPath, exitCode);
-                        onGameExit.Invoke(exitCode);
-                    };
+                    process.Exited += (_, _) => _ = HandleExitOnceAsync(process.ExitCode);
                 }
 
                 await Task.Delay(500, cancellationToken).ConfigureAwait(false);
@@ -399,9 +406,8 @@ public class GameLauncher
                 {
                     errorMessage = $"游戏进程启动后立即退出\n退出代码: {process.ExitCode}\n请检查Debug输出窗口查看详细错误日志";
                     var exitCode = process.ExitCode;
-                    _ = FireGameExitHooksAsync(versionId, actualMcVersion, config.GameDirectory, actualJavaPath, exitCode);
+                    await HandleExitOnceAsync(exitCode);
                     process.Dispose();
-                    onGameExit?.Invoke(exitCode);
                     return new GameLaunchResult { Success = false, ErrorMessage = errorMessage };
                 }
 

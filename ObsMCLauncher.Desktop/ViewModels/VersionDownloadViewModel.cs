@@ -16,6 +16,7 @@ using ObsMCLauncher.Core.Services.Minecraft;
 using ObsMCLauncher.Core.Utils;
 using ObsMCLauncher.Core.Services.Installers;
 using ObsMCLauncher.Core.Services.Ui;
+using ObsMCLauncher.Desktop.Services;
 using ObsMCLauncher.Desktop.ViewModels.Notifications;
 using ObsMCLauncher.Desktop.ViewModels.Dialogs;
 
@@ -738,6 +739,9 @@ public partial class VersionDownloadViewModel : ViewModelBase
 
             _notificationService.Update(notifId, "正在启动 Minecraft...");
 
+            // 记录启动时刻：崩溃检测要靠它排除历史崩溃报告
+            var launchStartedAt = DateTime.Now;
+
             var launchResult = await ObsMCLauncher.Core.Services.GameLauncher.LaunchGameAsync(
                 version.Id,
                 account,
@@ -746,6 +750,7 @@ public partial class VersionDownloadViewModel : ViewModelBase
                 null,
                 (exitCode) =>
                 {
+                    CrashAnalysisPromptService.NotifyGameExit(version.Id, exitCode, launchStartedAt);
                     _dispatcher.Post(() =>
                         _notificationService.Show(
                             "游戏退出",

@@ -1,0 +1,108 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ObsMCLauncher.Desktop.ViewModels"
+             xmlns:views="using:ObsMCLauncher.Desktop.Views"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
+             x:Class="ObsMCLauncher.Desktop.Views.GameCrashDialogContent"
+             x:DataType="vm:GameCrashViewModel">
+
+  <!-- 崩溃弹窗（ContentDialog）的内容体：四种状态共用一块区域。
+       底部的主操作按钮由 ContentDialog 自己的按钮槽承担（见 GameCrashDialog.cs），
+       这里只放"工具型"按钮（打开目录 / 查看原文）。 -->
+  <ScrollViewer MaxHeight="430"
+                VerticalScrollBarVisibility="Auto"
+                HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Width="580" Margin="0,2,0,2" Spacing="0">
+
+      <!-- 头部 -->
+      <StackPanel Orientation="Horizontal" Spacing="10">
+        <ui:SymbolIcon Symbol="Alert" FontSize="20" Foreground="#F59E0B"
+                       VerticalAlignment="Top" Margin="0,1,0,0"/>
+        <TextBlock Text="{Binding SubHeaderText}" FontSize="13"
+                   Foreground="{DynamicResource TextSecondaryBrush}"
+                   TextWrapping="Wrap" VerticalAlignment="Center"/>
+      </StackPanel>
+
+      <!-- ① 询问态 -->
+      <StackPanel IsVisible="{Binding IsPromptState}" Margin="0,14,0,0">
+        <TextBlock Text="是否分析崩溃日志？" FontSize="14" FontWeight="Medium"
+                   Margin="0,0,0,10"/>
+        <Border Background="{DynamicResource SurfaceBrush}"
+                BorderBrush="{DynamicResource BorderBrush}"
+                BorderThickness="1" CornerRadius="10"
+                Padding="14,12">
+          <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto">
+            <TextBlock Grid.Row="0" Grid.Column="0" Text="版本" FontSize="12"
+                       Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,12,6"/>
+            <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding VersionText}" FontSize="12"
+                       FontWeight="Medium" Margin="0,0,0,6"/>
+            <TextBlock Grid.Row="1" Grid.Column="0" Text="退出代码" FontSize="12"
+                       Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,12,6"/>
+            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding ExitCodeText}" FontSize="12"
+                       TextWrapping="Wrap" Margin="0,0,0,6"/>
+            <TextBlock Grid.Row="2" Grid.Column="0" Text="报告文件" FontSize="12"
+                       Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,12,6"/>
+            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding ReportNameText}" FontSize="12"
+                       TextTrimming="CharacterEllipsis" Margin="0,0,0,6"/>
+            <TextBlock Grid.Row="3" Grid.Column="0" Text="崩溃时间" FontSize="12"
+                       Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,12,0"/>
+            <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding ReportTimeText}" FontSize="12"/>
+          </Grid>
+        </Border>
+
+        <TextBlock Text="分析在本地完成，不会上传任何数据。"
+                   FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}"
+                   Margin="0,10,0,0"/>
+
+        <Grid ColumnDefinitions="*,Auto" Margin="0,10,0,0">
+          <CheckBox Grid.Column="0" Content="以后自动分析，不再询问"
+                    IsChecked="{Binding AutoAnalyzeNextTime}"
+                    FontSize="12" VerticalAlignment="Center"/>
+          <Button Grid.Column="1" Content="打开游戏日志文件夹"
+                  Command="{Binding OpenReportFolderCommand}"
+                  Classes="ghost" Padding="10,4" FontSize="12"/>
+        </Grid>
+      </StackPanel>
+
+      <!-- ② 分析中 -->
+      <StackPanel IsVisible="{Binding IsAnalyzingState}" Margin="0,26,0,18" Spacing="14"
+                  HorizontalAlignment="Center">
+        <ui:ProgressRing IsActive="True" Width="36" Height="36"
+                         HorizontalAlignment="Center"/>
+        <TextBlock Text="正在分析崩溃日志..." FontSize="13"
+                   Foreground="{DynamicResource TextSecondaryBrush}"
+                   HorizontalAlignment="Center"/>
+      </StackPanel>
+
+      <!-- ③ 结果 -->
+      <StackPanel IsVisible="{Binding IsResultState}" Margin="0,12,0,0">
+        <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right"
+                    Margin="0,0,0,8">
+          <Button Content="打开所在文件夹"
+                  Command="{Binding OpenReportFolderCommand}"
+                  Classes="ghost" Padding="10,4" FontSize="12"/>
+          <Button Content="查看原文"
+                  Command="{Binding ViewReportCommand}"
+                  Classes="ghost" Padding="10,4" FontSize="12"/>
+          <Button Content="复制分析结果"
+                  Command="{Binding CopyResultCommand}"
+                  Classes="ghost" Padding="10,4" FontSize="12"/>
+        </StackPanel>
+        <views:CrashAnalysisPanel DataContext="{Binding Analysis}"/>
+      </StackPanel>
+
+      <!-- ④ 未找到报告 -->
+      <StackPanel IsVisible="{Binding IsNoReportState}" Margin="0,14,0,0" Spacing="10">
+        <TextBlock Text="没有找到本次崩溃对应的报告文件。" FontSize="13" TextWrapping="Wrap"/>
+        <TextBlock Text="通常意味着游戏在写出报告前就退出了：缺少前置 Mod / Java 版本不匹配 / 内存参数错误，或进程被外部强制结束。可以先查看游戏日志（logs/latest.log）中的报错。"
+                   FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}"
+                   TextWrapping="Wrap" LineHeight="19"/>
+        <Button Content="打开游戏日志文件夹"
+                Command="{Binding OpenReportFolderCommand}"
+                Classes="ghost" Padding="10,4" FontSize="12"
+                HorizontalAlignment="Left"/>
+      </StackPanel>
+
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

@@ -166,6 +166,9 @@ public class LauncherConfig
 
     public bool ShowGameLogOnLaunch { get; set; } = false;
 
+    /// <summary>崩溃后跳过询问、直接分析（由崩溃弹窗里的"以后自动分析"勾选写入）</summary>
+    public bool AutoAnalyzeCrashOnExit { get; set; } = false;
+
     public bool AutoCheckUpdate { get; set; } = true;
 
     [JsonConverter(typeof(JsonStringEnumConverter))]
