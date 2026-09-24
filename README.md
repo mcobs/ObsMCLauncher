@@ -209,6 +209,14 @@ dotnet test tests/ObsMCLauncher.Core.Tests/ObsMCLauncher.Core.Tests.csproj --fil
 
 ---
 
+## 致谢
+
+本项目的部分功能灵感来源于 [ClassIsland](https://github.com/ClassIsland/ClassIsland)（首次启动向导等），在此致谢。
+
+WRC 牛逼。
+
+---
+
 ## 📄 许可证
 
 本项目采用 **GNU General Public License v3.0** 开源。
