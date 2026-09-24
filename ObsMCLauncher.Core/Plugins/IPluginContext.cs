@@ -46,11 +46,11 @@ public interface IPluginContext
     }
 
     /// <summary>
-    /// 插件 API 版本 = 启动器主版本号（v1.2.3 → 1）。
-    /// 大版本递进意味着插件 API 可能有破坏性变更；小版本只新增、不改动。
-    /// 需要完整版本字符串请用 <see cref="LauncherVersion"/>。
+    /// 插件 API 版本 = 启动器版本去掉预发布 / 构建后缀（1.1.0-beta.1 → "1.1.0"）。
+    /// 主版本递进意味着插件 API 可能有破坏性变更；小版本只新增、不改动。
+    /// 需要完整版本字符串（含预发布标识）请用 <see cref="LauncherVersion"/>。
     /// </summary>
-    int ApiVersion { get; }
+    string ApiVersion { get; }
 
     /// <summary>
     /// 获取崩溃报告列表（只读快照），按时间倒序。

@@ -312,13 +312,24 @@
                                        Foreground="{DynamicResource TextSecondaryBrush}"
                                        TextTrimming="CharacterEllipsis"/>
                           </StackPanel>
-                          <Border Grid.Column="2" Width="18" Height="18" CornerRadius="9" Margin="6,0,0,0"
-                                  VerticalAlignment="Center" Background="{DynamicResource DangerBrush}"
-                                  ToolTip.Tip="插件加载异常"
-                                  IsVisible="{Binding HasError}">
-                            <TextBlock Text="!" FontSize="11" FontWeight="Bold" Foreground="White"
-                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                          </Border>
+                          <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6"
+                                      VerticalAlignment="Center" Margin="6,0,0,0">
+                            <Border Width="18" Height="18" CornerRadius="9"
+                                    Background="{DynamicResource DangerBrush}"
+                                    ToolTip.Tip="插件加载异常"
+                                    IsVisible="{Binding HasError}">
+                              <TextBlock Text="!" FontSize="11" FontWeight="Bold" Foreground="White"
+                                         HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <Border CornerRadius="999" Padding="8,1"
+                                    Background="{DynamicResource WarningSoftBrush}"
+                                    ToolTip.Tip="{Binding IncompatibleReason}"
+                                    IsVisible="{Binding IsIncompatible}">
+                              <TextBlock Text="不兼容" FontSize="10" FontWeight="SemiBold"
+                                         Foreground="{DynamicResource WarningBrush}"
+                                         HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                          </StackPanel>
                         </Grid>
                       </Border>
                     </DataTemplate>
@@ -391,6 +402,13 @@
                         <TextBlock Text="未启用" FontSize="11" FontWeight="SemiBold"
                                    Foreground="{DynamicResource TextSecondaryBrush}"/>
                       </Border>
+                      <Border Background="{DynamicResource WarningSoftBrush}" CornerRadius="999"
+                              Padding="10,2" Margin="8,0,0,0" VerticalAlignment="Center"
+                              ToolTip.Tip="{Binding Detail.IncompatibleReason}"
+                              IsVisible="{Binding Detail.IsIncompatibleStatus}">
+                        <TextBlock Text="不兼容" FontSize="11" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource WarningBrush}"/>
+                      </Border>
                     </WrapPanel>
                     <TextBlock Text="{Binding Detail.Meta}" FontSize="12" Margin="0,4,0,0"
                                Foreground="{DynamicResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis"/>
@@ -403,6 +421,7 @@
                     <Button Content="{Binding Detail.PrimaryActionText}" Command="{Binding PrimaryActionCommand}"
                             IsEnabled="{Binding Detail.PrimaryActionEnabled}"
                             IsVisible="{Binding Detail.PrimaryActionVisible}"
+                            ToolTip.Tip="{Binding Detail.IncompatibleReason}"
                             Classes="accent" Height="32" Padding="16,0" FontSize="13"/>
                     <Button Content="主页" Command="{Binding OpenHomeCommand}"
                             IsVisible="{Binding Detail.HomeVisible}"
@@ -429,9 +448,19 @@
                 <!-- 详情内容 -->
                 <Panel Grid.Row="2"
                        IsVisible="{Binding SelectedItem, Converter={x:Static converters:NullToBoolConverter.Instance}}">
-                  <mdxaml:MarkdownScrollViewer Markdown="{Binding Detail.Markdown}"
-                                               Margin="12,8,12,12"
-                                               IsVisible="{Binding SelectedDetailTabIndex, Converter={x:Static converters:TabIndexToBoolConverter.Instance}, ConverterParameter=0}"/>
+                  <!-- 说明 tab：Markdown 渲染 或 纯文本直接显示 -->
+                  <Panel IsVisible="{Binding SelectedDetailTabIndex, Converter={x:Static converters:TabIndexToBoolConverter.Instance}, ConverterParameter=0}">
+                    <mdxaml:MarkdownScrollViewer Markdown="{Binding Detail.Markdown}"
+                                                 Margin="12,8,12,12"
+                                                 IsVisible="{Binding Detail.MarkdownVisible}"/>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                                  Margin="12,8,12,12"
+                                  IsVisible="{Binding Detail.PlainTextVisible}">
+                      <SelectableTextBlock Text="{Binding Detail.PlainText}" TextWrapping="Wrap"
+                                           FontSize="12.5"
+                                           Foreground="{DynamicResource TextSecondaryBrush}"/>
+                    </ScrollViewer>
+                  </Panel>
                   <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="12,8,12,12"
                                 IsVisible="{Binding SelectedDetailTabIndex, Converter={x:Static converters:TabIndexToBoolConverter.Instance}, ConverterParameter=1}">
                     <SelectableTextBlock Text="{Binding Detail.Output}" TextWrapping="Wrap"

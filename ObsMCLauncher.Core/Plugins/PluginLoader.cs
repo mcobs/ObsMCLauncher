@@ -165,11 +165,19 @@ public class PluginLoader
         if (_loadedPlugins.Any(p => p.Id == metadata.Id))
             return $"插件 id '{metadata.Id}' 已存在，不允许重复";
 
-        // 最低启动器版本要求
-        if (!string.IsNullOrWhiteSpace(metadata.MinLauncherVersion) &&
-            CompareVersions(metadata.MinLauncherVersion, VersionInfo.Version) > 0)
+        // 插件 API 版本区间要求
+        var currentApi = PluginApi.Version;
+
+        if (!string.IsNullOrWhiteSpace(metadata.MinPluginApiVersion) &&
+            VersionCompare.Compare(currentApi, metadata.MinPluginApiVersion) < 0)
         {
-            return $"需要启动器 v{metadata.MinLauncherVersion} 或更高，当前为 v{VersionInfo.Version}";
+            return $"需要插件 API ≥ {metadata.MinPluginApiVersion}，当前为 {currentApi}";
+        }
+
+        if (!string.IsNullOrWhiteSpace(metadata.MaxPluginApiVersion) &&
+            VersionCompare.Compare(currentApi, metadata.MaxPluginApiVersion) > 0)
+        {
+            return $"插件仅支持插件 API ≤ {metadata.MaxPluginApiVersion}，当前为 {currentApi}";
         }
 
         // 依赖检查：声明依赖的插件必须已加载
@@ -183,34 +191,6 @@ public class PluginLoader
         }
 
         return null;
-    }
-
-    private static int CompareVersions(string a, string b)
-    {
-        var pa = ParseVersionParts(a);
-        var pb = ParseVersionParts(b);
-        var len = Math.Max(pa.Length, pb.Length);
-        for (int i = 0; i < len; i++)
-        {
-            var va = i < pa.Length ? pa[i] : 0;
-            var vb = i < pb.Length ? pb[i] : 0;
-            if (va != vb) return va.CompareTo(vb);
-        }
-        return 0;
-    }
-
-    private static int[] ParseVersionParts(string v)
-    {
-        var result = new List<int>();
-        var head = v.Trim().Split('-', '+')[0];
-        foreach (var part in head.Split('.'))
-        {
-            if (int.TryParse(part, out var n))
-                result.Add(n);
-            else
-                break;
-        }
-        return result.ToArray();
     }
 
     private void LoadPlugin(string pluginDirectory)

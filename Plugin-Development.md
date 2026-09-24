@@ -150,14 +150,15 @@ YourPlugin/
   "author": "您的名字",
   "description": "插件简要描述",
   "repository": "https://github.com/yourusername/your-plugin",
-  "minLauncherVersion": "1.0.0",
+  "minPluginApiVersion": "1.0.0",
+  "maxPluginApiVersion": "",
   "dependencies": [],
   "tags": ["Windows", "工具"],
   "category": "utility"
 }
 ```
 
-> 字段名一律 **camelCase**（`minLauncherVersion`，不是 `MinLauncherVersion`）。
+> 字段名一律 **camelCase**（`minPluginApiVersion`，不是 `MinPluginApiVersion`）。
 > 缺少 `id` / `name` / `version` 的插件会被启动器拒绝加载。
 
 ### 字段说明
@@ -170,7 +171,8 @@ YourPlugin/
 | `author` | string | ✅ | 作者名称 |
 | `description` | string | ✅ | 简短描述（不超过 200 字） |
 | `repository` | string | ⭕ | 源代码仓库 URL |
-| `minLauncherVersion` | string | ⭕ | 最低启动器版本要求（默认 1.0.0），见 [1. 目录、版本与兼容性](#1-目录版本与兼容性) |
+| `minPluginApiVersion` | string | ⭕ | 支持的最低插件 API 版本（留空 = 不设下限），见 [1. 目录、版本与兼容性](#1-目录版本与兼容性) |
+| `maxPluginApiVersion` | string | ⭕ | 支持的最高插件 API 版本（**留空 = 支持到最新版**） |
 | `dependencies` | array | ⭕ | 依赖的其他插件ID列表 |
 | `tags` | array | ⭕ | 标签列表，支持平台标签：`Windows`、`Linux`、`macOS` |
 | `category` | string | ⭕ | 分类ID |
@@ -186,7 +188,7 @@ YourPlugin/
 plugin.json 里**没有入口字段**，启动器也不需要你声明入口类：
 
 1. 扫描 `OMCL\plugins\` 下的每个子文件夹
-2. 读 `plugin.json` 并校验：`id` 与文件夹名一致、格式合规、不与已加载插件重复、`minLauncherVersion` 不高于当前启动器、声明的依赖插件已加载
+2. 读 `plugin.json` 并校验：`id` 与文件夹名一致、格式合规、不与已加载插件重复、插件 API 版本区间覆盖当前启动器、声明的依赖插件已加载
 3. 要求根目录有 `README.md`（缺失会被判为加载失败）
 4. 定位程序集 `{插件ID}.dll`（找不到则用目录里第一个 `.dll`）；目录里有 `.disabled` 文件则跳过加载
 5. `Assembly.LoadFrom` 载入后，**取程序集中第一个实现了 `ILauncherPlugin` 的具体类**（非接口、非抽象），用 `Activator.CreateInstance` 创建实例，再调用 `OnLoad(context)`
@@ -244,7 +246,7 @@ namespace ObsMCLauncher.Core.Plugins
         string LauncherBaseDirectory { get; }
         string LauncherDataDirectory { get; }
         string GameDirectory { get; }
-        int ApiVersion { get; }
+        string ApiVersion { get; }
 
         // 事件（见 2）
         void SubscribeEvent(string eventName, Action<object?> handler);
@@ -314,7 +316,7 @@ namespace ObsMCLauncher.Core.Plugins
 | 分组 | API | 一句话说明 | 章节 |
 |------|-----|-----------|------|
 | 目录 | `PluginDataDirectory` / `LauncherBaseDirectory` / `LauncherDataDirectory` / `GameDirectory` | 插件数据、启动器基础、启动器数据、当前游戏目录 | [1](#1-目录版本与兼容性) |
-| 版本 | `LauncherVersion` / `ApiVersion` | 完整版本字符串 / 插件 API 版本（主版本号） | [1](#1-目录版本与兼容性) |
+| 版本 | `LauncherVersion` / `ApiVersion` | 完整版本字符串 / 插件 API 版本（去掉预发布后缀的版本号） | [1](#1-目录版本与兼容性) |
 | 事件 | `SubscribeEvent` / `UnsubscribeEvent` / `PublishEvent` | 订阅、退订、发布事件 | [2](#2-事件系统) |
 | UI | `RegisterTab` / `UnregisterTab` | 在「更多」页增删标签页 | [3.1](#31-注册标签页) |
 | UI | `RegisterHomeCard` / `UnregisterHomeCard` | 在主页增删卡片 | [3.2](#32-注册主页卡片) |
@@ -374,29 +376,31 @@ public void OnLoad(IPluginContext context)
 #### 版本与兼容性
 
 ```csharp
-// 完整版本字符串
-string version = context.LauncherVersion;          // 如 "1.2.3"
+// 完整版本字符串（含预发布标识）
+string version = context.LauncherVersion;          // 如 "1.1.0-beta.1"
 if (new Version(version) < new Version("1.1.0"))
 {
     // 启动器版本过低
 }
 
-// 插件 API 版本 = 启动器主版本号（v1.2.3 → 1；带 -preview / -beta 后缀时取主干第一段）
-int api = context.ApiVersion;
+// 插件 API 版本 = 启动器版本去掉可选的 v 前缀、预发布 / 构建后缀
+// （v1.1.0 → "1.1.0"；1.1.0-beta.1 → "1.1.0"；1.1.0+build → "1.1.0"）
+string api = context.ApiVersion;
 ```
 
 版本语义：
 
 | 变化 | 含义 |
 |------|------|
-| **主版本递进**（1 → 2） | 插件 API **可能发生破坏性变更**（删改已有成员），需要重新适配 |
+| **主版本递进**（1.x → 2.x） | 插件 API **可能发生破坏性变更**（删改已有成员），需要重新适配 |
 | 次版本 / 修订号变化 | 只**新增**成员，不改动已有成员，已编译的插件继续可用 |
+| 预发布 / 构建后缀（`-beta.1`、`+build`） | **不参与**插件 API 版本比较，已被剥离 |
 
 因此插件侧的判断很简单：
 
 ```csharp
-// 只在需要的大版本上启用某功能
-if (_context.ApiVersion >= 1)
+// 只在需要的 API 版本上启用某功能
+if (new Version(_context.ApiVersion) >= new Version("1.1.0"))
 {
     var reports = _context.GetCrashReports();
 }
@@ -405,17 +409,22 @@ if (_context.ApiVersion >= 1)
 > 新能力只会往 `IPluginContext` **增加**成员（插件只是消费方，不需要自己实现该接口），
 > 所以小版本升级不会让现有插件失效；出现破坏性变更时主版本会递进。
 
-反方向——"本插件要求启动器至少多新"——在 `plugin.json` 里声明（字段名 camelCase）：
+反方向——"本插件要求启动器至少多新 / 最多次新"——在 `plugin.json` 里声明（字段名 camelCase）：
 
 ```json
 {
-  "id": "my.plugin",
-  "minLauncherVersion": "1.2.0"
+  "id": "my-plugin",
+  "minPluginApiVersion": "1.1.0",
+  "maxPluginApiVersion": ""
 }
 ```
 
-启动器加载插件时会据此拒绝版本过旧的插件。若某个新 API 在旧启动器上不存在，调用它会在运行时抛出
-`MissingMethodException`；不想写 try/catch 的话，就用上面的 `minLauncherVersion` 把门槛立起来。
+- `minPluginApiVersion`：支持的最低插件 API 版本，留空 = 不设下限；
+- `maxPluginApiVersion`：支持的最高插件 API 版本，**留空 = 支持到最新版**。
+
+启动器加载插件时会检查当前插件 API 版本是否落在 `[min, max]` 区间内，不满足则拒绝加载并写入 `.disabled`
+标记（插件市场里这类插件也会标注「不兼容」并禁用安装按钮）。若某个新 API 在旧启动器上不存在，
+调用它会在运行时抛出 `MissingMethodException`；不想写 try/catch 的话，就用上面的 `minPluginApiVersion` 把门槛立起来。
 
 ### 2. 事件系统
 

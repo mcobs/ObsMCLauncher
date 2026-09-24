@@ -83,21 +83,34 @@ public class PluginCrashApiTests : IDisposable
     }
 
     [Fact]
-    public void ApiVersion_MatchesLauncherMajorVersion()
+    public void ApiVersion_IsLauncherVersionWithoutPreReleaseSuffix()
     {
-        // 约定：ApiVersion = 启动器版本的主版本号（v1.2.3 → 1，带后缀时取主干）
-        var expected = int.Parse(VersionInfo.Version.Split('-', 2)[0].Split('.')[0]);
-
-        Assert.Equal(expected, _ctx.ApiVersion);
+        // 约定：ApiVersion = 启动器版本去掉预发布/构建后缀（1.1.0-beta.1 → "1.1.0"）
+        Assert.Equal(VersionInfo.Version.Split('-', '+')[0], _ctx.ApiVersion);
+        Assert.DoesNotContain("-", _ctx.ApiVersion);
+        Assert.DoesNotContain("+", _ctx.ApiVersion);
     }
 
     [Fact]
-    public void ApiVersion_SharesMajorWithLauncherVersion()
+    public void ApiVersion_SharesHeadWithLauncherVersion()
     {
         // 与 LauncherVersion（完整字符串）也要对得上，避免两处取不同来源
-        var majorFromLauncher = int.Parse(_ctx.LauncherVersion.Split('-', 2)[0].Split('.')[0]);
+        var headFromLauncher = _ctx.LauncherVersion.Split('-', '+')[0];
 
-        Assert.Equal(majorFromLauncher, _ctx.ApiVersion);
+        Assert.Equal(headFromLauncher, _ctx.ApiVersion);
+    }
+
+    [Theory]
+    [InlineData("1.1.0-beta.1", "1.1.0")]
+    [InlineData("1.1.0+20260924", "1.1.0")]
+    [InlineData("1.1.0-rc.1+build.5", "1.1.0")]
+    [InlineData("v1.1.0", "1.1.0")]
+    [InlineData("V1.1.0-beta.1", "1.1.0")]
+    [InlineData("2.0.0", "2.0.0")]
+    [InlineData("", "1.0.0")]
+    public void Normalize_StripsPreReleaseAndBuildMetadata(string input, string expected)
+    {
+        Assert.Equal(expected, PluginApi.Normalize(input));
     }
 
     [Fact]

@@ -139,7 +139,9 @@ public partial class PluginsViewModel : ViewModelBase
     private const int FILTER_DEBOUNCE_MS = 200;
 
     private static readonly System.Net.Http.HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(10) };
-    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, string> ReadmeCache = new();
+
+    /// <summary>description 解析结果缓存（key = 索引里的原始 description）</summary>
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, (string Text, PluginDescriptionKind Kind)> DescriptionCache = new();
 
     partial void OnSelectedItemChanged(PluginListItemViewModel? value)
     {
@@ -187,52 +189,73 @@ public partial class PluginsViewModel : ViewModelBase
                 var readmePath = item.Installed.ReadmePath;
                 if (!string.IsNullOrWhiteSpace(readmePath) && System.IO.File.Exists(readmePath))
                 {
-                    Detail.Markdown = await System.IO.File.ReadAllTextAsync(readmePath);
+                    var markdown = await System.IO.File.ReadAllTextAsync(readmePath);
                     if (requestId != _readmeRequestId) return;
-                    Detail.MarkdownVisible = !string.IsNullOrWhiteSpace(Detail.Markdown);
+                    ApplyDescription(Detail, markdown, PluginDescriptionKind.Markdown);
                 }
                 else
                 {
-                    Detail.Markdown = item.Installed.Description ?? string.Empty;
-                    Detail.MarkdownVisible = !string.IsNullOrWhiteSpace(Detail.Markdown);
+                    var (text, kind) = await ResolveDescriptionAsync(item.Installed.Description ?? string.Empty);
+                    if (requestId != _readmeRequestId) return;
+                    ApplyDescription(Detail, text, kind);
                 }
             }
             else if (item.Source == PluginItemSource.Market && item.MarketPlugin != null)
             {
-                if (!string.IsNullOrWhiteSpace(item.MarketPlugin.Readme))
-                {
-                    try
-                    {
-                        var url = ObsMCLauncher.Core.Utils.GitHubProxyHelper.WithProxy(item.MarketPlugin.Readme);
-                        if (!ReadmeCache.TryGetValue(url, out var markdown))
-                        {
-                            markdown = await _httpClient.GetStringAsync(url);
-                            ReadmeCache[url] = markdown;
-                        }
-                        if (requestId != _readmeRequestId) return;
-                        Detail.Markdown = markdown;
-                        Detail.MarkdownVisible = !string.IsNullOrWhiteSpace(Detail.Markdown);
-                    }
-                    catch
-                    {
-                        if (requestId != _readmeRequestId) return;
-                        Detail.Markdown = item.MarketPlugin.Description;
-                        Detail.MarkdownVisible = !string.IsNullOrWhiteSpace(Detail.Markdown);
-                    }
-                }
-                else
-                {
-                    if (requestId != _readmeRequestId) return;
-                    Detail.Markdown = item.MarketPlugin.Description;
-                    Detail.MarkdownVisible = !string.IsNullOrWhiteSpace(Detail.Markdown);
-                }
+                var (text, kind) = await ResolveDescriptionAsync(item.MarketPlugin.Description ?? string.Empty);
+                if (requestId != _readmeRequestId) return;
+                ApplyDescription(Detail, text, kind);
             }
         }
         catch
         {
             if (requestId != _readmeRequestId) return;
-            Detail.Markdown = "";
-            Detail.MarkdownVisible = false;
+            ApplyDescription(Detail, string.Empty, PluginDescriptionKind.Empty);
+        }
+    }
+
+    /// <summary>
+    /// 解析 description：是链接就下载（GitHub 链接走镜像源），否则用原文；
+    /// 结果按原始字符串缓存，避免重复请求。
+    /// </summary>
+    private static async Task<(string Text, PluginDescriptionKind Kind)> ResolveDescriptionAsync(string description)
+    {
+        if (string.IsNullOrWhiteSpace(description))
+            return (string.Empty, PluginDescriptionKind.Empty);
+
+        if (DescriptionCache.TryGetValue(description, out var cached))
+            return cached;
+
+        var resolved = await PluginDescriptionResolver.ResolveAsync(description, _httpClient);
+        DescriptionCache[description] = resolved;
+        return resolved;
+    }
+
+    /// <summary>按解析结果呈现描述：Markdown 渲染 / 纯文本直显 / 空</summary>
+    private static void ApplyDescription(PluginDetailViewModel detail, string text, PluginDescriptionKind kind)
+    {
+        switch (kind)
+        {
+            case PluginDescriptionKind.Markdown:
+                detail.Markdown = text;
+                detail.MarkdownVisible = !string.IsNullOrWhiteSpace(text);
+                detail.PlainText = string.Empty;
+                detail.PlainTextVisible = false;
+                break;
+
+            case PluginDescriptionKind.PlainText:
+                detail.PlainText = text;
+                detail.PlainTextVisible = !string.IsNullOrWhiteSpace(text);
+                detail.Markdown = string.Empty;
+                detail.MarkdownVisible = false;
+                break;
+
+            default:
+                detail.Markdown = string.Empty;
+                detail.MarkdownVisible = false;
+                detail.PlainText = string.Empty;
+                detail.PlainTextVisible = false;
+                break;
         }
     }
 
@@ -422,6 +445,14 @@ public partial class PluginsViewModel : ViewModelBase
             }
             else if (item.Source == PluginItemSource.Market && item.MarketPlugin != null)
             {
+                if (!item.MarketPlugin.IsApiVersionCompatible)
+                {
+                    _notificationService.Show("无法安装",
+                        item.MarketPlugin.IncompatibleReason ?? "该插件与当前启动器不兼容",
+                        NotificationType.Error);
+                    return;
+                }
+
                 await InstallMarketPluginAsync(item.MarketPlugin);
             }
         }
@@ -583,7 +614,13 @@ public partial class PluginListItemViewModel : ObservableObject
     public bool IsInstalled => Source == PluginItemSource.Installed;
     public string? IconUrl { get; }
 
-    private PluginListItemViewModel(PluginItemSource source, string title, string meta, bool hasError, LoadedPlugin? installed, MarketPlugin? marketPlugin, string? iconUrl = null)
+    /// <summary>插件声明的 API 版本区间不覆盖当前启动器</summary>
+    public bool IsIncompatible { get; }
+
+    /// <summary>不兼容原因（兼容时为 null）</summary>
+    public string? IncompatibleReason { get; }
+
+    private PluginListItemViewModel(PluginItemSource source, string title, string meta, bool hasError, LoadedPlugin? installed, MarketPlugin? marketPlugin, string? iconUrl = null, bool isIncompatible = false, string? incompatibleReason = null)
     {
         Source = source;
         Title = title;
@@ -592,6 +629,8 @@ public partial class PluginListItemViewModel : ObservableObject
         Installed = installed;
         MarketPlugin = marketPlugin;
         IconUrl = iconUrl;
+        IsIncompatible = isIncompatible;
+        IncompatibleReason = incompatibleReason;
     }
 
     /// <summary>远程图标下载完成后通知重新求值图标绑定</summary>
@@ -606,7 +645,8 @@ public partial class PluginListItemViewModel : ObservableObject
         var meta = string.IsNullOrEmpty(platforms)
             ? $"{p.Version} | {p.Author}"
             : $"{p.Version} | {p.Author} | {platforms}";
-        return new PluginListItemViewModel(PluginItemSource.Market, p.Name, meta, false, null, p, p.Icon);
+        return new PluginListItemViewModel(PluginItemSource.Market, p.Name, meta, false, null, p, p.Icon,
+            !p.IsApiVersionCompatible, p.IncompatibleReason);
     }
 
     public PluginDetailViewModel ToDetail(PluginLoader? pluginLoader)
@@ -650,6 +690,8 @@ public partial class PluginListItemViewModel : ObservableObject
                 ? $"v{MarketPlugin.Version} | {MarketPlugin.Author}"
                 : $"v{MarketPlugin.Version} | {MarketPlugin.Author} | {platforms}";
 
+            var compatible = MarketPlugin.IsApiVersionCompatible;
+
             var detail = new PluginDetailViewModel
             {
                 Title = MarketPlugin.Name,
@@ -658,10 +700,12 @@ public partial class PluginListItemViewModel : ObservableObject
                 Description = MarketPlugin.Description,
                 OutputVisible = false,
                 PrimaryActionText = "安装",
-                PrimaryActionEnabled = true,
+                PrimaryActionEnabled = compatible,
                 PrimaryActionVisible = true,
                 SecondaryActionVisible = false,
-                SecondaryActionText = ""
+                SecondaryActionText = "",
+                IsIncompatibleStatus = !compatible,
+                IncompatibleReason = MarketPlugin.IncompatibleReason
             };
 
             detail.HomeUrl = MarketPlugin.Repository;
@@ -701,12 +745,22 @@ public partial class PluginDetailViewModel : ObservableObject
     [ObservableProperty] private string _markdown = string.Empty;
     [ObservableProperty] private bool _markdownVisible;
 
+    /// <summary>纯文本描述（description 未被识别为 Markdown 时直接显示）</summary>
+    [ObservableProperty] private string _plainText = string.Empty;
+    [ObservableProperty] private bool _plainTextVisible;
+
     [ObservableProperty] private string? _iconUrl;
 
     // 状态胶囊（用于详情头部的彩色状态标签）
     [ObservableProperty] private bool _isEnabledStatus;
     [ObservableProperty] private bool _isErrorStatus;
     [ObservableProperty] private bool _isDisabledStatus;
+
+    /// <summary>插件 API 版本区间不覆盖当前启动器</summary>
+    [ObservableProperty] private bool _isIncompatibleStatus;
+
+    /// <summary>不兼容原因，用于按钮提示</summary>
+    [ObservableProperty] private string? _incompatibleReason;
 
     public PluginDetailViewModel()
     {

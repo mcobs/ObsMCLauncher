@@ -19,8 +19,13 @@ public class PluginMetadata
     [JsonPropertyName("description")]
     public string Description { get; set; } = string.Empty;
 
-    [JsonPropertyName("minLauncherVersion")]
-    public string? MinLauncherVersion { get; set; }
+    /// <summary>支持的最低插件 API 版本（留空 = 不设下限）</summary>
+    [JsonPropertyName("minPluginApiVersion")]
+    public string? MinPluginApiVersion { get; set; }
+
+    /// <summary>支持的最高插件 API 版本（留空 = 支持到最新版）</summary>
+    [JsonPropertyName("maxPluginApiVersion")]
+    public string? MaxPluginApiVersion { get; set; }
 
     [JsonPropertyName("dependencies")]
     public string[] Dependencies { get; set; } = [];

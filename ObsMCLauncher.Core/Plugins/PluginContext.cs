@@ -441,8 +441,8 @@ public class PluginContext : IPluginContext
 
     // ==================== API 版本 ====================
 
-    // 直接跟启动器主版本号走（v1.2.3 → 1）：大版本递进才可能有破坏性变更
-    public int ApiVersion => PluginApi.Version;
+    // 跟启动器版本走，去掉预发布/构建后缀（1.1.0-beta.1 → "1.1.0"）：主版本递进才可能有破坏性变更
+    public string ApiVersion => PluginApi.Version;
 
     // ==================== 崩溃数据 API ====================
     // 以下四个方法自身就能完成（扫描 / 分析 / 读取 / 脱敏都在 Core 内），

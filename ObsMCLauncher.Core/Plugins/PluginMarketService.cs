@@ -71,9 +71,6 @@ namespace ObsMCLauncher.Core.Plugins
         [JsonPropertyName("description")]
         public string Description { get; set; } = string.Empty;
 
-        [JsonPropertyName("readme")]
-        public string? Readme { get; set; }
-        
         [JsonPropertyName("version")]
         public string Version { get; set; } = string.Empty;
         
@@ -95,8 +92,13 @@ namespace ObsMCLauncher.Core.Plugins
         [JsonPropertyName("assetPattern")]
         public string? AssetPattern { get; set; }
         
-        [JsonPropertyName("minLauncherVersion")]
-        public string MinLauncherVersion { get; set; } = "1.0.0";
+        /// <summary>支持的最低插件 API 版本（留空 = 不设下限）</summary>
+        [JsonPropertyName("minPluginApiVersion")]
+        public string? MinPluginApiVersion { get; set; }
+
+        /// <summary>支持的最高插件 API 版本（留空 = 支持到最新版）</summary>
+        [JsonPropertyName("maxPluginApiVersion")]
+        public string? MaxPluginApiVersion { get; set; }
         
         [JsonPropertyName("tags")]
         public List<string> Tags { get; set; } = new();
@@ -152,6 +154,50 @@ namespace ObsMCLauncher.Core.Plugins
 
                 var currentPlatform = GetCurrentPlatform();
                 return platforms.Contains(currentPlatform);
+            }
+        }
+
+        /// <summary>
+        /// 当前启动器的插件 API 版本是否落在声明的 [最小, 最大] 区间内。
+        /// 两个字段都留空 = 不做限制；最大留空 = 支持到最新版。
+        /// </summary>
+        public bool IsApiVersionCompatible
+        {
+            get
+            {
+                var current = PluginApi.Version;
+
+                if (!string.IsNullOrWhiteSpace(MinPluginApiVersion) &&
+                    VersionCompare.Compare(current, MinPluginApiVersion) < 0)
+                    return false;
+
+                if (!string.IsNullOrWhiteSpace(MaxPluginApiVersion) &&
+                    VersionCompare.Compare(current, MaxPluginApiVersion) > 0)
+                    return false;
+
+                return true;
+            }
+        }
+
+        /// <summary>不兼容原因（兼容时为 null），用于界面提示</summary>
+        public string? IncompatibleReason
+        {
+            get
+            {
+                if (IsApiVersionCompatible) return null;
+
+                var hasMin = !string.IsNullOrWhiteSpace(MinPluginApiVersion);
+                var hasMax = !string.IsNullOrWhiteSpace(MaxPluginApiVersion);
+
+                var range = (hasMin, hasMax) switch
+                {
+                    (true, true) => $"{MinPluginApiVersion} ~ {MaxPluginApiVersion}",
+                    (true, false) => $"≥ {MinPluginApiVersion}",
+                    (false, true) => $"≤ {MaxPluginApiVersion}",
+                    _ => "*"
+                };
+
+                return $"需要插件 API {range}，当前启动器为 {PluginApi.Version}";
             }
         }
 
