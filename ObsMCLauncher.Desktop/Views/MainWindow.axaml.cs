@@ -14,6 +14,7 @@ using FluentAvalonia.UI.Controls.Primitives;
 using FluentAvalonia.UI.Media.Animation;
 using FluentAvalonia.UI.Navigation;
 using ObsMCLauncher.Core.Models;
+using ObsMCLauncher.Core.Plugins;
 using ObsMCLauncher.Desktop.Services;
 using ObsMCLauncher.Desktop.ViewModels;
 
@@ -23,6 +24,7 @@ public partial class MainWindow : Window
 {
     private MainWindowViewModel? _vm;
     private bool _navInitialized;
+    private bool _pluginUiReadyPending;
     private bool _shutdownRequested;
 
     public MainWindow()
@@ -96,6 +98,31 @@ public partial class MainWindow : Window
         _navInitialized = true;
 
         SyncSelectionAndNavigate();
+
+        SchedulePluginUiReady();
+    }
+
+    // ===== 插件 UI 就绪广播 =====
+
+    /// <summary>
+    /// 向插件广播"主界面就绪"（<c>IPluginContext.EventNames.UiReady</c>，进程内只广播一次）。
+    ///
+    /// 时机选在"主窗口已打开 + 首页已导航"之后：插件是在 MainWindowViewModel 构造里加载的，
+    /// 那时窗口还没创建、desktop.MainWindow 也没赋值，插件在 OnLoad 里调 GetUiRoot() 必然拿到 null。
+    ///
+    /// 再压一帧（Loaded 优先级）是为了让首页控件真的进了视觉树，
+    /// 插件收到事件后遍历/按名查找控件时才找得到。
+    /// </summary>
+    private void SchedulePluginUiReady()
+    {
+        if (_pluginUiReadyPending || PluginContext.HasUiReady) return;
+        _pluginUiReadyPending = true;
+
+        Dispatcher.UIThread.Post(() =>
+        {
+            _pluginUiReadyPending = false;
+            PluginContext.NotifyUiReady(this);
+        }, DispatcherPriority.Loaded);
     }
 
     private void OnNavSelectionChanged(object? sender, NavigationViewSelectionChangedEventArgs e)

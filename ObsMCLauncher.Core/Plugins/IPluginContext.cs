@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using ObsMCLauncher.Core.Models;
+using ObsMCLauncher.Core.Plugins.Events;
 
 namespace ObsMCLauncher.Core.Plugins;
 
@@ -49,6 +50,14 @@ public interface IPluginContext
         /// <see cref="PluginCrashReportInfo.ReportFound"/> 明确告诉插件有没有找到报告文件。
         /// </summary>
         public const string CrashDetected = "CrashDetected";
+
+        /// <summary>
+        /// 主界面就绪（主窗口已打开、首页已进入视觉树）。
+        /// 事件数据为 <see cref="PluginUiReadyEventArgs"/>；每个进程只触发一次。
+        /// 在此之前 <see cref="GetUiRoot"/> 必然返回 null，想改界面的插件应等这个事件
+        /// （或用 <see cref="IsUiReady"/> 判断后再动手）。
+        /// </summary>
+        public const string UiReady = "UiReady";
     }
 
     /// <summary>
@@ -120,17 +129,31 @@ public interface IPluginContext
     object? GetSlotHost(string slotId);
 
     /// <summary>
+    /// 主界面是否已经就绪（主窗口已打开、首页已进入视觉树）。
+    ///
+    /// 为 false 时 <see cref="GetUiRoot"/> / <see cref="TryFindControlByName"/> 一定会失败，
+    /// 所以插件在 <c>OnLoad</c> 里想改界面时要先看这个值：false 就订阅
+    /// <see cref="EventNames.UiReady"/> 事件再动手（事件每个进程只广播一次）。
+    /// 已经触发过 UiReady 之后才被加载 / 启用的插件，可以靠这个属性发现"已经就绪了"，
+    /// 立刻补做一次界面改动，不用等下一次启动。
+    /// </summary>
+    bool IsUiReady { get; }
+
+    /// <summary>
     /// 取 UI 根（启动器主窗口，Avalonia Window）。
     /// 这是**不受槽位限制**的入口：拿到后插件可自己遍历视觉树，往任意容器增删控件、改任意控件属性——
     /// 也就是"直接修改页面组件"的完全形态，不需要启动器预先开任何槽位。
     /// 代价是页面结构会随版本变化，兼容风险由插件自己承担。
+    ///
+    /// 主界面就绪（<see cref="IsUiReady"/>）之前返回 null；推荐等
+    /// <see cref="EventNames.UiReady"/> 事件后再调用，或直接在事件数据里取 <c>Root</c>。
     /// </summary>
     object? GetUiRoot();
 
     /// <summary>
     /// 按控件名（XAML 的 x:Name / Name）在已打开的窗口里查找控件。
     /// 适合"我知道要找哪个控件"的场景，比自己遍历树稳一点（名字由启动器维护）。
-    /// 找不到或窗口没打开时返回 null。
+    /// 找不到、窗口没打开、或主界面尚未就绪（<see cref="IsUiReady"/> 为 false）时返回 null。
     /// </summary>
     object? TryFindControlByName(string name);
 

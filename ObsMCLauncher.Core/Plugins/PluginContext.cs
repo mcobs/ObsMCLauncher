@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 using ObsMCLauncher.Core.Models;
+using ObsMCLauncher.Core.Plugins.Events;
 using ObsMCLauncher.Core.Services.Crash;
 using ObsMCLauncher.Core.Utils;
 
@@ -100,6 +101,42 @@ public class PluginContext : IPluginContext
 
     /// <summary>按控件名查找控件回调；找不到返回 null</summary>
     public static Func<string, object?>? OnFindControlByName { get; set; }
+
+    // ===== 主界面就绪状态 =====
+
+    /// <summary>主界面是否已就绪（由桌面层通过 <see cref="NotifyUiReady"/> 置位，只置一次）</summary>
+    private static bool _hasUiReady;
+    private static readonly object _uiReadyLock = new();
+
+    /// <summary>
+    /// 主界面是否已经就绪（主窗口已打开、首页已进入视觉树）。
+    /// 进程级状态：就绪后不会退回 false。<see cref="IPluginContext.IsUiReady"/> 读的就是它。
+    /// </summary>
+    public static bool HasUiReady
+    {
+        get { lock (_uiReadyLock) { return _hasUiReady; } }
+    }
+
+    /// <summary>
+    /// 由桌面层在**主窗口已打开、首页已导航**之后调用一次：置位就绪状态 + 广播
+    /// <see cref="IPluginContext.EventNames.UiReady"/>。
+    ///
+    /// 幂等：重复调用（窗口重开、页面重新导航）只有第一次会广播，但每次都会把状态置位，
+    /// 所以调用方不需要自己做"只调一次"的守卫。
+    /// 必须在 UI 线程调用——事件处理器会直接拿到窗口并遍历视觉树。
+    /// </summary>
+    /// <param name="root">UI 根（Avalonia Window），作为事件数据下发；可为 null（无 UI 宿主）</param>
+    public static void NotifyUiReady(object? root)
+    {
+        lock (_uiReadyLock)
+        {
+            if (_hasUiReady) return;
+            _hasUiReady = true;
+        }
+
+        DebugLogger.Info("Plugin", $"主界面就绪，广播 {IPluginContext.EventNames.UiReady}，root={root?.GetType().Name ?? "null"}");
+        TriggerGlobalEvent(IPluginContext.EventNames.UiReady, new PluginUiReadyEventArgs { Root = root });
+    }
 
     public PluginContext(string pluginId)
     {
@@ -705,6 +742,8 @@ public class PluginContext : IPluginContext
     /// 主窗口（Avalonia Window）。插件可据此自行遍历/修改视觉树中的任意控件，
     /// 不受 <see cref="PluginSlotRegistry.KnownSlots"/> 限制。未接线（无 UI）时返回 null。
     /// </summary>
+    public bool IsUiReady => HasUiReady;
+
     public object? GetUiRoot() => OnGetUiRoot?.Invoke();
 
     public object? TryFindControlByName(string name) =>
@@ -920,6 +959,10 @@ public class PluginContext : IPluginContext
         lock (_asyncLaunchHooksLock)
         {
             _asyncLaunchHooks.Clear();
+        }
+        lock (_uiReadyLock)
+        {
+            _hasUiReady = false;
         }
         PluginSlotRegistry.ResetForTests();
     }

@@ -22,6 +22,7 @@
     - [3.4 UI 槽位](#34-ui-槽位)
     - [3.5 任意 UI 访问](#35-任意-ui-访问)
     - [3.6 打开链接与页面跳转](#36-打开链接与页面跳转)
+    - [3.7 界面就绪时机](#37-界面就绪时机)
   - [4. 通知系统](#4-通知系统)
   - [5. 游戏启动生命周期钩子](#5-游戏启动生命周期钩子)
   - [6. 下载](#6-下载)
@@ -269,6 +270,7 @@ namespace ObsMCLauncher.Core.Plugins
         void ClearSlotContent(string slotId);
         IReadOnlyList<string> GetSlotIds();
         object? GetSlotHost(string slotId);
+        bool IsUiReady { get; }             // 1.1.1+，主界面是否已就绪
         object? GetUiRoot();
         object? TryFindControlByName(string name);
         void RunOnUiThread(Action action);
@@ -332,6 +334,7 @@ namespace ObsMCLauncher.Core.Plugins
 | UI | `RegisterCommand` / `UnregisterCommand` | 注册供卡片点击触发的命令 | `1.0.0` | [3.3](#33-自定义命令) |
 | UI | `AddSlotContent` / `RemoveSlotContent` / `ClearSlotContent` / `GetSlotIds` / `GetSlotHost` | 把控件挂进启动器预留槽位 | `1.1.1` | [3.4](#34-ui-槽位) |
 | UI | `GetUiRoot` / `TryFindControlByName` / `RunOnUiThread` | 不受槽位限制地访问与修改任意 UI | `1.1.1` | [3.5](#35-任意-ui-访问) |
+| UI | `IsUiReady` / `EventNames.UiReady` | 主界面何时就绪、何时才能改 UI | `1.1.1` | [3.7](#37-界面就绪时机) |
 | UI | `OpenUrl` / `NavigateTo` | 打开外部链接 / 跳转内部页面 | `1.1.0` | [3.6](#36-打开链接与页面跳转) |
 | 通知 | `ShowNotification` / `UpdateNotification` / `CloseNotification` | 显示、更新、关闭通知 | `1.0.0` | [4](#4-通知系统) |
 | 钩子 | `RegisterGameLaunchHook` / `UnregisterGameLaunchHook` | 启动前/启动后/退出/崩溃时回调（同步） | `1.0.0` | [5](#5-游戏启动生命周期钩子) |
@@ -511,6 +514,7 @@ private void OnDownloadProgress(object? eventData)
 | `DownloadProgress` | `EventNames.DownloadProgress` | 下载进度更新 | `DownloadProgressEventArgs` | `1.0.0` |
 | `VersionSelected` | `EventNames.VersionSelected` | 用户切换了选中的版本 | `VersionSelectedEventArgs` | `1.1.1` |
 | `CrashDetected` | `EventNames.CrashDetected` | 崩溃已确认（报告落盘状态已确定） | `PluginCrashReportInfo`，见 [7. 崩溃系统](#7-崩溃系统) | `1.1.1` |
+| `UiReady` | `EventNames.UiReady` | 主窗口已打开、首页已就绪（每个进程只触发一次） | `PluginUiReadyEventArgs`，见 [3.7](#37-界面就绪时机) | `1.1.1` |
 
 **VersionInstallingEventArgs** 属性：
 - `McVersion` - Minecraft 版本号
@@ -560,6 +564,26 @@ private void OnVersionSelected(object? eventData)
 
 > 切换成同一个版本不会触发该事件（启动器只在选中项真正变化时广播）。
 
+**PluginUiReadyEventArgs** 属性（`1.1.1+`）：
+- `Root` - UI 根（Avalonia `Window`），与 `GetUiRoot()` 返回同一实例；无 UI 宿主时为 `null`
+
+```csharp
+// 想在启动器界面上加东西就等这个事件——OnLoad 里窗口还没建，是拿不到 UI 的
+context.SubscribeEvent(IPluginContext.EventNames.UiReady, OnUiReady);
+
+private void OnUiReady(object? eventData)
+{
+    if (eventData is PluginUiReadyEventArgs args && args.Root is Window root)
+    {
+        // 事件在 UI 线程广播，可以直接遍历/修改视觉树
+    }
+}
+```
+
+> `UiReady` 每个进程只广播一次。如果订阅时 `context.IsUiReady` 已经是 `true`，
+> 说明主界面早就绪了（比如插件是启动后才被启用的），这时候直接干活即可，不必等事件。
+> 详见 [3.7 界面就绪时机](#37-界面就绪时机)。
+
 插件也可以发布自定义事件。
 
 插件还可以退订事件，避免不再需要时继续收到通知：
@@ -591,7 +615,7 @@ private void DisableSubscription(IPluginContext context)
 | [3.1 标签页](#31-注册标签页) | 「更多」页新增一个 Tab | 启动器管理 | 稳定 |
 | [3.2 主页卡片](#32-注册主页卡片) | 主页卡片网格 | 启动器管理 | 稳定 |
 | [3.4 UI 槽位](#34-ui-槽位) | 既有页面的预留容器 | 启动器管理 | 稳定（槽位 id 有保证） |
-| [3.5 任意 UI 访问](#35-任意-ui-访问) | 视觉树上任意位置 | 插件自己负责 | 随版本变化，需容错 |
+| [3.5 任意 UI 访问](#35-任意-ui-访问) | 视觉树上任意位置 | 插件自己负责 | 随版本变化，需容错；需等 [3.7 UiReady](#37-界面就绪时机) |
 
 四种方式都需要给插件项目加 Avalonia 包引用才能创建控件：
 
@@ -840,6 +864,9 @@ public void OnUnload()
 
 > 引入版本：`1.1.1`（`GetUiRoot` / `TryFindControlByName` / `RunOnUiThread`）
 
+> ⚠️ 这条路只在**主界面就绪之后**才走得通：`OnLoad` 里 `GetUiRoot()` 一定返回 `null`，
+> 因为插件加载时主窗口还没创建。时机判断与完整写法见 [3.7 界面就绪时机](#37-界面就绪时机)。
+
 **不需要启动器预先开槽位**——拿到 UI 根后，插件可以自己遍历视觉树、往任意容器增删控件、改任意控件属性：
 
 ```csharp
@@ -886,6 +913,65 @@ _context.NavigateTo("resources");
 ```
 
 > 卡片点击也能做到同样的事，用 `url:` / `navigate:` 命令 ID，见 [3.2](#32-注册主页卡片)。
+
+#### 3.7 界面就绪时机
+
+> 引入版本：`1.1.1`（`EventNames.UiReady` / `IsUiReady`）
+
+插件是在 `MainWindowViewModel` 构造期间加载的，此时**主窗口还没创建、`desktop.MainWindow` 也没有赋值**。
+所以 `OnLoad` 里调 `GetUiRoot()` / `TryFindControlByName()` 必然返回 `null`——这不是出错，只是时机没到。
+
+启动器在主窗口打开、首页进入视觉树之后广播一次 `UiReady`，这时候动手才有效：
+
+```csharp
+using Avalonia.Controls;
+using ObsMCLauncher.Core.Plugins;
+using ObsMCLauncher.Core.Plugins.Events;
+
+public void OnLoad(IPluginContext context)
+{
+    _context = context;
+
+    if (context.IsUiReady)
+    {
+        // 加载/启用得很晚：主界面早就绪了，直接干活，不用等事件
+        ApplyMyUiTweaks();
+        return;
+    }
+
+    context.SubscribeEvent(IPluginContext.EventNames.UiReady, OnUiReady);
+}
+
+private void OnUiReady(object? eventData)
+{
+    if (eventData is not PluginUiReadyEventArgs args || args.Root is not Window) return;
+
+    // 事件在 UI 线程广播，可以直接操作控件
+    ApplyMyUiTweaks();
+}
+
+private void ApplyMyUiTweaks()
+{
+    if (_context.GetUiRoot() is not Window root) return;   // 兜底：没窗口就跳过
+    // ...遍历视觉树、改控件
+}
+```
+
+要点：
+
+| 事项 | 说明 |
+|------|------|
+| 触发次数 | 每个进程**只广播一次**；页面来回切换、窗口重开都不会再触发 |
+| 线程 | 在 **UI 线程**广播，处理器里可以直接操作控件 |
+| 时机含义 | 主窗口已 `Show`、首页已导航并进入视觉树，所以能找到首页的控件 |
+| 首次启动 | 先显示欢迎向导，**主窗口要等向导走完才出现**，`UiReady` 也在那时才触发 |
+| `Root` 为 null | 只出现在无 UI 的宿主里（例如单元测试）；插件应原样视为"跳过" |
+| 卸载还原 | `UiReady` 之后做的改动**不会自动回滚**，请在 `OnUnload` 里还原 |
+
+> `UiReady` **只影响 [3.5 任意 UI 访问](#35-任意-ui-访问) 这条路**。
+> [3.1 标签页](#31-注册标签页)、[3.2 主页卡片](#32-注册主页卡片)、[3.4 UI 槽位](#34-ui-槽位)
+> 都是"先注册、后渲染"，启动器在页面出现时自己来拉，不受这个时机限制——在 `OnLoad` 里注册即可。
+> 只有"我要自己去视觉树里找控件改"才需要等 `UiReady`。
 
 ### 4. 通知系统
 
@@ -1976,7 +2062,11 @@ A: 两种时机——只想"知道游戏崩了"用 `GameLaunchPhase.OnCrash` 钩
 
 ### Q: 插件怎么把 UI 放进启动器已有页面？
 
-A: 优先用 [3.4 UI 槽位](#34-ui-槽位)（生命周期由启动器管理）；槽位不够用再走 [3.5 任意 UI 访问](#35-任意-ui-访问)（自由但兼容性自负）。
+A: 优先用 [3.4 UI 槽位](#34-ui-槽位)（生命周期由启动器管理，`OnLoad` 里注册即可）；槽位不够用再走 [3.5 任意 UI 访问](#35-任意-ui-访问)（自由但兼容性自负，且要等 [3.7 UiReady](#37-界面就绪时机) 之后再动手）。
+
+### Q: 为什么 `OnLoad` 里 `GetUiRoot()` 一直返回 null？
+
+A: 因为插件是在主窗口创建之前加载的——这时窗口还不存在，不存在"拿不到"以外的可能。订阅 `EventNames.UiReady`（主窗口打开、首页就绪后广播一次），或先用 `context.IsUiReady` 判断当前是否已经就绪。详见 [3.7 界面就绪时机](#37-界面就绪时机)。
 
 ### Q: 插件如何保存数据？
 

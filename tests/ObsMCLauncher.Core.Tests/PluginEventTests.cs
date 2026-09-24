@@ -53,6 +53,71 @@ public class PluginEventTests
     }
 
     [Fact]
+    public void EventNames_UiReady_HasCorrectValue()
+    {
+        Assert.Equal("UiReady", IPluginContext.EventNames.UiReady);
+    }
+
+    [Fact]
+    public void NotifyUiReady_MarksReadyAndFiresExactlyOnce()
+    {
+        // UiReady 是进程级一次性状态：先清一次，保证起点确定
+        PluginContext.ClearAllStateForTests();
+
+        var ctx = CreateContext();
+        var calls = new List<object?>();
+        void Handler(object? data) => calls.Add(data);
+        ctx.SubscribeEvent(IPluginContext.EventNames.UiReady, Handler);
+
+        try
+        {
+            Assert.False(ctx.IsUiReady);
+
+            var root = new object();
+            PluginContext.NotifyUiReady(root);
+
+            // 第二次调用应被忽略：窗口重开 / 页面重新导航都不该重复广播
+            PluginContext.NotifyUiReady(new object());
+
+            Assert.True(ctx.IsUiReady);
+
+            var args = Assert.IsType<PluginUiReadyEventArgs>(Assert.Single(calls));
+            Assert.Same(root, args.Root);
+        }
+        finally
+        {
+            ctx.UnsubscribeEvent(IPluginContext.EventNames.UiReady, Handler);
+            PluginContext.ClearAllStateForTests();
+        }
+    }
+
+    [Fact]
+    public void NotifyUiReady_NullRoot_StillMarksReadyAndFires()
+    {
+        // 无 UI 宿主（如测试环境）时 Root 为 null，状态仍要正确置位，插件据此跳过
+        PluginContext.ClearAllStateForTests();
+
+        var ctx = CreateContext();
+        object? captured = null;
+        void Handler(object? data) => captured = data;
+        ctx.SubscribeEvent(IPluginContext.EventNames.UiReady, Handler);
+
+        try
+        {
+            PluginContext.NotifyUiReady(null);
+
+            Assert.True(ctx.IsUiReady);
+            var args = Assert.IsType<PluginUiReadyEventArgs>(captured);
+            Assert.Null(args.Root);
+        }
+        finally
+        {
+            ctx.UnsubscribeEvent(IPluginContext.EventNames.UiReady, Handler);
+            PluginContext.ClearAllStateForTests();
+        }
+    }
+
+    [Fact]
     public void TriggerGlobalEvent_VersionSelected_FiresEventWithData()
     {
         var ctx = CreateContext();

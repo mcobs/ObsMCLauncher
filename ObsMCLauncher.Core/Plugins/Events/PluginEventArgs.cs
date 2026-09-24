@@ -212,3 +212,23 @@ public enum DownloadStatus
     /// </summary>
     Cancelled
 }
+
+/// <summary>
+/// 主界面就绪事件数据（<c>UiReady</c>）。
+///
+/// 触发时机：主窗口已打开、首页已进入视觉树——这是 <c>IPluginContext.GetUiRoot()</c>
+/// 第一次能拿到非 null 主窗口的时刻。插件在 <c>OnLoad</c> 里拿不到窗口是正常的：
+/// 插件加载发生在 MainWindowViewModel 构造期间，那时窗口还没创建。
+///
+/// 每个进程只广播一次；错过广播的插件（例如启动后才被启用的插件）用
+/// <c>IPluginContext.IsUiReady</c> 判断当前是否已经就绪，再补做一次即可。
+/// </summary>
+public class PluginUiReadyEventArgs
+{
+    /// <summary>
+    /// UI 根（Avalonia <c>Window</c>），与 <c>IPluginContext.GetUiRoot()</c> 返回同一实例。
+    /// 直接下发是为了省掉一次查询和竞态：插件里 `is Window root` 判断后再用。
+    /// Core 不引用 Avalonia，所以这里声明为 <see cref="object"/>。
+    /// </summary>
+    public object? Root { get; set; }
+}
