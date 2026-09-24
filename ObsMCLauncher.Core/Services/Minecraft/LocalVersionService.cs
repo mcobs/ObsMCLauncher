@@ -5,6 +5,8 @@ using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using ObsMCLauncher.Core.Models;
+using ObsMCLauncher.Core.Plugins;
+using ObsMCLauncher.Core.Plugins.Events;
 using ObsMCLauncher.Core.Utils;
 
 namespace ObsMCLauncher.Core.Services.Minecraft
@@ -329,14 +331,24 @@ namespace ObsMCLauncher.Core.Services.Minecraft
         }
 
         /// <summary>
-        /// 设置选中的版本
+        /// 设置选中的版本。选中项真正变化时写盘并广播 VersionSelected 事件
+        /// （无变化直接返回，既能避免启动/刷新时误报，也省掉一次写盘）
         /// </summary>
         public static void SetSelectedVersion(string versionId)
         {
             var config = LauncherConfig.Load();
+            var previousId = config.SelectedVersion ?? string.Empty;
+            if (string.Equals(previousId, versionId, StringComparison.Ordinal)) return;
+
             config.SelectedVersion = versionId;
             config.Save();
             DebugLogger.Info("LocalVersion", $"已选择版本: {versionId}");
+
+            PluginContext.TriggerGlobalEvent(IPluginContext.EventNames.VersionSelected, new VersionSelectedEventArgs
+            {
+                VersionId = versionId,
+                PreviousVersionId = previousId
+            });
         }
 
         /// <summary>
@@ -387,9 +399,9 @@ namespace ObsMCLauncher.Core.Services.Minecraft
         }
 
         /// <summary>
-        /// 检测版本的加载器类型
+        /// 检测版本的加载器类型（插件 API 复用同一套判断，避免两处结论不一致）
         /// </summary>
-        private static string? DetectLoaderType(string jsonContent)
+        internal static string? DetectLoaderType(string jsonContent)
         {
             try
             {

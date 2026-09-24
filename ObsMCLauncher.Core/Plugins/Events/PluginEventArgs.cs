@@ -78,6 +78,23 @@ public class VersionInstalledEventArgs
 }
 
 /// <summary>
+/// 版本选中变更事件数据（用户切换主页/版本管理页里选中的版本）。
+/// 只有选中项真正变化时才触发；版本详情可通过 IPluginContext.GetSelectedVersion() 查询。
+/// </summary>
+public class VersionSelectedEventArgs
+{
+    /// <summary>
+    /// 新选中的版本ID
+    /// </summary>
+    public string VersionId { get; set; } = "";
+
+    /// <summary>
+    /// 切换前选中的版本ID；此前没有选中过任何版本时为空
+    /// </summary>
+    public string PreviousVersionId { get; set; } = "";
+}
+
+/// <summary>
 /// 账户变更事件数据
 /// </summary>
 public class AccountChangedEventArgs

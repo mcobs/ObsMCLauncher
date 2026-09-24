@@ -246,7 +246,7 @@ namespace ObsMCLauncher.Core.Plugins
         string LauncherBaseDirectory { get; }
         string LauncherDataDirectory { get; }
         string GameDirectory { get; }
-        string ApiVersion { get; }
+        string ApiVersion { get; }          // 1.1.1+（此前为整数主版本号，1.1.1 起为字符串版本号）
 
         // 事件（见 2）
         void SubscribeEvent(string eventName, Action<object?> handler);
@@ -290,7 +290,7 @@ namespace ObsMCLauncher.Core.Plugins
         string RequestDownload(PluginDownloadRequest request);
         PluginDownloadTaskStatus? GetDownloadTaskStatus(string taskId);
 
-        // 崩溃（见 7）
+        // 崩溃（见 7，1.1.1+）
         IReadOnlyList<PluginCrashReportInfo> GetCrashReports(string? versionId = null);
         PluginCrashAnalysis? AnalyzeCrashReport(string reportPath);
         string? ReadCrashReportText(string reportPath, int maxChars = 200_000, bool sanitize = true);
@@ -299,10 +299,18 @@ namespace ObsMCLauncher.Core.Plugins
 
         // 日志与配置（见 8）
         void LogMessage(PluginLogLevel level, string message);
-        T? GetConfig<T>();
-        void SaveConfig<T>(T config);
+        T? GetConfig<T>();                  // 1.1.0+
+        void SaveConfig<T>(T config);       // 1.1.0+
         IReadOnlyList<PluginVersionInfo> GetInstalledVersions();
         PluginAccountInfo? GetCurrentAccount();
+
+        // 查询（见 8，均为 1.1.1+）
+        PluginVersionInfo? GetSelectedVersion();
+        IReadOnlyList<PluginAccountInfo> GetAccounts();
+        PluginGameStatus GetGameStatus();
+        PluginLaunchSettings GetLaunchSettings();
+        string GetVersionRunDirectory(string versionId);
+        IReadOnlyList<PluginDownloadTaskStatus> GetDownloadTasks();
     }
 }
 ```
@@ -313,24 +321,39 @@ namespace ObsMCLauncher.Core.Plugins
 
 ### API 总览
 
-| 分组 | API | 一句话说明 | 章节 |
-|------|-----|-----------|------|
-| 目录 | `PluginDataDirectory` / `LauncherBaseDirectory` / `LauncherDataDirectory` / `GameDirectory` | 插件数据、启动器基础、启动器数据、当前游戏目录 | [1](#1-目录版本与兼容性) |
-| 版本 | `LauncherVersion` / `ApiVersion` | 完整版本字符串 / 插件 API 版本（去掉预发布后缀的版本号） | [1](#1-目录版本与兼容性) |
-| 事件 | `SubscribeEvent` / `UnsubscribeEvent` / `PublishEvent` | 订阅、退订、发布事件 | [2](#2-事件系统) |
-| UI | `RegisterTab` / `UnregisterTab` | 在「更多」页增删标签页 | [3.1](#31-注册标签页) |
-| UI | `RegisterHomeCard` / `UnregisterHomeCard` | 在主页增删卡片 | [3.2](#32-注册主页卡片) |
-| UI | `RegisterCommand` / `UnregisterCommand` | 注册供卡片点击触发的命令 | [3.3](#33-自定义命令) |
-| UI | `AddSlotContent` / `RemoveSlotContent` / `ClearSlotContent` / `GetSlotIds` / `GetSlotHost` | 把控件挂进启动器预留槽位 | [3.4](#34-ui-槽位) |
-| UI | `GetUiRoot` / `TryFindControlByName` / `RunOnUiThread` | 不受槽位限制地访问与修改任意 UI | [3.5](#35-任意-ui-访问) |
-| UI | `OpenUrl` / `NavigateTo` | 打开外部链接 / 跳转内部页面 | [3.6](#36-打开链接与页面跳转) |
-| 通知 | `ShowNotification` / `UpdateNotification` / `CloseNotification` | 显示、更新、关闭通知 | [4](#4-通知系统) |
-| 钩子 | `RegisterGameLaunchHook(Async)` / `UnregisterGameLaunchHook(Async)` | 启动前/启动后/退出/崩溃时回调 | [5](#5-游戏启动生命周期钩子) |
-| 下载 | `RequestDownload` / `GetDownloadTaskStatus` | 提交下载请求、轮询任务状态 | [6](#6-下载) |
-| 崩溃 | `GetCrashReports` / `AnalyzeCrashReport` / `ReadCrashReportText` / `SanitizeCrashReportText` / `GetActiveCrashContext` | 列出、分析、读取、脱敏崩溃报告 | [7](#7-崩溃系统) |
-| 日志 | `LogMessage` | 写入启动器统一日志 | [8](#8-日志与配置) |
-| 配置 | `GetConfig<T>` / `SaveConfig<T>` | 读写插件自己的 config.json | [8](#8-日志与配置) |
-| 查询 | `GetInstalledVersions` / `GetCurrentAccount` | 已安装版本列表 / 当前账户（不含令牌） | [8](#8-日志与配置) |
+| 分组 | API | 一句话说明 | 引入版本 | 章节 |
+|------|-----|-----------|---------|------|
+| 目录 | `PluginDataDirectory` / `LauncherBaseDirectory` / `LauncherDataDirectory` / `GameDirectory` | 插件数据、启动器基础、启动器数据、当前游戏目录 | `1.0.0` | [1](#1-目录版本与兼容性) |
+| 版本 | `LauncherVersion` | 完整版本字符串（含预发布标识） | `1.0.0` | [1](#1-目录版本与兼容性) |
+| 版本 | `ApiVersion` | 插件 API 版本（去掉预发布后缀的版本号） | `1.1.1` | [1](#1-目录版本与兼容性) |
+| 事件 | `SubscribeEvent` / `UnsubscribeEvent` / `PublishEvent` | 订阅、退订、发布事件 | `1.0.0` | [2](#2-事件系统) |
+| UI | `RegisterTab` / `UnregisterTab` | 在「更多」页增删标签页 | `1.0.0` | [3.1](#31-注册标签页) |
+| UI | `RegisterHomeCard` / `UnregisterHomeCard` | 在主页增删卡片 | `1.0.0` | [3.2](#32-注册主页卡片) |
+| UI | `RegisterCommand` / `UnregisterCommand` | 注册供卡片点击触发的命令 | `1.0.0` | [3.3](#33-自定义命令) |
+| UI | `AddSlotContent` / `RemoveSlotContent` / `ClearSlotContent` / `GetSlotIds` / `GetSlotHost` | 把控件挂进启动器预留槽位 | `1.1.1` | [3.4](#34-ui-槽位) |
+| UI | `GetUiRoot` / `TryFindControlByName` / `RunOnUiThread` | 不受槽位限制地访问与修改任意 UI | `1.1.1` | [3.5](#35-任意-ui-访问) |
+| UI | `OpenUrl` / `NavigateTo` | 打开外部链接 / 跳转内部页面 | `1.1.0` | [3.6](#36-打开链接与页面跳转) |
+| 通知 | `ShowNotification` / `UpdateNotification` / `CloseNotification` | 显示、更新、关闭通知 | `1.0.0` | [4](#4-通知系统) |
+| 钩子 | `RegisterGameLaunchHook` / `UnregisterGameLaunchHook` | 启动前/启动后/退出/崩溃时回调（同步） | `1.0.0` | [5](#5-游戏启动生命周期钩子) |
+| 钩子 | `RegisterGameLaunchHookAsync` / `UnregisterGameLaunchHookAsync` | 同上，异步版本 | `1.1.0` | [5](#5-游戏启动生命周期钩子) |
+| 下载 | `RequestDownload` | 提交下载请求 | `1.0.0` | [6](#6-下载) |
+| 下载 | `GetDownloadTaskStatus` | 查询单个任务状态 | `1.1.0` | [6](#6-下载) |
+| 下载 | `GetDownloadTasks` | 查询全部任务列表 | `1.1.1` | [8](#8-日志与配置) |
+| 崩溃 | `GetCrashReports` / `AnalyzeCrashReport` / `ReadCrashReportText` / `SanitizeCrashReportText` / `GetActiveCrashContext` | 列出、分析、读取、脱敏崩溃报告 | `1.1.1` | [7](#7-崩溃系统) |
+| 日志 | `LogMessage` | 写入启动器统一日志 | `1.0.0` | [8](#8-日志与配置) |
+| 配置 | `GetConfig<T>` / `SaveConfig<T>` | 读写插件自己的 config.json | `1.1.0` | [8](#8-日志与配置) |
+| 查询 | `GetInstalledVersions` / `GetCurrentAccount` | 已安装版本列表 / 当前账户（不含令牌） | `1.0.0` | [8](#8-日志与配置) |
+| 查询 | `GetSelectedVersion` | 用户当前选中的版本 | `1.1.1` | [8](#8-日志与配置) |
+| 查询 | `GetAccounts` | 全部账户列表（不含令牌） | `1.1.1` | [8](#8-日志与配置) |
+| 查询 | `GetGameStatus` | 游戏进程运行状态 | `1.1.1` | [8](#8-日志与配置) |
+| 查询 | `GetLaunchSettings` | 当前启动设置（内存/JVM/Java 路径） | `1.1.1` | [8](#8-日志与配置) |
+| 查询 | `GetVersionRunDirectory` | 指定版本的运行目录（按隔离设置解析） | `1.1.1` | [8](#8-日志与配置) |
+
+> 「引入版本」是该 API 可用的**最低插件 API 版本**：在更旧的启动器上，这些成员不存在，
+> 调用会抛 `MissingMethodException`。用 `Context.ApiVersion` 判断即可，例如
+> `if (new Version(context.ApiVersion) >= new Version("1.1.1")) { ... }`；
+> 也可以在 `plugin.json` 里直接写 `minPluginApiVersion`（见 [版本与兼容性](#版本与兼容性)）。
+> 未标注的成员一律从 `1.0.0` 起可用。
 
 > 所有 API 调用（包括回调内部抛出的异常）都由启动器统一 try-catch，不会传播到调用方。
 
@@ -340,12 +363,12 @@ namespace ObsMCLauncher.Core.Plugins
 
 `IPluginContext` 提供以下目录 API（均已正确处理 Velopack 部署，不会返回会被更新整体替换的 `current` 目录）：
 
-| API | 说明 |
-| --- | --- |
-| `PluginDataDirectory` | 当前插件的专属数据目录（`<启动器基础目录>/OMCL/plugins/{插件ID}`），插件配置和数据应保存在这里 |
-| `LauncherBaseDirectory` | 启动器基础目录（Velopack 安装模式下自动定位到 `current` 的父级） |
-| `LauncherDataDirectory` | 启动器数据目录（`<启动器基础目录>/OMCL`，存放启动器配置/账户/缓存） |
-| `GameDirectory` | 当前激活的游戏目录（`.minecraft` 根目录，随用户在设置中的切换实时变化） |
+| API | 说明 | 引入版本 |
+| --- | --- | --- |
+| `PluginDataDirectory` | 当前插件的专属数据目录（`<启动器基础目录>/OMCL/plugins/{插件ID}`），插件配置和数据应保存在这里 | `1.0.0` |
+| `LauncherBaseDirectory` | 启动器基础目录（Velopack 安装模式下自动定位到 `current` 的父级） | `1.0.0` |
+| `LauncherDataDirectory` | 启动器数据目录（`<启动器基础目录>/OMCL`，存放启动器配置/账户/缓存） | `1.0.0` |
+| `GameDirectory` | 当前激活的游戏目录（`.minecraft` 根目录，随用户在设置中的切换实时变化） | `1.0.0` |
 
 ```csharp
 public void OnLoad(IPluginContext context)
@@ -477,16 +500,17 @@ private void OnDownloadProgress(object? eventData)
 
 **可用事件**：
 
-| 事件名 | 常量 | 说明 | 事件数据类型 |
-|--------|------|------|-------------|
-| `GameLaunched` | `EventNames.GameLaunched` | 游戏启动成功 | `string`（versionId） |
-| `GameClosed` | `EventNames.GameClosed` | 游戏进程关闭 | `int`（exitCode） |
-| `VersionDownloaded` | `EventNames.VersionDownloaded` | 版本下载就绪 | `VersionInstalledEventArgs` |
-| `VersionInstalling` | `EventNames.VersionInstalling` | 版本安装开始 | `VersionInstallingEventArgs` |
-| `VersionInstalled` | `EventNames.VersionInstalled` | 版本安装完成/失败 | `VersionInstalledEventArgs` |
-| `AccountChanged` | `EventNames.AccountChanged` | 账户变更 | `AccountChangedEventArgs` |
-| `DownloadProgress` | `EventNames.DownloadProgress` | 下载进度更新 | `DownloadProgressEventArgs` |
-| `CrashDetected` | `EventNames.CrashDetected` | 崩溃已确认（报告落盘状态已确定） | `PluginCrashReportInfo`，见 [7. 崩溃系统](#7-崩溃系统) |
+| 事件名 | 常量 | 说明 | 事件数据类型 | 引入版本 |
+|--------|------|------|-------------|---------|
+| `GameLaunched` | `EventNames.GameLaunched` | 游戏启动成功 | `string`（versionId） | `1.0.0` |
+| `GameClosed` | `EventNames.GameClosed` | 游戏进程关闭 | `int`（exitCode） | `1.0.0` |
+| `VersionDownloaded` | `EventNames.VersionDownloaded` | 版本下载就绪 | `VersionInstalledEventArgs` | `1.0.0` |
+| `VersionInstalling` | `EventNames.VersionInstalling` | 版本安装开始 | `VersionInstallingEventArgs` | `1.0.0` |
+| `VersionInstalled` | `EventNames.VersionInstalled` | 版本安装完成/失败 | `VersionInstalledEventArgs` | `1.0.0` |
+| `AccountChanged` | `EventNames.AccountChanged` | 账户变更 | `AccountChangedEventArgs` | `1.0.0` |
+| `DownloadProgress` | `EventNames.DownloadProgress` | 下载进度更新 | `DownloadProgressEventArgs` | `1.0.0` |
+| `VersionSelected` | `EventNames.VersionSelected` | 用户切换了选中的版本 | `VersionSelectedEventArgs` | `1.1.1` |
+| `CrashDetected` | `EventNames.CrashDetected` | 崩溃已确认（报告落盘状态已确定） | `PluginCrashReportInfo`，见 [7. 崩溃系统](#7-崩溃系统) | `1.1.1` |
 
 **VersionInstallingEventArgs** 属性：
 - `McVersion` - Minecraft 版本号
@@ -515,6 +539,26 @@ private void OnDownloadProgress(object? eventData)
 - `StatusMessage` - 状态消息
 - `DownloadSpeed` - 下载速度（字节/秒）
 - `Status` - 下载状态（`Downloading`, `Completed`, `Failed`, `Cancelled`）
+
+**VersionSelectedEventArgs** 属性（`1.1.1+`）：
+- `VersionId` - 新选中的版本ID
+- `PreviousVersionId` - 切换前的版本ID；此前没有选中版本时为空字符串
+
+```csharp
+// 用户切换选中版本时收到通知（下载页、主页版本下拉框等入口都会触发）
+context.SubscribeEvent(IPluginContext.EventNames.VersionSelected, OnVersionSelected);
+
+private void OnVersionSelected(object? eventData)
+{
+    if (eventData is VersionSelectedEventArgs args)
+    {
+        // 也可以随时用 context.GetSelectedVersion() 主动查询当前选中版本
+        System.Diagnostics.Debug.WriteLine($"选中版本：{args.PreviousVersionId} -> {args.VersionId}");
+    }
+}
+```
+
+> 切换成同一个版本不会触发该事件（启动器只在选中项真正变化时广播）。
 
 插件也可以发布自定义事件。
 
@@ -750,6 +794,8 @@ public void OnUnload()
 
 把自绘控件挂进启动器既有页面的预留位置。
 
+> 引入版本：`1.1.1`（本小节全部槽位 API）
+
 当前**保证有宿主容器**的槽位：
 
 | slotId | 位置 |
@@ -792,6 +838,8 @@ public void OnUnload()
 
 #### 3.5 任意 UI 访问
 
+> 引入版本：`1.1.1`（`GetUiRoot` / `TryFindControlByName` / `RunOnUiThread`）
+
 **不需要启动器预先开槽位**——拿到 UI 根后，插件可以自己遍历视觉树、往任意容器增删控件、改任意控件属性：
 
 ```csharp
@@ -826,6 +874,8 @@ _context.RunOnUiThread(() => MyUpdate());
 - 插件卸载时不会自动撤销这类修改，请在 `OnUnload` 里还原。
 
 #### 3.6 打开链接与页面跳转
+
+> 引入版本：`1.1.0`（`OpenUrl` / `NavigateTo`）
 
 ```csharp
 // 用系统默认浏览器打开链接（仅 http/https）
@@ -883,10 +933,11 @@ public void OnLoad(IPluginContext context)
 **方法签名**：
 
 ```csharp
+// 同步版本（引入版本：1.0.0）
 void RegisterGameLaunchHook(string hookId, GameLaunchPhase phase, Action<GameLaunchHookContext> handler);
 void UnregisterGameLaunchHook(string hookId);
 
-// 回调需要执行耗时/网络操作时用异步版本，避免阻塞启动流程
+// 异步版本（引入版本：1.1.0）：回调需要执行耗时/网络操作时用异步版本，避免阻塞启动流程
 void RegisterGameLaunchHookAsync(string hookId, GameLaunchPhase phase, Func<GameLaunchHookContext, Task> handler);
 void UnregisterGameLaunchHookAsync(string hookId);
 ```
@@ -992,8 +1043,11 @@ public void OnUnload()
 **方法签名**：
 
 ```csharp
-string RequestDownload(PluginDownloadRequest request);
-PluginDownloadTaskStatus? GetDownloadTaskStatus(string taskId);
+string RequestDownload(PluginDownloadRequest request);              // 引入版本：1.0.0
+PluginDownloadTaskStatus? GetDownloadTaskStatus(string taskId);     // 引入版本：1.1.0
+
+// 引入版本：1.1.1 —— 一次拿到全部任务（含启动器自己的任务），见 8. 查询下载任务
+IReadOnlyList<PluginDownloadTaskStatus> GetDownloadTasks();
 ```
 
 **PluginDownloadRequest 字段**：
@@ -1076,6 +1130,8 @@ if (status != null)
 
 ### 7. 崩溃系统
 
+> 引入版本：`1.1.1`（本章崩溃 API 与 `CrashDetected` 事件均为 `1.1.1` 起可用）
+
 三个入口，按需选择：
 
 | | `GameLaunchPhase.OnCrash` 钩子 | `EventNames.CrashDetected` 事件 | 崩溃数据 API |
@@ -1139,7 +1195,12 @@ PluginSlotContext? active = _context.GetActiveCrashContext();
 
 ### 8. 日志与配置
 
+本章包含日志写入、插件配置读写，以及一组只读查询 API（已安装版本、当前/全部账户、选中版本、
+游戏运行状态、启动设置、版本运行目录、下载任务）。查询 API 全部只返回数据快照，不会改动启动器状态。
+
 #### 日志写入
+
+> 引入版本：`1.0.0`
 
 将插件日志写入启动器统一日志系统，便于排查插件问题。日志与启动器自身日志同源，可在启动器的"开发控制台"或日志文件中查看。
 
@@ -1180,6 +1241,8 @@ public void OnLoad(IPluginContext context)
 
 #### 插件配置读写
 
+> 引入版本：`1.1.0`
+
 配置存于插件数据目录下的 `config.json`：
 
 ```csharp
@@ -1197,6 +1260,8 @@ _context.SaveConfig(new MyConfig { Name = "demo", Max = 20 });
 ```
 
 #### 查询已安装版本
+
+> 引入版本：`1.0.0`
 
 获取启动器中已安装的 Minecraft 版本只读列表，用于插件展示版本信息、按版本执行操作（如备份、迁移、统计）。
 
@@ -1227,6 +1292,8 @@ foreach (var v in versions.Where(v => v.LoaderType == "forge"))
 
 #### 查询当前账户
 
+> 引入版本：`1.0.0`
+
 ```csharp
 PluginAccountInfo? GetCurrentAccount();
 ```
@@ -1250,6 +1317,161 @@ if (account == null)
 }
 
 context.LogMessage(PluginLogLevel.Info, $"当前账户: {account.Username} ({account.AccountType})");
+```
+
+以上查询 API 都是「随时可问」的主动查询，配合第 2 章的事件使用效果最好：
+`VersionSelected` / `AccountChanged` 负责通知"变了"，查询 API 负责"现在是什么"。
+
+#### 查询选中版本
+
+> 引入版本：`1.1.1`
+
+返回用户在主页/下载页当前选中的版本（与 `GetInstalledVersions` 的元素结构相同）。
+
+```csharp
+PluginVersionInfo? GetSelectedVersion();
+```
+
+| 情况 | 返回值 |
+|------|--------|
+| 用户已选中某个已安装版本 | 该版本的 `PluginVersionInfo` |
+| 未选中任何版本 | `null` |
+| 选中的版本目录/JSON 已不存在 | `null` |
+
+**实现说明**：直读配置与单个版本的 JSON，不会扫描整个版本目录，因此可以在事件回调里放心调用。
+`LastPlayed` 取自版本目录的最后访问时间。
+
+```csharp
+// 用户切换版本时立刻拿到完整信息
+context.SubscribeEvent(IPluginContext.EventNames.VersionSelected, _ =>
+{
+    var selected = context.GetSelectedVersion();
+    if (selected != null)
+    {
+        context.LogMessage(PluginLogLevel.Info,
+            $"当前选中：{selected.VersionId}（MC {selected.McVersion} / {selected.LoaderType}）");
+        context.LogMessage(PluginLogLevel.Info, $"运行目录：{context.GetVersionRunDirectory(selected.VersionId)}");
+    }
+});
+```
+
+#### 查询全部账户
+
+> 引入版本：`1.1.1`
+
+```csharp
+IReadOnlyList<PluginAccountInfo> GetAccounts();
+```
+
+返回启动器中保存的所有账户（元素结构与 `GetCurrentAccount()` 相同）。
+
+**安全说明**：与 `GetCurrentAccount()` 一样**不包含任何令牌字段**。取不到时返回空列表。
+
+```csharp
+var accounts = context.GetAccounts();
+var defaultAccount = accounts.FirstOrDefault(a => a.IsDefault);
+context.LogMessage(PluginLogLevel.Info, $"共 {accounts.Count} 个账户，默认：{defaultAccount?.Username ?? "无"}");
+```
+
+#### 查询游戏运行状态
+
+> 引入版本：`1.1.1`
+
+```csharp
+PluginGameStatus GetGameStatus();
+```
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `IsRunning` | `bool` | 游戏进程是否正在运行 |
+| `VersionId` | `string` | 运行中的版本ID；未运行时为空字符串 |
+| `McVersion` | `string` | 运行中的 Minecraft 版本号；未运行时为空字符串 |
+| `ProcessId` | `int` | 游戏进程 PID；未运行时为 0 |
+| `StartedAt` | `DateTime?` | 进程启动时间；未运行时为 null |
+
+**说明**：启动器在每次查询时都会用 `HasExited` 复核一次进程状态，游戏已退出（即使启动器没收到退出回调）时会自动返回未运行。
+仅限**当前启动器启动的**游戏进程；用户手动打开的其他实例看不到。
+
+```csharp
+var status = context.GetGameStatus();
+if (status.IsRunning)
+{
+    context.LogMessage(PluginLogLevel.Info, $"游戏运行中：{status.VersionId}（PID {status.ProcessId}）");
+}
+```
+
+#### 查询启动设置
+
+> 引入版本：`1.1.1`
+
+```csharp
+PluginLaunchSettings GetLaunchSettings();
+```
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `MaxMemoryMb` / `MinMemoryMb` | `int` | 全局最大/最小内存（MB） |
+| `JvmArguments` | `string` | 用户填写的附加 JVM 参数（原始字符串，未拆分） |
+| `JavaPath` | `string` | 实际会使用的 Java 路径（已按"自动选择/手动指定"解析） |
+| `GameDirectory` | `string` | 当前游戏目录 |
+| `CloseAfterLaunch` | `bool` | 是否"启动后关闭启动器" |
+
+**说明**：这是**只读**快照，插件无法通过 API 修改启动设置——需要改设置时请引导用户去设置页。
+另外这里返回的是全局设置，不含版本级覆盖（版本级内存/JVM 参数存在版本目录的 `OMCL/init.json` 中）。
+
+```csharp
+var settings = context.GetLaunchSettings();
+context.LogMessage(PluginLogLevel.Info, $"内存 {settings.MinMemoryMb}-{settings.MaxMemoryMb} MB，Java：{settings.JavaPath}");
+```
+
+#### 查询版本运行目录
+
+> 引入版本：`1.1.1`
+
+```csharp
+string GetVersionRunDirectory(string versionId);
+```
+
+按该版本的隔离设置（版本级 `OMCL/init.json` 中的隔离开关 + 全局游戏目录类型）返回其运行目录：
+
+| 情况 | 返回路径 |
+|------|---------|
+| 该版本启用了版本隔离（或全局设置为版本文件夹模式） | `<游戏目录>/versions/<版本ID>` |
+| 未启用隔离 | `<游戏目录>`（`.minecraft` 根目录） |
+| `versionId` 为空 | 空字符串 |
+
+插件读写该版本的 `mods` / `saves` / `screenshots` 等目录时，请用这个结果拼路径，不要自己假设隔离设置：
+
+```csharp
+var runDir = context.GetVersionRunDirectory("1.20.1-Forge");
+var modsDir = Path.Combine(runDir, "mods");
+```
+
+#### 查询下载任务
+
+> 引入版本：`1.1.1`
+
+```csharp
+IReadOnlyList<PluginDownloadTaskStatus> GetDownloadTasks();
+```
+
+返回启动器当前全部下载任务的只读快照（含启动器自己的任务，不限于插件提交的）。任务不存在时用
+`GetDownloadTaskStatus(taskId)` 单独查询，返回 null。
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `TaskId` | `string` | 任务ID |
+| `TaskName` | `string` | 任务显示名称（`1.1.1+`） |
+| `TaskType` | `string` | 任务类型：`Version` / `Assets` / `Mod` / `Resource` 等（`1.1.1+`） |
+| `Status` | `string` | `Downloading` / `Completed` / `Failed` / `Cancelled`；未知为 `Unknown` |
+| `Progress` | `double` | 进度（0-100） |
+| `StatusMessage` | `string?` | 状态消息（失败时通常为错误信息） |
+
+```csharp
+foreach (var task in context.GetDownloadTasks().Where(t => t.Status == "Downloading"))
+{
+    context.LogMessage(PluginLogLevel.Info, $"{task.TaskName}：{task.Progress:F1}%");
+}
 ```
 
 ---

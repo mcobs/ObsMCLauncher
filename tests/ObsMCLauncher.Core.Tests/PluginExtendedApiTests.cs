@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using ObsMCLauncher.Core.Models;
 using ObsMCLauncher.Core.Plugins;
 using Xunit;
 
@@ -10,10 +12,22 @@ namespace ObsMCLauncher.Core.Tests;
 /// 新增插件扩展API的单元/集成/边界测试
 /// 覆盖：LogMessage / GetInstalledVersions / GetCurrentAccount /
 ///      RegisterGameLaunchHook / RequestDownload
+///      GetAccounts / GetDownloadTasks / GetSelectedVersion /
+///      GetGameStatus / GetLaunchSettings / GetVersionRunDirectory
 /// </summary>
 public class PluginExtendedApiTests : IDisposable
 {
     private const string PluginId = "ext-api-test";
+
+    /// <summary>ConfigProvider 是 internal 静态注入点，测试之间要还原</summary>
+    private static readonly Func<LauncherConfig> OriginalConfigProvider;
+
+    static PluginExtendedApiTests()
+    {
+        OriginalConfigProvider = PluginContext.ConfigProvider;
+    }
+
+    private readonly List<string> _tempDirs = new();
 
     public PluginExtendedApiTests()
     {
@@ -34,6 +48,19 @@ public class PluginExtendedApiTests : IDisposable
         PluginContext.RemovePluginLaunchHooks("plugin-z");
         PluginContext.RemovePluginLaunchHooks("integration-plugin");
         ResetAllCallbacks();
+        PluginContext.ConfigProvider = OriginalConfigProvider;
+
+        foreach (var dir in _tempDirs)
+        {
+            try
+            {
+                if (Directory.Exists(dir)) Directory.Delete(dir, true);
+            }
+            catch
+            {
+                // 临时目录清理失败不影响测试结果
+            }
+        }
     }
 
     private static void ResetAllCallbacks()
@@ -41,11 +68,31 @@ public class PluginExtendedApiTests : IDisposable
         PluginContext.OnLogMessage = null;
         PluginContext.OnGetInstalledVersions = null;
         PluginContext.OnGetCurrentAccount = null;
+        PluginContext.OnGetAccounts = null;
+        PluginContext.OnGetDownloadTasks = null;
         PluginContext.OnRequestDownload = null;
     }
 
     private static PluginContext CreateContext(string pluginId = PluginId)
         => new(pluginId);
+
+    /// <summary>建一个临时游戏目录（Dispose 时统一清理）</summary>
+    private string CreateTempGameDirectory()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "omcl_extapi_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        _tempDirs.Add(dir);
+        return dir;
+    }
+
+    /// <summary>构造一份指向临时目录的配置，避免碰真实游戏目录</summary>
+    private static LauncherConfig CreateConfig(string gameDirectory, GameDirectoryType type = GameDirectoryType.RootFolder)
+        => new()
+        {
+            GameDirectoryLocation = DirectoryLocation.Custom,
+            CustomGameDirectory = gameDirectory,
+            GameDirectoryType = type
+        };
 
     // ===================== LogMessage =====================
 
@@ -226,6 +273,289 @@ public class PluginExtendedApiTests : IDisposable
         PluginContext.OnGetCurrentAccount = () => throw new InvalidOperationException("err");
         var ctx = CreateContext();
         Assert.Null(ctx.GetCurrentAccount());
+    }
+
+    // ===================== GetAccounts =====================
+
+    [Fact]
+    public void GetAccounts_ReturnsDataFromCallback()
+    {
+        var expected = new List<PluginAccountInfo>
+        {
+            new() { AccountId = "acc-1", Username = "Steve", AccountType = "Microsoft", IsDefault = true },
+            new() { AccountId = "acc-2", Username = "Alex", AccountType = "Offline" }
+        };
+        PluginContext.OnGetAccounts = () => expected;
+
+        var result = CreateContext().GetAccounts();
+
+        Assert.Equal(2, result.Count);
+        Assert.Equal("Steve", result[0].Username);
+        Assert.Equal("Microsoft", result[0].AccountType);
+        Assert.True(result[0].IsDefault);
+        Assert.Equal("Offline", result[1].AccountType);
+        Assert.False(result[1].IsDefault);
+    }
+
+    [Fact]
+    public void GetAccounts_CallbackReturnsNull_ReturnsEmptyList()
+    {
+        PluginContext.OnGetAccounts = () => null!;
+        Assert.Empty(CreateContext().GetAccounts());
+    }
+
+    [Fact]
+    public void GetAccounts_CallbackNotSet_ReturnsEmptyList()
+    {
+        Assert.Empty(CreateContext().GetAccounts());
+    }
+
+    [Fact]
+    public void GetAccounts_CallbackThrows_ReturnsEmptyList()
+    {
+        PluginContext.OnGetAccounts = () => throw new InvalidOperationException("err");
+        Assert.Empty(CreateContext().GetAccounts());
+    }
+
+    // ===================== GetDownloadTasks =====================
+
+    [Fact]
+    public void GetDownloadTasks_ReturnsDataFromCallback()
+    {
+        var expected = new List<PluginDownloadTaskStatus>
+        {
+            new()
+            {
+                TaskId = "task-1",
+                TaskName = "下载 1.21.4",
+                TaskType = "Version",
+                Status = "Downloading",
+                Progress = 42.5,
+                StatusMessage = "正在下载库文件"
+            },
+            new()
+            {
+                TaskId = "task-2",
+                TaskName = "下载 mod.jar",
+                TaskType = "Mod",
+                Status = "Completed",
+                Progress = 100
+            }
+        };
+        PluginContext.OnGetDownloadTasks = () => expected;
+
+        var result = CreateContext().GetDownloadTasks();
+
+        Assert.Equal(2, result.Count);
+        Assert.Equal("下载 1.21.4", result[0].TaskName);
+        Assert.Equal("Version", result[0].TaskType);
+        Assert.Equal(42.5, result[0].Progress);
+        Assert.Equal("正在下载库文件", result[0].StatusMessage);
+        Assert.Equal("Completed", result[1].Status);
+        Assert.Null(result[1].StatusMessage);
+    }
+
+    [Fact]
+    public void GetDownloadTasks_CallbackReturnsNull_ReturnsEmptyList()
+    {
+        PluginContext.OnGetDownloadTasks = () => null!;
+        Assert.Empty(CreateContext().GetDownloadTasks());
+    }
+
+    [Fact]
+    public void GetDownloadTasks_CallbackNotSet_ReturnsEmptyList()
+    {
+        Assert.Empty(CreateContext().GetDownloadTasks());
+    }
+
+    [Fact]
+    public void GetDownloadTasks_CallbackThrows_ReturnsEmptyList()
+    {
+        PluginContext.OnGetDownloadTasks = () => throw new InvalidOperationException("err");
+        Assert.Empty(CreateContext().GetDownloadTasks());
+    }
+
+    // ===================== GetSelectedVersion =====================
+
+    [Fact]
+    public void GetSelectedVersion_NoSelection_ReturnsNull()
+    {
+        var config = CreateConfig(CreateTempGameDirectory());
+        config.SelectedVersion = null;
+        PluginContext.ConfigProvider = () => config;
+
+        Assert.Null(CreateContext().GetSelectedVersion());
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void GetSelectedVersion_EmptySelection_ReturnsNull(string selected)
+    {
+        var config = CreateConfig(CreateTempGameDirectory());
+        config.SelectedVersion = selected;
+        PluginContext.ConfigProvider = () => config;
+
+        Assert.Null(CreateContext().GetSelectedVersion());
+    }
+
+    [Fact]
+    public void GetSelectedVersion_VersionJsonMissing_ReturnsNull()
+    {
+        var config = CreateConfig(CreateTempGameDirectory());
+        config.SelectedVersion = "不存在的版本";
+        PluginContext.ConfigProvider = () => config;
+
+        Assert.Null(CreateContext().GetSelectedVersion());
+    }
+
+    [Fact]
+    public void GetSelectedVersion_FabricVersion_ReturnsVersionInfo()
+    {
+        const string versionId = "1.21.4-Fabric";
+        var gameDir = CreateTempGameDirectory();
+        var versionDir = Path.Combine(gameDir, "versions", versionId);
+        Directory.CreateDirectory(versionDir);
+        File.WriteAllText(
+            Path.Combine(versionDir, versionId + ".json"),
+            """{"id":"1.21.4","mainClass":"net.fabricmc.loader.impl.launch.knot.KnotClient","type":"release"}""");
+
+        var config = CreateConfig(gameDir);
+        config.SelectedVersion = versionId;
+        PluginContext.ConfigProvider = () => config;
+
+        var result = CreateContext().GetSelectedVersion();
+
+        Assert.NotNull(result);
+        Assert.Equal(versionId, result!.VersionId);
+        Assert.Equal("1.21.4", result.McVersion);
+        Assert.Equal("fabric", result.LoaderType);
+        Assert.Equal(versionDir, result.VersionDirectory);
+    }
+
+    [Fact]
+    public void GetSelectedVersion_VanillaVersion_LoaderTypeIsVanilla()
+    {
+        const string versionId = "1.21.4";
+        var gameDir = CreateTempGameDirectory();
+        var versionDir = Path.Combine(gameDir, "versions", versionId);
+        Directory.CreateDirectory(versionDir);
+        File.WriteAllText(
+            Path.Combine(versionDir, versionId + ".json"),
+            """{"id":"1.21.4","mainClass":"net.minecraft.client.main.Main","type":"release"}""");
+
+        var config = CreateConfig(gameDir);
+        config.SelectedVersion = versionId;
+        PluginContext.ConfigProvider = () => config;
+
+        var result = CreateContext().GetSelectedVersion();
+
+        Assert.NotNull(result);
+        Assert.Equal("1.21.4", result!.McVersion);
+        Assert.Equal("vanilla", result.LoaderType);
+    }
+
+    [Fact]
+    public void GetSelectedVersion_CorruptJson_FallsBackToFolderName()
+    {
+        const string versionId = "broken-version";
+        var gameDir = CreateTempGameDirectory();
+        var versionDir = Path.Combine(gameDir, "versions", versionId);
+        Directory.CreateDirectory(versionDir);
+        File.WriteAllText(Path.Combine(versionDir, versionId + ".json"), "{ 这不是合法 JSON");
+
+        var config = CreateConfig(gameDir);
+        config.SelectedVersion = versionId;
+        PluginContext.ConfigProvider = () => config;
+
+        var result = CreateContext().GetSelectedVersion();
+
+        Assert.NotNull(result);
+        Assert.Equal(versionId, result!.VersionId);
+        Assert.Equal(versionId, result.McVersion); // 解析不出 id 时退回文件夹名
+        Assert.Equal("vanilla", result.LoaderType);
+    }
+
+    // ===================== GetGameStatus =====================
+
+    [Fact]
+    public void GetGameStatus_NoGameRunning_ReturnsNotRunning()
+    {
+        var status = CreateContext().GetGameStatus();
+
+        Assert.NotNull(status);
+        Assert.False(status.IsRunning);
+        Assert.Equal(string.Empty, status.VersionId);
+        Assert.Equal(string.Empty, status.McVersion);
+        Assert.Equal(0, status.ProcessId);
+        Assert.Null(status.StartedAt);
+    }
+
+    // ===================== GetLaunchSettings =====================
+
+    [Fact]
+    public void GetLaunchSettings_ReturnsConfigValues()
+    {
+        var config = CreateConfig(@"C:\games\.minecraft");
+        config.MaxMemory = 8192;
+        config.MinMemory = 2048;
+        config.JvmArguments = "-XX:+UseG1GC -Xmx8G";
+        config.JavaSelectionMode = 1; // 手动指定，避免机器上探测到的 Java 干扰断言
+        config.JavaPath = "custom-java";
+        config.CloseAfterLaunch = true;
+        PluginContext.ConfigProvider = () => config;
+
+        var result = CreateContext().GetLaunchSettings();
+
+        Assert.Equal(8192, result.MaxMemoryMb);
+        Assert.Equal(2048, result.MinMemoryMb);
+        Assert.Equal("-XX:+UseG1GC -Xmx8G", result.JvmArguments);
+        Assert.Equal("custom-java", result.JavaPath);
+        Assert.Equal(@"C:\games\.minecraft", result.GameDirectory);
+        Assert.True(result.CloseAfterLaunch);
+    }
+
+    [Fact]
+    public void GetLaunchSettings_DefaultConfig_ReturnsDefaults()
+    {
+        var config = CreateConfig(@"C:\games\.minecraft");
+        PluginContext.ConfigProvider = () => config;
+
+        var result = CreateContext().GetLaunchSettings();
+
+        Assert.Equal(config.MaxMemory, result.MaxMemoryMb);
+        Assert.Equal(config.MinMemory, result.MinMemoryMb);
+        Assert.False(result.CloseAfterLaunch);
+    }
+
+    // ===================== GetVersionRunDirectory =====================
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void GetVersionRunDirectory_EmptyId_ReturnsEmpty(string versionId)
+    {
+        Assert.Equal(string.Empty, CreateContext().GetVersionRunDirectory(versionId));
+    }
+
+    [Fact]
+    public void GetVersionRunDirectory_RootFolder_ReturnsGameDirectory()
+    {
+        var gameDir = CreateTempGameDirectory();
+        PluginContext.ConfigProvider = () => CreateConfig(gameDir, GameDirectoryType.RootFolder);
+
+        Assert.Equal(gameDir, CreateContext().GetVersionRunDirectory("1.21.4"));
+    }
+
+    [Fact]
+    public void GetVersionRunDirectory_VersionFolder_ReturnsIsolatedPath()
+    {
+        var gameDir = CreateTempGameDirectory();
+        PluginContext.ConfigProvider = () => CreateConfig(gameDir, GameDirectoryType.VersionFolder);
+
+        Assert.Equal(
+            Path.Combine(gameDir, "versions", "1.21.4"),
+            CreateContext().GetVersionRunDirectory("1.21.4"));
     }
 
     // ===================== RegisterGameLaunchHook =====================

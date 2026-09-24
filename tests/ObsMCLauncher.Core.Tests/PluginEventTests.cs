@@ -47,6 +47,41 @@ public class PluginEventTests
     }
 
     [Fact]
+    public void EventNames_VersionSelected_HasCorrectValue()
+    {
+        Assert.Equal("VersionSelected", IPluginContext.EventNames.VersionSelected);
+    }
+
+    [Fact]
+    public void TriggerGlobalEvent_VersionSelected_FiresEventWithData()
+    {
+        var ctx = CreateContext();
+        object? capturedData = null;
+        ctx.SubscribeEvent(IPluginContext.EventNames.VersionSelected, data => capturedData = data);
+
+        var args = new VersionSelectedEventArgs
+        {
+            VersionId = "1.21.4-Fabric",
+            PreviousVersionId = "1.20.1-Forge"
+        };
+
+        PluginContext.TriggerGlobalEvent(IPluginContext.EventNames.VersionSelected, args);
+
+        Assert.NotNull(capturedData);
+        var result = Assert.IsType<VersionSelectedEventArgs>(capturedData);
+        Assert.Equal("1.21.4-Fabric", result.VersionId);
+        Assert.Equal("1.20.1-Forge", result.PreviousVersionId);
+    }
+
+    [Fact]
+    public void VersionSelectedEventArgs_DefaultValues_AreCorrect()
+    {
+        var args = new VersionSelectedEventArgs();
+        Assert.Equal("", args.VersionId);
+        Assert.Equal("", args.PreviousVersionId);
+    }
+
+    [Fact]
     public void EventNames_GameClosed_HasCorrectValue()
     {
         Assert.Equal("GameClosed", IPluginContext.EventNames.GameClosed);

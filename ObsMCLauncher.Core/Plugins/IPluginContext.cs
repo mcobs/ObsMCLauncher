@@ -34,6 +34,12 @@ public interface IPluginContext
         /// <summary>账户变更</summary>
         public const string AccountChanged = "AccountChanged";
 
+        /// <summary>
+        /// 用户切换了选中的版本（主页版本下拉栏 / 版本管理页）。
+        /// 事件数据为 <see cref="VersionSelectedEventArgs"/>；选中项没有真正变化时不触发。
+        /// </summary>
+        public const string VersionSelected = "VersionSelected";
+
         /// <summary>下载进度更新</summary>
         public const string DownloadProgress = "DownloadProgress";
 
@@ -302,6 +308,42 @@ public interface IPluginContext
     /// </summary>
     /// <returns>账户精简信息；未选中账户时返回 null</returns>
     PluginAccountInfo? GetCurrentAccount();
+
+    /// <summary>
+    /// 获取用户当前选中的版本（主页版本下拉栏里选中的那个）。
+    /// 只读启动器配置与该版本的版本 JSON，不扫描整个版本目录、也不改写任何文件。
+    /// </summary>
+    /// <returns>版本精简信息；未选中版本或该版本已被删除时返回 null</returns>
+    PluginVersionInfo? GetSelectedVersion();
+
+    /// <summary>
+    /// 获取启动器中的全部账户（只读快照，不含任何令牌字段；默认账户看 <see cref="PluginAccountInfo.IsDefault"/>）
+    /// </summary>
+    IReadOnlyList<PluginAccountInfo> GetAccounts();
+
+    /// <summary>
+    /// 获取游戏进程运行状态（是否在运行、运行的是哪个版本、PID 与启动时间）。
+    /// 启动器没在管进程（如已随游戏退出）时按未运行返回。
+    /// </summary>
+    PluginGameStatus GetGameStatus();
+
+    /// <summary>
+    /// 获取启动设置快照（内存、JVM 参数、Java 路径、游戏目录、启动后是否关闭启动器）
+    /// </summary>
+    PluginLaunchSettings GetLaunchSettings();
+
+    /// <summary>
+    /// 获取指定版本的运行目录（已套用版本隔离规则：隔离版本是 <c>versions/{版本ID}</c>，否则是游戏根目录）。
+    /// 该版本的 mods / resourcepacks / shaderpacks / saves 都在它下面。
+    /// </summary>
+    /// <param name="versionId">版本ID（版本文件夹名）</param>
+    /// <returns>运行目录完整路径；versionId 为空时返回空字符串，不校验版本是否存在</returns>
+    string GetVersionRunDirectory(string versionId);
+
+    /// <summary>
+    /// 获取当前的所有下载任务（只读快照，含任务名、类型、状态与进度）
+    /// </summary>
+    IReadOnlyList<PluginDownloadTaskStatus> GetDownloadTasks();
 
     /// <summary>
     /// 注册游戏启动生命周期钩子，在指定阶段被回调

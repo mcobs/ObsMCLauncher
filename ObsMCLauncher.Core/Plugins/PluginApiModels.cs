@@ -126,6 +126,12 @@ public class PluginDownloadTaskStatus
 {
     public string TaskId { get; set; } = string.Empty;
 
+    /// <summary>任务显示名称</summary>
+    public string TaskName { get; set; } = string.Empty;
+
+    /// <summary>任务类型：Version / Assets / Mod / Resource 等</summary>
+    public string TaskType { get; set; } = string.Empty;
+
     /// <summary>状态：Downloading / Completed / Failed / Cancelled；未知返回 Unknown</summary>
     public string Status { get; set; } = "Unknown";
 
@@ -134,4 +140,46 @@ public class PluginDownloadTaskStatus
 
     /// <summary>状态消息（失败时通常为错误信息）</summary>
     public string? StatusMessage { get; set; }
+}
+
+/// <summary>
+/// 游戏进程运行状态快照
+/// </summary>
+public class PluginGameStatus
+{
+    /// <summary>游戏进程是否正在运行</summary>
+    public bool IsRunning { get; set; }
+
+    /// <summary>运行中的版本ID；未运行时为空</summary>
+    public string VersionId { get; set; } = string.Empty;
+
+    /// <summary>运行中的 Minecraft 版本号；未运行时为空</summary>
+    public string McVersion { get; set; } = string.Empty;
+
+    /// <summary>游戏进程 PID；未运行时为 0</summary>
+    public int ProcessId { get; set; }
+
+    /// <summary>进程启动时间；未运行时为 null</summary>
+    public DateTime? StartedAt { get; set; }
+}
+
+/// <summary>
+/// 启动设置快照（只读；改设置请引导用户去设置页，插件不提供写入口）
+/// </summary>
+public class PluginLaunchSettings
+{
+    public int MaxMemoryMb { get; set; }
+
+    public int MinMemoryMb { get; set; }
+
+    /// <summary>附加 JVM 参数（原始字符串）</summary>
+    public string JvmArguments { get; set; } = string.Empty;
+
+    /// <summary>当前生效的 Java 路径（按设置里的 Java 选择模式解析后）</summary>
+    public string JavaPath { get; set; } = string.Empty;
+
+    public string GameDirectory { get; set; } = string.Empty;
+
+    /// <summary>启动游戏后是否关闭启动器</summary>
+    public bool CloseAfterLaunch { get; set; }
 }

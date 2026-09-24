@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
@@ -425,19 +426,26 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             {
                 var account = AccountService.Instance.GetDefaultAccount();
                 if (account == null) return null;
-                return new PluginAccountInfo
-                {
-                    AccountId = account.Id,
-                    Username = account.Username,
-                    AccountType = account.Type.ToString(),
-                    UUID = !string.IsNullOrEmpty(account.MinecraftUUID) ? account.MinecraftUUID : account.UUID,
-                    IsDefault = account.IsDefault
-                };
+                return MapPluginAccount(account);
             }
             catch (Exception ex)
             {
                 DebugLogger.Error("MainWindow", $"获取当前账户异常: {ex.Message}");
                 return null;
+            }
+        };
+
+        // 获取全部账户（同样只给安全字段）
+        PluginContext.OnGetAccounts = () =>
+        {
+            try
+            {
+                return AccountService.Instance.GetAllAccounts().Select(MapPluginAccount).ToList();
+            }
+            catch (Exception ex)
+            {
+                DebugLogger.Error("MainWindow", $"获取账户列表异常: {ex.Message}");
+                return Array.Empty<PluginAccountInfo>();
             }
         };
 
@@ -482,7 +490,19 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
         // 查询下载任务状态
         PluginContext.OnGetDownloadTaskStatus = (taskId) => QueryDownloadTaskStatus(taskId);
+
+        // 查询全部下载任务
+        PluginContext.OnGetDownloadTasks = () => QueryDownloadTasks();
     }
+
+    private static PluginAccountInfo MapPluginAccount(GameAccount account) => new()
+    {
+        AccountId = account.Id,
+        Username = account.Username,
+        AccountType = account.Type.ToString(),
+        UUID = !string.IsNullOrEmpty(account.MinecraftUUID) ? account.MinecraftUUID : account.UUID,
+        IsDefault = account.IsDefault
+    };
 
     /// <summary>按页名导航到对应侧边栏页面（主页卡片等统一调用）</summary>
     public void NavToPage(string page)
@@ -535,15 +555,37 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             });
         }
 
-        if (task == null) return null;
-        return new PluginDownloadTaskStatus
-        {
-            TaskId = task.Id,
-            Status = task.Status.ToString(),
-            Progress = task.Progress,
-            StatusMessage = task.StatusMessage
-        };
+        return task == null ? null : ToPluginTaskStatus(task);
     }
+
+    /// <summary>下载任务列表快照（Tasks 是界面集合，必须在 UI 线程上取）</summary>
+    private static IReadOnlyList<PluginDownloadTaskStatus> QueryDownloadTasks()
+    {
+        var tasks = ObsMCLauncher.Core.Services.Download.DownloadTaskManager.Instance.Tasks;
+
+        List<ObsMCLauncher.Core.Services.Download.DownloadTask> snapshot;
+        if (Avalonia.Threading.Dispatcher.UIThread.CheckAccess())
+        {
+            snapshot = tasks.ToList();
+        }
+        else
+        {
+            snapshot = new List<ObsMCLauncher.Core.Services.Download.DownloadTask>();
+            Avalonia.Threading.Dispatcher.UIThread.Invoke(() => snapshot = tasks.ToList());
+        }
+
+        return snapshot.Select(ToPluginTaskStatus).ToList();
+    }
+
+    private static PluginDownloadTaskStatus ToPluginTaskStatus(ObsMCLauncher.Core.Services.Download.DownloadTask task) => new()
+    {
+        TaskId = task.Id,
+        TaskName = task.Name,
+        TaskType = task.Type.ToString(),
+        Status = task.Status.ToString(),
+        Progress = task.Progress,
+        StatusMessage = task.StatusMessage
+    };
 
     private static string NormalizePluginLoaderType(string? loader)
     {

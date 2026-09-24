@@ -393,6 +393,7 @@ public class GameLauncher
                 async Task HandleExitOnceAsync(int code)
                 {
                     if (Interlocked.Exchange(ref exitHandled, 1) != 0) return;
+                    MarkGameStopped();
                     await FireGameExitHooksAsync(versionId, actualMcVersion, config.GameDirectory, actualJavaPath, code, launchStartedAt);
                     onGameExit?.Invoke(code);
                 }
@@ -414,7 +415,9 @@ public class GameLauncher
                     return new GameLaunchResult { Success = false, ErrorMessage = errorMessage };
                 }
 
-                // 游戏进程存活，触发启动后钩子与游戏启动事件
+                // 游戏进程存活：登记运行状态，触发启动后钩子与游戏启动事件
+                MarkGameRunning(versionId, actualMcVersion, process, launchStartedAt);
+
                 await PluginContext.TriggerGameLaunchHooksAsync(GameLaunchPhase.AfterLaunch, new GameLaunchHookContext
                 {
                     VersionId = versionId,
@@ -430,6 +433,7 @@ public class GameLauncher
             catch (OperationCanceledException)
             {
                 // 启动流程被取消时，终止已启动的游戏进程
+                MarkGameStopped();
                 TryKillGameProcess(process);
                 process?.Dispose();
                 throw;
@@ -442,6 +446,7 @@ public class GameLauncher
         }
         catch (Exception ex)
         {
+            MarkGameStopped();
             TryKillGameProcess(process);
             process?.Dispose();
             if (string.IsNullOrEmpty(errorMessage))
@@ -487,6 +492,62 @@ public class GameLauncher
         }
         catch
         {
+        }
+    }
+
+    // ===== 运行中的游戏进程（插件查询 / 状态展示用）=====
+
+    private static readonly object RunningGameLock = new();
+    private static GameRunInfo? _runningGame;
+    private static Process? _runningProcess;
+
+    /// <summary>
+    /// 取当前正在运行的游戏进程快照；没有在跑的游戏时返回 null。
+    /// 查询时顺带用 HasExited 兜底确认一次：启动器可能没订阅退出事件（如启动后关闭启动器），
+    /// 只靠回调清理会留下过期状态。
+    /// </summary>
+    public static GameRunInfo? GetRunningGame()
+    {
+        lock (RunningGameLock)
+        {
+            if (_runningGame == null || _runningProcess == null) return null;
+
+            try
+            {
+                if (!_runningProcess.HasExited) return _runningGame;
+            }
+            catch
+            {
+                // 读不到进程状态（权限等）时按已退出处理，避免一直报"正在运行"
+            }
+
+            _runningGame = null;
+            _runningProcess = null;
+            return null;
+        }
+    }
+
+    private static void MarkGameRunning(string versionId, string mcVersion, Process process, DateTime startedAt)
+    {
+        lock (RunningGameLock)
+        {
+            _runningProcess = process;
+            _runningGame = new GameRunInfo
+            {
+                VersionId = versionId,
+                McVersion = mcVersion,
+                ProcessId = process.Id,
+                StartedAt = startedAt
+            };
+        }
+    }
+
+    private static void MarkGameStopped()
+    {
+        lock (RunningGameLock)
+        {
+            _runningGame = null;
+            _runningProcess = null;
         }
     }
 
@@ -1763,4 +1824,18 @@ public sealed class GameLaunchResult
     public bool Success { get; init; }
 
     public string ErrorMessage { get; init; } = "";
+}
+
+/// <summary>
+/// 正在运行的游戏进程快照
+/// </summary>
+public sealed class GameRunInfo
+{
+    public string VersionId { get; init; } = "";
+
+    public string McVersion { get; init; } = "";
+
+    public int ProcessId { get; init; }
+
+    public DateTime StartedAt { get; init; }
 }

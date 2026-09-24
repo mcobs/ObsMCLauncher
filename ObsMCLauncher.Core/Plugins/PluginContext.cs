@@ -54,6 +54,12 @@ public class PluginContext : IPluginContext
     /// <summary>获取当前账户回调；返回 null 表示未选中账户</summary>
     public static Func<PluginAccountInfo?>? OnGetCurrentAccount { get; set; }
 
+    /// <summary>获取全部账户回调（只读快照，不含令牌）</summary>
+    public static Func<IReadOnlyList<PluginAccountInfo>>? OnGetAccounts { get; set; }
+
+    /// <summary>获取全部下载任务回调（只读快照）</summary>
+    public static Func<IReadOnlyList<PluginDownloadTaskStatus>>? OnGetDownloadTasks { get; set; }
+
     /// <summary>提交下载请求回调；返回任务ID，空字符串表示被拒绝</summary>
     public static Func<string, PluginDownloadRequest, string>? OnRequestDownload { get; set; }
 
@@ -289,6 +295,155 @@ public class PluginContext : IPluginContext
         }
     }
 
+    public IReadOnlyList<PluginAccountInfo> GetAccounts()
+    {
+        try
+        {
+            return OnGetAccounts?.Invoke() ?? Array.Empty<PluginAccountInfo>();
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Error("PluginContext", $"获取账户列表异常: {ex.Message}");
+            return Array.Empty<PluginAccountInfo>();
+        }
+    }
+
+    public PluginVersionInfo? GetSelectedVersion()
+    {
+        try
+        {
+            var config = ConfigProvider();
+            var versionId = config.SelectedVersion;
+            if (string.IsNullOrWhiteSpace(versionId)) return null;
+
+            var versionDir = Path.Combine(config.GameDirectory, "versions", versionId);
+            var jsonPath = Path.Combine(versionDir, versionId + ".json");
+            if (!File.Exists(jsonPath)) return null;
+
+            var jsonContent = File.ReadAllText(jsonPath);
+            var lastPlayed = Directory.GetLastAccessTime(versionDir);
+
+            return new PluginVersionInfo
+            {
+                VersionId = versionId,
+                McVersion = ReadVersionJsonId(jsonContent) ?? versionId,
+                LoaderType = NormalizeLoaderType(Services.Minecraft.LocalVersionService.DetectLoaderType(jsonContent)),
+                VersionDirectory = versionDir,
+                LastPlayed = lastPlayed > DateTime.MinValue ? lastPlayed : null
+            };
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Error("PluginContext", $"获取选中版本异常: {ex.Message}");
+            return null;
+        }
+    }
+
+    public PluginGameStatus GetGameStatus()
+    {
+        try
+        {
+            var running = Services.GameLauncher.GetRunningGame();
+            if (running == null) return new PluginGameStatus();
+
+            return new PluginGameStatus
+            {
+                IsRunning = true,
+                VersionId = running.VersionId,
+                McVersion = running.McVersion,
+                ProcessId = running.ProcessId,
+                StartedAt = running.StartedAt
+            };
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Error("PluginContext", $"获取游戏状态异常: {ex.Message}");
+            return new PluginGameStatus();
+        }
+    }
+
+    public PluginLaunchSettings GetLaunchSettings()
+    {
+        try
+        {
+            var config = ConfigProvider();
+            return new PluginLaunchSettings
+            {
+                MaxMemoryMb = config.MaxMemory,
+                MinMemoryMb = config.MinMemory,
+                JvmArguments = config.JvmArguments,
+                JavaPath = config.GetActualJavaPath(),
+                GameDirectory = config.GameDirectory,
+                CloseAfterLaunch = config.CloseAfterLaunch
+            };
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Error("PluginContext", $"获取启动设置异常: {ex.Message}");
+            return new PluginLaunchSettings();
+        }
+    }
+
+    public string GetVersionRunDirectory(string versionId)
+    {
+        if (string.IsNullOrWhiteSpace(versionId)) return string.Empty;
+
+        try
+        {
+            return ConfigProvider().GetRunDirectory(versionId);
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Error("PluginContext", $"获取版本运行目录异常: {ex.Message}");
+            return string.Empty;
+        }
+    }
+
+    public IReadOnlyList<PluginDownloadTaskStatus> GetDownloadTasks()
+    {
+        try
+        {
+            return OnGetDownloadTasks?.Invoke() ?? Array.Empty<PluginDownloadTaskStatus>();
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Error("PluginContext", $"获取下载任务列表异常: {ex.Message}");
+            return Array.Empty<PluginDownloadTaskStatus>();
+        }
+    }
+
+    /// <summary>读版本 JSON 里的实际版本号（id 字段）；解析不出来时返回 null，由调用方退回文件夹名</summary>
+    private static string? ReadVersionJsonId(string jsonContent)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(jsonContent);
+            if (doc.RootElement.TryGetProperty("id", out var idProp) && idProp.ValueKind == JsonValueKind.String)
+            {
+                var value = idProp.GetString();
+                return string.IsNullOrWhiteSpace(value) ? null : value;
+            }
+        }
+        catch
+        {
+            // 版本 JSON 损坏时不算致命，退回文件夹名
+        }
+
+        return null;
+    }
+
+    /// <summary>加载器名称统一成小写标识，未知一律按原版处理（与 GetInstalledVersions 的取值保持一致）</summary>
+    private static string NormalizeLoaderType(string? loader)
+    {
+        if (string.IsNullOrWhiteSpace(loader)) return "vanilla";
+        var normalized = loader.Trim().ToLowerInvariant();
+        return normalized switch
+        {
+            "forge" or "fabric" or "quilt" or "neoforge" or "optifine" => normalized,
+            _ => "vanilla"
+        };
+    }
+
     public void RegisterGameLaunchHook(string hookId, GameLaunchPhase phase, Action<GameLaunchHookContext> handler)
     {
         if (string.IsNullOrEmpty(hookId) || handler == null) return;
@@ -450,6 +605,9 @@ public class PluginContext : IPluginContext
 
     /// <summary>游戏目录提供者（测试可注入临时目录；生产默认读配置）</summary>
     internal static Func<string> GameDirectoryProvider { get; set; } = () => LauncherConfig.Load().GameDirectory;
+
+    /// <summary>配置提供者（测试可注入构造出的配置对象；生产默认读磁盘）</summary>
+    internal static Func<LauncherConfig> ConfigProvider { get; set; } = LauncherConfig.Load;
 
     public IReadOnlyList<PluginCrashReportInfo> GetCrashReports(string? versionId = null)
     {
