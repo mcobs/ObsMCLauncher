@@ -1,6 +1,8 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:converters="using:ObsMCLauncher.Desktop.Converters"
+             xmlns:controls="using:ObsMCLauncher.Desktop.Controls"
+             xmlns:mc="using:ObsMCLauncher.Core.Services.Minecraft"
              x:Class="ObsMCLauncher.Desktop.Views.HomeActionBar"
              x:DataType="vm:HomeViewModel"
              xmlns:vm="using:ObsMCLauncher.Desktop.ViewModels">
@@ -113,14 +115,32 @@
                       PlaceholderText="选择游戏版本"
                       HorizontalAlignment="Stretch"
                       Height="42"
+                      controls:DropDownScrollMemory.KeepPosition="True"
                       ItemsSource="{Binding InstalledVersions}"
                       SelectedItem="{Binding SelectedInstalledVersion}"
                       IsVisible="{Binding HasInstalledVersions}">
               <ComboBox.ItemTemplate>
-                <DataTemplate>
-                  <TextBlock Text="{Binding Id}" FontSize="13" TextTrimming="CharacterEllipsis"/>
+                <DataTemplate x:DataType="mc:InstalledVersion">
+                  <Grid ColumnDefinitions="Auto,*" Height="32">
+                    <Image Grid.Column="0" Width="20" Height="20" VerticalAlignment="Center"
+                           Source="{Binding LoaderIconPath, Converter={x:Static converters:BitmapAssetValueConverter.Instance}}"/>
+                    <TextBlock Grid.Column="1" Text="{Binding Id}" FontSize="13"
+                               VerticalAlignment="Center" Margin="8,0,0,0"
+                               TextTrimming="CharacterEllipsis"/>
+                  </Grid>
                 </DataTemplate>
               </ComboBox.ItemTemplate>
+              <ComboBox.SelectionBoxItemTemplate>
+                <DataTemplate x:DataType="mc:InstalledVersion">
+                  <Grid ColumnDefinitions="Auto,*" Height="32">
+                    <Image Grid.Column="0" Width="20" Height="20" VerticalAlignment="Center"
+                           Source="{Binding LoaderIconPath, Converter={x:Static converters:BitmapAssetValueConverter.Instance}}"/>
+                    <TextBlock Grid.Column="1" Text="{Binding Id}" FontSize="13" FontWeight="Medium"
+                               VerticalAlignment="Center" Margin="8,0,0,0"
+                               TextTrimming="CharacterEllipsis"/>
+                  </Grid>
+                </DataTemplate>
+              </ComboBox.SelectionBoxItemTemplate>
             </ComboBox>
 
             <Button
