@@ -6,9 +6,50 @@ using ObsMCLauncher.Core.Utils;
 
 namespace ObsMCLauncher.Core.Services.Mirror
 {
+    /// <summary>地址来源的平台</summary>
+    public enum MirrorPlatform
+    {
+        None,
+        Modrinth,
+        CurseForge
+    }
+
     public static class MirrorUrlHelper
     {
         internal const string McimBase = "https://mod.mcimirror.top";
+
+        /// <summary>
+        /// 判断一个地址属于哪个平台，官方地址和镜像地址都支持。
+        /// CDN 地址也能区分来源：/data 来自 cdn.modrinth.com，/files 和 /avatars 来自 ForgeCDN。
+        /// </summary>
+        public static MirrorPlatform GetPlatform(string url)
+        {
+            if (string.IsNullOrEmpty(url)) return MirrorPlatform.None;
+
+            if (url.StartsWith("https://api.modrinth.com", StringComparison.OrdinalIgnoreCase) ||
+                url.StartsWith("https://cdn.modrinth.com", StringComparison.OrdinalIgnoreCase))
+                return MirrorPlatform.Modrinth;
+
+            if (url.StartsWith("https://api.curseforge.com", StringComparison.OrdinalIgnoreCase) ||
+                url.StartsWith("https://edge.forgecdn.net", StringComparison.OrdinalIgnoreCase) ||
+                url.StartsWith("https://media.forgecdn.net", StringComparison.OrdinalIgnoreCase) ||
+                url.StartsWith("https://mediafilez.forgecdn.net", StringComparison.OrdinalIgnoreCase))
+                return MirrorPlatform.CurseForge;
+
+            if (!url.StartsWith(McimBase, StringComparison.OrdinalIgnoreCase)) return MirrorPlatform.None;
+
+            var path = url.Substring(McimBase.Length);
+            if (path.StartsWith("/modrinth", StringComparison.OrdinalIgnoreCase) ||
+                path.StartsWith("/data/", StringComparison.OrdinalIgnoreCase))
+                return MirrorPlatform.Modrinth;
+
+            if (path.StartsWith("/curseforge", StringComparison.OrdinalIgnoreCase) ||
+                path.StartsWith("/files/", StringComparison.OrdinalIgnoreCase) ||
+                path.StartsWith("/avatars/", StringComparison.OrdinalIgnoreCase))
+                return MirrorPlatform.CurseForge;
+
+            return MirrorPlatform.None;
+        }
 
         public static string RewriteUrl(string originalUrl)
         {
@@ -60,35 +101,23 @@ namespace ObsMCLauncher.Core.Services.Mirror
         public static string GetOriginalUrl(string mirrorUrl)
         {
             if (string.IsNullOrEmpty(mirrorUrl)) return mirrorUrl;
+            if (!mirrorUrl.StartsWith(McimBase, StringComparison.OrdinalIgnoreCase)) return mirrorUrl;
 
-            // Modrinth API
-            if (mirrorUrl.StartsWith($"{McimBase}/modrinth", StringComparison.OrdinalIgnoreCase))
-            {
-                return $"https://api.modrinth.com{mirrorUrl.Substring($"{McimBase}/modrinth".Length)}";
-            }
+            var path = mirrorUrl.Substring(McimBase.Length);
 
-            // Modrinth CDN (注意: /modrinth 前缀匹配必须在通用匹配之前)
-            if (mirrorUrl.StartsWith(McimBase + "/modrinth", StringComparison.OrdinalIgnoreCase))
-            {
-                return $"https://api.modrinth.com{mirrorUrl.Substring(McimBase.Length + "/modrinth".Length)}";
-            }
+            // API
+            if (path.StartsWith("/modrinth", StringComparison.OrdinalIgnoreCase))
+                return $"https://api.modrinth.com{path.Substring("/modrinth".Length)}";
+            if (path.StartsWith("/curseforge", StringComparison.OrdinalIgnoreCase))
+                return $"https://api.curseforge.com{path.Substring("/curseforge".Length)}";
 
-            // CurseForge API
-            if (mirrorUrl.StartsWith($"{McimBase}/curseforge", StringComparison.OrdinalIgnoreCase))
-            {
-                return $"https://api.curseforge.com{mirrorUrl.Substring($"{McimBase}/curseforge".Length)}";
-            }
-
-            // CDN 通用回退 - mcimirror.top 但不是 /modrinth 也不是 /curseforge
-            if (mirrorUrl.StartsWith(McimBase, StringComparison.OrdinalIgnoreCase))
-            {
-                var path = mirrorUrl.Substring(McimBase.Length);
-                if (!path.StartsWith("/modrinth", StringComparison.OrdinalIgnoreCase) &&
-                    !path.StartsWith("/curseforge", StringComparison.OrdinalIgnoreCase))
-                {
-                    return $"https://cdn.modrinth.com{path}";
-                }
-            }
+            // CDN：路径本身就区分了来源，/data 来自 cdn.modrinth.com，/files 和 /avatars 来自 forgecdn
+            if (path.StartsWith("/data/", StringComparison.OrdinalIgnoreCase))
+                return $"https://cdn.modrinth.com{path}";
+            if (path.StartsWith("/files/", StringComparison.OrdinalIgnoreCase))
+                return $"https://edge.forgecdn.net{path}";
+            if (path.StartsWith("/avatars/", StringComparison.OrdinalIgnoreCase))
+                return $"https://media.forgecdn.net{path}";
 
             return mirrorUrl;
         }
@@ -163,24 +192,19 @@ namespace ObsMCLauncher.Core.Services.Mirror
 
         public static async Task CheckAvailabilityAsync()
         {
-            var modrinthTask = CheckModrinthAsync();
-            var curseForgeTask = CheckCurseForgeAsync();
-            await Task.WhenAll(modrinthTask, curseForgeTask);
+            await CheckAsync().ConfigureAwait(false);
         }
 
         public static async Task EnsureCheckedAsync()
         {
-            bool shouldCheckModrinth, shouldCheckCurseForge;
+            bool shouldCheck;
             lock (_lock)
             {
-                shouldCheckModrinth = ShouldRetryCheck(ref _modrinthFailCount, ref _modrinthLastCheck, ref _modrinthAvailable);
-                shouldCheckCurseForge = ShouldRetryCheck(ref _curseForgeFailCount, ref _curseForgeLastCheck, ref _curseForgeAvailable);
+                shouldCheck = ShouldRetryCheck(ref _modrinthFailCount, ref _modrinthLastCheck, ref _modrinthAvailable)
+                              || ShouldRetryCheck(ref _curseForgeFailCount, ref _curseForgeLastCheck, ref _curseForgeAvailable);
             }
 
-            var tasks = new List<Task>();
-            if (shouldCheckModrinth) tasks.Add(CheckModrinthAsync());
-            if (shouldCheckCurseForge) tasks.Add(CheckCurseForgeAsync());
-            if (tasks.Count > 0) await Task.WhenAll(tasks);
+            if (shouldCheck) await CheckAsync().ConfigureAwait(false);
         }
 
         public static async Task EnsureModrinthCheckedAsync()
@@ -190,7 +214,7 @@ namespace ObsMCLauncher.Core.Services.Mirror
             {
                 shouldCheck = ShouldRetryCheck(ref _modrinthFailCount, ref _modrinthLastCheck, ref _modrinthAvailable);
             }
-            if (shouldCheck) await CheckModrinthAsync();
+            if (shouldCheck) await CheckAsync().ConfigureAwait(false);
         }
 
         public static async Task EnsureCurseForgeCheckedAsync()
@@ -200,7 +224,7 @@ namespace ObsMCLauncher.Core.Services.Mirror
             {
                 shouldCheck = ShouldRetryCheck(ref _curseForgeFailCount, ref _curseForgeLastCheck, ref _curseForgeAvailable);
             }
-            if (shouldCheck) await CheckCurseForgeAsync();
+            if (shouldCheck) await CheckAsync().ConfigureAwait(false);
         }
 
         private static bool ShouldRetryCheck(ref int failCount, ref DateTime lastCheck, ref bool available)
@@ -242,54 +266,60 @@ namespace ObsMCLauncher.Core.Services.Mirror
             }
         }
 
-        private static async Task CheckModrinthAsync()
+        /// <summary>
+        /// 按地址判断该标记哪个平台不可用。CDN 地址也能区分来源：
+        /// /data 来自 Modrinth，/files 和 /avatars 来自 ForgeCDN。
+        /// </summary>
+        public static void MarkUnavailableFor(string url)
         {
-            try
+            switch (MirrorUrlHelper.GetPlatform(url))
             {
-                var response = await _httpClient.GetAsync("https://mod.mcimirror.top/modrinth/v2/tag/category").ConfigureAwait(false);
-                lock (_lock)
-                {
-                    _modrinthAvailable = response.IsSuccessStatusCode;
-                    _modrinthLastCheck = DateTime.UtcNow;
-                    if (_modrinthAvailable) _modrinthFailCount = 0;
-                }
-                DebugLogger.Info("Mirror", $"Modrinth镜像源可用性: {(_modrinthAvailable ? "可用" : "不可用")}");
-            }
-            catch (Exception ex)
-            {
-                lock (_lock)
-                {
-                    _modrinthAvailable = false;
-                    _modrinthFailCount++;
-                    _modrinthLastCheck = DateTime.UtcNow;
-                }
-                DebugLogger.Warn("Mirror", $"Modrinth镜像源不可用: {ex.Message}");
+                case MirrorPlatform.Modrinth:
+                    MarkModrinthUnavailable();
+                    break;
+                case MirrorPlatform.CurseForge:
+                    MarkCurseForgeUnavailable();
+                    break;
+                default:
+                    MarkUnavailable();
+                    break;
             }
         }
 
-        private static async Task CheckCurseForgeAsync()
+        /// <summary>
+        /// 探测镜像服务的存活。用专门的 /healthz，而不是某个数据接口——
+        /// 数据接口在缓存冷启动、回源超时时会返回 502，拿它当健康检查会误判成镜像挂了。
+        /// </summary>
+        private static async Task<bool> ProbeAsync()
         {
             try
             {
-                var response = await _httpClient.GetAsync("https://mod.mcimirror.top/curseforge/v1/categories?gameId=432").ConfigureAwait(false);
-                lock (_lock)
-                {
-                    _curseForgeAvailable = response.IsSuccessStatusCode;
-                    _curseForgeLastCheck = DateTime.UtcNow;
-                    if (_curseForgeAvailable) _curseForgeFailCount = 0;
-                }
-                DebugLogger.Info("Mirror", $"CurseForge镜像源可用性: {(_curseForgeAvailable ? "可用" : "不可用")}");
+                var response = await _httpClient.GetAsync($"{MirrorUrlHelper.McimBase}/healthz").ConfigureAwait(false);
+                return response.IsSuccessStatusCode;
             }
             catch (Exception ex)
             {
-                lock (_lock)
-                {
-                    _curseForgeAvailable = false;
-                    _curseForgeFailCount++;
-                    _curseForgeLastCheck = DateTime.UtcNow;
-                }
-                DebugLogger.Warn("Mirror", $"CurseForge镜像源不可用: {ex.Message}");
+                DebugLogger.Warn("Mirror", $"镜像源健康检查失败: {ex.Message}");
+                return false;
             }
+        }
+
+        private static async Task CheckAsync()
+        {
+            var available = await ProbeAsync().ConfigureAwait(false);
+            lock (_lock)
+            {
+                _modrinthAvailable = available;
+                _curseForgeAvailable = available;
+                _modrinthLastCheck = DateTime.UtcNow;
+                _curseForgeLastCheck = DateTime.UtcNow;
+                if (available)
+                {
+                    _modrinthFailCount = 0;
+                    _curseForgeFailCount = 0;
+                }
+            }
+            DebugLogger.Info("Mirror", $"镜像源可用性: {(available ? "可用" : "不可用")}");
         }
     }
 
@@ -300,23 +330,24 @@ namespace ObsMCLauncher.Core.Services.Mirror
             HttpClient httpClient,
             Action? onMirrorFailed = null)
         {
-            var config = LauncherConfig.Load();
             var mirrorUrl = MirrorUrlHelper.RewriteUrl(url);
             var usedMirror = mirrorUrl != url;
+            var platform = MirrorUrlHelper.GetPlatform(url);
 
             if (usedMirror)
             {
-                if (mirrorUrl.Contains("/modrinth", StringComparison.OrdinalIgnoreCase))
-                    await MirrorHealthChecker.EnsureModrinthCheckedAsync();
-                else if (mirrorUrl.Contains("/curseforge", StringComparison.OrdinalIgnoreCase))
-                    await MirrorHealthChecker.EnsureCurseForgeCheckedAsync();
+                if (platform == MirrorPlatform.Modrinth)
+                    await MirrorHealthChecker.EnsureModrinthCheckedAsync().ConfigureAwait(false);
+                else if (platform == MirrorPlatform.CurseForge)
+                    await MirrorHealthChecker.EnsureCurseForgeCheckedAsync().ConfigureAwait(false);
             }
 
-            var mirrorAvailable = mirrorUrl.Contains("/modrinth", StringComparison.OrdinalIgnoreCase)
-                ? MirrorHealthChecker.IsModrinthMirrorAvailable
-                : mirrorUrl.Contains("/curseforge", StringComparison.OrdinalIgnoreCase)
-                    ? MirrorHealthChecker.IsCurseForgeMirrorAvailable
-                    : MirrorHealthChecker.IsMirrorAvailable;
+            var mirrorAvailable = platform switch
+            {
+                MirrorPlatform.Modrinth => MirrorHealthChecker.IsModrinthMirrorAvailable,
+                MirrorPlatform.CurseForge => MirrorHealthChecker.IsCurseForgeMirrorAvailable,
+                _ => MirrorHealthChecker.IsMirrorAvailable
+            };
 
             if (usedMirror && mirrorAvailable)
             {
@@ -336,12 +367,7 @@ namespace ObsMCLauncher.Core.Services.Mirror
                 }
 
                 onMirrorFailed?.Invoke();
-                if (mirrorUrl.Contains("/modrinth", StringComparison.OrdinalIgnoreCase))
-                    MirrorHealthChecker.MarkModrinthUnavailable();
-                else if (mirrorUrl.Contains("/curseforge", StringComparison.OrdinalIgnoreCase))
-                    MirrorHealthChecker.MarkCurseForgeUnavailable();
-                else
-                    MirrorHealthChecker.MarkUnavailable();
+                MirrorHealthChecker.MarkUnavailableFor(mirrorUrl);
             }
 
             try

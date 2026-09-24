@@ -38,7 +38,7 @@ public static class ModrinthDownloadService
             var mirrorUrl = MirrorUrlHelper.RewriteUrl(originalUrl);
             var usedMirror = mirrorUrl != originalUrl;
 
-            if (usedMirror && config.MirrorSourceMode == MirrorSourceMode.PreferMirror && MirrorHealthChecker.IsMirrorAvailable)
+            if (usedMirror && config.MirrorSourceMode == MirrorSourceMode.PreferMirror && MirrorHealthChecker.IsModrinthMirrorAvailable)
             {
                 try
                 {
@@ -49,7 +49,7 @@ public static class ModrinthDownloadService
                 catch (Exception ex)
                 {
                     DebugLogger.Warn("Modrinth", $"镜像源下载失败: {ex.Message}, 回退到官方源");
-                    MirrorHealthChecker.MarkUnavailable();
+                    MirrorHealthChecker.MarkModrinthUnavailable();
 
                     if (File.Exists(savePath))
                     {

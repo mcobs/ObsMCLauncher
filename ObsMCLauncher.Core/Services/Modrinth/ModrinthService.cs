@@ -24,7 +24,8 @@ public class ModrinthService
 
     static ModrinthService()
     {
-        _httpClient = HttpClientFactory.CreateClient(timeout: TimeSpan.FromMinutes(2));
+        // 只用于元数据接口，超时对齐其他服务；之前是 2 分钟，镜像卡住时要干等满才回退官方
+        _httpClient = HttpClientFactory.CreateClient(timeout: TimeSpan.FromSeconds(30));
         _httpClient.DefaultRequestHeaders.Add("User-Agent", VersionInfo.UserAgent);
     }
 

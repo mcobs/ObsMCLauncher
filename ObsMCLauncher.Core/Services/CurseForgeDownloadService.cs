@@ -64,7 +64,7 @@ public static class CurseForgeDownloadService
             var mirrorUrl = MirrorUrlHelper.RewriteUrl(originalUrl);
             var usedMirror = mirrorUrl != originalUrl;
 
-            if (usedMirror && config.MirrorSourceMode == MirrorSourceMode.PreferMirror && MirrorHealthChecker.IsMirrorAvailable)
+            if (usedMirror && config.MirrorSourceMode == MirrorSourceMode.PreferMirror && MirrorHealthChecker.IsCurseForgeMirrorAvailable)
             {
                 try
                 {
@@ -75,7 +75,7 @@ public static class CurseForgeDownloadService
                 catch (Exception ex)
                 {
                     DebugLogger.Warn("CurseForge", $"镜像源下载失败: {ex.Message}, 回退到官方源");
-                    MirrorHealthChecker.MarkUnavailable();
+                    MirrorHealthChecker.MarkCurseForgeUnavailable();
 
                     if (File.Exists(savePath))
                     {

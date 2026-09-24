@@ -62,6 +62,8 @@ public class ImageCacheService
                 catch (Exception ex)
                 {
                     DebugLogger.Warn("ImageCache", $"镜像源下载图片失败: {mirrorUrl}, {ex.Message}, 回退到官方源");
+                    // 标记对应平台不可用，后面的图标直接走官方源，不用每次都先失败一次
+                    MirrorHealthChecker.MarkUnavailableFor(mirrorUrl);
                 }
             }
 

@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Text;
 using System.Text.Json;
 using ObsMCLauncher.Core.Models;
 using ObsMCLauncher.Core.Services.Mirror;
@@ -186,7 +187,10 @@ public static class CurseForgeService
 
         if (uncachedIds.Count == 0) return result;
 
-        var json = await RequestWithFallbackAsync($"/v1/mods?modIds={Uri.EscapeDataString(JsonSerializer.Serialize(uncachedIds))}").ConfigureAwait(false);
+        // 批量查询走 POST /v1/mods，modIds 放在 JSON body 里。
+        // 之前的写法是把 JSON 数组塞进 query（modIds=[1,2]），官方和镜像都没有这个路由，一律 404
+        var body = JsonSerializer.Serialize(new { modIds = uncachedIds });
+        var json = await RequestWithFallbackAsync("/v1/mods", body).ConfigureAwait(false);
         if (json == null) return result.Count > 0 ? result : null;
 
         try
@@ -421,7 +425,16 @@ public static class CurseForgeService
         return count.ToString();
     }
 
-    private static async Task<string?> RequestWithFallbackAsync(string path)
+    /// <summary>jsonBody 为 null 时发 GET，否则按 application/json 发 POST</summary>
+    private static Task<HttpResponseMessage> SendAsync(string url, string? jsonBody)
+    {
+        if (jsonBody == null) return _httpClient.GetAsync(url);
+
+        var content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
+        return _httpClient.PostAsync(url, content);
+    }
+
+    private static async Task<string?> RequestWithFallbackAsync(string path, string? jsonBody = null)
     {
         if (ShouldUseMirror)
         {
@@ -433,7 +446,7 @@ public static class CurseForgeService
             try
             {
                 var mirrorUrl = MirrorApiBase + path;
-                var response = await _httpClient.GetAsync(mirrorUrl).ConfigureAwait(false);
+                var response = await SendAsync(mirrorUrl, jsonBody).ConfigureAwait(false);
                 if (response.IsSuccessStatusCode)
                 {
                     return await response.Content.ReadAsStringAsync().ConfigureAwait(false);
@@ -452,7 +465,7 @@ public static class CurseForgeService
         try
         {
             var officialUrl = OfficialApiBase + path;
-            var response = await _httpClient.GetAsync(officialUrl).ConfigureAwait(false);
+            var response = await SendAsync(officialUrl, jsonBody).ConfigureAwait(false);
 
             if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
             {
