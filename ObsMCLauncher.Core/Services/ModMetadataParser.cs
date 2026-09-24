@@ -34,7 +34,22 @@ public static class ModMetadataParser
         try
         {
             using var archive = ZipFile.OpenRead(jarPath);
+            return ParseFromArchive(archive, jarPath);
+        }
+        catch
+        {
+            return null;
+        }
+    }
 
+    /// <summary>
+    /// 在已经打开的 zip 上解析元数据。
+    /// 扫描器会复用同一个 ZipArchive 同时提取图标，避免同一个 jar 被反复解压。
+    /// </summary>
+    public static ModMetadata? ParseFromArchive(ZipArchive archive, string jarPath = "")
+    {
+        try
+        {
             // 优先 Fabric
             var fabricEntry = archive.GetEntry("fabric.mod.json");
             if (fabricEntry != null)

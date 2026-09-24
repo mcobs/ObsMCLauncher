@@ -8,7 +8,7 @@ namespace ObsMCLauncher.Core.Services.Mirror
 {
     public static class MirrorUrlHelper
     {
-        private const string McimBase = "https://mod.mcimirror.top";
+        internal const string McimBase = "https://mod.mcimirror.top";
 
         public static string RewriteUrl(string originalUrl)
         {
@@ -45,12 +45,14 @@ namespace ObsMCLauncher.Core.Services.Mirror
                 return $"{McimBase}{originalUrl.Substring("https://edge.forgecdn.net".Length)}";
             }
 
-            // CurseForge CDN (mediafilez.forgecdn.net)
-            if (originalUrl.StartsWith("https://mediafilez.forgecdn.net", StringComparison.OrdinalIgnoreCase))
+            // CurseForge CDN (media.forgecdn.net)：Mod 图标、截图都挂在这个域名下
+            if (originalUrl.StartsWith("https://media.forgecdn.net", StringComparison.OrdinalIgnoreCase))
             {
                 if (!MirrorHealthChecker.IsCurseForgeMirrorAvailable) return originalUrl;
-                return $"{McimBase}{originalUrl.Substring("https://mediafilez.forgecdn.net".Length)}";
+                return $"{McimBase}{originalUrl.Substring("https://media.forgecdn.net".Length)}";
             }
+
+            // mediafilez.forgecdn.net 不在这里处理：MCIM 明确说明不要把它转发到镜像
 
             return originalUrl;
         }

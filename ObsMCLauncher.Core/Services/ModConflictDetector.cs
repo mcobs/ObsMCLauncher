@@ -291,8 +291,7 @@ public static class ModConflictDetector
 {
     public static List<ModConflict> DetectConflicts(string modsDir)
     {
-        var conflicts = new List<ModConflict>();
-        if (!Directory.Exists(modsDir)) return conflicts;
+        if (!Directory.Exists(modsDir)) return new List<ModConflict>();
 
         var modFiles = Directory.GetFiles(modsDir, "*.jar")
             .Concat(Directory.GetFiles(modsDir, "*.jar.disabled"))
@@ -309,6 +308,20 @@ public static class ModConflictDetector
                 metadataList.Add((file, meta, enabled));
             }
         }
+
+        return DetectConflicts(metadataList);
+    }
+
+    /// <summary>
+    /// 复用调用方已经解析好的元数据做冲突检测，避免为了检测再把整个目录的 jar 解压一遍。
+    /// </summary>
+    public static List<ModConflict> DetectConflicts(
+        IReadOnlyList<(string FilePath, ModMetadata Meta, bool Enabled)> mods)
+    {
+        var conflicts = new List<ModConflict>();
+        if (mods.Count == 0) return conflicts;
+
+        var metadataList = mods.Where(m => m.Meta != null).ToList();
 
         CheckDuplicateIds(metadataList, conflicts);
         CheckMissingDependencies(metadataList, conflicts);

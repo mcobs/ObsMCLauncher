@@ -499,7 +499,6 @@ public partial class ResourcesViewModel : ViewModelBase
                 if (mods != null)
                 {
                     var items = new List<ResourceItemViewModel>();
-                    var tasks = new List<Task>();
                     foreach (var mod in mods.Values)
                     {
                         if (existingIds.Contains(mod.Id.ToString())) continue;
@@ -507,10 +506,9 @@ public partial class ResourcesViewModel : ViewModelBase
                                        ?? _translation.GetTranslationByCurseForgeId(mod.Id);
                         var item = new ResourceItemViewModel(mod, translation);
                         items.Add(item);
-                        tasks.Add(item.LoadIconAsync());
+                        _ = item.LoadIconAsync();
                         existingIds.Add(mod.Id.ToString());
                     }
-                    await Task.WhenAll(tasks);
                     await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
                     {
                         foreach (var item in items)
@@ -537,7 +535,6 @@ public partial class ResourcesViewModel : ViewModelBase
                 if (projects != null)
                 {
                     var items = new List<ResourceItemViewModel>();
-                    var tasks = new List<Task>();
                     foreach (var project in projects.Values)
                     {
                         if (existingIds.Contains(project.Id)) continue;
@@ -551,10 +548,9 @@ public partial class ResourcesViewModel : ViewModelBase
                         };
                         var item = new ResourceItemViewModel(hit, translation);
                         items.Add(item);
-                        tasks.Add(item.LoadIconAsync());
+                        _ = item.LoadIconAsync();
                         existingIds.Add(project.Id);
                     }
-                    await Task.WhenAll(tasks);
                     await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
                     {
                         foreach (var item in items)
@@ -791,7 +787,6 @@ public partial class ResourcesViewModel : ViewModelBase
         if (response?.Data == null) return;
 
         var items = new List<ResourceItemViewModel>();
-        var tasks = new List<Task>();
         foreach (var mod in response.Data)
         {
             ct.ThrowIfCancellationRequested();
@@ -800,9 +795,9 @@ public partial class ResourcesViewModel : ViewModelBase
 
             var item = new ResourceItemViewModel(mod, translation);
             items.Add(item);
-            tasks.Add(item.LoadIconAsync());
+            // 图标走异步补齐，不能让它拖住整页结果
+            _ = item.LoadIconAsync();
         }
-        await Task.WhenAll(tasks);
 
         await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
         {
@@ -835,7 +830,6 @@ public partial class ResourcesViewModel : ViewModelBase
         if (response?.Hits == null) return;
 
         var items = new List<ResourceItemViewModel>();
-        var tasks = new List<Task>();
         foreach (var hit in response.Hits)
         {
             ct.ThrowIfCancellationRequested();
@@ -844,10 +838,10 @@ public partial class ResourcesViewModel : ViewModelBase
             var item = new ResourceItemViewModel(hit, translation);
             items.Add(item);
 
-            tasks.Add(item.LoadIconAsync());
+            // 图标与版本信息都异步补齐，不能让它拖住整页结果
+            _ = item.LoadIconAsync();
             _ = LoadModrinthVersionsAsync(item, hit.ProjectId);
         }
-        await Task.WhenAll(tasks);
 
         await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
         {
@@ -1245,10 +1239,24 @@ public partial class ResourceItemViewModel : ObservableObject
         OnPropertyChanged(nameof(VersionDisplay));
     }
 
+    /// <summary>图标下载并发上限：混合源模式下结果一次几十条，不限并发容易把请求打爆。</summary>
+    private static readonly SemaphoreSlim IconDownloadSemaphore = new(8, 8);
+
     public async Task LoadIconAsync()
     {
         if (Icon != null) return;
-        var path = await ImageCacheService.GetImagePathAsync(IconUrl);
+
+        string? path;
+        await IconDownloadSemaphore.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            path = await ImageCacheService.GetImagePathAsync(IconUrl).ConfigureAwait(false);
+        }
+        finally
+        {
+            IconDownloadSemaphore.Release();
+        }
+
         if (string.IsNullOrEmpty(path) || !File.Exists(path)) return;
 
         await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>

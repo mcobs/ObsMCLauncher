@@ -155,6 +155,28 @@ public partial class ModDetailViewModel : ViewModelBase
 
     private async Task LoadDataAsync()
     {
+        // 头部补全和版本列表互不依赖，同时发起，省掉一次串行的网络往返
+        var headerTask = LoadHeaderIfIncompleteAsync();
+
+        try
+        {
+            await LoadVersionsAsync();
+        }
+        finally
+        {
+            // 版本列表一到就解除加载态。前置资源、图标都不参与首屏，放到后面慢慢补
+            IsLoading = false;
+            OnPropertyChanged(nameof(HasAnyGroup));
+        }
+
+        await headerTask;
+
+        _ = LoadDependenciesAsync();
+    }
+
+    /// <summary>搜索页带过来的数据不全时，再拉一次完整工程信息补齐头部</summary>
+    private async Task LoadHeaderIfIncompleteAsync()
+    {
         try
         {
             if (RawData is CurseForgeMod cf && IsIncompleteCurseForgeData(cf))
@@ -165,14 +187,8 @@ public partial class ModDetailViewModel : ViewModelBase
             {
                 await LoadHeaderFromFullModrinthDataAsync(hit);
             }
-
-            await LoadVersionsAsync();
         }
-        finally
-        {
-            IsLoading = false;
-            OnPropertyChanged(nameof(HasAnyGroup));
-        }
+        catch { }
     }
 
     private async Task LoadHeaderFromFullCurseForgeDataAsync(CurseForgeMod cf)
@@ -324,7 +340,86 @@ public partial class ModDetailViewModel : ViewModelBase
             await LoadModrinthVersionsAsync(hit, OperationToken);
         }
 
-        await LoadDependenciesAsync();
+        // 加载器分组和筛选栏是纯本地装配，必须赶在版本列表显示前做完，
+        // 否则列表会先以「空分组」的形态闪一下
+        await BuildLoaderGroupsAsync();
+    }
+
+    /// <summary>
+    /// 按加载器给各版本组分子组，并重建顶部筛选栏。纯本地装配、不涉及网络，
+    /// 但会改 ObservableCollection，统一回 UI 线程。
+    /// </summary>
+    private async Task BuildLoaderGroupsAsync()
+    {
+        await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            // 按加载器分子组（仅用于渲染，前置已提升到版本组层级）
+            foreach (var group in VersionGroups)
+            {
+                var loaderGroups = group.Files
+                    .GroupBy(f => f.Loader)
+                    .OrderByDescending(g => g.Key, new LoaderComparer())
+                    .ToList();
+
+                if (loaderGroups.Count <= 1)
+                {
+                    // 只有一种加载器，不需要分子组
+                    var singleGroup = new LoaderSubGroupViewModel
+                    {
+                        LoaderName = loaderGroups.Count == 1 ? loaderGroups[0].Key : "通用",
+                        LoaderIcon = GetLoaderIcon(loaderGroups.Count == 1 ? loaderGroups[0].Key : "通用")
+                    };
+                    foreach (var f in loaderGroups.FirstOrDefault() ?? Enumerable.Empty<VersionEntryViewModel>())
+                        singleGroup.Files.Add(f);
+
+                    group.LoaderGroups.Add(singleGroup);
+                }
+                else
+                {
+                    foreach (var lg in loaderGroups)
+                    {
+                        var subGroup = new LoaderSubGroupViewModel
+                        {
+                            LoaderName = lg.Key,
+                            LoaderIcon = GetLoaderIcon(lg.Key)
+                        };
+                        foreach (var f in lg)
+                            subGroup.Files.Add(f);
+
+                        group.LoaderGroups.Add(subGroup);
+                    }
+                }
+
+                group.NotifyHasLoaderGroupsChanged();
+            }
+
+            // 构建加载器筛选列表（大小写不敏感去重）
+            var allLoaders = VersionGroups
+                .SelectMany(g => g.LoaderGroups)
+                .GroupBy(lg => lg.LoaderName, StringComparer.OrdinalIgnoreCase)
+                .Select(g => new LoaderFilterItem
+                {
+                    LoaderName = g.First().LoaderName,
+                    IconUri = GetLoaderIcon(g.First().LoaderName),
+                    Count = g.Sum(lg => lg.Files.Count)
+                })
+                .OrderBy(l => l.LoaderName, new LoaderComparer())
+                .ToList();
+
+            // 记住当前选中的加载器名称，重建后恢复
+            var previousSelection = SelectedLoaderFilter?.LoaderName;
+
+            AvailableLoaders.Clear();
+            AvailableLoaders.Add(new LoaderFilterItem { LoaderName = "全部", IconUri = "", Count = allLoaders.Sum(l => l.Count) });
+            foreach (var loader in allLoaders)
+                AvailableLoaders.Add(loader);
+
+            // 恢复选中状态：优先匹配之前的选中项，否则默认选"全部"
+            SelectedLoaderFilter = string.IsNullOrEmpty(previousSelection)
+                ? AvailableLoaders.FirstOrDefault()
+                : AvailableLoaders.FirstOrDefault(l => string.Equals(l.LoaderName, previousSelection, StringComparison.OrdinalIgnoreCase))
+                  ?? AvailableLoaders.FirstOrDefault();
+        });
     }
 
     /// <summary>前置图标的并行下载上限。单个版本组可能有几十个前置，不限制会瞬间打满连接</summary>
@@ -474,46 +569,6 @@ public partial class ModDetailViewModel : ViewModelBase
         // 集合更新统一回到 UI 线程，避免跨线程修改 ObservableCollection
         await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
         {
-            // 按加载器分子组（仅用于渲染，前置已提升到版本组层级）
-            foreach (var group in VersionGroups)
-            {
-                var loaderGroups = group.Files
-                    .GroupBy(f => f.Loader)
-                    .OrderByDescending(g => g.Key, new LoaderComparer())
-                    .ToList();
-
-                if (loaderGroups.Count <= 1)
-                {
-                    // 只有一种加载器，不需要分子组
-                    var singleGroup = new LoaderSubGroupViewModel
-                    {
-                        LoaderName = loaderGroups.Count == 1 ? loaderGroups[0].Key : "通用",
-                        LoaderIcon = GetLoaderIcon(loaderGroups.Count == 1 ? loaderGroups[0].Key : "通用")
-                    };
-                    foreach (var f in loaderGroups.FirstOrDefault() ?? Enumerable.Empty<VersionEntryViewModel>())
-                        singleGroup.Files.Add(f);
-
-                    group.LoaderGroups.Add(singleGroup);
-                }
-                else
-                {
-                    foreach (var lg in loaderGroups)
-                    {
-                        var subGroup = new LoaderSubGroupViewModel
-                        {
-                            LoaderName = lg.Key,
-                            LoaderIcon = GetLoaderIcon(lg.Key)
-                        };
-                        foreach (var f in lg)
-                            subGroup.Files.Add(f);
-
-                        group.LoaderGroups.Add(subGroup);
-                    }
-                }
-
-                group.NotifyHasLoaderGroupsChanged();
-            }
-
             foreach (var (group, deps) in perGroup)
             {
                 group.Dependencies.Clear();
@@ -521,37 +576,10 @@ public partial class ModDetailViewModel : ViewModelBase
                     group.Dependencies.Add(dep);
                 group.NotifyDependenciesChanged();
             }
-
-            // 构建加载器筛选列表（大小写不敏感去重）
-            var allLoaders = VersionGroups
-                .SelectMany(g => g.LoaderGroups)
-                .GroupBy(lg => lg.LoaderName, StringComparer.OrdinalIgnoreCase)
-                .Select(g => new LoaderFilterItem
-                {
-                    LoaderName = g.First().LoaderName,
-                    IconUri = GetLoaderIcon(g.First().LoaderName),
-                    Count = g.Sum(lg => lg.Files.Count)
-                })
-                .OrderBy(l => l.LoaderName, new LoaderComparer())
-                .ToList();
-
-            // 记住当前选中的加载器名称，重建后恢复
-            var previousSelection = SelectedLoaderFilter?.LoaderName;
-
-            AvailableLoaders.Clear();
-            AvailableLoaders.Add(new LoaderFilterItem { LoaderName = "全部", IconUri = "", Count = allLoaders.Sum(l => l.Count) });
-            foreach (var loader in allLoaders)
-                AvailableLoaders.Add(loader);
-
-            // 恢复选中状态：优先匹配之前的选中项，否则默认选"全部"
-            SelectedLoaderFilter = string.IsNullOrEmpty(previousSelection)
-                ? AvailableLoaders.FirstOrDefault()
-                : AvailableLoaders.FirstOrDefault(l => string.Equals(l.LoaderName, previousSelection, StringComparison.OrdinalIgnoreCase))
-                  ?? AvailableLoaders.FirstOrDefault();
         });
 
-        // 列表装配完再补图标，避免拖慢首屏
-        await LoadDependencyIconsAsync(perGroup.SelectMany(p => p.Deps).ToList(), OperationToken);
+        // 图标最后补，且不等它：列表早已可见，图标慢慢填就行
+        _ = LoadDependencyIconsAsync(perGroup.SelectMany(p => p.Deps).ToList(), OperationToken);
     }
 
     /// <summary>
@@ -721,32 +749,74 @@ public partial class ModDetailViewModel : ViewModelBase
         await Task.WhenAll(pending).ConfigureAwait(false);
     }
 
+    /// <summary>剩余分页的并发上限。几百个文件的模组原本要一页一页串行等十来次往返</summary>
+    private const int MaxConcurrentVersionPages = 4;
+
     private async Task LoadCurseForgeVersionsAsync(CurseForgeMod mod, CancellationToken cancellationToken)
     {
-        int pageIndex = 0;
         const int pageSize = 50;
-        int totalCount = 0;
-        bool isFirst = true;
-        var allFiles = new List<CurseForgeFile>();
 
-        while (true)
+        var first = await CurseForgeService.GetModFilesAsync(mod.Id, pageIndex: 0, pageSize: pageSize)
+            .ConfigureAwait(false);
+        if (first?.Data == null || first.Data.Count == 0) return;
+
+        var allFiles = new List<CurseForgeFile>(first.Data);
+        var totalCount = first.Pagination?.TotalCount ?? 0;
+
+        if (totalCount > allFiles.Count)
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            // 总数已知：剩下的页并行拉，再按页序拼回去
+            var pageCount = (totalCount + pageSize - 1) / pageSize;
+            var pages = new List<CurseForgeFile>?[pageCount];
 
-            var result = await CurseForgeService.GetModFilesAsync(mod.Id, pageIndex: pageIndex, pageSize: pageSize)
-                .ConfigureAwait(false);
-            if (result?.Data == null || result.Data.Count == 0) break;
-
-            allFiles.AddRange(result.Data);
-
-            if (isFirst && result.Pagination != null)
+            using var gate = new SemaphoreSlim(MaxConcurrentVersionPages);
+            var pending = new List<Task>();
+            for (int p = 1; p < pageCount; p++)
             {
-                totalCount = result.Pagination.TotalCount;
-                isFirst = false;
+                var pageIndex = p;
+                pending.Add(Task.Run(async () =>
+                {
+                    try
+                    {
+                        await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+                        try
+                        {
+                            var result = await CurseForgeService.GetModFilesAsync(mod.Id, pageIndex: pageIndex, pageSize: pageSize)
+                                .ConfigureAwait(false);
+                            pages[pageIndex] = result?.Data;
+                        }
+                        finally
+                        {
+                            gate.Release();
+                        }
+                    }
+                    catch (OperationCanceledException) { }
+                    catch { }
+                }, cancellationToken));
             }
+            await Task.WhenAll(pending).ConfigureAwait(false);
 
-            pageIndex++;
-            if (totalCount > 0 && allFiles.Count >= totalCount) break;
+            for (int p = 1; p < pageCount; p++)
+            {
+                if (pages[p] is { Count: > 0 } page)
+                    allFiles.AddRange(page);
+            }
+        }
+        else if (totalCount <= 0)
+        {
+            // 拿不到总数（分页信息缺失）时退回逐页串行，避免漏掉后面的文件
+            int pageIndex = 1;
+            while (true)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                var result = await CurseForgeService.GetModFilesAsync(mod.Id, pageIndex: pageIndex, pageSize: pageSize)
+                    .ConfigureAwait(false);
+                if (result?.Data == null || result.Data.Count == 0) break;
+
+                allFiles.AddRange(result.Data);
+                pageIndex++;
+            }
         }
 
         if (allFiles.Count == 0) return;

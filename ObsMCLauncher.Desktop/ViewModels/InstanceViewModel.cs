@@ -216,10 +216,12 @@ public partial class InstanceViewModel : ViewModelBase
                 ApplyVersionData(data);
                 ApplyJavaOptions(javaList, data.CustomJavaPath);
                 ApplyWorlds(data.Worlds);
-                ApplyMods(data.Mods);
-                LoadShaderPacks();
-                LoadResourcePacks();
                 IsLoading = false;
+
+                // 三个列表各自后台扫描、扫完再回填，页面不必等它们
+                _ = LoadModsAsync();
+                _ = LoadShaderPacksAsync();
+                _ = LoadResourcePacksAsync();
             });
         }
         catch
@@ -310,7 +312,6 @@ public partial class InstanceViewModel : ViewModelBase
         data.Description = Core.Services.VersionInitService.GetDescription(_versionPath);
 
         CollectWorlds(data);
-        CollectMods(data);
 
         return data;
     }
@@ -425,48 +426,6 @@ public partial class InstanceViewModel : ViewModelBase
         HasWorlds = Worlds.Count > 0;
     }
 
-    private void CollectMods(LoadData data)
-    {
-        var modsDir = Path.Combine(data.GameDir, "mods");
-        if (Directory.Exists(modsDir))
-        {
-            foreach (var file in Directory.GetFiles(modsDir, "*.jar"))
-            {
-                try
-                {
-                    data.Mods.Add(new ModInfo
-                    {
-                        Name = Path.GetFileNameWithoutExtension(file),
-                        FileName = Path.GetFileName(file),
-                        Path = file,
-                        Size = new FileInfo(file).Length,
-                        IsEnabled = true,
-                        IconPath = ExtractModIcon(file)
-                    });
-                }
-                catch { }
-            }
-
-            foreach (var file in Directory.GetFiles(modsDir, "*.jar.disabled"))
-            {
-                try
-                {
-                    var fileName = Path.GetFileName(file);
-                    data.Mods.Add(new ModInfo
-                    {
-                        Name = fileName,
-                        FileName = fileName,
-                        Path = file,
-                        Size = new FileInfo(file).Length,
-                        IsEnabled = false,
-                        IconPath = ExtractModIcon(file)
-                    });
-                }
-                catch { }
-            }
-        }
-    }
-
     private static readonly string ModIconCacheDir = Path.Combine(VersionInfo.GetAppBaseDirectory(), "OMCL", "cache", "mod_icons");
 
     /// <summary>
@@ -477,50 +436,6 @@ public partial class InstanceViewModel : ViewModelBase
     {
         var hash = System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(input));
         return Convert.ToHexString(hash.AsSpan(0, 4)).ToLowerInvariant();
-    }
-
-    /// <summary>
-    /// 从 JAR 中提取 Mod 图标，返回缓存文件路径，未找到则返回 null
-    /// </summary>
-    private static string? ExtractModIcon(string jarPath)
-    {
-        try
-        {
-            using var archive = ZipFile.OpenRead(jarPath);
-            // 按优先级查找图标
-            string[] candidates = ["pack.png", "logo.png", "icon.png"];
-            foreach (var candidate in candidates)
-            {
-                var entry = archive.GetEntry(candidate);
-                if (entry != null)
-                {
-                    Directory.CreateDirectory(ModIconCacheDir);
-                    var hash = StableHash(jarPath);
-                    var tmpPath = Path.Combine(ModIconCacheDir, $"{hash}.png");
-                    if (!File.Exists(tmpPath) || new FileInfo(tmpPath).Length != entry.Length)
-                        entry.ExtractToFile(tmpPath, true);
-                    return tmpPath;
-                }
-            }
-
-            // 尝试 assets/<modid>/icon.png
-            foreach (var entry in archive.Entries)
-            {
-                var name = entry.FullName;
-                if (name.StartsWith("assets/", StringComparison.OrdinalIgnoreCase) &&
-                    name.EndsWith("/icon.png", StringComparison.OrdinalIgnoreCase))
-                {
-                    Directory.CreateDirectory(ModIconCacheDir);
-                    var hash = StableHash(jarPath);
-                    var tmpPath = Path.Combine(ModIconCacheDir, $"{hash}.png");
-                    if (!File.Exists(tmpPath) || new FileInfo(tmpPath).Length != entry.Length)
-                        entry.ExtractToFile(tmpPath, true);
-                    return tmpPath;
-                }
-            }
-        }
-        catch { }
-        return null;
     }
 
     private void ApplyMods(List<ModInfo> mods)
@@ -661,73 +576,79 @@ public partial class InstanceViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void RefreshMods()
+    private async Task RefreshModsAsync()
     {
-        LoadMods();
+        await LoadModsAsync();
         _notificationService.Show("已刷新", "模组列表已重新加载", NotificationType.Success, 2);
     }
 
     [RelayCommand]
-    private void RefreshShaderPacks()
+    private async Task RefreshShaderPacksAsync()
     {
-        LoadShaderPacks();
+        await LoadShaderPacksAsync();
         _notificationService.Show("已刷新", "Shader Pack 列表已重新加载", NotificationType.Success, 2);
     }
 
     [RelayCommand]
-    private void RefreshResourcePacks()
+    private async Task RefreshResourcePacksAsync()
     {
-        LoadResourcePacks();
+        await LoadResourcePacksAsync();
         _notificationService.Show("已刷新", "材质包列表已重新加载", NotificationType.Success, 2);
     }
 
-    private void LoadShaderPacks()
+    private async Task LoadShaderPacksAsync()
     {
         var gameDir = GetGameDirectory();
         var shaderDir = Path.Combine(gameDir, "shaderpacks");
-        var list = new List<ShaderPackInfo>();
 
-        if (Directory.Exists(shaderDir))
-        {
-            foreach (var file in Directory.GetFiles(shaderDir, "*.zip"))
-            {
-                try
-                {
-                    list.Add(new ShaderPackInfo
-                    {
-                        Name = Path.GetFileNameWithoutExtension(file),
-                        FileName = Path.GetFileName(file),
-                        Path = file,
-                        Size = new FileInfo(file).Length,
-                        IsEnabled = true,
-                        IconPath = ExtractShaderPackIcon(file)
-                    });
-                }
-                catch { }
-            }
-
-            foreach (var file in Directory.GetFiles(shaderDir, "*.zip.disabled"))
-            {
-                try
-                {
-                    var fileName = Path.GetFileName(file);
-                    list.Add(new ShaderPackInfo
-                    {
-                        Name = fileName,
-                        FileName = fileName,
-                        Path = file,
-                        Size = new FileInfo(file).Length,
-                        IsEnabled = false,
-                        IconPath = ExtractShaderPackIcon(file)
-                    });
-                }
-                catch { }
-            }
-        }
+        var list = await Task.Run(() => ScanShaderPacks(shaderDir));
 
         ShaderPacks.Clear();
         foreach (var p in list) ShaderPacks.Add(p);
         HasShaderPacks = ShaderPacks.Count > 0;
+    }
+
+    private static List<ShaderPackInfo> ScanShaderPacks(string shaderDir)
+    {
+        var list = new List<ShaderPackInfo>();
+        if (!Directory.Exists(shaderDir)) return list;
+
+        foreach (var file in Directory.GetFiles(shaderDir, "*.zip"))
+        {
+            try
+            {
+                list.Add(new ShaderPackInfo
+                {
+                    Name = Path.GetFileNameWithoutExtension(file),
+                    FileName = Path.GetFileName(file),
+                    Path = file,
+                    Size = new FileInfo(file).Length,
+                    IsEnabled = true,
+                    IconPath = ExtractShaderPackIcon(file)
+                });
+            }
+            catch { }
+        }
+
+        foreach (var file in Directory.GetFiles(shaderDir, "*.zip.disabled"))
+        {
+            try
+            {
+                var fileName = Path.GetFileName(file);
+                list.Add(new ShaderPackInfo
+                {
+                    Name = fileName,
+                    FileName = fileName,
+                    Path = file,
+                    Size = new FileInfo(file).Length,
+                    IsEnabled = false,
+                    IconPath = ExtractShaderPackIcon(file)
+                });
+            }
+            catch { }
+        }
+
+        return list;
     }
 
     private static readonly string ShaderIconCacheDir = Path.Combine(VersionInfo.GetAppBaseDirectory(), "OMCL", "cache", "shader_icons");
@@ -742,6 +663,13 @@ public partial class InstanceViewModel : ViewModelBase
     {
         try
         {
+            var tmpPath = Path.Combine(ShaderIconCacheDir, $"{StableHash(zipPath)}.png");
+
+            // 缓存比源文件新就直接复用，不必开 zip 去找图标条目
+            if (File.Exists(tmpPath) &&
+                File.GetLastWriteTimeUtc(tmpPath) >= File.GetLastWriteTimeUtc(zipPath))
+                return tmpPath;
+
             using var archive = ZipFile.OpenRead(zipPath);
             string[] dirs = ["", "shaders/", "textures/", "gui/"];
             string[] names = ["pack.png", "logo.png", "icon.png"];
@@ -754,10 +682,7 @@ public partial class InstanceViewModel : ViewModelBase
                     if (entry != null)
                     {
                         Directory.CreateDirectory(ShaderIconCacheDir);
-                        var hash = StableHash(zipPath);
-                        var tmpPath = Path.Combine(ShaderIconCacheDir, $"{hash}.png");
-                        if (!File.Exists(tmpPath) || new FileInfo(tmpPath).Length != entry.Length)
-                            entry.ExtractToFile(tmpPath, true);
+                        entry.ExtractToFile(tmpPath, true);
                         return tmpPath;
                     }
                 }
@@ -813,53 +738,59 @@ public partial class InstanceViewModel : ViewModelBase
         OpenFolderInExplorer(shaderDir);
     }
 
-    private void LoadResourcePacks()
+    private async Task LoadResourcePacksAsync()
     {
         var gameDir = GetGameDirectory();
         var dir = Path.Combine(gameDir, "resourcepacks");
-        var list = new List<ResourcePackInfo>();
 
-        if (Directory.Exists(dir))
-        {
-            foreach (var file in Directory.GetFiles(dir, "*.zip"))
-            {
-                try
-                {
-                    list.Add(new ResourcePackInfo
-                    {
-                        Name = Path.GetFileNameWithoutExtension(file),
-                        FileName = Path.GetFileName(file),
-                        Path = file,
-                        Size = new FileInfo(file).Length,
-                        IsEnabled = true,
-                        IconPath = ExtractResourcePackIcon(file)
-                    });
-                }
-                catch { }
-            }
-
-            foreach (var file in Directory.GetFiles(dir, "*.zip.disabled"))
-            {
-                try
-                {
-                    var fileName = Path.GetFileName(file);
-                    list.Add(new ResourcePackInfo
-                    {
-                        Name = fileName,
-                        FileName = fileName,
-                        Path = file,
-                        Size = new FileInfo(file).Length,
-                        IsEnabled = false,
-                        IconPath = ExtractResourcePackIcon(file)
-                    });
-                }
-                catch { }
-            }
-        }
+        var list = await Task.Run(() => ScanResourcePacks(dir));
 
         ResourcePacks.Clear();
         foreach (var p in list) ResourcePacks.Add(p);
         HasResourcePacks = ResourcePacks.Count > 0;
+    }
+
+    private static List<ResourcePackInfo> ScanResourcePacks(string dir)
+    {
+        var list = new List<ResourcePackInfo>();
+        if (!Directory.Exists(dir)) return list;
+
+        foreach (var file in Directory.GetFiles(dir, "*.zip"))
+        {
+            try
+            {
+                list.Add(new ResourcePackInfo
+                {
+                    Name = Path.GetFileNameWithoutExtension(file),
+                    FileName = Path.GetFileName(file),
+                    Path = file,
+                    Size = new FileInfo(file).Length,
+                    IsEnabled = true,
+                    IconPath = ExtractResourcePackIcon(file)
+                });
+            }
+            catch { }
+        }
+
+        foreach (var file in Directory.GetFiles(dir, "*.zip.disabled"))
+        {
+            try
+            {
+                var fileName = Path.GetFileName(file);
+                list.Add(new ResourcePackInfo
+                {
+                    Name = fileName,
+                    FileName = fileName,
+                    Path = file,
+                    Size = new FileInfo(file).Length,
+                    IsEnabled = false,
+                    IconPath = ExtractResourcePackIcon(file)
+                });
+            }
+            catch { }
+        }
+
+        return list;
     }
 
     private static readonly string ResourcePackIconCacheDir = Path.Combine(VersionInfo.GetAppBaseDirectory(), "OMCL", "cache", "resourcepack_icons");
@@ -872,6 +803,13 @@ public partial class InstanceViewModel : ViewModelBase
     {
         try
         {
+            var tmpPath = Path.Combine(ResourcePackIconCacheDir, $"{StableHash(zipPath)}.png");
+
+            // 缓存比源文件新就直接复用，不必开 zip 去找图标条目
+            if (File.Exists(tmpPath) &&
+                File.GetLastWriteTimeUtc(tmpPath) >= File.GetLastWriteTimeUtc(zipPath))
+                return tmpPath;
+
             using var archive = ZipFile.OpenRead(zipPath);
             string[] names = ["pack.png", "logo.png", "icon.png"];
             foreach (var name in names)
@@ -880,10 +818,7 @@ public partial class InstanceViewModel : ViewModelBase
                 if (entry != null)
                 {
                     Directory.CreateDirectory(ResourcePackIconCacheDir);
-                    var hash = StableHash(zipPath);
-                    var tmpPath = Path.Combine(ResourcePackIconCacheDir, $"{hash}.png");
-                    if (!File.Exists(tmpPath) || new FileInfo(tmpPath).Length != entry.Length)
-                        entry.ExtractToFile(tmpPath, true);
+                    entry.ExtractToFile(tmpPath, true);
                     return tmpPath;
                 }
             }
@@ -962,7 +897,7 @@ public partial class InstanceViewModel : ViewModelBase
         _notificationService.Show("已保存", "版本隔离设置已更新", NotificationType.Success, 2);
 
         // 隔离模式变更后刷新模组列表
-        LoadMods();
+        _ = LoadModsAsync();
     }
 
     partial void OnUseCustomMemoryChanged(bool value)
@@ -1348,102 +1283,89 @@ public partial class InstanceViewModel : ViewModelBase
         }
     }
 
-    private void LoadMods()
+    private async Task LoadModsAsync()
     {
+        if (_version == null) return;
+
         var gameDir = GetGameDirectory();
         var modsDir = Path.Combine(gameDir, "mods");
-        var list = new List<ModInfo>();
+        var instanceLoader = _version.LoaderType?.ToLowerInvariant() ?? "";
 
-        // 获取实例加载器类型用于判断
-        var instanceLoader = _version?.LoaderType?.ToLowerInvariant() ?? "";
+        // 扫描器内部带缓存：源文件没变就完全不解压，且每个 jar 最多只开一次
+        var scanned = await Task.Run(() => LocalModScanner.Scan(modsDir, ModIconCacheDir));
 
-        if (Directory.Exists(modsDir))
+        var list = new List<ModInfo>(scanned.Count);
+        var metadataList = new List<(string FilePath, ModMetadata Meta, bool Enabled)>(scanned.Count);
+
+        foreach (var item in scanned)
         {
-            foreach (var file in Directory.GetFiles(modsDir, "*.jar"))
-            {
-                try
-                {
-                    var meta = ObsMCLauncher.Core.Services.ModMetadataParser.ParseFromJar(file);
-                    var effectiveLoader = DetermineEffectiveLoader(meta?.Loader ?? "", instanceLoader);
-                    list.Add(new ModInfo
-                    {
-                        Name = meta?.Name ?? Path.GetFileNameWithoutExtension(file),
-                        FileName = Path.GetFileName(file),
-                        Path = file,
-                        Size = new FileInfo(file).Length,
-                        IsEnabled = true,
-                        ModId = meta?.ModId ?? "",
-                        Version = meta?.Version ?? "",
-                        Loader = effectiveLoader,
-                        IconPath = ExtractModIconWithMeta(file, meta)
-                    });
-                }
-                catch { }
-            }
+            var meta = item.Metadata;
+            var fallbackName = item.IsEnabled
+                ? Path.GetFileNameWithoutExtension(item.FileName)
+                : item.FileName;
 
-            foreach (var file in Directory.GetFiles(modsDir, "*.jar.disabled"))
+            list.Add(new ModInfo
             {
-                try
-                {
-                    var fileName = Path.GetFileName(file);
-                    var meta = ObsMCLauncher.Core.Services.ModMetadataParser.ParseFromJar(file);
-                    var effectiveLoader = DetermineEffectiveLoader(meta?.Loader ?? "", instanceLoader);
-                    list.Add(new ModInfo
-                    {
-                        Name = meta?.Name ?? fileName,
-                        FileName = fileName,
-                        Path = file,
-                        Size = new FileInfo(file).Length,
-                        IsEnabled = false,
-                        ModId = meta?.ModId ?? "",
-                        Version = meta?.Version ?? "",
-                        Loader = effectiveLoader,
-                        IconPath = ExtractModIconWithMeta(file, meta)
-                    });
-                }
-                catch { }
-            }
-        }
+                Name = meta?.Name ?? fallbackName,
+                FileName = item.FileName,
+                Path = item.FilePath,
+                Size = item.Size,
+                IsEnabled = item.IsEnabled,
+                ModId = meta?.ModId ?? "",
+                Version = meta?.Version ?? "",
+                Loader = DetermineEffectiveLoader(meta?.Loader ?? "", instanceLoader),
+                IconPath = item.IconCachePath
+            });
 
-        // 冲突检测
-        var conflicts = ObsMCLauncher.Core.Services.ModConflictDetector.DetectConflicts(modsDir);
-        if (conflicts.Count > 0)
-        {
-            var conflictModIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var conflict in conflicts)
-            {
-                if (!string.IsNullOrEmpty(conflict.ModId1)) conflictModIds.Add(conflict.ModId1);
-                if (!string.IsNullOrEmpty(conflict.ModId2)) conflictModIds.Add(conflict.ModId2);
-            }
-
-            foreach (var mod in list)
-            {
-                if (conflictModIds.Contains(mod.ModId))
-                {
-                    mod.HasConflict = true;
-                    var relatedConflicts = conflicts
-                        .Where(c => c.ModId1.Equals(mod.ModId, StringComparison.OrdinalIgnoreCase) ||
-                                    c.ModId2.Equals(mod.ModId, StringComparison.OrdinalIgnoreCase))
-                        .ToList();
-                    mod.ConflictDescription = string.Join("\n", relatedConflicts.Select(c => c.Description));
-                    mod.ConflictSuggestion = string.Join("\n",
-                        relatedConflicts
-                            .Where(c => !string.IsNullOrEmpty(c.Suggestion))
-                            .Select(c => c.Suggestion));
-                }
-            }
-
-            var errorCount = conflicts.Count(c => c.Severity == ConflictSeverity.Error);
-            var warnCount = conflicts.Count(c => c.Severity == ConflictSeverity.Warning);
-            if (errorCount > 0)
-            {
-                _notificationService.Show("模组冲突",
-                    $"检测到 {errorCount} 个严重冲突和 {warnCount} 个警告，请查看模组列表中的标记",
-                    NotificationType.Warning, 8);
-            }
+            if (meta != null)
+                metadataList.Add((item.FilePath, meta, item.IsEnabled));
         }
 
         ApplyMods(list);
+        ApplyModConflicts(list, metadataList);
+    }
+
+    /// <summary>
+    /// 冲突检测直接复用扫描阶段已经解析好的元数据，不再为了检测把整个目录解压第二遍。
+    /// </summary>
+    private void ApplyModConflicts(
+        List<ModInfo> list,
+        List<(string FilePath, ModMetadata Meta, bool Enabled)> metadataList)
+    {
+        var conflicts = ModConflictDetector.DetectConflicts(metadataList);
+        if (conflicts.Count == 0) return;
+
+        var conflictModIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var conflict in conflicts)
+        {
+            if (!string.IsNullOrEmpty(conflict.ModId1)) conflictModIds.Add(conflict.ModId1);
+            if (!string.IsNullOrEmpty(conflict.ModId2)) conflictModIds.Add(conflict.ModId2);
+        }
+
+        foreach (var mod in list)
+        {
+            if (!conflictModIds.Contains(mod.ModId)) continue;
+
+            mod.HasConflict = true;
+            var relatedConflicts = conflicts
+                .Where(c => c.ModId1.Equals(mod.ModId, StringComparison.OrdinalIgnoreCase) ||
+                            c.ModId2.Equals(mod.ModId, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            mod.ConflictDescription = string.Join("\n", relatedConflicts.Select(c => c.Description));
+            mod.ConflictSuggestion = string.Join("\n",
+                relatedConflicts
+                    .Where(c => !string.IsNullOrEmpty(c.Suggestion))
+                    .Select(c => c.Suggestion));
+        }
+
+        var errorCount = conflicts.Count(c => c.Severity == ConflictSeverity.Error);
+        var warnCount = conflicts.Count(c => c.Severity == ConflictSeverity.Warning);
+        if (errorCount > 0)
+        {
+            _notificationService.Show("模组冲突",
+                $"检测到 {errorCount} 个严重冲突和 {warnCount} 个警告，请查看模组列表中的标记",
+                NotificationType.Warning, 8);
+        }
     }
 
     private static string DetermineEffectiveLoader(string modLoader, string instanceLoader)
@@ -1462,77 +1384,6 @@ public partial class InstanceViewModel : ViewModelBase
         return loaders;
     }
 
-    private static string? ExtractModIconWithMeta(string jarPath, ModMetadata? meta)
-    {
-        try
-        {
-            using var archive = ZipFile.OpenRead(jarPath);
-            Directory.CreateDirectory(ModIconCacheDir);
-
-            // 优先从元数据声明的图标路径提取
-            if (meta?.IconPath != null)
-            {
-                var iconEntry = archive.GetEntry(meta.IconPath);
-                if (iconEntry != null)
-                {
-                    var cacheName = $"{StableHash(jarPath)}_{meta.ModId}.png";
-                    var tmpPath = Path.Combine(ModIconCacheDir, cacheName);
-                    if (!File.Exists(tmpPath) || new FileInfo(tmpPath).Length != iconEntry.Length)
-                        iconEntry.ExtractToFile(tmpPath, true);
-                    return tmpPath;
-                }
-            }
-
-            // 回退到常规图标路径
-            string[] candidates = ["pack.png", "logo.png", "icon.png"];
-            foreach (var candidate in candidates)
-            {
-                var entry = archive.GetEntry(candidate);
-                if (entry != null)
-                {
-                    var cacheName = $"{StableHash(jarPath)}_{candidate}";
-                    var tmpPath = Path.Combine(ModIconCacheDir, cacheName);
-                    if (!File.Exists(tmpPath) || new FileInfo(tmpPath).Length != entry.Length)
-                        entry.ExtractToFile(tmpPath, true);
-                    return tmpPath;
-                }
-            }
-
-            // 尝试 assets/<modid>/icon.png
-            var modId = meta?.ModId;
-            foreach (var entry in archive.Entries)
-            {
-                var name = entry.FullName;
-                if (!string.IsNullOrEmpty(modId) &&
-                    name.StartsWith($"assets/{modId}/", StringComparison.OrdinalIgnoreCase) &&
-                    name.EndsWith("/icon.png", StringComparison.OrdinalIgnoreCase))
-                {
-                    var cacheName = $"{StableHash(jarPath)}_{modId}.png";
-                    var tmpPath = Path.Combine(ModIconCacheDir, cacheName);
-                    if (!File.Exists(tmpPath) || new FileInfo(tmpPath).Length != entry.Length)
-                        entry.ExtractToFile(tmpPath, true);
-                    return tmpPath;
-                }
-            }
-
-            // 最后兜底
-            foreach (var entry in archive.Entries)
-            {
-                if (entry.FullName.StartsWith("assets/", StringComparison.OrdinalIgnoreCase) &&
-                    entry.FullName.EndsWith("/icon.png", StringComparison.OrdinalIgnoreCase))
-                {
-                    var cacheName = $"{StableHash(jarPath)}_asset.png";
-                    var tmpPath = Path.Combine(ModIconCacheDir, cacheName);
-                    if (!File.Exists(tmpPath) || new FileInfo(tmpPath).Length != entry.Length)
-                        entry.ExtractToFile(tmpPath, true);
-                    return tmpPath;
-                }
-            }
-        }
-        catch { }
-        return null;
-    }
-
     private class LoadData
     {
         public string VersionId { get; set; } = "-";
@@ -1545,7 +1396,6 @@ public partial class InstanceViewModel : ViewModelBase
         public List<VersionGroup> Groups { get; set; } = new();
         public string CurrentGroupId { get; set; } = "";
         public List<WorldInfo> Worlds { get; set; } = new();
-        public List<ModInfo> Mods { get; set; } = new();
         public bool UseCustomMemory { get; set; }
         public int CustomMaxMemory { get; set; }
         public int CustomMinMemory { get; set; }
