@@ -16,11 +16,11 @@ public static class VersionInfo
     /// <summary>
     /// 版本号：发布前由人工在此更新，格式为 semver（如 1.0.1-pre.1）
     /// </summary>
-    public static readonly string Version = "1.1.2";
+    public static readonly string Version = "1.1.2-beta.1";
 
     public static readonly string CodeName = "GrassBlock";
 
-    public static readonly VersionStatus Status = VersionStatus.Release;
+    public static readonly VersionStatus Status = VersionStatus.Testing;
 
     public static readonly string ProductName = "ObsMCLauncher";
 
