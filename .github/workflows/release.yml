@@ -190,7 +190,7 @@ jobs:
 
         vpk pack "${pack_args[@]}"
 
-    - name: Prune stale packages, rename and rebuild feed
+    - name: Prune stale packages, rebuild feed and rename
       shell: bash
       run: |
         version="${{ steps.version.outputs.version }}"
@@ -206,21 +206,23 @@ jobs:
         # 所以先删掉不属于本次版本的 nupkg（本次的 full 与 delta 文件名都带版本号）。
         find ./vpk-build -maxdepth 1 -name "*.nupkg" ! -name "*-${version_number}-*" -print -delete
 
-        # 重命名便携包（在打包目录里做，重建 feed 时会一并带过去）
-        if [[ "$rid" == linux-* ]]; then
-          for f in ./vpk-build/ObsMCLauncher*.AppImage; do
-            [ -f "$f" ] && mv "$f" "./vpk-build/ObsMCLauncher-${version}-${rid}.AppImage"
-          done
-        else
-          for f in ./vpk-build/ObsMCLauncher*Portable*.zip; do
-            [ -f "$f" ] && mv "$f" "./vpk-build/ObsMCLauncher-${version}-${rid}.zip"
-          done
-        fi
-
         # 删掉旧包后 feed 里仍残留旧版本条目，用 upload local --regenerate 让 vpk 依据目录里
-        # 现存的包重建索引（哈希与大小由 vpk 重算，不要手工改 JSON）
+        # 现存的包重建索引（哈希与大小由 vpk 重算，不要手工改 JSON）。
+        # 顺序很重要：vpk 是照打包时记录的原文件名去复制资产的，先把便携包改名会让它
+        # 报 FileNotFoundException，所以重命名必须放在这一步之后。
         rm -rf ./vpk-output
         vpk upload local -o ./vpk-build -c "${rid}-${channel}" --path ./vpk-output --regenerate
+
+        # 重命名便携包，让下载文件名带上版本与架构（release 下载表按 RID 匹配）
+        if [[ "$rid" == linux-* ]]; then
+          for f in ./vpk-output/ObsMCLauncher*.AppImage; do
+            [ -f "$f" ] && mv "$f" "./vpk-output/ObsMCLauncher-${version}-${rid}.AppImage"
+          done
+        else
+          for f in ./vpk-output/ObsMCLauncher*Portable*.zip; do
+            [ -f "$f" ] && mv "$f" "./vpk-output/ObsMCLauncher-${version}-${rid}.zip"
+          done
+        fi
 
         # 兼容旧版客户端：历史版本以纯 RID 为通道（releases.win-x64.json），
         # stable 发布时同步生成旧名 feed，使未升级客户端能找到本次更新（升级后自动迁移到 rid-stable 通道）
