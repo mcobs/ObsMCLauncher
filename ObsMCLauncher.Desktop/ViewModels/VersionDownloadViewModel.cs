@@ -288,7 +288,7 @@ public partial class VersionDownloadViewModel : ViewModelBase
 
         if (!item.IsDeletable)
         {
-            _notificationService.Show("无法删除", "默认目录不可删除。如需使用其他目录，请添加自定义目录后切换。", NotificationType.Warning);
+            _notificationService.Show("无法移除", "默认目录不可移除。如需使用其他目录，请添加自定义目录后切换。", NotificationType.Warning);
             return;
         }
 
@@ -296,103 +296,23 @@ public partial class VersionDownloadViewModel : ViewModelBase
 
         bool isCurrent = string.Equals(item.Path, _config.GameDirectory, StringComparison.OrdinalIgnoreCase);
 
-        var confirmMsg = isCurrent && item.IsDefault
-            ? $"要永久删除默认游戏目录吗？\n\n{item.Path}\n\n此目录是当前正在使用的默认目录，删除后系统将自动切换到下一个可用目录。此操作不可撤销！"
-            : isCurrent
-                ? $"要永久删除当前游戏目录吗？\n\n{item.Path}\n\n删除后系统将自动切换到下一个可用目录。此操作不可撤销！"
-                : $"要永久删除此游戏目录吗？\n\n{item.Path}\n\n该目录及其所有内容将被永久删除。此操作不可撤销！";
+        // 只是"从列表里去掉"：磁盘上的文件夹原样保留，存档 / mods 不会被误删。
+        var confirmMsg = isCurrent
+            ? $"要把该目录从列表中移除吗？\n\n{item.Path}\n\n这是当前正在使用的目录，移除后系统将自动切换到下一个可用目录。\n\n仅从列表移除，不会删除磁盘上的文件夹。"
+            : $"要把该目录从列表中移除吗？\n\n{item.Path}\n\n仅从列表移除，不会删除磁盘上的文件夹。";
 
-        var result = await _dialogService.ShowQuestion("确认删除目录", confirmMsg);
+        var result = await _dialogService.ShowQuestion("从列表移除目录", confirmMsg);
         if (result != DialogResult.Yes) return;
 
         try
         {
             IsRefreshingVersions = true;
-
-            string? nextDir = null;
-            if (isCurrent)
-            {
-                nextDir = FindNextAvailableDirectory(item.Path);
-            }
-
-            if (Directory.Exists(item.Path))
-            {
-                var dirSize = await Task.Run(() => GetDirectorySize(item.Path));
-                await Task.Run(() => Directory.Delete(item.Path, true));
-                _notificationService.Show("目录已删除", $"释放 {FormatFileSize(dirSize)} 空间", NotificationType.Success);
-            }
-
-            _config = LauncherConfig.Load();
-            _config.CustomGameDirectories.RemoveAll(d => string.Equals(d, item.Path, StringComparison.OrdinalIgnoreCase));
-
-            if (isCurrent)
-            {
-                if (!string.IsNullOrEmpty(nextDir))
-                {
-                    _config.GameDirectoryLocation = DirectoryLocation.Custom;
-                    _config.CustomGameDirectory = nextDir;
-                }
-                else
-                {
-                    _config.GameDirectoryLocation = DirectoryLocation.AppData;
-                    _config.CustomGameDirectory = "";
-                }
-            }
-
-            _config.Save();
-            LoadGameDirectories();
-            RefreshCurrentDirectoryDisplay();
-
-            if (isCurrent)
-            {
-                await Task.Run(() =>
-                {
-                    var list = LocalVersionService.GetInstalledVersions(_config.GameDirectory);
-                    _dispatcher.Post(() =>
-                    {
-                        InstalledVersions = new ObservableCollection<Core.Services.Minecraft.InstalledVersion>(list);
-                        InstalledVersionsCount = list.Count;
-                    });
-                });
-
-                if (NavigationStore.MainWindow?.Home is { } homeVm)
-                {
-                    _ = homeVm.LoadLocalAsync();
-                }
-            }
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            Core.Utils.DebugLogger.Error("Directory", $"删除目录权限不足: {item.Path} - {ex.Message}");
-            var removeOnly = await _dialogService.ShowQuestion(
-                "删除失败",
-                $"无法删除该目录，权限不足。\n\n{item.Path}\n\n是否仅从目录列表中移除？（不会删除实际文件夹）");
-            if (removeOnly == DialogResult.Yes)
-            {
-                RemoveDirectoryFromList(item, isCurrent);
-            }
-        }
-        catch (IOException ex)
-        {
-            Core.Utils.DebugLogger.Error("Directory", $"删除目录IO异常: {item.Path} - {ex.Message}");
-            var removeOnly = await _dialogService.ShowQuestion(
-                "删除失败",
-                $"文件被占用或无法访问，无法删除该目录。\n\n{item.Path}\n\n是否仅从目录列表中移除？（不会删除实际文件夹）");
-            if (removeOnly == DialogResult.Yes)
-            {
-                RemoveDirectoryFromList(item, isCurrent);
-            }
+            RemoveDirectoryFromList(item, isCurrent);
         }
         catch (Exception ex)
         {
-            Core.Utils.DebugLogger.Error("Directory", $"删除目录失败: {item.Path} - {ex.Message}");
-            var removeOnly = await _dialogService.ShowQuestion(
-                "删除失败",
-                $"删除目录时出错: {ex.Message}\n\n是否仅从目录列表中移除？（不会删除实际文件夹）");
-            if (removeOnly == DialogResult.Yes)
-            {
-                RemoveDirectoryFromList(item, isCurrent);
-            }
+            Core.Utils.DebugLogger.Error("Directory", $"移除目录失败: {item.Path} - {ex.Message}");
+            _notificationService.Show("移除失败", ex.Message, NotificationType.Error);
         }
         finally
         {
@@ -406,11 +326,16 @@ public partial class VersionDownloadViewModel : ViewModelBase
     private void RemoveDirectoryFromList(GameDirectoryItem item, bool isCurrent)
     {
         _config = LauncherConfig.Load();
+
+        // ⚠️ nextDir 必须在同一份副本上算出来：FindNextAvailableDirectory 早先会自己
+        // LauncherConfig.Load() 并写回 _config 字段，把下面这行 RemoveAll 的结果整个丢掉 ——
+        // 于是"移除当前正在使用的目录"这一项永远删不掉（列表里那行原地复活、当前目录却已经切走）。
+        var nextDir = isCurrent ? FindNextAvailableDirectory(_config.CustomGameDirectories, item.Path) : null;
+
         _config.CustomGameDirectories.RemoveAll(d => string.Equals(d, item.Path, StringComparison.OrdinalIgnoreCase));
 
         if (isCurrent)
         {
-            var nextDir = FindNextAvailableDirectory(item.Path);
             if (!string.IsNullOrEmpty(nextDir))
             {
                 _config.GameDirectoryLocation = DirectoryLocation.Custom;
@@ -437,13 +362,17 @@ public partial class VersionDownloadViewModel : ViewModelBase
             }
         }
 
-        _notificationService.Show("已移除", "目录已从列表中移除（实际文件夹未删除）", NotificationType.Success);
+        _notificationService.Show("已移除", "目录已从列表中移除（磁盘上的文件夹未删除）", NotificationType.Success);
     }
 
-    private string? FindNextAvailableDirectory(string excludingPath)
+    /// <summary>
+    /// 从给定目录列表里挑一个仍然可用的（排除 excludingPath）。
+    /// 刻意做成静态、只读传入列表：调用方可能刚在同一份配置副本上做过修改，
+    /// 这里绝不能再去 Load 一份新配置写回 <see cref="_config"/>（那会把改动覆盖掉）。
+    /// </summary>
+    private static string? FindNextAvailableDirectory(IReadOnlyList<string> customDirectories, string excludingPath)
     {
-        _config = LauncherConfig.Load();
-        var validDirs = _config.CustomGameDirectories
+        var validDirs = customDirectories
             .Where(d => !string.Equals(d, excludingPath, StringComparison.OrdinalIgnoreCase))
             .Where(Directory.Exists)
             .ToList();
@@ -456,35 +385,6 @@ public partial class VersionDownloadViewModel : ViewModelBase
             return defaultDir;
 
         return null;
-    }
-
-    private static long GetDirectorySize(string path)
-    {
-        try
-        {
-            var dirInfo = new DirectoryInfo(path);
-            return dirInfo.EnumerateFiles("*", SearchOption.AllDirectories).Sum(f =>
-            {
-                try { return f.Length; }
-                catch { return 0; }
-            });
-        }
-        catch
-        {
-            return 0;
-        }
-    }
-
-    private static string FormatFileSize(long bytes)
-    {
-        return bytes switch
-        {
-            >= 1073741824 => $"{bytes / 1073741824.0:F2} GB",
-            >= 1048576 => $"{bytes / 1048576.0:F1} MB",
-            >= 1024 => $"{bytes / 1024.0:F0} KB",
-            > 0 => $"{bytes} B",
-            _ => "0 B"
-        };
     }
 
     [RelayCommand]

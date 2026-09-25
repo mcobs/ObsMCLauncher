@@ -519,11 +519,11 @@
                               VerticalAlignment="Center"
                               Margin="0,0,8,0"
                               Classes="ghost"
-                              ToolTip.Tip="删除目录（不可恢复）"
+                              ToolTip.Tip="从列表中移除（不删除文件夹）"
                               IsVisible="{Binding IsDeletable}"
                               Command="{Binding #Root.((vm:VersionDownloadViewModel)DataContext).RemoveDirectoryCommand}"
                               CommandParameter="{Binding}">
-                        <Path Data="M19 4H15.5L14.5 3H9.5L8.5 4H5V6H19M6 19C6 20.1 6.9 21 8 21H16C17.1 21 18 20.1 18 19V7H6V19Z"
+                        <Path Data="M12 2C6.478 2 2 6.478 2 12C2 17.522 6.478 22 12 22C17.522 22 22 17.522 22 12C22 6.478 17.522 2 12 2M17 13H7V11H17V13Z"
                               Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource TextBrush}"
                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
                       </Button>
