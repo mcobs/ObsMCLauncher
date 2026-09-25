@@ -62,7 +62,6 @@
                MaxHeight="160"
                FontFamily="Consolas"
                FontSize="11"
-               Watermark="-XX:+UseG1GC -Xss1M"
                HorizontalAlignment="Stretch"/>
     </StackPanel>
 
