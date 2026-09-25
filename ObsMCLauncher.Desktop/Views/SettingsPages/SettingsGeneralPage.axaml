@@ -83,6 +83,91 @@
         </ui:SettingsExpanderItem>
       </ui:SettingsExpander>
 
+      <!-- ===== 通知（原在外观设置页，2026-09 移入通用） ===== -->
+      <ui:SettingsExpander Header="通知" Description="消息提示的显示位置与时长" IsExpanded="True">
+        <ui:SettingsExpander.IconSource>
+          <ui:SymbolIconSource Symbol="Message"/>
+        </ui:SettingsExpander.IconSource>
+
+        <ui:SettingsExpanderItem Content="通知样式" Description="选择通知消息的显示位置和样式">
+          <ui:SettingsExpanderItem.IconSource>
+            <ui:SymbolIconSource Symbol="Comment"/>
+          </ui:SettingsExpanderItem.IconSource>
+        </ui:SettingsExpanderItem>
+
+        <ui:SettingsExpanderItem>
+          <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Stretch">
+            <!-- 居中通知预览（真实 InfoBar） -->
+            <Border Width="220" CornerRadius="8" BorderThickness="2"
+                    BorderBrush="{Binding NotificationPosition, Converter={x:Static converters:NotificationPositionToBorderConverter.Instance}, ConverterParameter=Center}">
+              <Button Classes="ghost" Padding="0"
+                      Command="{Binding SelectCenterNotificationCommand}">
+                <StackPanel>
+                  <Border Height="110" Padding="10" CornerRadius="8,8,0,0"
+                          Background="{DynamicResource SurfaceElevatedBrush}"
+                          BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
+                    <ui:InfoBar IsOpen="True" IsClosable="False"
+                                Severity="Informational"
+                                Title="通知标题" Message="通知内容"
+                                VerticalAlignment="Top" HorizontalAlignment="Stretch"/>
+                  </Border>
+                  <Border Padding="8,6" Background="{DynamicResource SurfaceBrush}" CornerRadius="0,0,8,8">
+                    <StackPanel HorizontalAlignment="Center">
+                      <TextBlock Text="居中显示" FontSize="11" FontWeight="Medium"/>
+                      <TextBlock Text="窗口顶部居中" FontSize="9"
+                                 Foreground="{DynamicResource TextSecondaryBrush}"/>
+                    </StackPanel>
+                  </Border>
+                </StackPanel>
+              </Button>
+            </Border>
+
+            <!-- 右下角通知预览（真实 InfoBar） -->
+            <Border Width="220" CornerRadius="8" BorderThickness="2"
+                    BorderBrush="{Binding NotificationPosition, Converter={x:Static converters:NotificationPositionToBorderConverter.Instance}, ConverterParameter=BottomRight}">
+              <Button Classes="ghost" Padding="0"
+                      Command="{Binding SelectBottomRightNotificationCommand}">
+                <StackPanel>
+                  <Border Height="110" Padding="10" CornerRadius="8,8,0,0"
+                          Background="{DynamicResource SurfaceElevatedBrush}"
+                          BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
+                    <ui:InfoBar IsOpen="True" IsClosable="False"
+                                Severity="Success"
+                                Title="通知标题" Message="通知内容"
+                                Width="150"
+                                VerticalAlignment="Bottom" HorizontalAlignment="Right"/>
+                  </Border>
+                  <Border Padding="8,6" Background="{DynamicResource SurfaceBrush}" CornerRadius="0,0,8,8">
+                    <StackPanel HorizontalAlignment="Center">
+                      <TextBlock Text="右下角显示" FontSize="11" FontWeight="Medium"/>
+                      <TextBlock Text="窗口右下角" FontSize="9"
+                                 Foreground="{DynamicResource TextSecondaryBrush}"/>
+                    </StackPanel>
+                  </Border>
+                </StackPanel>
+              </Button>
+            </Border>
+          </StackPanel>
+        </ui:SettingsExpanderItem>
+
+        <ui:SettingsExpanderItem Content="自动关闭时间" Description="右下角通知自动关闭时间（3-30 秒）"
+                                 IsVisible="{Binding NotificationPosition, Converter={x:Static converters:NotificationPositionToVisibilityConverter.Instance}}">
+          <ui:SettingsExpanderItem.IconSource>
+            <ui:SymbolIconSource Symbol="Clock"/>
+          </ui:SettingsExpanderItem.IconSource>
+          <ui:SettingsExpanderItem.Footer>
+            <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+              <ui:NumberBox Value="{Binding NotificationAutoCloseSeconds}"
+                            Minimum="3" Maximum="30" SmallChange="1"
+                            SpinButtonPlacementMode="Inline"
+                            Width="140"/>
+              <TextBlock Text="秒" FontSize="12" VerticalAlignment="Center"
+                         Foreground="{DynamicResource TextSecondaryBrush}"/>
+            </StackPanel>
+          </ui:SettingsExpanderItem.Footer>
+        </ui:SettingsExpanderItem>
+      </ui:SettingsExpander>
+
     </StackPanel>
   </ScrollViewer>
 
