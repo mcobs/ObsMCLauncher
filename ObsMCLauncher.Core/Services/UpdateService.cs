@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.IO;
 using System.Net.Http;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -310,6 +311,64 @@ public static class UpdateService
     public static void OpenLatestReleasePage()
     {
         OpenReleasePage("https://github.com/mcobs/ObsMCLauncher/releases/latest");
+    }
+
+    // ---- 以下为启动时的后台静默检查（对应设置里的「自动检查更新」开关）----
+
+    /// <summary>后台静默检查的节流间隔</summary>
+    public static readonly TimeSpan BackgroundCheckInterval = TimeSpan.FromHours(12);
+
+    /// <summary>后台检查时间戳缓存路径（可随时删除）</summary>
+    internal static string GetBackgroundCheckStatePath() =>
+        Path.Combine(VersionInfo.GetAppBaseDirectory(), "OMCL", "cache", "update", "last-check.json");
+
+    /// <summary>后台静默检查是否到期（节流 <see cref="BackgroundCheckInterval"/>）</summary>
+    public static bool ShouldCheckInBackground() =>
+        ShouldCheckInBackground(GetBackgroundCheckStatePath(), DateTime.Now);
+
+    /// <summary>后台静默检查是否到期（路径与时间可注入，便于测试）</summary>
+    internal static bool ShouldCheckInBackground(string statePath, DateTime now)
+    {
+        try
+        {
+            if (!File.Exists(statePath)) return true;
+
+            var state = JsonSerializer.Deserialize<BackgroundCheckState>(File.ReadAllText(statePath));
+            if (state == null) return true;
+
+            return now - state.CheckedAt >= BackgroundCheckInterval;
+        }
+        catch
+        {
+            // 缓存读不出来（损坏/无权限）不应该挡住检查
+            return true;
+        }
+    }
+
+    /// <summary>记下本次后台检查的时间</summary>
+    public static void MarkCheckedInBackground() =>
+        MarkCheckedInBackground(GetBackgroundCheckStatePath(), DateTime.Now);
+
+    /// <summary>记下后台检查时间（路径与时间可注入，便于测试）</summary>
+    internal static void MarkCheckedInBackground(string statePath, DateTime now)
+    {
+        try
+        {
+            var dir = Path.GetDirectoryName(statePath);
+            if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
+
+            File.WriteAllText(statePath,
+                JsonSerializer.Serialize(new BackgroundCheckState { CheckedAt = now }));
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Warn("Update", $"写入后台检查时间戳失败: {ex.Message}");
+        }
+    }
+
+    private sealed class BackgroundCheckState
+    {
+        public DateTime CheckedAt { get; set; }
     }
 
     // ---- 以下为降级方案：自研GitHub API检查 ----

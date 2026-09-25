@@ -155,4 +155,60 @@ public class UpdateServiceTests
         Assert.Equal("app.zip", release.Assets[0].Name);
         Assert.Equal(1024, release.Assets[0].Size);
     }
+
+    // ---- 后台静默检查节流 ----
+
+    /// <summary>生成一个互不干扰的临时状态文件路径（父目录尚不存在）</summary>
+    private static string NewTempStatePath() =>
+        Path.Combine(Path.GetTempPath(), "omcl-update-tests", Guid.NewGuid().ToString("N"), "last-check.json");
+
+    [Fact]
+    public void ShouldCheckInBackground_NoStateFile_ReturnsTrue()
+    {
+        Assert.True(UpdateService.ShouldCheckInBackground(NewTempStatePath(), DateTime.Now));
+    }
+
+    [Fact]
+    public void ShouldCheckInBackground_JustChecked_ReturnsFalse()
+    {
+        var path = NewTempStatePath();
+        var now = DateTime.Now;
+
+        UpdateService.MarkCheckedInBackground(path, now);
+
+        Assert.False(UpdateService.ShouldCheckInBackground(path, now.AddMinutes(1)));
+        Assert.False(UpdateService.ShouldCheckInBackground(path, now.AddHours(11)));
+    }
+
+    [Fact]
+    public void ShouldCheckInBackground_IntervalElapsed_ReturnsTrue()
+    {
+        var path = NewTempStatePath();
+        var now = DateTime.Now;
+
+        UpdateService.MarkCheckedInBackground(path, now);
+
+        Assert.True(UpdateService.ShouldCheckInBackground(path, now.AddHours(12).AddSeconds(1)));
+    }
+
+    [Fact]
+    public void ShouldCheckInBackground_CorruptStateFile_ReturnsTrue()
+    {
+        var path = NewTempStatePath();
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllText(path, "not-json");
+
+        Assert.True(UpdateService.ShouldCheckInBackground(path, DateTime.Now));
+    }
+
+    [Fact]
+    public void MarkCheckedInBackground_CreatesMissingDirectory()
+    {
+        var path = NewTempStatePath();
+        Assert.False(File.Exists(path));
+
+        UpdateService.MarkCheckedInBackground(path, DateTime.Now);
+
+        Assert.True(File.Exists(path));
+    }
 }

@@ -151,6 +151,13 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         // 下面 SettingsViewModel 构造时还会再推一次同样的快照，Apply 是幂等的（重排一次而已）。
         Wallpaper.Apply(config);
 
+        // 启动器自身的更新检查（对应设置里的「自动检查更新」开关）。
+        // 首次启动向导还没走完时跳过：那会儿主窗口还没显示，通知发出来也没人看得见。
+        if (config.WelcomeCompleted)
+        {
+            _ = CheckLauncherUpdatesInBackgroundAsync(config);
+        }
+
         AccountManagement = new AccountManagementViewModel();
         VersionDownload = new VersionDownloadViewModel(dispatcher, Notifications);
         Settings = new SettingsViewModel(Notifications, _homeViewModel);
@@ -270,6 +277,37 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         catch (Exception ex)
         {
             DebugLogger.Warn("MainWindow", $"后台检查插件更新失败: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 启动后台静默检查启动器自身的更新（12 小时节流，只发通知不自动下载）。
+    /// 对应设置里的「自动检查更新」开关，关掉后连请求都不会发出去。
+    /// </summary>
+    private async Task CheckLauncherUpdatesInBackgroundAsync(LauncherConfig config)
+    {
+        try
+        {
+            if (!config.AutoCheckUpdate) return;
+            if (!ObsMCLauncher.Core.Services.UpdateService.ShouldCheckInBackground()) return;
+
+            // 让首屏与壁纸先跑完再打网络，避免拖慢启动
+            await Task.Delay(TimeSpan.FromSeconds(10));
+
+            var result = await ObsMCLauncher.Core.Services.UpdateService.CheckForUpdatesAsync();
+            ObsMCLauncher.Core.Services.UpdateService.MarkCheckedInBackground();
+
+            if (result == null) return;
+
+            // 自动更新不可用时（便携版 / Velopack 初始化失败）只能引导用户去下载页
+            var hint = result.CanAutoUpdate ? "可前往「更多 → 关于」更新" : "可前往「更多 → 关于」查看";
+            Notifications.Show("发现新版本",
+                $"新版本 {result.Version} 已发布，{hint}",
+                NotificationType.Info, 8);
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Warn("MainWindow", $"后台检查启动器更新失败: {ex.Message}");
         }
     }
 

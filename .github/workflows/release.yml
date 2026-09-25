@@ -154,7 +154,11 @@ jobs:
       run: |
         rid="${{ matrix.rid }}"
         channel="${{ steps.version.outputs.channel }}"
-        vpk download github --repoUrl https://github.com/mcobs/ObsMCLauncher --token ${{ secrets.RELEASE_TOKEN }} -c "${rid}-${channel}" -o ./vpk-prev || echo "No previous release found, skipping delta"
+        # 必须下载到与 vpk pack 相同的 -o 目录：Velopack 只在「输出目录里存在上一版本的
+        # 完整包」时才生成 delta。之前下载到 ./vpk-prev、打包到 ./vpk-output，两个目录
+        # 对不上，导致 delta 从未产出，用户每次更新都只能下全量包。
+        mkdir -p ./vpk-build
+        vpk download github --repoUrl https://github.com/mcobs/ObsMCLauncher --token ${{ secrets.RELEASE_TOKEN }} -c "${rid}-${channel}" -o ./vpk-build || echo "No previous release found, skipping delta"
 
     - name: Pack with Velopack
       shell: bash
@@ -176,7 +180,8 @@ jobs:
 
         # 通道 = RID + 更新通道（如 win-x64-stable / win-x64-pre），
         # 既隔离不同架构产物，又让客户端 ExplicitChannel 能定位对应通道的版本树
-        pack_args=(-u ObsMCLauncher -v "${{ steps.version.outputs.version_number }}" -p "./publish/${{ matrix.rid }}" -e "$main_exe" -o ./vpk-output --delta BestSpeed -c "${rid}-${channel}" -r "$rid" -i "$icon_path")
+        # 输出目录与上一步 vpk download 保持一致，否则 --delta 找不到基准包
+        pack_args=(-u ObsMCLauncher -v "${{ steps.version.outputs.version_number }}" -p "./publish/${{ matrix.rid }}" -e "$main_exe" -o ./vpk-build --delta BestSpeed -c "${rid}-${channel}" -r "$rid" -i "$icon_path")
 
         # Windows才需要--noInst，Linux/macOS不生成安装程序
         if [[ "$rid" == win-* ]]; then
@@ -185,25 +190,37 @@ jobs:
 
         vpk pack "${pack_args[@]}"
 
-    - name: List vpk output and rename
+    - name: Prune stale packages, rename and rebuild feed
       shell: bash
       run: |
         version="${{ steps.version.outputs.version }}"
+        version_number="${{ steps.version.outputs.version_number }}"
         rid="${{ matrix.rid }}"
         channel="${{ steps.version.outputs.channel }}"
-        echo "=== vpk-output 目录内容 ==="
-        ls -la ./vpk-output/ || echo "目录不存在"
 
-        # 重命名便携包
+        echo "=== vpk-build 目录内容（含用于生成 delta 的上一版本完整包）==="
+        ls -la ./vpk-build/ || echo "目录不存在"
+
+        # vpk pack 为了生成 delta 必须能在输出目录里看见上一版本的完整包，因此这些旧包会
+        # 残留下来、也会被写进 feed。Velopack 要求一个 release 只含 1 个 full + 1 个 delta，
+        # 所以先删掉不属于本次版本的 nupkg（本次的 full 与 delta 文件名都带版本号）。
+        find ./vpk-build -maxdepth 1 -name "*.nupkg" ! -name "*-${version_number}-*" -print -delete
+
+        # 重命名便携包（在打包目录里做，重建 feed 时会一并带过去）
         if [[ "$rid" == linux-* ]]; then
-          for f in ./vpk-output/ObsMCLauncher*.AppImage; do
-            [ -f "$f" ] && mv "$f" "./vpk-output/ObsMCLauncher-${version}-${rid}.AppImage"
+          for f in ./vpk-build/ObsMCLauncher*.AppImage; do
+            [ -f "$f" ] && mv "$f" "./vpk-build/ObsMCLauncher-${version}-${rid}.AppImage"
           done
         else
-          for f in ./vpk-output/ObsMCLauncher*Portable*.zip; do
-            [ -f "$f" ] && mv "$f" "./vpk-output/ObsMCLauncher-${version}-${rid}.zip"
+          for f in ./vpk-build/ObsMCLauncher*Portable*.zip; do
+            [ -f "$f" ] && mv "$f" "./vpk-build/ObsMCLauncher-${version}-${rid}.zip"
           done
         fi
+
+        # 删掉旧包后 feed 里仍残留旧版本条目，用 upload local --regenerate 让 vpk 依据目录里
+        # 现存的包重建索引（哈希与大小由 vpk 重算，不要手工改 JSON）
+        rm -rf ./vpk-output
+        vpk upload local -o ./vpk-build -c "${rid}-${channel}" --path ./vpk-output --regenerate
 
         # 兼容旧版客户端：历史版本以纯 RID 为通道（releases.win-x64.json），
         # stable 发布时同步生成旧名 feed，使未升级客户端能找到本次更新（升级后自动迁移到 rid-stable 通道）
@@ -213,7 +230,7 @@ jobs:
           done
         fi
 
-        echo "=== 重命名后 ==="
+        echo "=== 最终输出 ==="
         ls -la ./vpk-output/
 
     - name: Upload artifact
