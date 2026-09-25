@@ -212,6 +212,13 @@ public class LauncherConfig
     /// <summary>主内容壁纸透明度（0-1）</summary>
     public double WallpaperOpacity { get; set; } = 0.35;
 
+    /// <summary>
+    /// 背景模糊半径（DIP，0 = 不模糊，默认 0）。
+    /// 对静态图与动图**统一生效**，且在最终像素空间进行——不会因为拉伸倍率而变强变弱。
+    /// 取值边界见 <c>WallpaperSnapshot.MaxBlurRadius</c>（UI 滑块与渲染层共用同一对边界）。
+    /// </summary>
+    public double WallpaperBlurRadius { get; set; } = 0;
+
     /// <summary>壁纸显示方式：0=Fill 1=Uniform 2=UniformToFill 3=None(原尺寸)</summary>
     public int WallpaperStretch { get; set; } = 1;
 

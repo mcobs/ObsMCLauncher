@@ -35,6 +35,9 @@ public class WallpaperConfigTests
         Assert.False(c.WallpaperExtendToNav);
         Assert.Equal(0.7, c.NavBackgroundOpacity);
 
+        // 背景模糊默认关闭：老配置读进来必须与"以前一模一样"，不能凭新字段改变观感
+        Assert.Equal(0, c.WallpaperBlurRadius);
+
         // 新增的 8 项
         Assert.True(c.WallpaperPlayAnimated);
         Assert.Equal(24, c.WallpaperMaxFps);
@@ -117,6 +120,20 @@ public class WallpaperConfigTests
         Assert.Equal(0.5, c.WallpaperOpacity);
         Assert.Empty(c.WallpaperItems);
         Assert.False(c.IsWallpaperActive);
+    }
+
+    [Fact]
+    public void WallpaperBlurRadius_RoundTrip_AndAbsentKeyFallsBackToOff()
+    {
+        // 新字段必须能原样存取
+        var c = new LauncherConfig { WallpaperBlurRadius = 24 };
+        var back = JsonSerializer.Deserialize<LauncherConfig>(JsonSerializer.Serialize(c))!;
+        Assert.Equal(24, back.WallpaperBlurRadius);
+
+        // 老配置文件里没有这个键 → 反序列化后必须是 0（模糊默认关），
+        // 否则升级启动器会凭空把用户原来的清晰背景变糊
+        var legacy = JsonSerializer.Deserialize<LauncherConfig>("""{ "WallpaperOpacity": 0.5 }""")!;
+        Assert.Equal(0, legacy.WallpaperBlurRadius);
     }
 
     [Fact]

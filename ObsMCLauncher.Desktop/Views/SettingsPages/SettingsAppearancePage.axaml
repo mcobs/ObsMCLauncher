@@ -372,7 +372,7 @@
           换成了"栏内拥挤"。所以做成**嵌套折叠栏**：默认收起只占三行，展开哪组看哪组。
         -->
         <ui:SettingsExpander Header="显示"
-                             Description="壁纸的透明程度、拉伸方式与导航栏延伸"
+                             Description="壁纸的透明度、模糊程度、拉伸方式与导航栏延伸"
                              IsExpanded="False">
           <ui:SettingsExpander.IconSource>
             <ui:SymbolIconSource Symbol="View"/>
@@ -386,6 +386,19 @@
                         Value="{Binding WallpaperOpacity, Mode=TwoWay}"/>
                 <TextBlock Text="{Binding WallpaperOpacity, StringFormat={}{0:P0}}"
                            FontSize="12" VerticalAlignment="Center"
+                           Foreground="{DynamicResource TextSecondaryBrush}"/>
+              </StackPanel>
+            </ui:SettingsExpanderItem.Footer>
+          </ui:SettingsExpanderItem>
+
+          <ui:SettingsExpanderItem Content="背景模糊" Description="模糊背景图片，让上层内容更清晰">
+            <ui:SettingsExpanderItem.Footer>
+              <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                <Slider Width="150" Minimum="0" Maximum="60" TickFrequency="2"
+                        IsSnapToTickEnabled="True"
+                        Value="{Binding WallpaperBlurRadius, Mode=TwoWay}"/>
+                <TextBlock Text="{Binding WallpaperBlurLabel, Mode=OneWay}"
+                           FontSize="12" VerticalAlignment="Center" MinWidth="42"
                            Foreground="{DynamicResource TextSecondaryBrush}"/>
               </StackPanel>
             </ui:SettingsExpanderItem.Footer>

@@ -118,6 +118,8 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable, IWallpaperC
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperPauseOnUnfocused)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperPauseOnBattery)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperOpacity)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperBlurRadius)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperBlurLabel)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperStretch)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperExtendToNav)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(NavBackgroundOpacity)));
@@ -487,6 +489,34 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable, IWallpaperC
             }
         }
     }
+
+    /// <summary>
+    /// 背景模糊半径（DIP，0 = 关闭）。
+    /// </summary>
+    /// <remarks>
+    /// 模糊对静态图与动图统一生效，滑到 0 就等价于"没开这个功能"——
+    /// 渲染层会整个摘掉效果，不会留下一次全屏离屏合成。
+    /// </remarks>
+    public double WallpaperBlurRadius
+    {
+        get => _config.WallpaperBlurRadius;
+        set
+        {
+            var v = Math.Clamp(value, 0, WallpaperSnapshot.MaxBlurRadius);
+            if (Math.Abs(_config.WallpaperBlurRadius - v) < 0.01) return;
+
+            _config.WallpaperBlurRadius = v;
+            OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperBlurRadius)));
+            // 文案是计算属性，必须跟着发一次通知，否则滑块动了、标签还停在旧值
+            OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperBlurLabel)));
+            ApplyWallpaper();
+            AutoSave();
+        }
+    }
+
+    /// <summary>模糊半径的展示文案；0 时说「关闭」而不是「0 px」</summary>
+    public string WallpaperBlurLabel
+        => _config.WallpaperBlurRadius <= 0.01 ? "关闭" : $"{_config.WallpaperBlurRadius:0} px";
 
     public bool WallpaperExtendToNav
     {
@@ -2000,6 +2030,8 @@ public partial class SettingsViewModel : ViewModelBase, IDisposable, IWallpaperC
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(AnimationLevel)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperEnabled)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperOpacity)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperBlurRadius)));
+        OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperBlurLabel)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperStretch)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(WallpaperExtendToNav)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(NavBackgroundOpacity)));

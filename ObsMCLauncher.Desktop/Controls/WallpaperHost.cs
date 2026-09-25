@@ -204,7 +204,7 @@ public sealed class WallpaperHost : Panel
 
         // 内容没变、只是外观参数被重新推过来（拖透明度/导航栏让位滑杆时会高频发生）：
         // 只更新外观，不重建解码会话——否则动图会被反复拽回第 0 帧
-        if (_active.Request is { } current && IsSameContent(current, request))
+        if (_active.Request is { } current && current.IsSameContentAs(request))
         {
             _active.UpdateAppearance(request);
             return;
@@ -243,25 +243,6 @@ public sealed class WallpaperHost : Panel
             previous.Clear();
         }, duration + TimeSpan.FromMilliseconds(80));
     }
-
-    /// <summary>
-    /// 两份请求是否指向"同一段内容"（同文件 + 同样的解码与播放参数）。
-    /// </summary>
-    /// <remarks>
-    /// 刻意不比较 <see cref="WallpaperRenderRequest.Opacity"/> 与 <c>TransitionMs</c>：
-    /// 这两个是纯外观参数，改了不需要重建解码会话。
-    /// <see cref="WallpaperRenderRequest.Info"/> 是普通类（引用相等），但它由
-    /// <c>BackgroundResolver</c> 按 {路径, 大小, 最后写入} 缓存，同一文件在同一时刻只会有一个实例，
-    /// 所以引用相等恰好就是"文件内容没换"的判据。
-    /// </remarks>
-    private static bool IsSameContent(WallpaperRenderRequest a, WallpaperRenderRequest b)
-        => string.Equals(a.Path, b.Path, StringComparison.Ordinal)
-           && a.IsAnimated == b.IsAnimated
-           && a.PlayAnimated == b.PlayAnimated
-           && a.Stretch == b.Stretch
-           && a.MaxFps == b.MaxFps
-           && a.MaxDecodeEdge == b.MaxDecodeEdge
-           && ReferenceEquals(a.Info, b.Info);
 }
 
 /// <summary>
@@ -286,6 +267,14 @@ internal sealed class WallpaperLayer : Panel
     private Bitmap? _bitmap;
     private bool _isPaused;
 
+    /// <summary>当前生效的模糊效果；<c>null</c> 表示未模糊</summary>
+    /// <remarks>
+    /// 必须复用同一个实例改 <see cref="BlurEffect.Radius"/>，而不是每次重新 new：
+    /// 拖滑块时每格都会走一遍这里，反复 new 会让合成器每帧都重建效果对象。
+    /// <see cref="BlurEffect"/> 实现了 <c>IMutableEffect</c>，改属性就是原地生效。
+    /// </remarks>
+    private BlurEffect? _blur;
+
     public WallpaperLayer()
     {
         IsHitTestVisible = false;
@@ -305,6 +294,7 @@ internal sealed class WallpaperLayer : Panel
     public void SetRequest(WallpaperRenderRequest request)
     {
         Request = request;
+        ApplyBlur(request.BlurRadius);
 
         if (request.IsAnimated)
         {
@@ -338,6 +328,46 @@ internal sealed class WallpaperLayer : Panel
         Request = request;
         _image.Stretch = request.Stretch;
         _presenter.Stretch = request.Stretch;
+        ApplyBlur(request.BlurRadius);
+    }
+
+    /// <summary>
+    /// 把模糊设在**这一层**上，而不是分别设在 <see cref="Image"/> 与动图呈现器上。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 三点原因：① 静态图（Avalonia <c>Image</c>）与动图（合成器自绘的 <c>SKImage</c>）是两条完全不同的
+    /// 绘制路径，把效果挂在本层就只需要写一次，也不必去动动图的逐帧绘制代码；
+    /// ② 效果在**最终像素空间**生效，与拉伸倍率无关——若改成模糊源图，同一张图在「裁剪填充」和
+    /// 「原始大小」下的实际模糊量会差好几倍；
+    /// ③ Avalonia 的容器视觉把效果包在**子级渲染之外**（<c>ServerCompositionContainerVisual</c>），
+    /// 所以效果边界是子内容的并集，模糊能自然溢出到内容之外，不会在贴边处被裁成硬边。
+    /// </para>
+    /// <para>
+    /// 半径为 0 时必须把效果整个摘掉：留一个"半径为 0 的效果"同样会让合成器开一层离屏缓冲，
+    /// 白白多一次全屏合成——绝大多数用户都不开模糊，这是唯一不能省的一步。
+    /// </para>
+    /// </remarks>
+    private void ApplyBlur(double radius)
+    {
+        var value = Math.Clamp(radius, 0, WallpaperSnapshot.MaxBlurRadius);
+
+        if (value <= 0)
+        {
+            _blur = null;
+            Effect = null;
+            return;
+        }
+
+        if (_blur is null)
+        {
+            _blur = new BlurEffect { Radius = value };
+            Effect = _blur;
+        }
+        else
+        {
+            _blur.Radius = value;
+        }
     }
 
     public void SetPaused(bool paused)
@@ -355,6 +385,10 @@ internal sealed class WallpaperLayer : Panel
         _image.IsVisible = false;
         _image.Source = null;
         DisposeBitmap();
+
+        // 空层没有内容，模糊留着只是白占一层离屏缓冲
+        _blur = null;
+        Effect = null;
     }
 
     /// <summary>

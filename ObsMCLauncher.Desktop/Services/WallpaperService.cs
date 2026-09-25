@@ -33,11 +33,25 @@ public sealed class WallpaperService : INotifyPropertyChanged, IDisposable
 {
     private const string LogService = "Wallpaper";
 
+    /// <summary>
+    /// "只改外观"的日志合并窗口（毫秒）。
+    /// </summary>
+    /// <remarks>
+    /// 拖滑块时每 10~30ms 就推一次快照，窗口只要比两次触摸事件的间隔长就能把它们收成一条；
+    /// 取 700ms 是为了让"松手后马上就能看到那条日志"，同时不至于把两次独立调整也并到一起。
+    /// </remarks>
+    private const int AppearanceLogQuietMs = 700;
+
     private readonly PowerStatusMonitor _power = new();
     private readonly WallpaperRotationScheduler _scheduler = new();
     private readonly List<WallpaperRejection> _rejections = new();
 
     private WallpaperSnapshot? _snapshot;
+
+    // 日志合并状态：上一条已经写出去的请求（用来算净变化）、挂起的那一条、以及它的定时器
+    private WallpaperRenderRequest? _lastLoggedRequest;
+    private (WallpaperRenderRequest Request, string Delta)? _pendingAppearanceLog;
+    private DispatcherTimer? _appearanceLogTimer;
 
     // 轮播状态：当前快照下"通过探测"的候选、决定换哪张的纯逻辑、以及正显示的下标
     private List<WallpaperCandidate> _candidates = [];
@@ -164,6 +178,10 @@ public sealed class WallpaperService : INotifyPropertyChanged, IDisposable
             _scheduler.Stop();
 
             Request = null;
+            // 壁纸整体撤掉了：挂起的合并日志与"上一条日志"都失去对照意义，清掉
+            CancelPendingAppearanceLog();
+            _lastLoggedRequest = null;
+
             LastError = resolved.Error;
             ApplyNavigationResources(snapshot, active: false);
             Raise(nameof(Request));
@@ -172,14 +190,38 @@ public sealed class WallpaperService : INotifyPropertyChanged, IDisposable
             return;
         }
 
+        var previousCandidates = _candidates;
         _candidates = resolved.Candidates;
 
         // 轮播只在候选集规模已知时才有意义，所以起点由这里（而非探测线程）决定
         _plan = new WallpaperRotationPlan(_candidates.Count, snapshot.SlideIntervalSeconds, snapshot.SlideMode);
-        _currentIndex = Math.Max(0, _plan.InitialIndex());
+
+        // **候选集没变（例如只是拖了透明度/模糊）时必须保留当前项**。
+        // 重掷起点会让壁纸在拖滑块时乱跳：顺序模式下跳回第一张，随机模式下每格换一张。
+        // 而且"乱跳"本质是换图，日志合并也就无从谈起——每次推送都会变成一次内容变化。
+        _currentIndex = HasSameCandidates(previousCandidates, _candidates)
+            ? Math.Clamp(_currentIndex, 0, _candidates.Count - 1)
+            : Math.Max(0, _plan.InitialIndex());
 
         ShowCurrent(snapshot);
         ScheduleNext(snapshot);
+    }
+
+    /// <summary>
+    /// 候选文件列表是否没变（路径序列逐项相等；顺序敏感——顺序即轮播顺序）。
+    /// </summary>
+    /// <remarks>
+    /// 只比路径、不比 <see cref="AnimatedImageInfo"/>：文件本身被换掉时当下标也该保留
+    /// （换的是同一张图的内容，不是换了一张图）。
+    /// </remarks>
+    private static bool HasSameCandidates(IReadOnlyList<WallpaperCandidate> a, IReadOnlyList<WallpaperCandidate> b)
+    {
+        if (a.Count != b.Count) return false;
+
+        for (var i = 0; i < a.Count; i++)
+            if (!string.Equals(a[i].Path, b[i].Path, StringComparison.Ordinal)) return false;
+
+        return true;
     }
 
     /// <summary>把当前项推给呈现层（UI 线程）；首次应用与轮播切换共用这条路径</summary>
@@ -188,12 +230,14 @@ public sealed class WallpaperService : INotifyPropertyChanged, IDisposable
         if (_currentIndex < 0 || _currentIndex >= _candidates.Count) return;
 
         var candidate = _candidates[_currentIndex];
+        var previous = Request;
 
         Request = new WallpaperRenderRequest(
             candidate.Path,
             candidate.Info,
             WallpaperSnapshot.ToStretch(snapshot.Stretch),
             Math.Clamp(snapshot.Opacity, 0, 1),
+            snapshot.EffectiveBlurRadius,
             snapshot.ShouldPlayAnimated,
             Math.Clamp(snapshot.MaxFps, 1, 60),
             snapshot.MaxDecodeEdge,
@@ -204,9 +248,119 @@ public sealed class WallpaperService : INotifyPropertyChanged, IDisposable
         Raise(nameof(Request));
         Raise(nameof(IsActive));
 
+        ReportApplied(candidate, previous);
+    }
+
+    /// <summary>
+    /// 写"已应用"日志——**内容与外观分开处理**。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 拖「不透明度」「背景模糊」这类滑块时，每过一格都会推一次快照（这是刻意的：拖动过程中要实时看到效果），
+    /// 但"每推一次写一条日志"会让调试输出被刷爆（一次拖动最多 30 格 = 30 条，
+    /// 而 <c>DebugLogger</c> 最终落到 <c>OutputDebugString</c>，调试器每条都要处理，拖动会明显发涩）。
+    /// </para>
+    /// <list type="bullet">
+    /// <item><b>内容真的换了</b>（换图 / 轮播切换 / 首次应用）→ 立刻写一条，行为与以前完全一致；</item>
+    /// <item><b>只改了外观</b>（<see cref="WallpaperRenderRequest.IsSameContentAs"/> 为真）→ 不逐条写，
+    /// 合并成"安静 <see cref="AppearanceLogQuietMs"/> 毫秒后"的一条，内容是相对上一条日志的**净变化**；</item>
+    /// <item><b>什么都没变</b>（例如只改了「扩展到导航栏」，请求原封不动）→ 一条都不写。</item>
+    /// </list>
+    /// <para>
+    /// 合并只影响日志，请求仍然逐次推送——**拖动过程中的实时效果不变**。
+    /// </para>
+    /// </remarks>
+    private void ReportApplied(WallpaperCandidate candidate, WallpaperRenderRequest? previous)
+    {
+        var isSameContent = previous is not null && Request!.IsSameContentAs(previous);
+
+        if (!isSameContent)
+        {
+            // 内容换了：挂起的合并日志直接作废（下面这条已经含最新值），并立刻写日志
+            CancelPendingAppearanceLog();
+            _lastLoggedRequest = Request;
+            DebugLogger.Info(LogService, DescribeApplied(candidate, Request!));
+            return;
+        }
+
+        // 只改外观：与"上一条已写出去的日志"比，没净变化就什么都不写。
+        // 拿 _lastLoggedRequest 而不是 previous 来比，是因为一次拖动里 previous 只差一格，
+        // 逐格比只会得到"这一格改了什么"，而用户想看的是"这次调整总共改了什么"。
+        if (_lastLoggedRequest is null || !CanDiffAppearance(_lastLoggedRequest))
+        {
+            // 上一条日志记的是别的内容（理论上到不了这里）：退化成立刻写一条完整日志
+            CancelPendingAppearanceLog();
+            _lastLoggedRequest = Request;
+            DebugLogger.Info(LogService, DescribeApplied(candidate, Request!));
+            return;
+        }
+
+        if (DescribeAppearanceDelta(_lastLoggedRequest, Request!) is not { Length: > 0 } delta)
+        {
+            CancelPendingAppearanceLog();
+            return;
+        }
+
+        _pendingAppearanceLog = (Request!, delta);
+        _appearanceLogTimer ??= CreateAppearanceLogTimer();
+        _appearanceLogTimer.Stop();
+        _appearanceLogTimer.Start();
+    }
+
+    /// <summary>上一条日志记的是不是"当前这张图"（不同就不该做外观净变化对比）</summary>
+    private bool CanDiffAppearance(WallpaperRenderRequest last)
+        => string.Equals(last.Path, Request?.Path, StringComparison.Ordinal);
+
+    /// <summary>合并窗口到点：把挂起的那一条写出去</summary>
+    private void WritePendingAppearanceLog()
+    {
+        _appearanceLogTimer?.Stop();
+
+        var pending = _pendingAppearanceLog;
+        _pendingAppearanceLog = null;
+        if (pending is not { } entry) return;
+        if (!ReferenceEquals(entry.Request, Request)) return;   // 期间又推了新的（已重新排定）或换图了
+
+        _lastLoggedRequest = entry.Request;
         DebugLogger.Info(LogService,
-            $"壁纸已应用：[{_currentIndex + 1}/{_candidates.Count}] {Path.GetFileName(candidate.Path)}" +
-            $"（{candidate.Info.Describe()}，动画={(Request.IsAnimated ? "开" : "关")}）");
+            $"壁纸外观已更新：{Path.GetFileName(entry.Request.Path)}（{entry.Delta}）");
+    }
+
+    private void CancelPendingAppearanceLog()
+    {
+        _appearanceLogTimer?.Stop();
+        _pendingAppearanceLog = null;
+    }
+
+    private DispatcherTimer CreateAppearanceLogTimer()
+    {
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(AppearanceLogQuietMs) };
+        timer.Tick += (_, _) => WritePendingAppearanceLog();
+        return timer;
+    }
+
+    /// <summary>完整的一条"壁纸已应用"（内容变化时用）</summary>
+    private string DescribeApplied(WallpaperCandidate candidate, WallpaperRenderRequest request)
+    {
+        // 模糊只在开启时才写：0 是绝大多数情况，没必要让每行都带一个"模糊=0"
+        var blurNote = request.BlurRadius > 0 ? $"，模糊={request.BlurRadius:0.#}" : string.Empty;
+        return $"壁纸已应用：[{_currentIndex + 1}/{_candidates.Count}] {Path.GetFileName(candidate.Path)}" +
+               $"（{candidate.Info.Describe()}，动画={(request.IsAnimated ? "开" : "关")}{blurNote}）";
+    }
+
+    /// <summary>外观参数的净变化（枚举名用英文，日志按可检索性优先）</summary>
+    private static string DescribeAppearanceDelta(WallpaperRenderRequest from, WallpaperRenderRequest to)
+    {
+        var parts = new List<string>(3);
+
+        if (Math.Abs(from.Opacity - to.Opacity) > 0.001)
+            parts.Add($"不透明度={from.Opacity:P0}→{to.Opacity:P0}");
+        if (Math.Abs(from.BlurRadius - to.BlurRadius) > 0.01)
+            parts.Add($"模糊={from.BlurRadius:0.#}→{to.BlurRadius:0.#}");
+        if (from.Stretch != to.Stretch)
+            parts.Add($"显示方式={from.Stretch}→{to.Stretch}");
+
+        return string.Join("，", parts);
     }
 
     /// <summary>
@@ -414,6 +568,9 @@ public sealed class WallpaperService : INotifyPropertyChanged, IDisposable
         _applyToken++;
 
         _scheduler.Dispose();
+        CancelPendingAppearanceLog();
+        _appearanceLogTimer = null;
+        _lastLoggedRequest = null;
 
         _power.Changed -= OnPowerSourceChanged;
         _power.Dispose();
