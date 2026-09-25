@@ -231,7 +231,7 @@
             <!-- 左侧：搜索 / 筛选 / 列表 -->
             <Border Grid.Column="0" Background="{DynamicResource SurfaceBrush}" CornerRadius="12"
                     BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
-              <Grid RowDefinitions="Auto,Auto,Auto,Auto,*">
+              <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,*">
 
                 <!-- 搜索框 -->
                 <Grid Grid.Row="0" Margin="12,12,12,10">
@@ -276,16 +276,38 @@
                     <TabStripItem Content="市场"/>
                     <TabStripItem Content="已安装"/>
                   </TabStrip>
+                  <Button DockPanel.Dock="Right" Content="{Binding UpdateAllButtonText}"
+                          Command="{Binding UpdateAllCommand}" IsEnabled="{Binding UpdateAllEnabled}"
+                          IsVisible="{Binding HasUpdates}"
+                          Classes="accent" Padding="12,4" FontSize="12" VerticalAlignment="Center"/>
+                  <Button DockPanel.Dock="Right" Content="检查更新" Command="{Binding CheckUpdatesCommand}"
+                          Classes="ghost" Padding="12,4" FontSize="12" Margin="0,0,6,0"
+                          VerticalAlignment="Center"/>
                   <Button DockPanel.Dock="Right" Content="刷新" Command="{Binding RefreshCommand}"
-                          Classes="ghost" Padding="12,4" FontSize="12" VerticalAlignment="Center"/>
+                          Classes="ghost" Padding="12,4" FontSize="12" Margin="0,0,6,0"
+                          VerticalAlignment="Center"/>
                 </DockPanel>
 
                 <!-- 加载进度 -->
                 <ProgressBar Grid.Row="3" IsIndeterminate="True" Height="3" VerticalAlignment="Top"
                              Margin="12,4,12,0" IsVisible="{Binding IsMarketLoading}"/>
 
+                <!-- 待重启生效提示 -->
+                <Border Grid.Row="4" Margin="12,0,12,6" CornerRadius="8" Padding="10,8"
+                        Background="{DynamicResource WarningSoftBrush}"
+                        IsVisible="{Binding HasPendingRestart}">
+                  <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Grid.Column="0" Text="{Binding PendingRestartText}" FontSize="12"
+                               Foreground="{DynamicResource WarningBrush}" VerticalAlignment="Center"
+                               TextWrapping="Wrap" Margin="0,0,8,0"/>
+                    <Button Grid.Column="1" Content="立即重启" Command="{Binding RestartLauncherCommand}"
+                            Classes="accent" Height="26" Padding="12,0" FontSize="12"
+                            VerticalAlignment="Center"/>
+                  </Grid>
+                </Border>
+
                 <!-- 列表 -->
-                <ListBox Grid.Row="4" ItemsSource="{Binding LeftItems}" SelectedItem="{Binding SelectedItem}"
+                <ListBox Grid.Row="5" ItemsSource="{Binding LeftItems}" SelectedItem="{Binding SelectedItem}"
                          Background="Transparent" BorderThickness="0" Padding="8,4,8,8">
                   <ListBox.ItemTemplate>
                     <DataTemplate x:DataType="vm:PluginListItemViewModel">
@@ -314,6 +336,14 @@
                           </StackPanel>
                           <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6"
                                       VerticalAlignment="Center" Margin="6,0,0,0">
+                            <Border CornerRadius="999" Padding="8,1"
+                                    Background="{DynamicResource PrimarySoftBrush}"
+                                    ToolTip.Tip="{Binding UpdateTooltip}"
+                                    IsVisible="{Binding HasUpdate}">
+                              <TextBlock Text="{Binding UpdateBadgeText}" FontSize="10" FontWeight="SemiBold"
+                                         Foreground="{DynamicResource PrimaryBrush}"
+                                         HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
                             <Border Width="18" Height="18" CornerRadius="9"
                                     Background="{DynamicResource DangerBrush}"
                                     ToolTip.Tip="插件加载异常"
@@ -337,7 +367,7 @@
                 </ListBox>
 
                 <!-- 空状态 -->
-                <StackPanel Grid.Row="4" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="10"
+                <StackPanel Grid.Row="5" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="10"
                             IsVisible="{Binding IsEmptyHintVisible}" Margin="16">
                   <Path Data="M6.5 2C5.12 2 4 3.12 4 4.5V19.5C4 20.88 5.12 22 6.5 22H17.5C18.88 22 20 20.88 20 19.5V9L14 3H6.5M8 13H16V15H8V13M12 9V4L17 9H12Z"
                         Width="52" Height="52" Stretch="Uniform" Fill="{DynamicResource TextTertiaryBrush}" Opacity="0.7"/>
@@ -384,7 +414,7 @@
                     <WrapPanel Orientation="Horizontal">
                       <TextBlock Text="{Binding Detail.Title}" FontSize="18" FontWeight="SemiBold"
                                  TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
-                      <Border Background="{DynamicResource PrimaryBrush}" Opacity="0.15" CornerRadius="999"
+                      <Border Background="{DynamicResource PrimarySoftBrush}" CornerRadius="999"
                               Padding="10,2" Margin="8,0,0,0" VerticalAlignment="Center"
                               IsVisible="{Binding Detail.IsEnabledStatus}">
                         <TextBlock Text="已启用" FontSize="11" FontWeight="SemiBold"
@@ -409,12 +439,30 @@
                         <TextBlock Text="不兼容" FontSize="11" FontWeight="SemiBold"
                                    Foreground="{DynamicResource WarningBrush}"/>
                       </Border>
+                      <Border Background="{DynamicResource PrimarySoftBrush}" CornerRadius="999"
+                              Padding="10,2" Margin="8,0,0,0" VerticalAlignment="Center"
+                              IsVisible="{Binding Detail.NewVersionVisible}">
+                        <TextBlock Text="{Binding Detail.NewVersionText}" FontSize="11" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource PrimaryBrush}"/>
+                      </Border>
                     </WrapPanel>
                     <TextBlock Text="{Binding Detail.Meta}" FontSize="12" Margin="0,4,0,0"
                                Foreground="{DynamicResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis"/>
+                    <TextBlock Text="{Binding Detail.StagedHintText}" FontSize="11" Margin="0,4,0,0"
+                               Foreground="{DynamicResource WarningBrush}"
+                               IsVisible="{Binding Detail.StagedHintVisible}"
+                               TextTrimming="CharacterEllipsis"/>
                   </StackPanel>
 
                   <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <Button Content="{Binding Detail.UpdateText}" Command="{Binding UpdatePluginCommand}"
+                            IsEnabled="{Binding Detail.UpdateEnabled}"
+                            IsVisible="{Binding Detail.UpdateVisible}"
+                            Classes="accent" Height="32" Padding="16,0" FontSize="13"/>
+                    <Button Content="取消更新" Command="{Binding CancelUpdateCommand}"
+                            IsVisible="{Binding Detail.CancelUpdateVisible}"
+                            ToolTip.Tip="放弃这次已下载的更新，重启后不会生效"
+                            Classes="ghost" Height="32" Padding="12,0" FontSize="13"/>
                     <Button Content="{Binding Detail.SecondaryActionText}" Command="{Binding SecondaryActionCommand}"
                             IsVisible="{Binding Detail.SecondaryActionVisible}"
                             Height="32" Padding="14,0" Classes="danger" FontSize="13"/>

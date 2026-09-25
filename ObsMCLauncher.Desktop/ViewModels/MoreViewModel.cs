@@ -40,7 +40,7 @@ public partial class MoreViewModel : ViewModelBase
 
         About = new AboutViewModel(notificationService, dialogService);
         About.RequestOpenDebugConsole = OpenDebugConsole;
-        Plugins = new PluginsViewModel(_pluginLoader, notificationService);
+        Plugins = new PluginsViewModel(_pluginLoader, notificationService, dialogService);
         Screenshots = new ScreenshotsViewModel(notificationService);
         CrashReports = new CrashReportsViewModel(notificationService);
         Servers = new ServersViewModel(notificationService);

@@ -11,12 +11,29 @@ namespace ObsMCLauncher.Core.Plugins;
 
 public class PluginLoader
 {
+    /// <summary>插件 id 规则：小写字母开头，仅含小写字母/数字/连字符，长度 3-50（文档约定）</summary>
+    private static readonly Regex PluginIdPattern = new("^[a-z][a-z0-9-]{2,49}$", RegexOptions.Compiled);
+
     private readonly string _pluginsDirectory;
     private readonly List<LoadedPlugin> _loadedPlugins = new();
 
     public static Action<string>? OnPluginDisabled { get; set; }
     public static Action<string>? OnPluginEnabled { get; set; }
     public static Action<string>? OnPluginRemoved { get; set; }
+
+    /// <summary>插件安装目录（OMCL/plugins）。插件更新服务据此推导 plugin-updates 与 cache 目录。</summary>
+    public string PluginsDirectory => _pluginsDirectory;
+
+    /// <summary>插件 id 是否合规。目录名、更新目标、下载暂存都以此为唯一判据。</summary>
+    public static bool IsValidPluginId(string? pluginId) =>
+        !string.IsNullOrWhiteSpace(pluginId) && PluginIdPattern.IsMatch(pluginId);
+
+    /// <summary>
+    /// 最近一次启动时"应用待更新"的结果（无待更新时为空集合）。
+    /// 由 <see cref="LoadAllPlugins"/> 填充，供界面提示"哪些插件更新成功/失败"。
+    /// </summary>
+    public static IReadOnlyList<PluginUpdateApplyResult> LastUpdateApplyResults { get; private set; }
+        = Array.Empty<PluginUpdateApplyResult>();
 
     private static void CreateDisabledMarker(string pluginDirectory)
     {
@@ -56,6 +73,10 @@ public class PluginLoader
         {
             _loadedPlugins.Clear();
 
+            // 顺序很关键——这两步都必须在任何插件 dll 被加载之前完成：
+            //   1) 应用上次运行期下载好的插件更新（此刻进程里还没有插件程序集，文件不会被锁）
+            //   2) 清理上次标记为待删除的插件
+            ApplyPendingPluginUpdates();
             CleanupMarkedPlugins();
 
             var pluginDirs = Directory.GetDirectories(_pluginsDirectory);
@@ -78,6 +99,33 @@ public class PluginLoader
         catch (Exception ex)
         {
             DebugLogger.Error("PluginLoader", $"扫描插件目录失败: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 应用上次运行期下载好的插件更新。必须在插件 dll 被加载之前调用——
+    /// 此刻默认 ALC 里还没有插件程序集，插件文件没有被锁，可以直接替换。
+    /// </summary>
+    private void ApplyPendingPluginUpdates()
+    {
+        try
+        {
+            if (!PluginUpdateService.HasPendingUpdates(_pluginsDirectory))
+            {
+                LastUpdateApplyResults = Array.Empty<PluginUpdateApplyResult>();
+                return;
+            }
+
+            var results = PluginUpdateService.ApplyPendingUpdates(_pluginsDirectory);
+            LastUpdateApplyResults = results;
+
+            DebugLogger.Info("PluginLoader",
+                $"应用插件更新: {results.Count(r => r.Success)}/{results.Count} 成功");
+        }
+        catch (Exception ex)
+        {
+            LastUpdateApplyResults = Array.Empty<PluginUpdateApplyResult>();
+            DebugLogger.Error("PluginLoader", $"应用插件更新失败: {ex.Message}");
         }
     }
 
@@ -153,7 +201,7 @@ public class PluginLoader
             return $"插件目录名 ({pluginDirName}) 与 id ({metadata.Id}) 不一致，目录名必须与插件 id 完全一致";
 
         // id 格式：小写字母开头，仅含小写字母/数字/连字符，长度 3-50
-        if (!Regex.IsMatch(metadata.Id, "^[a-z][a-z0-9-]{2,49}$"))
+        if (!IsValidPluginId(metadata.Id))
             return "插件 id 不规范：必须以小写字母开头，仅含小写字母/数字/连字符，长度 3-50";
 
         if (string.IsNullOrWhiteSpace(metadata.Name))

@@ -141,14 +141,20 @@ public class PluginContext : IPluginContext
     public PluginContext(string pluginId)
     {
         _pluginId = pluginId;
-
-        _pluginDataDir = Path.Combine(
-            VersionInfo.GetAppBaseDirectory(),
-            "OMCL",
-            "plugins",
-            pluginId
-        );
+        _pluginDataDir = GetPluginDataDirectory(pluginId);
     }
+
+    /// <summary>
+    /// 插件数据目录根：<c>&lt;启动器基础目录&gt;/OMCL/config/plugins</c>。
+    /// 1.1.2 之前数据目录与插件安装目录（OMCL/plugins/{id}）重合，导致"更新插件"必然
+    /// 连带删掉用户配置；现分离到 config 下，插件目录只保留插件本体。
+    /// </summary>
+    public static string GetPluginDataRoot() =>
+        Path.Combine(VersionInfo.GetAppBaseDirectory(), "OMCL", "config", "plugins");
+
+    /// <summary>某个插件的数据目录（插件配置与自建数据的存放处）</summary>
+    public static string GetPluginDataDirectory(string pluginId) =>
+        Path.Combine(GetPluginDataRoot(), pluginId);
 
     public string LauncherVersion => VersionInfo.Version;
 

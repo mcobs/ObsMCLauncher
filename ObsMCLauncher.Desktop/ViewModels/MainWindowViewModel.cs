@@ -123,11 +123,18 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         // 创建更多ViewModel
         _moreViewModel = new MoreViewModel(Notifications, _pluginLoader, Dialogs);
 
+        // 插件页点了"重启应用更新" → 新实例已拉起，这里负责关掉当前进程
+        _moreViewModel.Plugins.RestartRequested += OnPluginRestartRequested;
+
         // 初始化插件通知回调（必须在加载插件之前设置）
         InitializePluginCallbacks();
 
         // 启动时加载所有插件（必须在初始化回调之后）
         LoadPluginsOnStartup();
+
+        // 插件更新走"下载后重启生效"，所以重启后要汇报上次的应用结果，并顺手后台查一次有没有新版本
+        ReportPluginUpdateResults();
+        _ = CheckPluginUpdatesInBackgroundAsync();
 
         // 从配置加载通知设置
         var config = LauncherConfig.Load();
@@ -197,6 +204,72 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         {
             DebugLogger.Error("MainWindow", $"启动时加载插件失败: {ex.Message}");
             DebugLogger.Error("MainWindow", $"堆栈: {ex.StackTrace}");
+        }
+    }
+
+    /// <summary>插件页请求重启以应用更新：新实例已经拉起，这里关掉当前进程</summary>
+    private void OnPluginRestartRequested()
+    {
+        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+        {
+            desktop.Shutdown();
+        }
+    }
+
+    /// <summary>汇报上次退出前下载的插件更新是否已成功生效（失败时说明是否已回滚）</summary>
+    private void ReportPluginUpdateResults()
+    {
+        var results = PluginLoader.LastUpdateApplyResults;
+        if (results.Count == 0) return;
+
+        var succeeded = results.Where(r => r.Success).ToList();
+        if (succeeded.Count > 0)
+        {
+            var text = string.Join("、", succeeded.Select(r => $"{r.PluginId} {r.FromVersion} → {r.ToVersion}"));
+            Notifications.Show("插件已更新", text, NotificationType.Success, 6);
+        }
+
+        foreach (var failure in results.Where(r => !r.Success))
+        {
+            var suffix = failure.RolledBack ? "（已回滚到旧版本）" : "（未能回滚，建议重新安装该插件）";
+            Notifications.Show("插件更新失败", $"{failure.PluginId}: {failure.Error}{suffix}",
+                NotificationType.Error, 8);
+        }
+    }
+
+    /// <summary>启动后台静默检查插件更新（12 小时节流，只提示不自动下载）</summary>
+    private async Task CheckPluginUpdatesInBackgroundAsync()
+    {
+        try
+        {
+            var pluginsDir = _pluginLoader.PluginsDirectory;
+            if (!PluginUpdateService.ShouldCheckInBackground(pluginsDir)) return;
+
+            // 让首屏与向导先跑完再打网络，避免拖慢启动
+            await Task.Delay(TimeSpan.FromSeconds(8));
+
+            var index = await PluginMarketService.GetMarketIndexAsync();
+            if (index?.Plugins == null) return;
+
+            var infos = await PluginUpdateService.CheckForUpdatesAsync(
+                pluginsDir, _pluginLoader.LoadedPlugins, index.Plugins);
+
+            PluginUpdateService.MarkChecked(pluginsDir);
+
+            var actionable = infos.Where(i => i.HasUpdate && !i.IsStaged).ToList();
+            if (actionable.Count == 0) return;
+
+            var names = actionable.Count <= 3
+                ? string.Join("、", actionable.Select(i => i.Name))
+                : string.Join("、", actionable.Take(3).Select(i => i.Name)) + $" 等 {actionable.Count} 个";
+
+            Notifications.Show("插件更新",
+                $"有 {actionable.Count} 个插件可以更新：{names}（在「更多 → 插件」中查看）",
+                NotificationType.Info, 8);
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Warn("MainWindow", $"后台检查插件更新失败: {ex.Message}");
         }
     }
 
@@ -606,7 +679,8 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         if (request == null) return string.Empty;
 
         var baseDir = Path.GetFullPath(VersionInfo.GetAppBaseDirectory());
-        var pluginDataDir = Path.GetFullPath(Path.Combine(baseDir, "OMCL", "plugins", pluginId));
+        // 走 PluginContext 的唯一真源：数据目录已从 OMCL/plugins/{id} 迁到 OMCL/config/plugins/{id}
+        var pluginDataDir = Path.GetFullPath(PluginContext.GetPluginDataDirectory(pluginId));
         var omclDir = Path.GetFullPath(Path.Combine(baseDir, "OMCL"));
         var gameDir = Path.GetFullPath(LauncherConfig.Load().GameDirectory);
 

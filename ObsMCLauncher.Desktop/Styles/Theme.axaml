@@ -44,6 +44,8 @@
     <SolidColorBrush x:Key="PrimaryBrush" Color="#10B981"/>
     <SolidColorBrush x:Key="PrimaryDarkBrush" Color="#10B981"/>
     <SolidColorBrush x:Key="PrimaryLightBrush" Color="#34D399"/>
+    <!-- 主色的低透明度实心版本，直接当 Background 用（Opacity 设在 brush 上，不会连带压暗子元素） -->
+    <SolidColorBrush x:Key="PrimarySoftBrush" Color="#10B981" Opacity="0.18"/>
     <SolidColorBrush x:Key="BrandBrush" Color="#10B981"/>
     <SolidColorBrush x:Key="SecondaryBrush" Color="#34D399"/>
     <SolidColorBrush x:Key="Primary600Brush" Color="#10B981"/>

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
+using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -218,6 +219,9 @@ namespace ObsMCLauncher.Core.Plugins
     {
         private const string MARKET_INDEX_URL = "https://raw.githubusercontent.com/mcobs/ObsMCLauncher-PluginMarket/main/plugins.json";
         private const string CATEGORY_INDEX_URL = "https://raw.githubusercontent.com/mcobs/ObsMCLauncher-PluginMarket/main/categories.json";
+
+        /// <summary>plugin.json 允许的最大体积（防止畸形包把内存打满）</summary>
+        private const long MaxManifestBytes = 1024 * 1024;
         
         private static readonly HttpClient _httpClient;
         private static PluginMarketIndex? _cachedIndex;
@@ -329,7 +333,9 @@ namespace ObsMCLauncher.Core.Plugins
         }
         
         /// <summary>
-        /// 下载并安装插件
+        /// 下载并安装插件（全新安装或覆盖安装）。
+        /// <b>覆盖安装会先删除插件目录</b>，因此更新已安装插件请走
+        /// <see cref="PluginUpdateService"/>——它带备份、插件数据保留与失败回滚。
         /// </summary>
         public static async Task<bool> DownloadAndInstallPluginAsync(
             MarketPlugin plugin,
@@ -337,6 +343,7 @@ namespace ObsMCLauncher.Core.Plugins
             IProgress<double>? progress = null,
             CancellationToken cancellationToken = default)
         {
+            string? tempZipPath = null;
             try
             {
                 DebugLogger.Info("PluginMarket", $"开始下载插件: {plugin.Name}");
@@ -346,10 +353,10 @@ namespace ObsMCLauncher.Core.Plugins
                 if (!string.IsNullOrEmpty(plugin.ReleaseUrl) && string.IsNullOrEmpty(plugin.LatestDownloadUrl))
                 {
                     var (latestVer, latestUrl) = await GetLatestReleaseInfoAsync(
-                        plugin.ReleaseUrl, 
-                        plugin.AssetPattern, 
+                        plugin.ReleaseUrl,
+                        plugin.AssetPattern,
                         plugin.Id);
-                    
+
                     if (!string.IsNullOrEmpty(latestUrl))
                     {
                         plugin.LatestVersion = latestVer;
@@ -364,56 +371,37 @@ namespace ObsMCLauncher.Core.Plugins
                     return false;
                 }
 
-                downloadUrl = GitHubProxyHelper.WithProxy(downloadUrl);
-                DebugLogger.Info("PluginMarket", $"下载地址: {downloadUrl}");
-                
-                var response = await _httpClient.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-                response.EnsureSuccessStatusCode();
-                
-                var totalBytes = response.Content.Headers.ContentLength ?? -1;
-                var canReportProgress = totalBytes != -1;
-                
-                var tempZipPath = Path.Combine(Path.GetTempPath(), $"{plugin.Id}.zip");
-                
-                using (var fileStream = File.Create(tempZipPath))
-                using (var contentStream = await response.Content.ReadAsStreamAsync())
-                {
-                    var buffer = new byte[8192];
-                    long totalRead = 0;
-                    int bytesRead;
-                    
-                    while ((bytesRead = await contentStream.ReadAsync(buffer, 0, buffer.Length, cancellationToken)) != 0)
-                    {
-                        await fileStream.WriteAsync(buffer, 0, bytesRead, cancellationToken);
-                        totalRead += bytesRead;
-                        
-                        if (canReportProgress)
-                        {
-                            var percentage = (totalRead * 50.0) / totalBytes;
-                            progress?.Report(percentage);
-                        }
-                    }
-                }
-                
+                tempZipPath = Path.Combine(
+                    Path.GetTempPath(),
+                    $"{SafeFileComponent(plugin.Id)}-{Guid.NewGuid():N}.zip");
+
+                if (!await DownloadToFileAsync(downloadUrl, tempZipPath, progress, 0, 50, cancellationToken))
+                    return false;
+
                 DebugLogger.Info("PluginMarket", $"下载完成，开始安装: {plugin.Name}");
                 progress?.Report(50);
-                
+
+                var validationError = ValidatePluginPackage(tempZipPath, plugin.Id);
+                if (validationError != null)
+                {
+                    DebugLogger.Error("PluginMarket", $"插件包校验失败 [{plugin.Name}]: {validationError}");
+                    return false;
+                }
+
                 var pluginTargetDir = Path.Combine(pluginsDirectory, plugin.Id);
-                
+
                 if (Directory.Exists(pluginTargetDir))
                 {
                     Directory.Delete(pluginTargetDir, true);
                 }
-                
+
                 Directory.CreateDirectory(pluginTargetDir);
-                
+
                 SafeZipExtractor.ExtractToDirectory(tempZipPath, pluginTargetDir);
-                
-                File.Delete(tempZipPath);
-                
+
                 progress?.Report(100);
                 DebugLogger.Info("PluginMarket", $"插件安装成功: {plugin.Name}");
-                
+
                 return true;
             }
             catch (OperationCanceledException)
@@ -426,8 +414,149 @@ namespace ObsMCLauncher.Core.Plugins
                 DebugLogger.Error("PluginMarket", $"插件下载/安装失败: {ex.Message}");
                 return false;
             }
+            finally
+            {
+                TryDeleteFile(tempZipPath);
+            }
         }
-        
+
+        /// <summary>
+        /// 把 URL 下载到本地文件，进度映射到 [progressFrom, progressTo] 区间。
+        /// 下载地址自动套 GitHub 镜像；取消会向上抛 <see cref="OperationCanceledException"/>。
+        /// </summary>
+        public static async Task<bool> DownloadToFileAsync(
+            string url,
+            string destinationPath,
+            IProgress<double>? progress = null,
+            double progressFrom = 0,
+            double progressTo = 100,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var requestUrl = GitHubProxyHelper.WithProxy(url);
+                DebugLogger.Info("PluginMarket", $"下载地址: {requestUrl}");
+
+                var response = await _httpClient.GetAsync(requestUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+                response.EnsureSuccessStatusCode();
+
+                var totalBytes = response.Content.Headers.ContentLength ?? -1;
+                var canReportProgress = totalBytes > 0;
+                var span = progressTo - progressFrom;
+
+                var dir = Path.GetDirectoryName(destinationPath);
+                if (!string.IsNullOrEmpty(dir))
+                {
+                    Directory.CreateDirectory(dir);
+                }
+
+                using (var fileStream = File.Create(destinationPath))
+                using (var contentStream = await response.Content.ReadAsStreamAsync(cancellationToken))
+                {
+                    var buffer = new byte[8192];
+                    long totalRead = 0;
+                    int bytesRead;
+
+                    while ((bytesRead = await contentStream.ReadAsync(buffer, 0, buffer.Length, cancellationToken)) != 0)
+                    {
+                        await fileStream.WriteAsync(buffer, 0, bytesRead, cancellationToken);
+                        totalRead += bytesRead;
+
+                        if (canReportProgress)
+                        {
+                            progress?.Report(progressFrom + (totalRead * span) / totalBytes);
+                        }
+                    }
+                }
+
+                progress?.Report(progressTo);
+                return true;
+            }
+            catch (OperationCanceledException)
+            {
+                TryDeleteFile(destinationPath);
+                throw;
+            }
+            catch (Exception ex)
+            {
+                DebugLogger.Error("PluginMarket", $"下载失败: {ex.Message}");
+                TryDeleteFile(destinationPath);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 校验插件包：必须在压缩包<b>根目录</b>能解析出 plugin.json，且 id 与预期一致。
+        /// 这是安装/更新的最后一道闸门——防止结构不对的包把插件目录写坏。
+        /// </summary>
+        /// <param name="zipPath">插件包路径</param>
+        /// <param name="expectedPluginId">市场登记的插件 id；为空则只校验清单自身完整性</param>
+        /// <returns>校验通过返回 null，否则返回失败原因</returns>
+        public static string? ValidatePluginPackage(string zipPath, string? expectedPluginId = null)
+        {
+            try
+            {
+                using var archive = ZipFile.OpenRead(zipPath);
+
+                var manifestEntry = archive.Entries.FirstOrDefault(e =>
+                    string.Equals(e.FullName.Replace('\\', '/').TrimStart('/'), "plugin.json", StringComparison.OrdinalIgnoreCase));
+
+                if (manifestEntry == null)
+                    return "压缩包根目录缺少 plugin.json";
+
+                if (manifestEntry.Length > MaxManifestBytes)
+                    return "plugin.json 体积异常";
+
+                string json;
+                using (var stream = manifestEntry.Open())
+                using (var reader = new StreamReader(stream))
+                {
+                    json = reader.ReadToEnd();
+                }
+
+                // 与 PluginLoader.LoadPlugin 用同一套反序列化方式，避免"校验通过但装不上"
+                var metadata = JsonSerializer.Deserialize<PluginMetadata>(json);
+
+                if (metadata == null || string.IsNullOrWhiteSpace(metadata.Id))
+                    return "plugin.json 缺少 id 字段";
+
+                if (!string.IsNullOrWhiteSpace(expectedPluginId) &&
+                    !string.Equals(metadata.Id, expectedPluginId, StringComparison.OrdinalIgnoreCase))
+                {
+                    return $"plugin.json 的 id ({metadata.Id}) 与市场登记 ({expectedPluginId}) 不一致";
+                }
+
+                if (string.IsNullOrWhiteSpace(metadata.Version))
+                    return "plugin.json 缺少 version 字段";
+
+                return null;
+            }
+            catch (Exception ex)
+            {
+                return $"无法解析插件包: {ex.Message}";
+            }
+        }
+
+        /// <summary>把任意字符串压成安全的文件名片段（插件 id 理论上已受正则约束，这里只做兜底）</summary>
+        private static string SafeFileComponent(string value)
+        {
+            var invalid = Path.GetInvalidFileNameChars();
+            var chars = value.Where(c => !invalid.Contains(c)).ToArray();
+            return chars.Length == 0 ? "plugin" : new string(chars);
+        }
+
+        private static void TryDeleteFile(string? path)
+        {
+            if (string.IsNullOrEmpty(path)) return;
+            try
+            {
+                if (File.Exists(path)) File.Delete(path);
+            }
+            catch
+            {
+            }
+        }
+
         /// <summary>
         /// 卸载插件
         /// </summary>
@@ -545,64 +674,6 @@ namespace ObsMCLauncher.Core.Plugins
             {
                 DebugLogger.Error("PluginMarket", $"获取最新版本失败: {ex.Message}");
                 return (null, null);
-            }
-        }
-
-        /// <summary>
-        /// 检查插件更新
-        /// </summary>
-        public static async Task CheckForUpdatesAsync(IEnumerable<MarketPlugin> plugins, string? installedVersion = null)
-        {
-            foreach (var plugin in plugins)
-            {
-                if (string.IsNullOrEmpty(plugin.ReleaseUrl)) continue;
-
-                var (version, downloadUrl) = await GetLatestReleaseInfoAsync(
-                    plugin.ReleaseUrl, 
-                    plugin.AssetPattern, 
-                    plugin.Id);
-
-                if (!string.IsNullOrEmpty(version))
-                {
-                    plugin.LatestVersion = version;
-                    plugin.LatestDownloadUrl = downloadUrl;
-
-                    // 比较版本
-                    if (!string.IsNullOrEmpty(installedVersion) || !string.IsNullOrEmpty(plugin.Version))
-                    {
-                        var currentVer = installedVersion ?? plugin.Version;
-                        plugin.HasUpdate = IsNewerVersion(version, currentVer);
-                    }
-                }
-            }
-        }
-
-        private static bool IsNewerVersion(string newVersion, string currentVersion)
-        {
-            try
-            {
-                newVersion = newVersion.TrimStart('v', 'V');
-                currentVersion = currentVersion.TrimStart('v', 'V');
-
-                var newParts = newVersion.Split('.');
-                var currentParts = currentVersion.Split('.');
-
-                var maxLen = Math.Max(newParts.Length, currentParts.Length);
-
-                for (int i = 0; i < maxLen; i++)
-                {
-                    var newPart = i < newParts.Length && int.TryParse(newParts[i], out var n) ? n : 0;
-                    var currentPart = i < currentParts.Length && int.TryParse(currentParts[i], out var c) ? c : 0;
-
-                    if (newPart > currentPart) return true;
-                    if (newPart < currentPart) return false;
-                }
-
-                return false;
-            }
-            catch
-            {
-                return false;
             }
         }
 

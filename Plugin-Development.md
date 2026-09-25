@@ -368,10 +368,17 @@ namespace ObsMCLauncher.Core.Plugins
 
 | API | 说明 | 引入版本 |
 | --- | --- | --- |
-| `PluginDataDirectory` | 当前插件的专属数据目录（`<启动器基础目录>/OMCL/plugins/{插件ID}`），插件配置和数据应保存在这里 | `1.0.0` |
+| `PluginDataDirectory` | 当前插件的专属数据目录（`<启动器基础目录>/OMCL/config/plugins/{插件ID}`），插件配置和数据应保存在这里 | `1.0.0` |
 | `LauncherBaseDirectory` | 启动器基础目录（Velopack 安装模式下自动定位到 `current` 的父级） | `1.0.0` |
 | `LauncherDataDirectory` | 启动器数据目录（`<启动器基础目录>/OMCL`，存放启动器配置/账户/缓存） | `1.0.0` |
 | `GameDirectory` | 当前激活的游戏目录（`.minecraft` 根目录，随用户在设置中的切换实时变化） | `1.0.0` |
+
+> ⚠️ **数据目录位置变更**：早期版本的 `PluginDataDirectory` 指向插件安装目录本身（`OMCL/plugins/{插件ID}`），
+> 导致"更新插件"会连带删掉用户配置。现已改为 `OMCL/config/plugins/{插件ID}`，与插件本体分离。
+> **旧位置的历史文件不会自动迁移**：如果你的插件以前把数据写在 `OMCL/plugins/{插件ID}/` 下，
+> 升级后需要自己（或引导用户）把文件挪到 `PluginDataDirectory` 指向的新位置。
+> 之后请只使用 `PluginDataDirectory` / `GetConfig<T>()` / `SaveConfig<T>()`——
+> 写在插件安装目录里的文件会在插件更新时随目录一起被替换掉。
 
 ```csharp
 public void OnLoad(IPluginContext context)
@@ -1329,7 +1336,7 @@ public void OnLoad(IPluginContext context)
 
 > 引入版本：`1.1.0`
 
-配置存于插件数据目录下的 `config.json`：
+配置存于插件数据目录下的 `config.json`（即 `<启动器基础目录>/OMCL/config/plugins/{插件ID}/config.json`）：
 
 ```csharp
 public class MyConfig
@@ -1708,12 +1715,20 @@ dotnet build -c Release
 由于程序集是 `Assembly.LoadFrom` 载入的、DLL 在进程生命周期内被占用，删除有时会失败——此时启动器会在插件目录留下一个
 `.delete_on_restart` 标记，**下次启动扫描插件时删掉整个目录**。
 
+插件的数据目录（`OMCL/config/plugins/{插件ID}`）**不在插件文件夹内**，所以卸载不会连带删掉它：
+启动器会单独弹窗询问"是：连配置与数据一起删 / 否：只移除插件本体 / 取消：不卸载"，默认保留。
+也就是说，用户重装同一个插件后 `config.json` 通常还在——想彻底清干净，卸载时选「是」即可。
+
 | 标记文件 | 含义 |
 |----------|------|
 | `.disabled` | 跳过加载（下次启动生效）；删掉即可恢复 |
 | `.delete_on_restart` | 下次启动扫描时删除整个插件目录（卸载时文件被占用才会留下） |
 
 > 对插件作者的含义：不要在 `OnUnload` 里假设文件还能访问或还能重新加载；也不要指望卸载后程序集能被真正释放——同一个进程里同一插件不会被二次加载。
+
+**更新**：启动器内置插件更新。在「更多 → 插件 → 已安装」里，有新版本的插件会显示"可更新"角标，
+点「更新」或「全部更新」即可下载，**重启启动器后生效**（界面会提供「立即重启」）。
+更新会保留插件数据与禁用状态，替换失败会自动回滚到旧版本。作者侧需要做什么见 [发布流程 › 4. 发布新版本](#4-发布新版本)。
 
 ---
 
@@ -1748,6 +1763,54 @@ zip YourPlugin.zip YourPlugin.dll plugin.json README.md
 ### 3. 提交到插件市场
 
 在 [ObsMCLauncher-PluginMarket](https://github.com/mcobs/ObsMCLauncher-PluginMarket) 提交 PR 或 Issue。
+
+### 4. 发布新版本
+
+用户端的插件更新只依赖「插件包 + 版本号」，所以发新版本只需要三步：
+
+1. **改版本号**：`plugin.json` 的 `version` 递增（如 `1.0.0` → `1.1.0`）。
+   启动器按语义化版本比较（忽略 `-beta` 之类的预发布后缀），只要高于用户本地版本就提示更新。
+2. **打新包并发 Release**：ZIP 根目录仍要有 `plugin.json`（见 [1. 准备发布包](#1-准备发布包)），上传到新的 Release（Tag 建议 `v1.1.0`）。
+3. **更新市场索引**：把 `plugins.json` 里该插件的 `version` 改成 `1.1.0`。
+   用户打开插件页即可看到"可更新"角标——这一步是纯本地版本比对，不会产生任何额外网络请求。
+
+> 若不想依赖市场索引的人工更新，可额外填 `releaseUrl` + `assetPattern`：
+> 用户点「检查更新」时启动器会直接查该仓库最新 Release 的 tag（结果缓存 6 小时）。
+>
+> ```json
+> {
+>   "releaseUrl": "https://api.github.com/repos/username/example-plugin/releases/latest",
+>   "assetPattern": "example-plugin"
+> }
+> ```
+
+#### 更新时启动器做了什么
+
+1. **运行期**：下载 ZIP → 校验（压缩包根目录必须能解析出 `plugin.json`，且 `id` 与市场登记一致）→
+   解压到待应用目录 → 落盘待更新标记 → 提示"重启后生效"。
+   此时**不会改动已加载的插件文件**——`Assembly.LoadFrom` 载入的 DLL 在进程内一直被占用，运行期替换必然被文件锁挡住。
+2. **下次启动**（在任何插件 DLL 被加载之前）：备份旧目录 → 复制新版本 →
+   **保留旧目录里新版没有的文件**（`config.json` 等插件数据）→ 恢复 `.disabled` 禁用状态 → 清理待更新标记。
+   任一步失败都会**自动回滚**到旧版本，并在启动后弹出失败通知。
+
+相关目录：
+
+```
+OMCL/
+├── plugins/{插件ID}/              已安装插件（更新会替换这里）
+├── plugin-updates/{插件ID}/
+│   ├── new/                       已下载校验、等待应用的新版本
+│   ├── backup/                    上一版本备份（保留一代，便于排查）
+│   └── pending.json               待更新标记；存在即表示下次启动会替换
+└── cache/plugin-updates/          检查节流时间戳与 Release 查询缓存（可随时删）
+```
+
+对插件作者的含义：
+
+- ✅ 更新不会丢插件配置，也不会把用户禁用过的插件悄悄打开
+- ✅ 替换失败时插件仍可用（自动回滚）
+- ⚠️ **不要**把数据写在插件安装目录里——更新会替换该目录。数据一律走 `PluginDataDirectory` 或 `GetConfig<T>` / `SaveConfig<T>`
+- ⚠️ 更新必须重启启动器才生效
 
 ---
 
@@ -2070,7 +2133,7 @@ A: 因为插件是在主窗口创建之前加载的——这时窗口还不存�
 
 ### Q: 插件如何保存数据？
 
-A: 用 `context.PluginDataDirectory` 下的自有文件，或直接用配置 API `GetConfig<T>` / `SaveConfig<T>`，见 [8. 日志与配置](#8-日志与配置)。
+A: 用 `context.PluginDataDirectory`（`OMCL/config/plugins/{插件ID}`）下的自有文件，或直接用配置 API `GetConfig<T>` / `SaveConfig<T>`，见 [8. 日志与配置](#8-日志与配置)。**不要写在插件安装目录里**：插件更新会整体替换该目录，写在那里的文件会丢。
 
 ### Q: 插件可以添加新的 UI 页面吗？
 

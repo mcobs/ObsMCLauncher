@@ -1,5 +1,6 @@
 using ObsMCLauncher.Core.Plugins;
 using ObsMCLauncher.Core.Plugins.Events;
+using ObsMCLauncher.Core.Utils;
 
 namespace ObsMCLauncher.Core.Tests;
 
@@ -476,6 +477,27 @@ public class PluginEventTests
     {
         var ctx = new PluginContext("my-test-plugin");
         Assert.Contains("my-test-plugin", ctx.PluginDataDirectory);
+    }
+
+    /// <summary>
+    /// 固化数据目录位置：必须与插件安装目录（OMCL/plugins）分离——
+    /// 两者重合时"更新插件"会连带删掉用户配置。
+    /// </summary>
+    [Fact]
+    public void PluginContext_PluginDataDirectory_IsSeparateFromInstallDirectory()
+    {
+        const string pluginId = "my-test-plugin";
+        var expected = Path.Combine(VersionInfo.GetAppBaseDirectory(), "OMCL", "config", "plugins", pluginId);
+
+        var ctx = new PluginContext(pluginId);
+        Assert.Equal(expected, ctx.PluginDataDirectory);
+        Assert.Equal(expected, PluginContext.GetPluginDataDirectory(pluginId));
+
+        var installDir = Path.Combine(VersionInfo.GetAppBaseDirectory(), "OMCL", "plugins", pluginId);
+        Assert.NotEqual(installDir, ctx.PluginDataDirectory);
+        Assert.False(ctx.PluginDataDirectory.StartsWith(
+            Path.Combine(VersionInfo.GetAppBaseDirectory(), "OMCL", "plugins") + Path.DirectorySeparatorChar,
+            StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
