@@ -5,6 +5,7 @@ using Avalonia.Controls;
 using Avalonia.Interactivity;
 using FluentAvalonia.UI.Controls;
 using ObsMCLauncher.Core.Utils;
+using ObsMCLauncher.Desktop.Controls;
 using ObsMCLauncher.Desktop.ViewModels;
 
 namespace ObsMCLauncher.Desktop.Views;
@@ -89,7 +90,9 @@ public partial class AccountManagementView : UserControl
         _yggdrasilDialogShown = true;
         try
         {
-            var result = await YggdrasilDialog.ShowAsync();
+            // 同一个实例反复开合：FA 关窗后留下的 IsHitTestVisible=false 必须恢复，否则再次打开点不动
+            // （见 ContentDialogReuse）
+            var result = await YggdrasilDialog.ShowReusedAsync();
 
             // 用户通过 ESC / 关闭按钮关闭对话框时，同步回 ViewModel 状态；
             // 登录完成由 ViewModel 主动置 false 并触发 Hide()，此处不会重复处理。

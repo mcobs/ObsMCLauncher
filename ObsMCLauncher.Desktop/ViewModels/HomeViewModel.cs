@@ -5,7 +5,6 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Avalonia;
-using Avalonia.Platform;
 using Avalonia.Media.Imaging;
 using Avalonia.Controls.ApplicationLifetimes;
 using CommunityToolkit.Mvvm.Input;
@@ -764,35 +763,27 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
             {
                 try
                 {
-                    var skinPath = await SkinService.Instance.GetSkinPathAsync(acc);
-                    if (!string.IsNullOrEmpty(skinPath) && File.Exists(skinPath))
+                    var head = await AccountAvatarService.LoadHeadAsync(acc);
+                    if (head != null)
                     {
-                        var bitmap = SkinHeadRenderer.GetHeadFromSkin(skinPath);
-                        if (bitmap != null)
+                        await _dispatcher.InvokeAsync(() =>
                         {
-                            await _dispatcher.InvokeAsync(() =>
-                            {
-                                _avatarCache[acc.Id] = bitmap;
-                                SetAvatar(acc, bitmap);
-                            });
-                            return;
-                        }
+                            _avatarCache[acc.Id] = head;
+                            SetAvatar(acc, head);
+                        });
+                        return;
                     }
 
-                    // 没有皮肤或加载失败时使用默认头像
+                    // 没有皮肤或加载失败时使用「纯色背景 + 首字母」的默认头像
+                    // （生成走 RenderTargetBitmap，必须在 UI 线程）
                     await _dispatcher.InvokeAsync(() =>
                     {
-                        try
+                        var defaultAvatar = AccountAvatarService.CreateDefaultAvatar(acc);
+                        if (defaultAvatar != null)
                         {
-                            using var defaultAvatar = AssetLoader.Open(new Uri("avares://ObsMCLauncher.Desktop/Assets/logo.png"));
-                            if (defaultAvatar != null)
-                            {
-                                var bitmap = new Avalonia.Media.Imaging.Bitmap(defaultAvatar);
-                                _avatarCache[acc.Id] = bitmap;
-                                SetAvatar(acc, bitmap);
-                            }
+                            _avatarCache[acc.Id] = defaultAvatar;
+                            SetAvatar(acc, defaultAvatar);
                         }
-                        catch { }
                     });
                 }
                 catch { }

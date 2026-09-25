@@ -596,7 +596,14 @@ public partial class AccountManagementViewModel : ViewModelBase
                 // 复用包装器但替换为最新模型实例（令牌等字段以服务端为准）
                 model.Avatar ??= existing.Account.Avatar;
                 existing.Account = model;
-                if (existing.Account.Avatar == null) LoadSingleAccountAvatar(existing.Account);
+                if (model.Avatar == null)
+                {
+                    // Load() 每次都会 ReloadAccountsPath() 得到全新实例。若上一轮的加载任务
+                    // 还在飞，它的结果只会写回旧实例；此时去重标记必须解除，否则新实例永远
+                    // 拿不到头像（表现为卡片头像是空的）。
+                    _avatarLoadingIds.Remove(model.Id);
+                    LoadSingleAccountAvatar(model);
+                }
 
                 var currentIndex = Items.IndexOf(existing);
                 if (currentIndex != i)
@@ -633,10 +640,11 @@ public partial class AccountManagementViewModel : ViewModelBase
                     return;
                 }
 
-                // 离线/默认头像回退
+                // 离线/无皮肤：纯色背景 + 用户名首字母的默认头像
+                // （生成走 RenderTargetBitmap，必须在 UI 线程）
                 await Dispatcher.UIThread.InvokeAsync(() =>
                 {
-                    acc.Avatar = AccountAvatarService.LoadFallbackAvatar();
+                    acc.Avatar = AccountAvatarService.CreateDefaultAvatar(acc);
                 });
             }
             catch
