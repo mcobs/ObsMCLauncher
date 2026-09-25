@@ -363,3 +363,51 @@ public enum ResourceSource
     Modrinth,
     Both
 }
+
+// ===== 指纹反查（POST /v1/fingerprints/{gameId}），整合包导出用 =====
+
+public class CurseForgeFingerprintResponse
+{
+    [JsonPropertyName("data")]
+    public CurseForgeFingerprintData? Data { get; set; }
+}
+
+public class CurseForgeFingerprintData
+{
+    [JsonPropertyName("exactMatches")]
+    public List<CurseForgeFingerprintMatch> ExactMatches { get; set; } = new();
+}
+
+public class CurseForgeFingerprintMatch
+{
+    /// <summary>CurseForge 文件 ID。</summary>
+    [JsonPropertyName("id")]
+    public int Id { get; set; }
+
+    [JsonPropertyName("file")]
+    public CurseForgeFingerprintFile? File { get; set; }
+}
+
+public class CurseForgeFingerprintFile
+{
+    [JsonPropertyName("id")]
+    public int Id { get; set; }
+
+    /// <summary>所属项目 ID。</summary>
+    [JsonPropertyName("modId")]
+    public int ModId { get; set; }
+
+    [JsonPropertyName("displayName")]
+    public string DisplayName { get; set; } = "";
+
+    [JsonPropertyName("fileName")]
+    public string FileName { get; set; } = "";
+
+    /// <summary>作者禁止第三方分发时为 null，此时文件必须直接打进包里。</summary>
+    [JsonPropertyName("downloadUrl")]
+    public string? DownloadUrl { get; set; }
+
+    /// <summary>MurmurHash2 指纹，与本地计算值对应。</summary>
+    [JsonPropertyName("fileFingerprint")]
+    public long FileFingerprint { get; set; }
+}

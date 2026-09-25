@@ -39,6 +39,8 @@
 
       <!-- 内容区：FluentAvalonia TabView -->
       <ui:TabView Grid.Row="1"
+                  VerticalAlignment="Stretch"
+                  HorizontalAlignment="Stretch"
                   Background="{DynamicResource TabViewBackground}"
                   IsAddTabButtonVisible="False"
                   CanDragTabs="False"
@@ -369,279 +371,332 @@
         </ui:TabViewItem>
 
         <!-- ===== 存档 ===== -->
-        <ui:TabViewItem Header="存档" IsClosable="False">
+        <!-- ===== 资源管理（存档 / Mod / 材质包 / 光影 合并为一个标签页，左侧导航切换） ===== -->
+        <ui:TabViewItem Header="资源管理" IsClosable="False">
           <ui:TabViewItem.IconSource>
-            <ui:PathIconSource Data="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2M12 20C7.59 20 4 16.41 4 12S7.59 4 12 4 20 7.59 20 12 16.41 20 12 20M11 7H13V13H11V7M11 15H13V17H11V15Z"/>
+            <ui:PathIconSource Data="M20 6H12L10 4H4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V8C22 6.9 21.1 6 20 6M20 18H4V8H20V18Z"/>
           </ui:TabViewItem.IconSource>
-          <ScrollViewer VerticalScrollBarVisibility="Auto">
-            <StackPanel Margin="20" Spacing="12" MaxWidth="900" HorizontalAlignment="Stretch">
-              <StackPanel Spacing="8">
-                <Grid ColumnDefinitions="*,Auto">
-                  <TextBlock Text="存档管理" FontSize="14" FontWeight="Medium"/>
-                  <Button Grid.Column="1" Classes="ghost" FontSize="11" Padding="4,2"
-                          Command="{Binding OpenSavesFolderCommand}">
-                    <StackPanel Orientation="Horizontal" Spacing="3">
-                      <Path Data="M20 6H12L10 4H4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V8C22 6.9 21.1 6 20 6M20 18H4V8H20V18Z" Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
-                      <TextBlock Text="打开存档文件夹" VerticalAlignment="Center"/>
-                    </StackPanel>
-                  </Button>
+          <Grid ColumnDefinitions="Auto,*">
+            <!-- 左侧二级导航：用 FluentAvalonia 原生 ListBox，
+                 选中态交给控件主题（不再自绘按钮与激活类），背景与内容区一致、只留一条分隔线 -->
+            <ListBox Grid.Column="0" Width="188"
+                     Background="Transparent"
+                     BorderThickness="0,0,1,0"
+                     BorderBrush="{DynamicResource DividerBrush}"
+                     Padding="6,10"
+                     SelectedIndex="{Binding SelectedResourceTabIndex}">
+              <ListBox.Styles>
+                <Style Selector="ListBoxItem">
+                  <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                  <Setter Property="Padding" Value="10,8"/>
+                </Style>
+              </ListBox.Styles>
+              <ListBoxItem ToolTip.Tip="存档">
+                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                  <Path Data="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2M12 20C7.59 20 4 16.41 4 12S7.59 4 12 4 20 7.59 20 12 16.41 20 12 20M11 7H13V13H11V7M11 15H13V17H11V15Z" Width="15" Height="15" Stretch="Uniform"
+                        Fill="{Binding $parent[ListBoxItem].Foreground}" VerticalAlignment="Center"/>
+                  <TextBlock Grid.Column="1" Text="存档" FontSize="13"
+                             VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                  <TextBlock Grid.Column="2" Text="{Binding Worlds.Count}" FontSize="10"
+                             Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center"/>
                 </Grid>
+              </ListBoxItem>
+              <ListBoxItem ToolTip.Tip="Mod">
+                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                  <Path Data="M20 6H12L10 4H4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V8C22 6.9 21.1 6 20 6M20 18H4V8H20V18Z" Width="15" Height="15" Stretch="Uniform"
+                        Fill="{Binding $parent[ListBoxItem].Foreground}" VerticalAlignment="Center"/>
+                  <TextBlock Grid.Column="1" Text="Mod" FontSize="13"
+                             VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                  <TextBlock Grid.Column="2" Text="{Binding Mods.Count}" FontSize="10"
+                             Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center"/>
+                </Grid>
+              </ListBoxItem>
+              <ListBoxItem ToolTip.Tip="材质包">
+                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                  <Path Data="M21 19V5C21 3.9 20.1 3 19 3H5C3.9 3 3 3.9 3 5V19C3 20.1 3.9 21 5 21H19C20.1 21 21 20.1 21 19M8.5 13.5L11 16.5L14.5 12L19 18H5L8.5 13.5Z" Width="15" Height="15" Stretch="Uniform"
+                        Fill="{Binding $parent[ListBoxItem].Foreground}" VerticalAlignment="Center"/>
+                  <TextBlock Grid.Column="1" Text="材质包" FontSize="13"
+                             VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                  <TextBlock Grid.Column="2" Text="{Binding ResourcePacks.Count}" FontSize="10"
+                             Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center"/>
+                </Grid>
+              </ListBoxItem>
+              <ListBoxItem ToolTip.Tip="光影">
+                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                  <Path Data="M21 3H3C1.9 3 1 3.9 1 5V19C1 20.1 1.9 21 3 21H21C22.1 21 23 20.1 23 19V5C23 3.9 22.1 3 21 3M21 19H3V5H21V19M7.5 13.5L10 16.5L14.5 11.5L19 17H5L7.5 13.5Z" Width="15" Height="15" Stretch="Uniform"
+                        Fill="{Binding $parent[ListBoxItem].Foreground}" VerticalAlignment="Center"/>
+                  <TextBlock Grid.Column="1" Text="光影" FontSize="13"
+                             VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                  <TextBlock Grid.Column="2" Text="{Binding ShaderPacks.Count}" FontSize="10"
+                             Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center"/>
+                </Grid>
+              </ListBoxItem>
+            </ListBox>
 
-                <ItemsControl ItemsSource="{Binding Worlds}">
-                  <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                      <Border Background="{DynamicResource LayerFillColorPrimaryBrush}"
-                              CornerRadius="6"
-                              Padding="10"
-                              Margin="0,0,0,6"
-                              BorderThickness="1"
-                              BorderBrush="{DynamicResource CardBorderBrush}">
-                        <Grid ColumnDefinitions="Auto,*,Auto">
-                          <Border Width="40" Height="40" CornerRadius="4" Margin="0,0,10,0"
-                                  Background="{DynamicResource SurfaceBrush}"
+            <!-- 右侧内容区：四个列表各自独立滚动，同一时刻只显示一个 -->
+            <Panel Grid.Column="1">
+              <ScrollViewer VerticalScrollBarVisibility="Auto"
+                            IsVisible="{Binding SelectedResourceTabIndex, Converter={x:Static converters:TabIndexToBoolConverter.Instance}, ConverterParameter=0}">
+                <StackPanel Margin="20" Spacing="12" MaxWidth="900" HorizontalAlignment="Stretch">
+                  <StackPanel Spacing="8">
+                    <Grid ColumnDefinitions="*,Auto">
+                      <TextBlock Text="存档管理" FontSize="14" FontWeight="Medium"/>
+                      <Button Grid.Column="1" Classes="ghost" FontSize="11" Padding="4,2"
+                              Command="{Binding OpenSavesFolderCommand}">
+                        <StackPanel Orientation="Horizontal" Spacing="3">
+                          <Path Data="M20 6H12L10 4H4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V8C22 6.9 21.1 6 20 6M20 18H4V8H20V18Z" Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+                          <TextBlock Text="打开存档文件夹" VerticalAlignment="Center"/>
+                        </StackPanel>
+                      </Button>
+                    </Grid>
+
+                    <ItemsControl ItemsSource="{Binding Worlds}">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                          <Border Background="{DynamicResource LayerFillColorPrimaryBrush}"
+                                  CornerRadius="6"
+                                  Padding="10"
+                                  Margin="0,0,0,6"
                                   BorderThickness="1"
-                                  BorderBrush="{DynamicResource CardBorderBrush}"
-                                  ClipToBounds="True">
-                            <Panel>
-                              <Path Data="M12 2C6.48 2 2 6.48 2 12S6.48 22 12 22 22 17.52 22 12 17.52 2 12 2M12 20C7.59 20 4 16.41 4 12S7.59 4 12 4 20 7.59 20 12 16.41 20 12 20M11 7H13V13H11V7M11 15H13V17H11V15Z"
-                                    Width="24" Height="24" Stretch="Uniform" Fill="{DynamicResource AccentBrush}"
-                                    HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.6"/>
-                              <Image Source="{Binding IconPath, Converter={x:Static converters:FilePathToBitmapConverter.Instance}}"
-                                     Stretch="UniformToFill" Margin="2"/>
-                            </Panel>
-                          </Border>
-                          <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                            <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="Medium" TextTrimming="CharacterEllipsis"/>
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                              <TextBlock Text="{Binding GameVersion, StringFormat='版本: {0}'}" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}"/>
-                              <TextBlock Text="{Binding WorldSizeDisplay, StringFormat='大小: {0}'}" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}"/>
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                              <TextBlock Text="{Binding CreationTime, StringFormat='创建: {0:yyyy-MM-dd HH:mm}'}" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}"/>
-                              <TextBlock Text="{Binding LastModified, StringFormat='修改: {0:yyyy-MM-dd HH:mm}'}" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}"/>
-                            </StackPanel>
-                          </StackPanel>
-                        </Grid>
-                      </Border>
-                    </DataTemplate>
-                  </ItemsControl.ItemTemplate>
-                </ItemsControl>
-
-                <TextBlock Text="暂无存档" FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}"
-                           HorizontalAlignment="Center" IsVisible="{Binding !HasWorlds}"/>
-              </StackPanel>
-            </StackPanel>
-          </ScrollViewer>
-        </ui:TabViewItem>
-
-        <!-- ===== Mod ===== -->
-        <ui:TabViewItem Header="Mod" IsClosable="False">
-          <ui:TabViewItem.IconSource>
-            <ui:PathIconSource Data="M20 6H12L10 4H4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V8C22 6.9 21.1 6 20 6M20 18H4V8H20V18Z"/>
-          </ui:TabViewItem.IconSource>
-          <ScrollViewer VerticalScrollBarVisibility="Auto">
-            <StackPanel Margin="20" Spacing="12" MaxWidth="900" HorizontalAlignment="Stretch">
-              <StackPanel Spacing="8">
-                <Grid ColumnDefinitions="*,Auto">
-                  <TextBlock Text="Mod 管理" FontSize="14" FontWeight="Medium"/>
-                  <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
-                    <Button Classes="ghost" FontSize="11" Padding="4,2" Command="{Binding RefreshModsCommand}">
-                      <StackPanel Orientation="Horizontal" Spacing="3">
-                        <Path Data="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
-                        <TextBlock Text="刷新" VerticalAlignment="Center"/>
-                      </StackPanel>
-                    </Button>
-                    <Button Classes="ghost" FontSize="11" Padding="4,2" Command="{Binding OpenModsFolderCommand}">
-                      <StackPanel Orientation="Horizontal" Spacing="3">
-                        <Path Data="M20 6H12L10 4H4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V8C22 6.9 21.1 6 20 6M20 18H4V8H20V18Z" Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
-                        <TextBlock Text="打开Mod文件夹" VerticalAlignment="Center"/>
-                      </StackPanel>
-                    </Button>
-                  </StackPanel>
-                </Grid>
-
-                <ItemsControl ItemsSource="{Binding Mods}">
-                  <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                      <Border Background="{DynamicResource LayerFillColorPrimaryBrush}"
-                              CornerRadius="6"
-                              Padding="10"
-                              Margin="0,0,0,6"
-                              BorderThickness="1"
-                              BorderBrush="{Binding HasConflict, Converter={x:Static converters:BoolToBrushConverter.ConflictBorder}}">
-                        <Grid ColumnDefinitions="Auto,*,Auto">
-                          <Border Width="32" Height="32" CornerRadius="4" Margin="0,0,10,0"
-                                  Background="{DynamicResource SurfaceBrush}"
-                                  BorderThickness="1" BorderBrush="{DynamicResource CardBorderBrush}"
-                                  ClipToBounds="True">
-                            <Image Source="{Binding IconPath, Converter={x:Static converters:FilePathToBitmapConverter.Instance}}"
-                                   Stretch="Uniform" Margin="3"/>
-                          </Border>
-                          <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                            <StackPanel Orientation="Horizontal" Spacing="6">
-                              <TextBlock Text="{Binding FileName}" FontSize="12" FontWeight="Medium" TextTrimming="CharacterEllipsis"/>
-                              <Border Background="{DynamicResource DangerSoftBrush}" CornerRadius="3" Padding="4,1" IsVisible="{Binding HasConflict}">
-                                <TextBlock Text="冲突" FontSize="9" Foreground="{DynamicResource DangerBrush}" FontWeight="Medium"/>
+                                  BorderBrush="{DynamicResource CardBorderBrush}">
+                            <Grid ColumnDefinitions="Auto,*,Auto">
+                              <Border Width="40" Height="40" CornerRadius="4" Margin="0,0,10,0"
+                                      Background="{DynamicResource SurfaceBrush}"
+                                      BorderThickness="1"
+                                      BorderBrush="{DynamicResource CardBorderBrush}"
+                                      ClipToBounds="True">
+                                <Panel>
+                                  <Path Data="M12 2C6.48 2 2 6.48 2 12S6.48 22 12 22 22 17.52 22 12 17.52 2 12 2M12 20C7.59 20 4 16.41 4 12S7.59 4 12 4 20 7.59 20 12 16.41 20 12 20M11 7H13V13H11V7M11 15H13V17H11V15Z"
+                                        Width="24" Height="24" Stretch="Uniform" Fill="{DynamicResource AccentBrush}"
+                                        HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.6"/>
+                                  <Image Source="{Binding IconPath, Converter={x:Static converters:FilePathToBitmapConverter.Instance}}"
+                                         Stretch="UniformToFill" Margin="2"/>
+                                </Panel>
                               </Border>
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,2,0,0">
-                              <TextBlock Text="{Binding ModId}" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}" IsVisible="{Binding ModId, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
-                              <TextBlock Text="{Binding Version}" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}" IsVisible="{Binding Version, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
-                              <TextBlock Text="{Binding Loader}" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}" IsVisible="{Binding Loader, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
-                            </StackPanel>
-                            <TextBlock Text="{Binding ConflictDescription}" FontSize="10" Foreground="{DynamicResource DangerBrush}" TextWrapping="Wrap" IsVisible="{Binding HasConflict}" Margin="0,2,0,0"/>
-                            <TextBlock Text="{Binding ConflictSuggestion}" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}" TextWrapping="Wrap" IsVisible="{Binding ConflictSuggestion, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Margin="0,2,0,0"/>
-                          </StackPanel>
-                          <ToggleSwitch Grid.Column="2" IsChecked="{Binding IsEnabled}" OnContent="" OffContent=""/>
-                        </Grid>
-                      </Border>
-                    </DataTemplate>
-                  </ItemsControl.ItemTemplate>
-                </ItemsControl>
-
-                <TextBlock Text="暂无Mod" FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}"
-                           HorizontalAlignment="Center" IsVisible="{Binding !HasMods}"/>
-              </StackPanel>
-            </StackPanel>
-          </ScrollViewer>
-        </ui:TabViewItem>
-
-        <!-- ===== Shader ===== -->
-        <ui:TabViewItem Header="Shader" IsClosable="False">
-          <ui:TabViewItem.IconSource>
-            <ui:PathIconSource Data="M21 3H3C1.9 3 1 3.9 1 5V19C1 20.1 1.9 21 3 21H21C22.1 21 23 20.1 23 19V5C23 3.9 22.1 3 21 3M21 19H3V5H21V19M7.5 13.5L10 16.5L14 11.5L19 17H5L7.5 13.5Z"/>
-          </ui:TabViewItem.IconSource>
-          <ScrollViewer VerticalScrollBarVisibility="Auto">
-            <StackPanel Margin="20" Spacing="12" MaxWidth="900" HorizontalAlignment="Stretch">
-              <StackPanel Spacing="8">
-                <Grid ColumnDefinitions="*,Auto">
-                  <TextBlock Text="光影管理" FontSize="14" FontWeight="Medium"/>
-                  <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
-                    <Button Classes="ghost" FontSize="11" Padding="4,2" Command="{Binding RefreshShaderPacksCommand}">
-                      <StackPanel Orientation="Horizontal" Spacing="3">
-                        <Path Data="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
-                        <TextBlock Text="刷新" VerticalAlignment="Center"/>
-                      </StackPanel>
-                    </Button>
-                    <Button Classes="ghost" FontSize="11" Padding="4,2" Command="{Binding OpenShaderPacksFolderCommand}">
-                      <StackPanel Orientation="Horizontal" Spacing="3">
-                        <Path Data="M20 6H12L10 4H4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V8C22 6.9 21.1 6 20 6M20 18H4V8H20V18Z" Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
-                        <TextBlock Text="打开文件夹" VerticalAlignment="Center"/>
-                      </StackPanel>
-                    </Button>
-                  </StackPanel>
-                </Grid>
-
-                <ItemsControl ItemsSource="{Binding ShaderPacks}">
-                  <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                      <Border Background="{DynamicResource LayerFillColorPrimaryBrush}"
-                              CornerRadius="6" Padding="10" Margin="0,0,0,6"
-                              BorderThickness="1" BorderBrush="{DynamicResource CardBorderBrush}">
-                        <Grid ColumnDefinitions="Auto,*,Auto,Auto">
-                          <Border Width="32" Height="32" CornerRadius="4" Margin="0,0,10,0"
-                                  Background="{DynamicResource SurfaceBrush}"
-                                  BorderThickness="1" BorderBrush="{DynamicResource CardBorderBrush}" ClipToBounds="True">
-                            <Panel>
-                              <Path Data="M21 3H3C1.9 3 1 3.9 1 5V19C1 20.1 1.9 21 3 21H21C22.1 21 23 20.1 23 19V5C23 3.9 22.1 3 21 3M21 19H3V5H21V19M7.5 13.5L10 16.5L14 11.5L19 17H5L7.5 13.5Z"
-                                    Width="20" Height="20" Stretch="Uniform" Fill="{DynamicResource AccentBrush}"
-                                    HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.6"/>
-                              <Image Source="{Binding IconPath, Converter={x:Static converters:FilePathToBitmapConverter.Instance}}"
-                                     Stretch="Uniform" Margin="3"/>
-                            </Panel>
+                              <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="Medium" TextTrimming="CharacterEllipsis"/>
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                  <TextBlock Text="{Binding GameVersion, StringFormat='版本: {0}'}" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}"/>
+                                  <TextBlock Text="{Binding WorldSizeDisplay, StringFormat='大小: {0}'}" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}"/>
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                  <TextBlock Text="{Binding CreationTime, StringFormat='创建: {0:yyyy-MM-dd HH:mm}'}" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}"/>
+                                  <TextBlock Text="{Binding LastModified, StringFormat='修改: {0:yyyy-MM-dd HH:mm}'}" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}"/>
+                                </StackPanel>
+                              </StackPanel>
+                            </Grid>
                           </Border>
-                          <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                            <TextBlock Text="{Binding DisplayName}" FontSize="12" FontWeight="Medium" TextTrimming="CharacterEllipsis"/>
-                            <TextBlock Text="{Binding Size, StringFormat='{}{0:F0} KB'}" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}" Margin="0,1,0,0"/>
-                          </StackPanel>
-                          <Button Grid.Column="2" Classes="ghost" Padding="4,2" Margin="4,0,0,0"
-                                  Command="{Binding $parent[ItemsControl].((vm:InstanceViewModel)DataContext).DeleteShaderPackCommand}"
-                                  CommandParameter="{Binding}" ToolTip.Tip="删除">
-                            <Path Data="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"
-                                  Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource DangerBrush}" VerticalAlignment="Center"/>
-                          </Button>
-                          <ToggleSwitch Grid.Column="3" IsChecked="{Binding IsEnabled}" OnContent="" OffContent="" Margin="8,0,0,0"/>
-                        </Grid>
-                      </Border>
-                    </DataTemplate>
-                  </ItemsControl.ItemTemplate>
-                </ItemsControl>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
 
-                <TextBlock Text="暂无光影" FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}"
-                           HorizontalAlignment="Center" IsVisible="{Binding !HasShaderPacks}"/>
-              </StackPanel>
-            </StackPanel>
-          </ScrollViewer>
-        </ui:TabViewItem>
-
-        <!-- ===== 材质包 ===== -->
-        <ui:TabViewItem Header="材质包" IsClosable="False">
-          <ui:TabViewItem.IconSource>
-            <ui:PathIconSource Data="M20 6H12L10 4H4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V8C22 6.9 21.1 6 20 6M20 18H4V8H20V18Z"/>
-          </ui:TabViewItem.IconSource>
-          <ScrollViewer VerticalScrollBarVisibility="Auto">
-            <StackPanel Margin="20" Spacing="12" MaxWidth="900" HorizontalAlignment="Stretch">
-              <StackPanel Spacing="8">
-                <Grid ColumnDefinitions="*,Auto">
-                  <TextBlock Text="材质包管理" FontSize="14" FontWeight="Medium"/>
-                  <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
-                    <Button Classes="ghost" FontSize="11" Padding="4,2" Command="{Binding RefreshResourcePacksCommand}">
-                      <StackPanel Orientation="Horizontal" Spacing="3">
-                        <Path Data="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
-                        <TextBlock Text="刷新" VerticalAlignment="Center"/>
-                      </StackPanel>
-                    </Button>
-                    <Button Classes="ghost" FontSize="11" Padding="4,2" Command="{Binding OpenResourcePacksFolderCommand}">
-                      <StackPanel Orientation="Horizontal" Spacing="3">
-                        <Path Data="M20 6H12L10 4H4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V8C22 6.9 21.1 6 20 6M20 18H4V8H20V18Z" Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
-                        <TextBlock Text="打开文件夹" VerticalAlignment="Center"/>
-                      </StackPanel>
-                    </Button>
+                    <TextBlock Text="暂无存档" FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}"
+                               HorizontalAlignment="Center" IsVisible="{Binding !HasWorlds}"/>
                   </StackPanel>
-                </Grid>
-
-                <ItemsControl ItemsSource="{Binding ResourcePacks}">
-                  <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                      <Border Background="{DynamicResource LayerFillColorPrimaryBrush}"
-                              CornerRadius="6" Padding="10" Margin="0,0,0,6"
-                              BorderThickness="1" BorderBrush="{DynamicResource CardBorderBrush}">
-                        <Grid ColumnDefinitions="Auto,*,Auto,Auto">
-                          <Border Width="32" Height="32" CornerRadius="4" Margin="0,0,10,0"
-                                  Background="{DynamicResource SurfaceBrush}"
-                                  BorderThickness="1" BorderBrush="{DynamicResource CardBorderBrush}" ClipToBounds="True">
-                            <Panel>
-                              <Path Data="M20 6H12L10 4H4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V8C22 6.9 21.1 6 20 6M20 18H4V8H20V18Z"
-                                    Width="20" Height="20" Stretch="Uniform" Fill="{DynamicResource AccentBrush}"
-                                    HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.6"/>
-                              <Image Source="{Binding IconPath, Converter={x:Static converters:FilePathToBitmapConverter.Instance}}"
-                                     Stretch="Uniform" Margin="3"/>
-                            </Panel>
-                          </Border>
-                          <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                            <TextBlock Text="{Binding DisplayName}" FontSize="12" FontWeight="Medium" TextTrimming="CharacterEllipsis"/>
-                            <TextBlock Text="{Binding Size, StringFormat='{}{0:F0} KB'}" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}" Margin="0,1,0,0"/>
+                </StackPanel>
+              </ScrollViewer>
+              <ScrollViewer VerticalScrollBarVisibility="Auto"
+                            IsVisible="{Binding SelectedResourceTabIndex, Converter={x:Static converters:TabIndexToBoolConverter.Instance}, ConverterParameter=1}">
+                <StackPanel Margin="20" Spacing="12" MaxWidth="900" HorizontalAlignment="Stretch">
+                  <StackPanel Spacing="8">
+                    <Grid ColumnDefinitions="*,Auto">
+                      <TextBlock Text="Mod 管理" FontSize="14" FontWeight="Medium"/>
+                      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+                        <Button Classes="ghost" FontSize="11" Padding="4,2" Command="{Binding RefreshModsCommand}">
+                          <StackPanel Orientation="Horizontal" Spacing="3">
+                            <Path Data="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+                            <TextBlock Text="刷新" VerticalAlignment="Center"/>
                           </StackPanel>
-                          <Button Grid.Column="2" Classes="ghost" Padding="4,2" Margin="4,0,0,0"
-                                  Command="{Binding $parent[ItemsControl].((vm:InstanceViewModel)DataContext).DeleteResourcePackCommand}"
-                                  CommandParameter="{Binding}" ToolTip.Tip="删除">
-                            <Path Data="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"
-                                  Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource DangerBrush}" VerticalAlignment="Center"/>
-                          </Button>
-                          <ToggleSwitch Grid.Column="3" IsChecked="{Binding IsEnabled}" OnContent="" OffContent="" Margin="8,0,0,0"/>
-                        </Grid>
-                      </Border>
-                    </DataTemplate>
-                  </ItemsControl.ItemTemplate>
-                </ItemsControl>
+                        </Button>
+                        <Button Classes="ghost" FontSize="11" Padding="4,2" Command="{Binding OpenModsFolderCommand}">
+                          <StackPanel Orientation="Horizontal" Spacing="3">
+                            <Path Data="M20 6H12L10 4H4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V8C22 6.9 21.1 6 20 6M20 18H4V8H20V18Z" Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+                            <TextBlock Text="打开Mod文件夹" VerticalAlignment="Center"/>
+                          </StackPanel>
+                        </Button>
+                      </StackPanel>
+                    </Grid>
 
-                <TextBlock Text="暂无材质包" FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}"
-                           HorizontalAlignment="Center" IsVisible="{Binding !HasResourcePacks}"/>
-              </StackPanel>
-            </StackPanel>
-          </ScrollViewer>
+                    <ItemsControl ItemsSource="{Binding Mods}">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                          <Border Background="{DynamicResource LayerFillColorPrimaryBrush}"
+                                  CornerRadius="6"
+                                  Padding="10"
+                                  Margin="0,0,0,6"
+                                  BorderThickness="1"
+                                  BorderBrush="{Binding HasConflict, Converter={x:Static converters:BoolToBrushConverter.ConflictBorder}}">
+                            <Grid ColumnDefinitions="Auto,*,Auto">
+                              <Border Width="32" Height="32" CornerRadius="4" Margin="0,0,10,0"
+                                      Background="{DynamicResource SurfaceBrush}"
+                                      BorderThickness="1" BorderBrush="{DynamicResource CardBorderBrush}"
+                                      ClipToBounds="True">
+                                <Image Source="{Binding IconPath, Converter={x:Static converters:FilePathToBitmapConverter.Instance}}"
+                                       Stretch="Uniform" Margin="3"/>
+                              </Border>
+                              <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                  <TextBlock Text="{Binding FileName}" FontSize="12" FontWeight="Medium" TextTrimming="CharacterEllipsis"/>
+                                  <Border Background="{DynamicResource DangerSoftBrush}" CornerRadius="3" Padding="4,1" IsVisible="{Binding HasConflict}">
+                                    <TextBlock Text="冲突" FontSize="9" Foreground="{DynamicResource DangerBrush}" FontWeight="Medium"/>
+                                  </Border>
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,2,0,0">
+                                  <TextBlock Text="{Binding ModId}" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}" IsVisible="{Binding ModId, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                  <TextBlock Text="{Binding Version}" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}" IsVisible="{Binding Version, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                  <TextBlock Text="{Binding Loader}" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}" IsVisible="{Binding Loader, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                </StackPanel>
+                                <TextBlock Text="{Binding ConflictDescription}" FontSize="10" Foreground="{DynamicResource DangerBrush}" TextWrapping="Wrap" IsVisible="{Binding HasConflict}" Margin="0,2,0,0"/>
+                                <TextBlock Text="{Binding ConflictSuggestion}" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}" TextWrapping="Wrap" IsVisible="{Binding ConflictSuggestion, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Margin="0,2,0,0"/>
+                              </StackPanel>
+                              <ToggleSwitch Grid.Column="2" IsChecked="{Binding IsEnabled}" OnContent="" OffContent=""/>
+                            </Grid>
+                          </Border>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <TextBlock Text="暂无Mod" FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}"
+                               HorizontalAlignment="Center" IsVisible="{Binding !HasMods}"/>
+                  </StackPanel>
+                </StackPanel>
+              </ScrollViewer>
+              <ScrollViewer VerticalScrollBarVisibility="Auto"
+                            IsVisible="{Binding SelectedResourceTabIndex, Converter={x:Static converters:TabIndexToBoolConverter.Instance}, ConverterParameter=2}">
+                <StackPanel Margin="20" Spacing="12" MaxWidth="900" HorizontalAlignment="Stretch">
+                  <StackPanel Spacing="8">
+                    <Grid ColumnDefinitions="*,Auto">
+                      <TextBlock Text="材质包管理" FontSize="14" FontWeight="Medium"/>
+                      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+                        <Button Classes="ghost" FontSize="11" Padding="4,2" Command="{Binding RefreshResourcePacksCommand}">
+                          <StackPanel Orientation="Horizontal" Spacing="3">
+                            <Path Data="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+                            <TextBlock Text="刷新" VerticalAlignment="Center"/>
+                          </StackPanel>
+                        </Button>
+                        <Button Classes="ghost" FontSize="11" Padding="4,2" Command="{Binding OpenResourcePacksFolderCommand}">
+                          <StackPanel Orientation="Horizontal" Spacing="3">
+                            <Path Data="M20 6H12L10 4H4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V8C22 6.9 21.1 6 20 6M20 18H4V8H20V18Z" Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+                            <TextBlock Text="打开文件夹" VerticalAlignment="Center"/>
+                          </StackPanel>
+                        </Button>
+                      </StackPanel>
+                    </Grid>
+
+                    <ItemsControl ItemsSource="{Binding ResourcePacks}">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                          <Border Background="{DynamicResource LayerFillColorPrimaryBrush}"
+                                  CornerRadius="6" Padding="10" Margin="0,0,0,6"
+                                  BorderThickness="1" BorderBrush="{DynamicResource CardBorderBrush}">
+                            <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                              <Border Width="32" Height="32" CornerRadius="4" Margin="0,0,10,0"
+                                      Background="{DynamicResource SurfaceBrush}"
+                                      BorderThickness="1" BorderBrush="{DynamicResource CardBorderBrush}" ClipToBounds="True">
+                                <Panel>
+                                  <Path Data="M20 6H12L10 4H4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V8C22 6.9 21.1 6 20 6M20 18H4V8H20V18Z"
+                                        Width="20" Height="20" Stretch="Uniform" Fill="{DynamicResource AccentBrush}"
+                                        HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.6"/>
+                                  <Image Source="{Binding IconPath, Converter={x:Static converters:FilePathToBitmapConverter.Instance}}"
+                                         Stretch="Uniform" Margin="3"/>
+                                </Panel>
+                              </Border>
+                              <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding DisplayName}" FontSize="12" FontWeight="Medium" TextTrimming="CharacterEllipsis"/>
+                                <TextBlock Text="{Binding Size, StringFormat='{}{0:F0} KB'}" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}" Margin="0,1,0,0"/>
+                              </StackPanel>
+                              <Button Grid.Column="2" Classes="ghost" Padding="4,2" Margin="4,0,0,0"
+                                      Command="{Binding $parent[ItemsControl].((vm:InstanceViewModel)DataContext).DeleteResourcePackCommand}"
+                                      CommandParameter="{Binding}" ToolTip.Tip="删除">
+                                <Path Data="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"
+                                      Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource DangerBrush}" VerticalAlignment="Center"/>
+                              </Button>
+                              <ToggleSwitch Grid.Column="3" IsChecked="{Binding IsEnabled}" OnContent="" OffContent="" Margin="8,0,0,0"/>
+                            </Grid>
+                          </Border>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <TextBlock Text="暂无材质包" FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}"
+                               HorizontalAlignment="Center" IsVisible="{Binding !HasResourcePacks}"/>
+                  </StackPanel>
+                </StackPanel>
+              </ScrollViewer>
+              <ScrollViewer VerticalScrollBarVisibility="Auto"
+                            IsVisible="{Binding SelectedResourceTabIndex, Converter={x:Static converters:TabIndexToBoolConverter.Instance}, ConverterParameter=3}">
+                <StackPanel Margin="20" Spacing="12" MaxWidth="900" HorizontalAlignment="Stretch">
+                  <StackPanel Spacing="8">
+                    <Grid ColumnDefinitions="*,Auto">
+                      <TextBlock Text="光影管理" FontSize="14" FontWeight="Medium"/>
+                      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+                        <Button Classes="ghost" FontSize="11" Padding="4,2" Command="{Binding RefreshShaderPacksCommand}">
+                          <StackPanel Orientation="Horizontal" Spacing="3">
+                            <Path Data="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+                            <TextBlock Text="刷新" VerticalAlignment="Center"/>
+                          </StackPanel>
+                        </Button>
+                        <Button Classes="ghost" FontSize="11" Padding="4,2" Command="{Binding OpenShaderPacksFolderCommand}">
+                          <StackPanel Orientation="Horizontal" Spacing="3">
+                            <Path Data="M20 6H12L10 4H4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V8C22 6.9 21.1 6 20 6M20 18H4V8H20V18Z" Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+                            <TextBlock Text="打开文件夹" VerticalAlignment="Center"/>
+                          </StackPanel>
+                        </Button>
+                      </StackPanel>
+                    </Grid>
+
+                    <ItemsControl ItemsSource="{Binding ShaderPacks}">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                          <Border Background="{DynamicResource LayerFillColorPrimaryBrush}"
+                                  CornerRadius="6" Padding="10" Margin="0,0,0,6"
+                                  BorderThickness="1" BorderBrush="{DynamicResource CardBorderBrush}">
+                            <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                              <Border Width="32" Height="32" CornerRadius="4" Margin="0,0,10,0"
+                                      Background="{DynamicResource SurfaceBrush}"
+                                      BorderThickness="1" BorderBrush="{DynamicResource CardBorderBrush}" ClipToBounds="True">
+                                <Panel>
+                                  <Path Data="M21 3H3C1.9 3 1 3.9 1 5V19C1 20.1 1.9 21 3 21H21C22.1 21 23 20.1 23 19V5C23 3.9 22.1 3 21 3M21 19H3V5H21V19M7.5 13.5L10 16.5L14 11.5L19 17H5L7.5 13.5Z"
+                                        Width="20" Height="20" Stretch="Uniform" Fill="{DynamicResource AccentBrush}"
+                                        HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.6"/>
+                                  <Image Source="{Binding IconPath, Converter={x:Static converters:FilePathToBitmapConverter.Instance}}"
+                                         Stretch="Uniform" Margin="3"/>
+                                </Panel>
+                              </Border>
+                              <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding DisplayName}" FontSize="12" FontWeight="Medium" TextTrimming="CharacterEllipsis"/>
+                                <TextBlock Text="{Binding Size, StringFormat='{}{0:F0} KB'}" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}" Margin="0,1,0,0"/>
+                              </StackPanel>
+                              <Button Grid.Column="2" Classes="ghost" Padding="4,2" Margin="4,0,0,0"
+                                      Command="{Binding $parent[ItemsControl].((vm:InstanceViewModel)DataContext).DeleteShaderPackCommand}"
+                                      CommandParameter="{Binding}" ToolTip.Tip="删除">
+                                <Path Data="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"
+                                      Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource DangerBrush}" VerticalAlignment="Center"/>
+                              </Button>
+                              <ToggleSwitch Grid.Column="3" IsChecked="{Binding IsEnabled}" OnContent="" OffContent="" Margin="8,0,0,0"/>
+                            </Grid>
+                          </Border>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <TextBlock Text="暂无光影" FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}"
+                               HorizontalAlignment="Center" IsVisible="{Binding !HasShaderPacks}"/>
+                  </StackPanel>
+                </StackPanel>
+              </ScrollViewer>
+            </Panel>
+          </Grid>
         </ui:TabViewItem>
 
+
+        <!-- ===== 导出整合包 ===== -->
+        <ui:TabViewItem Header="导出" IsClosable="False">
+          <ui:TabViewItem.IconSource>
+            <ui:PathIconSource Data="M5 20H19V18H5M19 9H15V3H9V9H5L12 16L19 9Z"/>
+          </ui:TabViewItem.IconSource>
+          <views:ModpackExportPage DataContext="{Binding Export}"/>
+        </ui:TabViewItem>
       </ui:TabView>
 
       <!-- 加载骨架屏 -->

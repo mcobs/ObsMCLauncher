@@ -8,6 +8,22 @@ using ObsMCLauncher.Core.Utils;
 
 namespace ObsMCLauncher.Core.Services.Minecraft;
 
+/// <summary>整合包压缩包的清单格式（按包根文件判定）。</summary>
+public enum ModpackArchiveType
+{
+    /// <summary>无法识别。</summary>
+    Unknown = 0,
+
+    /// <summary>CurseForge：包根有 manifest.json。</summary>
+    CurseForge = 1,
+
+    /// <summary>Modrinth：包根有 modrinth.index.json。</summary>
+    Modrinth = 2,
+
+    /// <summary>手工整合包：内容以 .minecraft/ 或 versions/ 打头。</summary>
+    Manual = 3
+}
+
 /// <summary>
 /// 整合包安装服务 - 全流程在 .temp 中完成，成功后再迁移到正式目录
 /// </summary>
@@ -55,17 +71,17 @@ public class ModpackInstallService
 
                 switch (modpackType)
                 {
-                    case ModpackType.CurseForge:
+                    case ModpackArchiveType.CurseForge:
                         await InstallCurseForgeModpackAsync(archive, versionName, tempVersionDir, gameDirectory, progressCallback);
                         break;
-                    case ModpackType.Modrinth:
+                    case ModpackArchiveType.Modrinth:
                         await InstallModrinthModpackAsync(archive, versionName, tempVersionDir, gameDirectory, progressCallback);
                         break;
-                    case ModpackType.Manual:
-                        await InstallManualModpackAsync(archive, tempVersionDir, progressCallback);
+                    case ModpackArchiveType.Manual:
+                        await InstallManualModpackAsync(archive, versionName, tempVersionDir, progressCallback);
                         break;
                     default:
-                        throw new Exception("不支持的整合包格式");
+                        throw new Exception("不支持的整合包格式：仅支持 CurseForge（含 manifest.json）与 Modrinth（含 modrinth.index.json）整合包");
                 }
             }
 
@@ -189,12 +205,30 @@ public class ModpackInstallService
         }
     }
 
-    private static ModpackType DetectModpackType(ZipArchive archive)
+    private static ModpackArchiveType DetectModpackType(ZipArchive archive)
     {
-        if (archive.GetEntry("manifest.json") != null) return ModpackType.CurseForge;
-        if (archive.GetEntry("modrinth.index.json") != null) return ModpackType.Modrinth;
-        if (archive.Entries.Any(e => e.FullName.Contains(".minecraft/") || e.FullName.StartsWith("versions/"))) return ModpackType.Manual;
-        return ModpackType.Unknown;
+        if (archive.GetEntry("manifest.json") != null) return ModpackArchiveType.CurseForge;
+        if (archive.GetEntry("modrinth.index.json") != null) return ModpackArchiveType.Modrinth;
+        if (archive.Entries.Any(e => e.FullName.Contains(".minecraft/") || e.FullName.StartsWith("versions/"))) return ModpackArchiveType.Manual;
+        return ModpackArchiveType.Unknown;
+    }
+
+    /// <summary>
+    /// 嗅探整合包文件格式（不安装）。供"导入本地整合包"在弹出版本名输入框<b>之前</b>做校验，
+    /// 避免用户填完名字才发现格式不支持。
+    /// </summary>
+    public static ModpackArchiveType DetectArchiveType(string filePath)
+    {
+        try
+        {
+            using var archive = ZipFile.OpenRead(filePath);
+            return DetectModpackType(archive);
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Warn("ModpackInstall", $"嗅探整合包格式失败: {ex.Message}");
+            return ModpackArchiveType.Unknown;
+        }
     }
 
     private static async Task InstallCurseForgeModpackAsync(
@@ -495,19 +529,105 @@ public class ModpackInstallService
         }
     }
 
-    private static async Task InstallManualModpackAsync(ZipArchive archive, string versionDir, Action<string, double>? progress)
+    /// <summary>
+    /// 手工整合包（没有清单文件，靠目录结构表达内容）的解压安装。
+    ///
+    /// ⚠️ 必须**剥离打包时的根前缀**，否则会解成
+    /// <c>versions/{name}/versions/{name}/mods/…</c>、<c>versions/{name}/.minecraft/mods/…</c> 这样的错层
+    /// （每条 entry 的目的地都算错，游戏也读不到）。
+    /// 支持两种前缀：<c>.minecraft/</c> 与 <c>versions/{本版本名}/</c>；
+    /// 属于**别的版本**的 <c>versions/{其它}/…</c> 直接跳过（那是另一个版本的存档，不属于本次安装）。
+    /// </summary>
+    private static async Task InstallManualModpackAsync(
+        ZipArchive archive,
+        string versionName,
+        string versionDir,
+        Action<string, double>? progress)
     {
+        var entries = archive.Entries.Where(e => !string.IsNullOrEmpty(e.Name)).ToList();
+
+        // 先探一遍是否存在统一的 .minecraft/ 前缀（PCL/HMCL 导出"手动整合包"的常见形态）
+        var strippedRoot = DetectManualRootPrefix(entries);
+
         int count = 0;
-        foreach (var entry in archive.Entries)
+        int skipped = 0;
+        foreach (var entry in entries)
         {
-            if (string.IsNullOrEmpty(entry.Name)) continue;
-            var destPath = Path.Combine(versionDir, entry.FullName);
-            SafeZipExtractor.ExtractEntryToFile(entry, destPath, versionDir);
             count++;
-            progress?.Invoke($"正在解压手动整合包... ({count}/{archive.Entries.Count})", 30 + (count * 70.0 / Math.Max(1, archive.Entries.Count)));
+            var relative = ResolveManualEntryPath(entry, strippedRoot, versionName);
+            if (relative == null)
+            {
+                skipped++;
+                continue;
+            }
+
+            var destPath = Path.Combine(versionDir, relative);
+            SafeZipExtractor.ExtractEntryToFile(entry, destPath, versionDir);
+
+            progress?.Invoke($"正在解压手动整合包... ({count}/{entries.Count})",
+                30 + (count * 70.0 / Math.Max(1, entries.Count)));
         }
+
+        if (skipped > 0)
+        {
+            DebugLogger.Info("ModpackInstall", $"手动整合包：跳过了 {skipped} 个属于其它版本的条目");
+        }
+
         await Task.CompletedTask;
     }
+
+    /// <summary>
+    /// 探测手工整合包的根前缀。只有**所有**条目都带同一个 <c>.minecraft/</c> 前缀时才剥离，
+    /// 避免误伤正常的 <c>mods/…</c> 结构。
+    /// </summary>
+    internal static string DetectManualRootPrefix(IReadOnlyList<ZipArchiveEntry> entries)
+    {
+        if (entries.Count == 0)
+            return string.Empty;
+
+        foreach (var candidate in new[] { ".minecraft/", "minecraft/" })
+        {
+            if (entries.All(e => NormalizeEntryPath(e).StartsWith(candidate, StringComparison.OrdinalIgnoreCase)))
+                return candidate;
+        }
+
+        return string.Empty;
+    }
+
+    /// <summary>
+    /// 算出某条 entry 相对版本目录的落点；返回 <c>null</c> 表示应跳过。
+    /// </summary>
+    internal static string? ResolveManualEntryPath(ZipArchiveEntry entry, string rootPrefix, string versionName)
+    {
+        var path = NormalizeEntryPath(entry);
+
+        if (rootPrefix.Length > 0 && path.StartsWith(rootPrefix, StringComparison.OrdinalIgnoreCase))
+            path = path.Substring(rootPrefix.Length);
+
+        // versions/{x}/… —— 只保留本版本的内容（它就是本次要装的版本 JSON/JAR）
+        if (path.StartsWith("versions/", StringComparison.OrdinalIgnoreCase))
+        {
+            var rest = path.Substring("versions/".Length);
+            var slash = rest.IndexOf('/');
+            if (slash <= 0)
+            {
+                // 形如 versions/1.20.1 的目录条目：丢掉
+                return null;
+            }
+
+            var innerName = rest.Substring(0, slash);
+            if (!innerName.Equals(versionName, StringComparison.OrdinalIgnoreCase))
+                return null;
+
+            path = rest.Substring(slash + 1);
+        }
+
+        path = path.TrimStart('/');
+        return string.IsNullOrEmpty(path) ? null : path;
+    }
+
+    private static string NormalizeEntryPath(ZipArchiveEntry entry)
+        => entry.FullName.Replace('\\', '/').TrimStart('/');
 
     private static Task EnsureVersionJsonAndJarAsync(string versionName, string tempVersionDir)
     {
@@ -627,8 +747,6 @@ public class ModpackInstallService
             }
         });
     }
-
-    private enum ModpackType { Unknown, CurseForge, Modrinth, Manual }
 
     private class CurseForgeManifest
     {

@@ -342,6 +342,49 @@ public static class CurseForgeService
         }
     }
 
+    /// <summary>
+    /// 按本地文件指纹批量反查 CurseForge 上的项目/文件 ID（导出整合包用）。
+    /// 指纹算法见 <c>Services/Modpack/CurseForgeFingerprint</c>。
+    /// </summary>
+    /// <returns>指纹 → 匹配结果；请求失败返回 null。</returns>
+    public static async Task<Dictionary<uint, CurseForgeFingerprintMatch>?> GetFilesByFingerprintsAsync(
+        IReadOnlyCollection<uint> fingerprints)
+    {
+        if (fingerprints.Count == 0)
+            return new Dictionary<uint, CurseForgeFingerprintMatch>();
+
+        var body = "{\"fingerprints\":[" + string.Join(",", fingerprints) + "]}";
+        var json = await RequestWithFallbackAsync($"/v1/fingerprints/{MINECRAFT_GAME_ID}", body).ConfigureAwait(false);
+        if (json == null)
+            return null;
+
+        try
+        {
+            var response = JsonSerializer.Deserialize<CurseForgeFingerprintResponse>(json, CachedJsonOptions);
+            var result = new Dictionary<uint, CurseForgeFingerprintMatch>();
+            if (response?.Data?.ExactMatches == null)
+                return result;
+
+            foreach (var match in response.Data.ExactMatches)
+            {
+                if (match.File == null)
+                    continue;
+                if (match.File.FileFingerprint is < 0 or > uint.MaxValue)
+                    continue;
+
+                result[(uint)match.File.FileFingerprint] = match;
+            }
+
+            DebugLogger.Info("CurseForge", $"指纹反查命中 {result.Count}/{fingerprints.Count} 个文件");
+            return result;
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Error("CurseForge", $"指纹反查解析失败: {ex.Message}");
+            return null;
+        }
+    }
+
     public static async Task<bool> DownloadModFileAsync(
         CurseForgeFile file,
         string savePath,

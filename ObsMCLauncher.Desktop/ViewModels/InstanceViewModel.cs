@@ -80,6 +80,13 @@ public partial class InstanceViewModel : ViewModelBase
     [ObservableProperty]
     private bool _isVisible;
 
+    /// <summary>
+    /// 「资源管理」标签页内部左侧导航的选中项：0=存档 1=Mod 2=材质包 3=光影。
+    /// 左侧 ListBox 的 SelectedIndex 双向绑定到这里，四个内容面板靠它互斥显示。
+    /// </summary>
+    [ObservableProperty]
+    private int _selectedResourceTabIndex;
+
     [ObservableProperty]
     private ObservableCollection<GroupListItem> _groupListItems = new();
 
@@ -168,6 +175,7 @@ public partial class InstanceViewModel : ViewModelBase
     {
         _notificationService = notificationService;
         _dialogService = NavigationStore.MainWindow?.Dialogs ?? new DialogService();
+        Export = new ModpackExportPageViewModel(notificationService);
 
         JvmArgumentsEditor = new JvmArgumentsEditorViewModel
         {
@@ -181,6 +189,9 @@ public partial class InstanceViewModel : ViewModelBase
             }
         };
     }
+
+    /// <summary>实例页「导出」标签页的 VM（导出整合包）。</summary>
+    public ModpackExportPageViewModel Export { get; }
 
     public void SetVersion(ObsMCLauncher.Core.Services.Minecraft.InstalledVersion version)
     {
@@ -287,6 +298,7 @@ public partial class InstanceViewModel : ViewModelBase
         }
 
         data.GameDir = config.GetRunDirectory(_version.Id);
+        data.IsIsolated = config.IsVersionIsolated(_version.Id);
         data.StoragePath = Path.Combine(config.GameDirectory, "versions", _version.Id);
 
         // 收集分组数据
@@ -364,6 +376,9 @@ public partial class InstanceViewModel : ViewModelBase
         GroupListItems = items;
         SelectedGroupItem = items.FirstOrDefault(g => g.Id == data.CurrentGroupId);
         ManagedGroups = new ObservableCollection<VersionGroup>(data.Groups);
+
+        // 导出页的上下文（运行目录随隔离模式变化，必须在这里同步）
+        Export.SetContext(data.VersionId, _versionPath, data.GameDir, data.IsIsolated);
     }
 
     private void CollectWorlds(LoadData data)
@@ -1393,6 +1408,9 @@ public partial class InstanceViewModel : ViewModelBase
         public string GameDir { get; set; } = "-";
         public string StoragePath { get; set; } = "-";
         public int IsolationMode { get; set; }
+
+        /// <summary>实际生效的版本隔离（版本级配置优先，缺省回落全局），导出页判断候选范围用。</summary>
+        public bool IsIsolated { get; set; } = true;
         public List<VersionGroup> Groups { get; set; } = new();
         public string CurrentGroupId { get; set; } = "";
         public List<WorldInfo> Worlds { get; set; } = new();

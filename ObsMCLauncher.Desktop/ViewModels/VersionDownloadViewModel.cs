@@ -475,6 +475,140 @@ public partial class VersionDownloadViewModel : ViewModelBase
         await LoadOnlineVersionsAsync();
     }
 
+    /// <summary>
+    /// 导入本地整合包（.zip / .mrpack）。与「导出整合包」构成闭环：
+    /// 先嗅探格式 → 让用户确认安装后的版本名 → 复制到 versions 下 → 交给 <see cref="ModpackInstallService"/>。
+    /// </summary>
+    [RelayCommand]
+    private async Task ImportModpackAsync()
+    {
+        var storageProvider = (Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)
+            ?.MainWindow?.StorageProvider;
+        if (storageProvider == null)
+            return;
+
+        IReadOnlyList<Avalonia.Platform.Storage.IStorageFile> files;
+        try
+        {
+            files = await storageProvider.OpenFilePickerAsync(new Avalonia.Platform.Storage.FilePickerOpenOptions
+            {
+                Title = "选择整合包文件",
+                AllowMultiple = false,
+                FileTypeFilter = new[]
+                {
+                    new Avalonia.Platform.Storage.FilePickerFileType("整合包")
+                    {
+                        Patterns = new[] { "*.zip", "*.mrpack" }
+                    },
+                    new Avalonia.Platform.Storage.FilePickerFileType("所有文件")
+                    {
+                        Patterns = new[] { "*" }
+                    }
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Warn("VersionDownloadVM", $"选择整合包文件失败: {ex.Message}");
+            return;
+        }
+
+        if (files.Count == 0)
+            return;
+
+        var sourcePath = files[0].Path.LocalPath;
+        if (!File.Exists(sourcePath))
+            return;
+
+        // 先嗅探格式，别让用户填完名字才失败
+        var archiveType = ModpackInstallService.DetectArchiveType(sourcePath);
+        if (archiveType == ModpackArchiveType.Unknown)
+        {
+            await _dialogService.ShowWarning("无法导入",
+                "这个压缩包里既没有 CurseForge 的 manifest.json，也没有 Modrinth 的 modrinth.index.json，"
+                + "目录结构也不像手工整合包（没有 .minecraft/ 或 versions/ 前缀）。\n\n"
+                + "请确认选择的是整合包文件本身，而不是解压后的文件夹或其它类型的压缩包。");
+            return;
+        }
+
+        var formatLabel = archiveType switch
+        {
+            ModpackArchiveType.CurseForge => "CurseForge",
+            ModpackArchiveType.Modrinth => "Modrinth",
+            _ => "手工"
+        };
+
+        var defaultName = Path.GetFileNameWithoutExtension(sourcePath);
+        var (dialogResult, versionName) = await _dialogService.ShowInputAsync(
+            "导入整合包",
+            $"已识别为 {formatLabel} 整合包。\n请输入安装后的版本名称：",
+            defaultName,
+            "版本名称");
+
+        if (dialogResult != DialogResult.OK || string.IsNullOrWhiteSpace(versionName))
+            return;
+
+        versionName = versionName.Trim();
+
+        CancellationTokenSource? cts = null;
+        string? taskId = null;
+        try
+        {
+            var config = LauncherConfig.Load();
+            var versionsDir = Path.Combine(config.GameDirectory, "versions");
+            Directory.CreateDirectory(versionsDir);
+
+            // 复制到 versions 下再安装：原文件可能来自只读位置（U 盘、下载目录外的路径），
+            // 也可能与安装流程共用同名文件，复制一份最省心
+            var stagedPath = Path.Combine(versionsDir, Path.GetFileName(sourcePath));
+            cts = new CancellationTokenSource();
+
+            var task = Core.Services.Download.DownloadTaskManager.Instance.AddTask(
+                $"导入整合包: {versionName}",
+                Core.Services.Download.DownloadTaskType.Version,
+                cts);
+            taskId = task.Id;
+
+            Core.Services.Download.DownloadTaskManager.Instance.UpdateTaskProgress(taskId, 0, "正在读取整合包...");
+            await Task.Run(() => File.Copy(sourcePath, stagedPath, overwrite: true), cts.Token);
+
+            Core.Services.Download.DownloadTaskManager.Instance.UpdateTaskProgress(taskId, 5, "正在安装整合包...");
+
+            await ModpackInstallService.InstallModpackAsync(
+                stagedPath,
+                versionName,
+                config.GameDirectory,
+                (msg, progress) =>
+                {
+                    var total = 5 + (progress * 0.95);
+                    Core.Services.Download.DownloadTaskManager.Instance.UpdateTaskProgress(taskId, total, msg);
+                });
+
+            Core.Services.Download.DownloadTaskManager.Instance.CompleteTask(taskId);
+            _notificationService.Show("导入完成", $"整合包「{versionName}」已安装成功", NotificationType.Success, 3);
+
+            _config = LauncherConfig.Load();
+            RefreshInstalled();
+        }
+        catch (OperationCanceledException)
+        {
+            if (taskId != null)
+                Core.Services.Download.DownloadTaskManager.Instance.FailTask(taskId, "已取消");
+            _notificationService.Show("已取消", "整合包导入已取消", NotificationType.Info);
+        }
+        catch (Exception ex)
+        {
+            if (taskId != null)
+                Core.Services.Download.DownloadTaskManager.Instance.FailTask(taskId, ex.Message);
+            _notificationService.Show("导入失败", ex.Message, NotificationType.Error);
+            DebugLogger.Error("VersionDownloadVM", $"导入整合包失败: {ex}");
+        }
+        finally
+        {
+            cts?.Dispose();
+        }
+    }
+
     [RelayCommand]
     private void OpenDetail(MinecraftVersion version)
     {

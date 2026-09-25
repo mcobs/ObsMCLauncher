@@ -21,6 +21,7 @@ public class ModrinthService
     private static readonly ConcurrentDictionary<string, (List<ModrinthVersion> data, DateTime expiry)> _versionCache = new();
     private static readonly ConcurrentDictionary<string, (Dictionary<string, ModrinthProject> data, DateTime expiry)> _projectsBatchCache = new();
     private static readonly TimeSpan _cacheDuration = TimeSpan.FromMinutes(5);
+    private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
     static ModrinthService()
     {
@@ -244,6 +245,92 @@ public class ModrinthService
         }
         catch
         {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// 按本地文件 SHA1 批量反查 Modrinth 版本信息（导出整合包用）。
+    /// 单次调用建议不超过 500 个 hash（调用方负责分批）。
+    /// </summary>
+    /// <returns>sha1 → 版本；请求失败返回 null（调用方按"全部未命中"降级）。</returns>
+    public async Task<Dictionary<string, ModrinthVersion>?> GetVersionsByHashesAsync(
+        IReadOnlyCollection<string> sha1Hashes,
+        CancellationToken cancellationToken = default)
+    {
+        if (sha1Hashes.Count == 0)
+            return new Dictionary<string, ModrinthVersion>();
+
+        var body = JsonSerializer.Serialize(new ModrinthHashLookupRequest
+        {
+            Hashes = new List<string>(sha1Hashes),
+            Algorithm = "sha1"
+        });
+
+        var json = await SendPostWithFallbackAsync("/version_files", body, cancellationToken).ConfigureAwait(false);
+        if (json == null)
+            return null;
+
+        try
+        {
+            var result = JsonSerializer.Deserialize<Dictionary<string, ModrinthVersion>>(json, JsonOptions);
+            if (result == null)
+                return null;
+
+            foreach (var hash in sha1Hashes)
+            {
+                if (result.TryGetValue(hash, out var version))
+                    _versionCache[version.Id] = (new List<ModrinthVersion> { version }, DateTime.Now + _cacheDuration);
+            }
+
+            DebugLogger.Info("Modrinth", $"SHA1 反查命中 {result.Count}/{sha1Hashes.Count} 个文件");
+            return result;
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Error("Modrinth", $"SHA1 反查解析失败: {ex.Message}");
+            return null;
+        }
+    }
+
+    private async Task<string?> SendPostWithFallbackAsync(string path, string jsonBody, CancellationToken cancellationToken)
+    {
+        if (ShouldUseMirror)
+        {
+            await MirrorHealthChecker.EnsureModrinthCheckedAsync().ConfigureAwait(false);
+        }
+
+        if (ShouldUseMirror)
+        {
+            try
+            {
+                using var content = new StringContent(jsonBody, System.Text.Encoding.UTF8, "application/json");
+                using var mirrorResponse = await _httpClient.PostAsync(MirrorBaseUrl + path, content, cancellationToken).ConfigureAwait(false);
+                if (mirrorResponse.IsSuccessStatusCode)
+                {
+                    return await mirrorResponse.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+                }
+
+                DebugLogger.Warn("Modrinth", $"镜像源 POST 失败 ({(int)mirrorResponse.StatusCode}), 回退到官方源");
+            }
+            catch (Exception ex)
+            {
+                DebugLogger.Warn("Modrinth", $"镜像源 POST 异常: {ex.Message}, 回退到官方源");
+            }
+
+            MirrorHealthChecker.MarkModrinthUnavailable();
+        }
+
+        try
+        {
+            using var officialContent = new StringContent(jsonBody, System.Text.Encoding.UTF8, "application/json");
+            using var response = await _httpClient.PostAsync(OfficialBaseUrl + path, officialContent, cancellationToken).ConfigureAwait(false);
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Error("Modrinth", $"官方源 POST 失败: {ex.Message}");
             return null;
         }
     }

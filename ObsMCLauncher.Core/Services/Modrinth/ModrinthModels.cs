@@ -127,4 +127,21 @@ public class ModrinthVersionFile
 
     [JsonPropertyName("size")]
     public long Size { get; set; }
+
+    [JsonPropertyName("primary")]
+    public bool Primary { get; set; }
+
+    /// <summary>形如 { "sha1": "...", "sha512": "..." }。用于在校验本地文件是否真的对应这个版本。</summary>
+    [JsonPropertyName("hashes")]
+    public Dictionary<string, string>? Hashes { get; set; }
+}
+
+/// <summary>POST /v2/version_files 的请求体。</summary>
+public class ModrinthHashLookupRequest
+{
+    [JsonPropertyName("hashes")]
+    public List<string> Hashes { get; set; } = new();
+
+    [JsonPropertyName("algorithm")]
+    public string Algorithm { get; set; } = "sha1";
 }

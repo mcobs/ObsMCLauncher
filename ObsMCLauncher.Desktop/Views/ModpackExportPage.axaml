@@ -1,0 +1,247 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ObsMCLauncher.Desktop.ViewModels"
+             xmlns:converters="using:ObsMCLauncher.Desktop.Converters"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
+             x:Class="ObsMCLauncher.Desktop.Views.ModpackExportPage"
+             x:DataType="vm:ModpackExportPageViewModel">
+
+  <!--
+    布局要点（踩过坑，别改回去）：
+      · 底部操作条用 DockPanel.Dock="Bottom" 固定 —— DockPanel **先给停靠的子元素分配空间**，
+        所以窗口再矮它也在最底下，不会被上面的内容顶出屏幕、更不会和上面重合。
+        早期写法是 Grid RowDefinitions="Auto,*,Auto" + 树 MinHeight=220：窗口矮时
+        Auto 行（选项区，天然想占 430）+ 树的最小高度加起来超过可用高度，
+        多出来的部分就画到底部操作条那一栏上（Grid 默认不裁剪子元素）。
+      · 其余内容全部放进**页面级滚动区**；文件树给固定高度、内部自带滚动条。
+        树不再"撑满剩余高度"，换来的是任何窗口尺寸下都不会溢出。
+    整体限宽 900，与实例页其它标签一致；树的行内列用固定宽度右对齐。
+  -->
+  <DockPanel Margin="20,16,20,16" MaxWidth="900" HorizontalAlignment="Stretch">
+
+    <!-- ===== 固定在底部：路径 / 进度 / 结果 / 操作按钮 ===== -->
+    <Border DockPanel.Dock="Bottom" Margin="0,12,0,0"
+            Background="{DynamicResource SurfaceBrush}"
+            CornerRadius="8" BorderThickness="1"
+            BorderBrush="{DynamicResource CardBorderBrush}"
+            Padding="16,12">
+      <StackPanel Spacing="10">
+
+        <ui:InfoBar IsOpen="{Binding HasResult}" Severity="Success"
+                    Title="导出完成" Message="{Binding ResultSummary}"/>
+        <ui:InfoBar IsOpen="{Binding HasResultWarnings}" Severity="Warning"
+                    Title="部分内容已自动处理" Message="{Binding ResultWarnings}"/>
+
+        <!-- 进度 -->
+        <StackPanel Spacing="6" IsVisible="{Binding IsExporting}">
+          <ProgressBar Value="{Binding ExportProgress}" Minimum="0" Maximum="100" Height="4"/>
+          <TextBlock Text="{Binding ExportStatus}" FontSize="11"
+                     Foreground="{DynamicResource TextSecondaryBrush}"
+                     TextTrimming="CharacterEllipsis"/>
+        </StackPanel>
+
+        <!-- 路径 + 操作 -->
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,12,0">
+            <TextBlock Text="导出位置" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}"/>
+            <TextBlock Text="{Binding OutputPathDisplay}" FontSize="11" FontFamily="Consolas"
+                       Foreground="{DynamicResource TextSecondaryBrush}"
+                       TextTrimming="CharacterEllipsis"/>
+          </StackPanel>
+
+          <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+            <TextBlock Text="{Binding SelectedFileCount, StringFormat='已选 {0} 个文件'}"
+                       FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"
+                       VerticalAlignment="Center"/>
+            <TextBlock Text="{Binding SelectedSizeText}" FontSize="11"
+                       Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center"
+                       MinWidth="64" TextAlignment="Right"/>
+
+            <Button Classes="ghost" FontSize="12" Padding="10,5" Content="选择位置"
+                    Command="{Binding ChooseOutputPathCommand}"
+                    IsEnabled="{Binding !IsExporting}"/>
+            <Button Classes="ghost" FontSize="12" Padding="10,5" Content="打开文件夹"
+                    Command="{Binding OpenOutputFolderCommand}"
+                    IsVisible="{Binding HasResult}"/>
+            <Button Classes="danger" FontSize="12" Padding="14,5" Content="取消导出"
+                    Command="{Binding CancelExportCommand}"
+                    IsVisible="{Binding IsExporting}"/>
+            <Button Classes="accent" FontSize="12" Padding="16,5" Content="开始导出"
+                    Command="{Binding ExportCommand}"
+                    IsEnabled="{Binding CanExport}"
+                    IsVisible="{Binding !IsExporting}"/>
+          </StackPanel>
+        </Grid>
+      </StackPanel>
+    </Border>
+
+    <!-- ===== 其余内容：页面级滚动 ===== -->
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,4,0">
+      <StackPanel Spacing="12">
+
+        <StackPanel Spacing="4">
+          <TextBlock Text="导出整合包" FontSize="14" FontWeight="Medium"/>
+          <TextBlock Text="把当前版本的 Mod、配置、材质包、光影等打包成可分享的整合包"
+                     FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}"/>
+        </StackPanel>
+
+        <!-- 导出格式（FluentAvalonia 原生单选） -->
+        <StackPanel Spacing="4">
+          <TextBlock Text="导出格式" FontSize="12" FontWeight="Medium"/>
+          <StackPanel Orientation="Horizontal" Spacing="24">
+            <RadioButton GroupName="ModpackExportFormat" FontSize="12"
+                         IsChecked="{Binding IsFormatModrinth}"
+                         Content="Modrinth (.mrpack)"
+                         ToolTip.Tip="跨启动器通用，去重粒度最好"/>
+            <RadioButton GroupName="ModpackExportFormat" FontSize="12"
+                         IsChecked="{Binding IsFormatCurseForge}"
+                         Content="CurseForge (.zip)"
+                         ToolTip.Tip="兼容 CurseForge 启动器与 PCL/HMCL，作者为必填项"/>
+          </StackPanel>
+          <TextBlock Text="{Binding FormatHint}" FontSize="11"
+                     Foreground="{DynamicResource TextTertiaryBrush}" TextWrapping="Wrap"/>
+        </StackPanel>
+
+        <!-- 未启用版本隔离时的警示 -->
+        <ui:InfoBar IsOpen="{Binding HasIsolationWarning}" Severity="Warning"
+                    Title="当前版本未启用版本隔离" Message="{Binding IsolationWarning}"/>
+
+        <!-- 整合包信息：三列两行，避免纵向堆积 -->
+        <StackPanel Spacing="6">
+          <TextBlock Text="整合包信息" FontSize="12" FontWeight="Medium"/>
+          <Grid ColumnDefinitions="*,*,*" RowDefinitions="Auto,Auto" ColumnSpacing="12" RowSpacing="8">
+            <StackPanel Spacing="4">
+              <TextBlock Text="名称" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}"/>
+              <TextBox Text="{Binding PackName}" FontSize="12" Watermark="整合包名称"/>
+            </StackPanel>
+            <StackPanel Grid.Column="1" Spacing="4">
+              <TextBlock Text="版本号" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}"/>
+              <TextBox Text="{Binding PackVersion}" FontSize="12" Watermark="1.0.0"/>
+            </StackPanel>
+            <StackPanel Grid.Column="2" Spacing="4">
+              <StackPanel Orientation="Horizontal" Spacing="4">
+                <TextBlock Text="作者" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}"/>
+                <TextBlock Text="必填" FontSize="10" Foreground="{DynamicResource WarningBrush}"
+                           IsVisible="{Binding IsAuthorRequired}"/>
+              </StackPanel>
+              <TextBox Text="{Binding Author}" FontSize="12" Watermark="你的名字"/>
+            </StackPanel>
+            <StackPanel Grid.Row="1" Spacing="4">
+              <TextBlock Text="主页链接（可选）" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}"/>
+              <TextBox Text="{Binding HomepageUrl}" FontSize="12" Watermark="https://"/>
+            </StackPanel>
+            <StackPanel Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Spacing="4">
+              <TextBlock Text="简介（可选）" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}"/>
+              <TextBox Text="{Binding PackDescription}" FontSize="12" Watermark="这个整合包有什么特色"/>
+            </StackPanel>
+          </Grid>
+        </StackPanel>
+
+        <!-- 资源处理 -->
+        <StackPanel Spacing="6">
+          <TextBlock Text="资源处理" FontSize="12" FontWeight="Medium"/>
+          <CheckBox IsChecked="{Binding ResolveRemoteFiles}" FontSize="12"
+                    Content="联网匹配 Modrinth / CurseForge 上已托管的资源"
+                    ToolTip.Tip="开启后已托管的 Mod / 材质包只写下载地址、不放进包里（包更小，也避免二次分发）；命中不到的文件仍然直接打包。关闭则全部文件进包，可离线分享。"/>
+        </StackPanel>
+
+        <Separator Background="{DynamicResource DividerBrush}"/>
+
+        <!-- 导出内容标题行 -->
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
+            <TextBlock Text="导出内容" FontSize="12" FontWeight="Medium"/>
+            <TextBlock Text="{Binding ScanSummary}" FontSize="11"
+                       Foreground="{DynamicResource TextTertiaryBrush}"
+                       TextTrimming="CharacterEllipsis"/>
+          </StackPanel>
+          <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
+            <Button Classes="ghost" FontSize="11" Padding="8,4" Content="全选"
+                    Command="{Binding SelectAllCommand}"/>
+            <Button Classes="ghost" FontSize="11" Padding="8,4" Content="全不选"
+                    Command="{Binding SelectNoneCommand}"/>
+            <Button Classes="ghost" FontSize="11" Padding="8,4" Content="恢复默认"
+                    Command="{Binding ApplyDefaultsCommand}"/>
+            <Button Classes="ghost" FontSize="11" Padding="8,4" Content="展开全部"
+                    Command="{Binding ExpandAllCommand}"/>
+            <Button Classes="ghost" FontSize="11" Padding="8,4" Content="收起全部"
+                    Command="{Binding CollapseAllCommand}"/>
+            <Button Classes="ghost" FontSize="11" Padding="8,4" Content="重新扫描"
+                    Command="{Binding RescanCommand}"
+                    IsEnabled="{Binding !IsScanning}"/>
+          </StackPanel>
+        </Grid>
+
+        <!-- 文件树：固定高度 + 内部滚动（不再"撑满剩余高度"） -->
+        <Border Height="360"
+                Background="{DynamicResource SurfaceBrush}"
+                CornerRadius="8" BorderThickness="1"
+                BorderBrush="{DynamicResource CardBorderBrush}">
+          <Panel>
+            <TreeView ItemsSource="{Binding RootNodes}"
+                      SelectionMode="Single"
+                      IsVisible="{Binding HasScanResult}"
+                      Background="Transparent"
+                      BorderThickness="0"
+                      Padding="6,8">
+              <!--
+                展开状态**不能**用绑定驱动：
+                  · TreeView.ItemContainerTheme(ControlTheme BasedOn={x:Type TreeViewItem}) + Setter 绑定
+                    → 构建条目时直接 CLR internal error；
+                  · 退一步用普通 Style 的 Setter 绑定，同样崩（崩点 Avalonia.Data.Core.ExpressionNode.SetSource）。
+                两者都是 Avalonia 11.3.11 上的同一处缺陷，所以改为在代码后置里迭代设置
+                TreeViewItem.IsExpanded（见 ModpackExportPage.axaml.cs 的 ApplyExpansion）。
+              -->
+              <TreeView.ItemTemplate>
+                <TreeDataTemplate x:DataType="vm:ModpackExportFileNode" ItemsSource="{Binding Children}">
+                  <!-- 列：勾选 | 名称(+必需/用途标签) | 项数与大小（固定宽、右对齐 → 各行对齐） -->
+                  <Grid ColumnDefinitions="Auto,*,128" ColumnSpacing="10" Height="30"
+                        ToolTip.Tip="{Binding TooltipText}">
+                    <!-- 必选项禁用复选框：状态仍由 VM 强制为勾选，禁用只是"明确告诉你改不了" -->
+                    <CheckBox Grid.Column="0" IsThreeState="True"
+                              IsChecked="{Binding IsChecked}"
+                              IsEnabled="{Binding !IsRequired}"
+                              MinWidth="0" Padding="0" VerticalAlignment="Center"/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8"
+                                VerticalAlignment="Center">
+                      <TextBlock Text="{Binding Name}" FontSize="12"
+                                 VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                      <Border Background="{DynamicResource PrimarySoftBrush}"
+                              CornerRadius="4" Padding="5,1" VerticalAlignment="Center"
+                              IsVisible="{Binding IsRequired}">
+                        <TextBlock Text="必需" FontSize="10" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource AccentBrush}"/>
+                      </Border>
+                      <Border Background="{DynamicResource SurfaceElevatedBrush}"
+                              CornerRadius="4" Padding="5,1" VerticalAlignment="Center"
+                              IsVisible="{Binding HasPurpose}">
+                        <TextBlock Text="{Binding Purpose}" FontSize="10"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"/>
+                      </Border>
+                    </StackPanel>
+                    <TextBlock Grid.Column="2" Text="{Binding DetailText}" FontSize="10"
+                               Foreground="{DynamicResource TextTertiaryBrush}"
+                               TextAlignment="Right" VerticalAlignment="Center"/>
+                  </Grid>
+                </TreeDataTemplate>
+              </TreeView.ItemTemplate>
+            </TreeView>
+
+            <StackPanel Classes="empty-state" IsVisible="{Binding !HasScanResult}">
+              <ProgressBar Width="160" Height="4" IsIndeterminate="True" IsVisible="{Binding IsScanning}"/>
+              <TextBlock Text="正在扫描导出内容..." FontSize="12"
+                         Foreground="{DynamicResource TextTertiaryBrush}"
+                         IsVisible="{Binding IsScanning}"/>
+              <TextBlock Text="没有可导出的内容" FontSize="12"
+                         Foreground="{DynamicResource TextTertiaryBrush}"
+                         IsVisible="{Binding !IsScanning}"/>
+            </StackPanel>
+          </Panel>
+        </Border>
+
+        <ui:InfoBar IsOpen="{Binding HasScanWarning}" Severity="Warning"
+                    Title="扫描时遇到问题" Message="{Binding ScanWarning}"/>
+      </StackPanel>
+    </ScrollViewer>
+  </DockPanel>
+</UserControl>
