@@ -127,6 +127,7 @@ ObsMCLauncher/
 | `GetGameStatus` | 游戏进程状态（是否运行、版本、PID、启动时间） |
 | `GetLaunchSettings` | 启动设置快照（内存、JVM 参数、Java 路径、游戏目录等） |
 | `GetVersionRunDirectory` | 指定版本的运行目录（已套用版本隔离规则） |
+| `GetMods` / `GetWorlds` / `GetResourcePacks` / `GetShaderPacks` | 选中版本的模组 / 存档（世界）/ 材质包 / 光影包列表 |
 | `GetDownloadTasks` / `GetDownloadTaskStatus` | 全部下载任务快照 / 单个任务状态 |
 | `GetConfig<T>` / `SaveConfig<T>` | 读写插件自身数据目录下的 `config.json` |
 | `OpenUrl` / `NavigateTo` | 用系统浏览器打开链接 / 跳转到启动器内置页面 |

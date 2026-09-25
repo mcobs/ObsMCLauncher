@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using ObsMCLauncher.Core.Models;
 using ObsMCLauncher.Core.Plugins;
@@ -13,7 +14,8 @@ namespace ObsMCLauncher.Core.Tests;
 /// 覆盖：LogMessage / GetInstalledVersions / GetCurrentAccount /
 ///      RegisterGameLaunchHook / RequestDownload
 ///      GetAccounts / GetDownloadTasks / GetSelectedVersion /
-///      GetGameStatus / GetLaunchSettings / GetVersionRunDirectory
+///      GetGameStatus / GetLaunchSettings / GetVersionRunDirectory /
+///      GetMods / GetWorlds / GetResourcePacks / GetShaderPacks
 /// </summary>
 public class PluginExtendedApiTests : IDisposable
 {
@@ -93,6 +95,37 @@ public class PluginExtendedApiTests : IDisposable
             CustomGameDirectory = gameDirectory,
             GameDirectoryType = type
         };
+
+    /// <summary>
+    /// 建一个"已选中"的版本（含版本 JSON）并把配置注入进去，返回该版本的运行目录。
+    /// </summary>
+    private string CreateSelectedVersion(string gameDir, string versionId, GameDirectoryType type = GameDirectoryType.RootFolder)
+    {
+        var versionDir = Path.Combine(gameDir, "versions", versionId);
+        Directory.CreateDirectory(versionDir);
+        File.WriteAllText(
+            Path.Combine(versionDir, versionId + ".json"),
+            "{\"id\":\"" + versionId + "\",\"mainClass\":\"net.minecraft.client.main.Main\",\"type\":\"release\"}");
+
+        var config = CreateConfig(gameDir, type);
+        config.SelectedVersion = versionId;
+        PluginContext.ConfigProvider = () => config;
+
+        return type == GameDirectoryType.VersionFolder ? versionDir : gameDir;
+    }
+
+    /// <summary>写一个只含指定条目的 zip，用于模拟模组/材质包/光影包文件</summary>
+    private static void WriteZip(string path, params (string Name, string Content)[] entries)
+    {
+        using var stream = File.Create(path);
+        using var archive = new ZipArchive(stream, ZipArchiveMode.Create);
+        foreach (var (name, content) in entries)
+        {
+            var entry = archive.CreateEntry(name);
+            using var writer = new StreamWriter(entry.Open());
+            writer.Write(content);
+        }
+    }
 
     // ===================== LogMessage =====================
 
@@ -556,6 +589,141 @@ public class PluginExtendedApiTests : IDisposable
         Assert.Equal(
             Path.Combine(gameDir, "versions", "1.21.4"),
             CreateContext().GetVersionRunDirectory("1.21.4"));
+    }
+
+    // ===================== 版本内容 API（选中版本） =====================
+
+    [Fact]
+    public void VersionContentApis_NoSelectedVersion_ReturnEmpty()
+    {
+        PluginContext.ConfigProvider = () => CreateConfig(CreateTempGameDirectory());
+        var ctx = CreateContext();
+
+        Assert.Empty(ctx.GetMods());
+        Assert.Empty(ctx.GetWorlds());
+        Assert.Empty(ctx.GetResourcePacks());
+        Assert.Empty(ctx.GetShaderPacks());
+    }
+
+    [Fact]
+    public void GetMods_ListsEnabledAndDisabledWithMetadata()
+    {
+        var gameDir = CreateTempGameDirectory();
+        CreateSelectedVersion(gameDir, "1.21.4-Fabric");
+        var modsDir = Path.Combine(gameDir, "mods");
+        Directory.CreateDirectory(modsDir);
+
+        WriteZip(Path.Combine(modsDir, "sodium.jar"),
+            ("fabric.mod.json", """{"id":"sodium","name":"Sodium","version":"0.6.0"}"""));
+        WriteZip(Path.Combine(modsDir, "old.jar.disabled"),
+            ("fabric.mod.json", """{"id":"oldmod","name":"Old Mod","version":"1.0.0"}"""));
+
+        var mods = CreateContext().GetMods();
+
+        Assert.Equal(2, mods.Count);
+        var sodium = Assert.Single(mods.Where(m => m.ModId == "sodium"));
+        Assert.Equal("Sodium", sodium.Name);
+        Assert.Equal("0.6.0", sodium.Version);
+        Assert.Equal("sodium.jar", sodium.FileName);
+        Assert.True(sodium.IsEnabled);
+        Assert.True(sodium.SizeBytes > 0);
+
+        var old = Assert.Single(mods.Where(m => m.ModId == "oldmod"));
+        Assert.False(old.IsEnabled);
+        Assert.Equal("old.jar.disabled", old.FileName);
+    }
+
+    [Fact]
+    public void GetMods_VersionIsolated_UsesVersionFolder()
+    {
+        var gameDir = CreateTempGameDirectory();
+        var versionDir = CreateSelectedVersion(gameDir, "1.21.4-Forge", GameDirectoryType.VersionFolder);
+
+        // 隔离版本的 mods 在 versions/{版本ID}/mods 下，而不是游戏根目录
+        var modsDir = Path.Combine(versionDir, "mods");
+        Directory.CreateDirectory(modsDir);
+        WriteZip(Path.Combine(modsDir, "jei.jar"), ("META-INF/mods.toml", "modLoader=\"javafml\""));
+
+        Directory.CreateDirectory(Path.Combine(gameDir, "mods"));
+
+        Assert.Single(CreateContext().GetMods());
+    }
+
+    [Fact]
+    public void GetWorlds_ListsFoldersWithLevelDat()
+    {
+        var gameDir = CreateTempGameDirectory();
+        CreateSelectedVersion(gameDir, "1.21.4");
+        var savesDir = Path.Combine(gameDir, "saves");
+        var worldDir = Path.Combine(savesDir, "world1");
+        Directory.CreateDirectory(worldDir);
+        File.WriteAllBytes(Path.Combine(worldDir, "level.dat"), new byte[] { 0x0A, 0x00, 0x00 });
+        File.WriteAllBytes(Path.Combine(worldDir, "icon.png"), new byte[] { 0x89, 0x50 });
+
+        // 没有 level.dat 的文件夹不算存档
+        var notesDir = Path.Combine(savesDir, "notes");
+        Directory.CreateDirectory(notesDir);
+        File.WriteAllText(Path.Combine(notesDir, "readme.txt"), "x");
+
+        var worlds = CreateContext().GetWorlds();
+
+        var world = Assert.Single(worlds);
+        Assert.Equal("world1", world.Name);
+        Assert.Equal(worldDir, world.Path);
+        Assert.Equal(string.Empty, world.GameVersion);
+        Assert.True(world.SizeBytes > 0);
+        Assert.Equal(Path.Combine(worldDir, "icon.png"), world.IconPath);
+    }
+
+    [Fact]
+    public void GetResourcePacks_ListsZipAndDisabled()
+    {
+        var gameDir = CreateTempGameDirectory();
+        CreateSelectedVersion(gameDir, "1.21.4");
+        var dir = Path.Combine(gameDir, "resourcepacks");
+        Directory.CreateDirectory(dir);
+
+        WriteZip(Path.Combine(dir, "Faithful.zip"), ("pack.png", "png"));
+        WriteZip(Path.Combine(dir, "Old.zip.disabled"), ("pack.mcmeta", "{}"));
+
+        var packs = CreateContext().GetResourcePacks();
+
+        Assert.Equal(2, packs.Count);
+        var faithful = Assert.Single(packs.Where(p => p.FileName == "Faithful.zip"));
+        Assert.Equal("Faithful", faithful.Name);
+        Assert.True(faithful.IsEnabled);
+        Assert.NotNull(faithful.IconPath);
+
+        var old = Assert.Single(packs.Where(p => p.FileName == "Old.zip.disabled"));
+        Assert.Equal("Old.zip.disabled", old.Name);
+        Assert.False(old.IsEnabled);
+        Assert.Null(old.IconPath);
+    }
+
+    [Fact]
+    public void GetShaderPacks_ListsZipAndDisabled()
+    {
+        var gameDir = CreateTempGameDirectory();
+        CreateSelectedVersion(gameDir, "1.21.4");
+        var dir = Path.Combine(gameDir, "shaderpacks");
+        Directory.CreateDirectory(dir);
+
+        // 光影包图标常在 shaders/ 下
+        WriteZip(Path.Combine(dir, "Complementary.zip"), ("shaders/pack.png", "png"));
+        WriteZip(Path.Combine(dir, "Legacy.zip.disabled"), ("shaders/lang/en_us.lang", "x"));
+
+        var packs = CreateContext().GetShaderPacks();
+
+        Assert.Equal(2, packs.Count);
+        var complementary = Assert.Single(packs.Where(p => p.FileName == "Complementary.zip"));
+        Assert.Equal("Complementary", complementary.Name);
+        Assert.True(complementary.IsEnabled);
+        Assert.NotNull(complementary.IconPath);
+
+        var legacy = Assert.Single(packs.Where(p => p.FileName == "Legacy.zip.disabled"));
+        Assert.Equal("Legacy.zip.disabled", legacy.Name);
+        Assert.False(legacy.IsEnabled);
+        Assert.Null(legacy.IconPath);
     }
 
     // ===================== RegisterGameLaunchHook =====================

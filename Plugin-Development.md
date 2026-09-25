@@ -313,6 +313,12 @@ namespace ObsMCLauncher.Core.Plugins
         PluginLaunchSettings GetLaunchSettings();
         string GetVersionRunDirectory(string versionId);
         IReadOnlyList<PluginDownloadTaskStatus> GetDownloadTasks();
+
+        // 选中版本的内容（见 8，均为 1.1.2+）
+        IReadOnlyList<PluginModInfo> GetMods();
+        IReadOnlyList<PluginWorldInfo> GetWorlds();
+        IReadOnlyList<PluginResourcePackInfo> GetResourcePacks();
+        IReadOnlyList<PluginShaderPackInfo> GetShaderPacks();
     }
 }
 ```
@@ -351,6 +357,10 @@ namespace ObsMCLauncher.Core.Plugins
 | 查询 | `GetGameStatus` | 游戏进程运行状态 | `1.1.1` | [8](#8-日志与配置) |
 | 查询 | `GetLaunchSettings` | 当前启动设置（内存/JVM/Java 路径） | `1.1.1` | [8](#8-日志与配置) |
 | 查询 | `GetVersionRunDirectory` | 指定版本的运行目录（按隔离设置解析） | `1.1.1` | [8](#8-日志与配置) |
+| 版本内容 | `GetMods` | 选中版本的模组列表 | `1.1.2` | [8](#8-日志与配置) |
+| 版本内容 | `GetWorlds` | 选中版本的存档（世界）列表 | `1.1.2` | [8](#8-日志与配置) |
+| 版本内容 | `GetResourcePacks` | 选中版本的材质包列表 | `1.1.2` | [8](#8-日志与配置) |
+| 版本内容 | `GetShaderPacks` | 选中版本的光影包列表 | `1.1.2` | [8](#8-日志与配置) |
 
 > 「引入版本」是该 API 可用的**最低插件 API 版本**：在更旧的启动器上，这些成员不存在，
 > 调用会抛 `MissingMethodException`。用 `Context.ApiVersion` 判断即可，例如
@@ -1538,6 +1548,72 @@ string GetVersionRunDirectory(string versionId);
 ```csharp
 var runDir = context.GetVersionRunDirectory("1.20.1-Forge");
 var modsDir = Path.Combine(runDir, "mods");
+```
+
+#### 查询选中版本的模组 / 存档 / 材质包 / 光影包
+
+> 引入版本：`1.1.2`
+
+上面四个 API 都针对**用户当前选中的版本**，按该版本的隔离设置解析运行目录，再去读取对应的子目录。
+不需要传版本 ID；未选中版本或版本已被删除时一律返回**空列表**（不抛异常）。
+
+```csharp
+IReadOnlyList<PluginModInfo> GetMods();                    // <运行目录>/mods
+IReadOnlyList<PluginWorldInfo> GetWorlds();                // <运行目录>/saves
+IReadOnlyList<PluginResourcePackInfo> GetResourcePacks();  // <运行目录>/resourcepacks
+IReadOnlyList<PluginShaderPackInfo> GetShaderPacks();      // <运行目录>/shaderpacks
+```
+
+**PluginModInfo**（模组）：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `ModId` | `string` | 模组 ID（读自 `fabric.mod.json` / `mods.toml` 等）；解析不到时为空 |
+| `Name` | `string` | 显示名称；解析不到时退回文件名 |
+| `Version` | `string` | 模组版本；解析不到时为空 |
+| `Loader` | `string` | 加载器标识（如 `Fabric` / `Forge`）；模组没写时用所属版本的加载器 |
+| `FileName` / `FilePath` | `string` | 文件名 / 完整路径（禁用的是 `.jar.disabled`） |
+| `SizeBytes` | `long` | 文件大小 |
+| `IsEnabled` | `bool` | 是否启用 |
+| `IconPath` | `string?` | 图标缓存路径；没有图标时为 null |
+
+**PluginWorldInfo**（存档，即「世界」）：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `Name` | `string` | 存档文件夹名 |
+| `Path` | `string` | 存档文件夹完整路径 |
+| `GameVersion` | `string` | 存档里的游戏版本（读自 `level.dat`）；解析不到时为空 |
+| `SizeBytes` | `long` | 递归统计的占用空间 |
+| `CreationTime` / `LastModified` | `DateTime` | 创建时间 / 最后修改时间 |
+| `IconPath` | `string?` | 存档自带的 `icon.png`；没有时为 null |
+
+**PluginResourcePackInfo**（材质包）与 **PluginShaderPackInfo**（光影包）字段一致：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `Name` | `string` | 启用时是去掉扩展名的文件名，禁用时是完整文件名（含 `.disabled`） |
+| `FileName` / `FilePath` | `string` | 文件名 / 完整路径 |
+| `SizeBytes` | `long` | 文件大小 |
+| `IsEnabled` | `bool` | 是否启用（未被 `.disabled` 后缀禁用） |
+| `IconPath` | `string?` | 图标缓存路径；没有图标时为 null |
+
+**说明**：
+
+- 都是**只读快照**，只有 `IsEnabled` 反映当前文件状态，插件改不了启用状态；要改请引导用户到版本页操作。
+- 模组会复用启动器的扫描缓存，源文件没变就完全不解压；材质包/光影包图标也走启动器同一套缓存目录，
+  所以反复调用不会重复解压。但**首次调用仍是同步 IO**（模组扫描可能解压 jar、存档要递归算大小），
+  请不要在 UI 线程直接调用，建议 `await Task.Run(() => context.GetMods())`。
+
+```csharp
+var mods = await Task.Run(() => context.GetMods());
+foreach (var mod in mods.Where(m => !m.IsEnabled))
+{
+    context.LogMessage(PluginLogLevel.Info, $"被禁用的模组：{mod.Name}（{mod.FileName}）");
+}
+
+var worlds = await Task.Run(() => context.GetWorlds());
+context.LogMessage(PluginLogLevel.Info, $"共 {worlds.Count} 个存档，总占用 {worlds.Sum(w => w.SizeBytes) / 1024 / 1024} MB");
 ```
 
 #### 查询下载任务

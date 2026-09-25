@@ -364,6 +364,34 @@ public interface IPluginContext
     string GetVersionRunDirectory(string versionId);
 
     /// <summary>
+    /// 获取选中版本的模组列表（只读快照），对应运行目录下的 mods。
+    /// 已启用的 .jar 与禁用的 .jar.disabled 都会返回，用 <see cref="PluginModInfo.IsEnabled"/> 区分。
+    /// </summary>
+    /// <returns>模组列表；未选中版本或目录不存在时返回空列表</returns>
+    IReadOnlyList<PluginModInfo> GetMods();
+
+    /// <summary>
+    /// 获取选中版本的存档（世界）列表（只读快照），对应运行目录下的 saves。
+    /// 只列出含 level.dat 的文件夹。
+    /// </summary>
+    /// <returns>存档列表；未选中版本或目录不存在时返回空列表</returns>
+    IReadOnlyList<PluginWorldInfo> GetWorlds();
+
+    /// <summary>
+    /// 获取选中版本的材质包列表（只读快照），对应运行目录下的 resourcepacks。
+    /// 已启用与禁用的包都会返回，用 <see cref="PluginResourcePackInfo.IsEnabled"/> 区分。
+    /// </summary>
+    /// <returns>材质包列表；未选中版本或目录不存在时返回空列表</returns>
+    IReadOnlyList<PluginResourcePackInfo> GetResourcePacks();
+
+    /// <summary>
+    /// 获取选中版本的光影包列表（只读快照），对应运行目录下的 shaderpacks。
+    /// 已启用与禁用的包都会返回，用 <see cref="PluginShaderPackInfo.IsEnabled"/> 区分。
+    /// </summary>
+    /// <returns>光影包列表；未选中版本或目录不存在时返回空列表</returns>
+    IReadOnlyList<PluginShaderPackInfo> GetShaderPacks();
+
+    /// <summary>
     /// 获取当前的所有下载任务（只读快照，含任务名、类型、状态与进度）
     /// </summary>
     IReadOnlyList<PluginDownloadTaskStatus> GetDownloadTasks();

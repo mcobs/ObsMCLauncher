@@ -1,7 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using ObsMCLauncher.Core.Models;
@@ -440,6 +443,259 @@ public class PluginContext : IPluginContext
             DebugLogger.Error("PluginContext", $"获取版本运行目录异常: {ex.Message}");
             return string.Empty;
         }
+    }
+
+    // ==================== 版本内容 API（选中版本） ====================
+    // 与崩溃 API 一样全在 Core 内完成：只读配置 + 扫描目录，不依赖桌面层接线，可无 UI 单测。
+    // 都是同步 IO（模组首次扫描会解压 jar），插件应自行放到后台线程调用，避免卡住 UI。
+
+    /// <summary>取选中版本及其运行目录；未选中版本或版本已被删除时 version 为 null</summary>
+    private (PluginVersionInfo? version, string runDir) ResolveSelectedVersionContext()
+    {
+        var version = GetSelectedVersion();
+        if (version == null) return (null, string.Empty);
+
+        return (version, ConfigProvider().GetRunDirectory(version.VersionId));
+    }
+
+    public IReadOnlyList<PluginModInfo> GetMods()
+    {
+        try
+        {
+            var (version, runDir) = ResolveSelectedVersionContext();
+            if (version == null) return Array.Empty<PluginModInfo>();
+
+            var iconCacheDir = Path.Combine(VersionInfo.GetAppBaseDirectory(), "OMCL", "cache", "mod_icons");
+            var scanned = Services.LocalModScanner.Scan(Path.Combine(runDir, "mods"), iconCacheDir);
+
+            return scanned.Select(item =>
+            {
+                var meta = item.Metadata;
+                var fallbackName = item.IsEnabled
+                    ? Path.GetFileNameWithoutExtension(item.FileName)
+                    : item.FileName;
+
+                return new PluginModInfo
+                {
+                    ModId = meta?.ModId ?? string.Empty,
+                    Name = string.IsNullOrWhiteSpace(meta?.Name) ? fallbackName : meta!.Name,
+                    Version = meta?.Version ?? string.Empty,
+                    Loader = string.IsNullOrWhiteSpace(meta?.Loader) ? version.LoaderType : meta!.Loader,
+                    FileName = item.FileName,
+                    FilePath = item.FilePath,
+                    SizeBytes = item.Size,
+                    IsEnabled = item.IsEnabled,
+                    IconPath = item.IconCachePath
+                };
+            }).ToList();
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Error("PluginContext", $"插件 {_pluginId} 获取模组列表失败: {ex.Message}");
+            return Array.Empty<PluginModInfo>();
+        }
+    }
+
+    public IReadOnlyList<PluginWorldInfo> GetWorlds()
+    {
+        try
+        {
+            var (version, runDir) = ResolveSelectedVersionContext();
+            if (version == null) return Array.Empty<PluginWorldInfo>();
+
+            var savesDir = Path.Combine(runDir, "saves");
+            if (!Directory.Exists(savesDir)) return Array.Empty<PluginWorldInfo>();
+
+            var worlds = new List<PluginWorldInfo>();
+            foreach (var dir in Directory.GetDirectories(savesDir))
+            {
+                try
+                {
+                    var levelDat = Path.Combine(dir, "level.dat");
+                    if (!File.Exists(levelDat)) continue;
+
+                    var iconFile = Path.Combine(dir, "icon.png");
+                    worlds.Add(new PluginWorldInfo
+                    {
+                        Name = Path.GetFileName(dir),
+                        Path = dir,
+                        GameVersion = Services.NbtReader.ReadWorldVersionFromLevelDat(levelDat),
+                        SizeBytes = CalculateDirectorySize(dir),
+                        CreationTime = Directory.GetCreationTime(dir),
+                        LastModified = Directory.GetLastWriteTime(dir),
+                        IconPath = File.Exists(iconFile) ? iconFile : null
+                    });
+                }
+                catch
+                {
+                    // 单个存档读不出来不影响整批
+                }
+            }
+
+            return worlds;
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Error("PluginContext", $"插件 {_pluginId} 获取存档列表失败: {ex.Message}");
+            return Array.Empty<PluginWorldInfo>();
+        }
+    }
+
+    public IReadOnlyList<PluginResourcePackInfo> GetResourcePacks()
+    {
+        try
+        {
+            var (version, runDir) = ResolveSelectedVersionContext();
+            if (version == null) return Array.Empty<PluginResourcePackInfo>();
+
+            var iconCacheDir = Path.Combine(VersionInfo.GetAppBaseDirectory(), "OMCL", "cache", "resourcepack_icons");
+            var list = new List<PluginResourcePackInfo>();
+
+            foreach (var file in EnumeratePackFiles(Path.Combine(runDir, "resourcepacks")))
+            {
+                try
+                {
+                    var fileName = Path.GetFileName(file);
+                    var enabled = !fileName.EndsWith(".disabled", StringComparison.OrdinalIgnoreCase);
+                    list.Add(new PluginResourcePackInfo
+                    {
+                        Name = enabled ? Path.GetFileNameWithoutExtension(fileName) : fileName,
+                        FileName = fileName,
+                        FilePath = file,
+                        SizeBytes = new FileInfo(file).Length,
+                        IsEnabled = enabled,
+                        IconPath = ExtractPackIcon(file, iconCacheDir, ResourcePackIconDirs)
+                    });
+                }
+                catch
+                {
+                    // 单个包失败不影响整批
+                }
+            }
+
+            return list;
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Error("PluginContext", $"插件 {_pluginId} 获取材质包列表失败: {ex.Message}");
+            return Array.Empty<PluginResourcePackInfo>();
+        }
+    }
+
+    public IReadOnlyList<PluginShaderPackInfo> GetShaderPacks()
+    {
+        try
+        {
+            var (version, runDir) = ResolveSelectedVersionContext();
+            if (version == null) return Array.Empty<PluginShaderPackInfo>();
+
+            var iconCacheDir = Path.Combine(VersionInfo.GetAppBaseDirectory(), "OMCL", "cache", "shader_icons");
+            var list = new List<PluginShaderPackInfo>();
+
+            foreach (var file in EnumeratePackFiles(Path.Combine(runDir, "shaderpacks")))
+            {
+                try
+                {
+                    var fileName = Path.GetFileName(file);
+                    var enabled = !fileName.EndsWith(".disabled", StringComparison.OrdinalIgnoreCase);
+                    list.Add(new PluginShaderPackInfo
+                    {
+                        Name = enabled ? Path.GetFileNameWithoutExtension(fileName) : fileName,
+                        FileName = fileName,
+                        FilePath = file,
+                        SizeBytes = new FileInfo(file).Length,
+                        IsEnabled = enabled,
+                        IconPath = ExtractPackIcon(file, iconCacheDir, ShaderPackIconDirs)
+                    });
+                }
+                catch
+                {
+                    // 单个包失败不影响整批
+                }
+            }
+
+            return list;
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Error("PluginContext", $"插件 {_pluginId} 获取光影包列表失败: {ex.Message}");
+            return Array.Empty<PluginShaderPackInfo>();
+        }
+    }
+
+    /// <summary>列出包目录下的 .zip 与 .zip.disabled；目录不存在时返回空</summary>
+    private static IEnumerable<string> EnumeratePackFiles(string dir)
+    {
+        if (!Directory.Exists(dir)) return Array.Empty<string>();
+        return Directory.GetFiles(dir, "*.zip")
+            .Concat(Directory.GetFiles(dir, "*.zip.disabled"));
+    }
+
+    /// <summary>包内图标条目名，按优先级尝试</summary>
+    private static readonly string[] PackIconNames = { "pack.png", "logo.png", "icon.png" };
+
+    private static readonly string[] ResourcePackIconDirs = { "" };
+
+    private static readonly string[] ShaderPackIconDirs = { "", "shaders/", "textures/", "gui/" };
+
+    /// <summary>
+    /// 从材质包/光影包 zip 中提取图标到缓存目录，返回缓存路径；没有图标或读取失败返回 null。
+    /// 缓存文件比源文件新就直接复用，并且与桌面层的材质包/光影页用的是同一套缓存目录与命名，
+    /// 因此这里不会让同一个包被重复解压。
+    /// </summary>
+    private static string? ExtractPackIcon(string zipPath, string iconCacheDir, string[] searchDirs)
+    {
+        try
+        {
+            var iconPath = Path.Combine(iconCacheDir, $"{StableHash(zipPath)}.png");
+            if (File.Exists(iconPath) &&
+                File.GetLastWriteTimeUtc(iconPath) >= File.GetLastWriteTimeUtc(zipPath))
+            {
+                return iconPath;
+            }
+
+            using var archive = ZipFile.OpenRead(zipPath);
+            foreach (var dir in searchDirs)
+            {
+                foreach (var name in PackIconNames)
+                {
+                    var entry = archive.GetEntry(dir + name);
+                    if (entry == null) continue;
+
+                    Directory.CreateDirectory(iconCacheDir);
+                    entry.ExtractToFile(iconPath, true);
+                    return iconPath;
+                }
+            }
+        }
+        catch
+        {
+        }
+
+        return null;
+    }
+
+    /// <summary>图标缓存文件名用的稳定哈希（与桌面层一致：SHA256 前 4 字节，避免 GetHashCode 跨进程随机化）</summary>
+    private static string StableHash(string input)
+    {
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(input));
+        return Convert.ToHexString(hash.AsSpan(0, 4)).ToLowerInvariant();
+    }
+
+    /// <summary>递归统计目录占用空间，失败的部分跳过</summary>
+    private static long CalculateDirectorySize(string dirPath)
+    {
+        long size = 0;
+        try
+        {
+            foreach (var file in Directory.EnumerateFiles(dirPath, "*", SearchOption.AllDirectories))
+            {
+                try { size += new FileInfo(file).Length; }
+                catch { }
+            }
+        }
+        catch { }
+        return size;
     }
 
     public IReadOnlyList<PluginDownloadTaskStatus> GetDownloadTasks()

@@ -183,3 +183,98 @@ public class PluginLaunchSettings
     /// <summary>启动游戏后是否关闭启动器</summary>
     public bool CloseAfterLaunch { get; set; }
 }
+
+/// <summary>
+/// 选中版本 mods 目录里的一个模组文件（.jar 与 .jar.disabled 都会被列出来，靠 <see cref="IsEnabled"/> 区分）
+/// </summary>
+public class PluginModInfo
+{
+    /// <summary>模组 ID（来自模组元数据，如 fabric.mod.json / mods.toml）；解析不到时为空</summary>
+    public string ModId { get; set; } = string.Empty;
+
+    /// <summary>显示名称（元数据里的 name）；解析不到时退回文件名</summary>
+    public string Name { get; set; } = string.Empty;
+
+    /// <summary>模组版本（元数据里的 version）；解析不到时为空</summary>
+    public string Version { get; set; } = string.Empty;
+
+    /// <summary>加载器标识（元数据里的 loader，如 Fabric/Forge）；模组没写时用所属版本的加载器</summary>
+    public string Loader { get; set; } = string.Empty;
+
+    public string FileName { get; set; } = string.Empty;
+
+    public string FilePath { get; set; } = string.Empty;
+
+    public long SizeBytes { get; set; }
+
+    /// <summary>是否启用（未被 .disabled 后缀禁用）</summary>
+    public bool IsEnabled { get; set; }
+
+    /// <summary>模组图标缓存文件路径；没有图标时为 null</summary>
+    public string? IconPath { get; set; }
+}
+
+/// <summary>
+/// 选中版本 saves 目录里的一个存档（世界）
+/// </summary>
+public class PluginWorldInfo
+{
+    /// <summary>存档文件夹名</summary>
+    public string Name { get; set; } = string.Empty;
+
+    /// <summary>存档文件夹完整路径</summary>
+    public string Path { get; set; } = string.Empty;
+
+    /// <summary>存档记录的游戏版本（读自 level.dat）；解析不到时为空</summary>
+    public string GameVersion { get; set; } = string.Empty;
+
+    /// <summary>存档占用空间（递归统计整个文件夹）</summary>
+    public long SizeBytes { get; set; }
+
+    public DateTime CreationTime { get; set; }
+
+    public DateTime LastModified { get; set; }
+
+    /// <summary>存档图标（存档目录下的 icon.png）；没有时为 null</summary>
+    public string? IconPath { get; set; }
+}
+
+/// <summary>
+/// 选中版本 resourcepacks 目录里的一个材质包（.zip 与 .zip.disabled 都会被列出来）
+/// </summary>
+public class PluginResourcePackInfo
+{
+    /// <summary>启用时为去掉扩展名的文件名，禁用时为完整文件名（含 .disabled）</summary>
+    public string Name { get; set; } = string.Empty;
+
+    public string FileName { get; set; } = string.Empty;
+
+    public string FilePath { get; set; } = string.Empty;
+
+    public long SizeBytes { get; set; }
+
+    public bool IsEnabled { get; set; }
+
+    /// <summary>材质包图标缓存文件路径；没有图标时为 null</summary>
+    public string? IconPath { get; set; }
+}
+
+/// <summary>
+/// 选中版本 shaderpacks 目录里的一个光影包（.zip 与 .zip.disabled 都会被列出来）
+/// </summary>
+public class PluginShaderPackInfo
+{
+    /// <summary>启用时为去掉扩展名的文件名，禁用时为完整文件名（含 .disabled）</summary>
+    public string Name { get; set; } = string.Empty;
+
+    public string FileName { get; set; } = string.Empty;
+
+    public string FilePath { get; set; } = string.Empty;
+
+    public long SizeBytes { get; set; }
+
+    public bool IsEnabled { get; set; }
+
+    /// <summary>光影包图标缓存文件路径；没有图标时为 null</summary>
+    public string? IconPath { get; set; }
+}
