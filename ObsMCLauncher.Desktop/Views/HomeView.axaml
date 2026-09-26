@@ -7,9 +7,13 @@
 
   <!-- 组件渲染模板定义在 App.axaml（Application.DataTemplates），与设置页模拟主页共用 -->
 
-  <!-- 布局渲染：卡片区独立滚动 + 固定操作区；行内组件一排到底，超宽时整行等比缩小不换行 -->
+  <!-- 布局渲染：卡片区独立滚动 + 固定操作区；行内组件一排到底，超宽时整行等比缩小不换行
+       实例页打开时主页内容整体收起（IsVisible=false）：
+       实例页背景是透明的（透出壁纸），若主页内容还留在视觉树里就会透过实例页显形，
+       看起来像"主页上蒙了层纱"。收起后实例页透出的就只有壁纸，与主页空白区域一致。 -->
   <Grid RowDefinitions="*,Auto">
-    <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
+    <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto"
+                  IsVisible="{Binding !InstanceViewModel.IsVisible}">
       <ItemsControl ItemsSource="{Binding HomeRows}" Margin="24,24,24,16">
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="vm:HomeRowViewModel">
@@ -39,7 +43,7 @@
       </ItemsControl>
     </ScrollViewer>
 
-    <views:HomeActionBar Grid.Row="1"/>
+    <views:HomeActionBar Grid.Row="1" IsVisible="{Binding !InstanceViewModel.IsVisible}"/>
 
     <views:InstanceView Grid.RowSpan="2" DataContext="{Binding InstanceViewModel}"/>
   </Grid>

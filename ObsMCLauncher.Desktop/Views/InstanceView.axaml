@@ -12,28 +12,47 @@
          ZIndex="10"
          HorizontalAlignment="Stretch"
          VerticalAlignment="Stretch">
-    <Border Background="{DynamicResource BackgroundBrush}">
+    <!-- 覆盖层根透明：壁纸（WallpaperHost 的 Opacity=壁纸不透明度设置）直接透出来，
+         与主页内容区一致；可读性由 Hero 卡 / TabView 标签条等自带底色的元素负责 -->
+    <Border Background="Transparent">
     <Grid RowDefinitions="Auto,*">
-      <!-- 顶部标题栏 -->
+      <!-- 顶部标题栏：返回 + 版本名（主标题）+ 关键信息徽章；半透明蒙层，与 TabView 标签条同款 -->
       <Border Grid.Row="0"
-              Background="{DynamicResource SurfaceBrush}"
-              Padding="16,10"
+              Background="{DynamicResource InstanceHeaderBackgroundBrush}"
+              Padding="20,14"
               BorderThickness="0,0,0,1"
-              BorderBrush="{DynamicResource BorderBrush}">
+              BorderBrush="{DynamicResource DividerBrush}">
         <Grid ColumnDefinitions="Auto,*,Auto">
-          <Button Command="{Binding CloseCommand}" Classes="ghost">
+          <Button Command="{Binding CloseCommand}" Classes="ghost" Padding="10,6">
             <StackPanel Orientation="Horizontal" Spacing="6">
-              <Path Data="M20 11H7.83L13.42 5.41L12 4L4 12L12 20L13.41 18.59L7.83 13H20V11Z" Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource TextBrush}" VerticalAlignment="Center"/>
-              <TextBlock Text="返回" VerticalAlignment="Center"/>
+              <Path Data="M20 11H7.83L13.42 5.41L12 4L4 12L12 20L13.41 18.59L7.83 13H20V11Z"
+                    Width="14" Height="14" Stretch="Uniform"
+                    Fill="{DynamicResource TextBrush}" VerticalAlignment="Center"/>
+              <TextBlock Text="返回" FontSize="13" VerticalAlignment="Center"/>
             </StackPanel>
           </Button>
 
-          <TextBlock Grid.Column="1"
-                     Text="{Binding VersionId}"
-                     FontSize="16"
-                     FontWeight="Medium"
-                     HorizontalAlignment="Center"
-                     VerticalAlignment="Center"/>
+          <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10"
+                      Margin="16,0,0,0" VerticalAlignment="Center">
+            <TextBlock Text="{Binding VersionId}" FontSize="20" FontWeight="SemiBold"
+                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+
+            <Border Background="{DynamicResource SurfaceElevatedBrush}" CornerRadius="10"
+                    Padding="10,3" VerticalAlignment="Center" ToolTip.Tip="实际版本">
+              <TextBlock Text="{Binding ActualVersion}" FontSize="11"
+                         Foreground="{DynamicResource TextSecondaryBrush}"/>
+            </Border>
+            <Border Background="{DynamicResource SurfaceElevatedBrush}" CornerRadius="10"
+                    Padding="10,3" VerticalAlignment="Center" ToolTip.Tip="版本类型">
+              <TextBlock Text="{Binding VersionType}" FontSize="11"
+                         Foreground="{DynamicResource TextSecondaryBrush}"/>
+            </Border>
+            <Border Background="{DynamicResource SurfaceElevatedBrush}" CornerRadius="10"
+                    Padding="10,3" VerticalAlignment="Center" ToolTip.Tip="上次游玩">
+              <TextBlock Text="{Binding LastPlayed}" FontSize="11"
+                         Foreground="{DynamicResource TextSecondaryBrush}"/>
+            </Border>
+          </StackPanel>
         </Grid>
       </Border>
 
@@ -53,142 +72,153 @@
             <ui:PathIconSource Data="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
           </ui:TabViewItem.IconSource>
           <ScrollViewer VerticalScrollBarVisibility="Auto">
-            <StackPanel Margin="20" Spacing="12" MaxWidth="900" HorizontalAlignment="Stretch">
-              <StackPanel Spacing="14">
-                <StackPanel Spacing="6">
-                  <TextBlock Text="基本信息" FontSize="14" FontWeight="Medium"/>
-                  <Grid ColumnDefinitions="*,*,*" Margin="0,4,0,0">
-                    <StackPanel>
-                      <TextBlock Text="实际版本" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}" Margin="0,0,0,3"/>
-                      <TextBlock Text="{Binding ActualVersion}" FontSize="13" FontWeight="Medium"/>
-                    </StackPanel>
-                    <StackPanel Grid.Column="1" HorizontalAlignment="Center">
-                      <TextBlock Text="版本类型" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}" Margin="0,0,0,3" HorizontalAlignment="Center"/>
-                      <TextBlock Text="{Binding VersionType}" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
-                    </StackPanel>
-                    <StackPanel Grid.Column="2" HorizontalAlignment="Right">
-                      <TextBlock Text="上次游玩" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}" Margin="0,0,0,3" HorizontalAlignment="Right"/>
-                      <TextBlock Text="{Binding LastPlayed}" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Right"/>
-                    </StackPanel>
-                  </Grid>
-                </StackPanel>
+            <StackPanel Margin="20,16,20,24" Spacing="12" MaxWidth="900" HorizontalAlignment="Stretch">
 
-                <Separator Background="{DynamicResource DividerBrush}"/>
+              <!-- ===== 版本 Hero ===== -->
+              <Border Background="{DynamicResource LayerFillColorPrimaryBrush}"
+                      CornerRadius="12" Padding="20"
+                      BorderThickness="1" BorderBrush="{DynamicResource CardBorderBrush}">
+                <StackPanel Spacing="14">
 
-                <!-- 版本描述 -->
-                <StackPanel Spacing="8">
-                  <Grid ColumnDefinitions="*,Auto">
-                    <TextBlock Text="版本描述" FontSize="14" FontWeight="Medium" VerticalAlignment="Center"/>
-                    <Button Grid.Column="1" Classes="ghost" FontSize="11" Padding="8,4"
+                  <Grid ColumnDefinitions="Auto,*,Auto">
+                    <Border Width="56" Height="56" CornerRadius="10"
+                            Background="{DynamicResource PrimarySoftBrush}"
+                            BorderThickness="1" BorderBrush="{DynamicResource CardBorderBrush}">
+                      <Image Source="{Binding LoaderIconPath, Converter={x:Static converters:BitmapAssetValueConverter.Instance}}"
+                             Width="32" Height="32" Stretch="Uniform"
+                             HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+
+                    <StackPanel Grid.Column="1" Margin="16,0,12,0" VerticalAlignment="Center" Spacing="4">
+                      <StackPanel Orientation="Horizontal" Spacing="10">
+                        <TextBlock Text="{Binding VersionId}" FontSize="18" FontWeight="SemiBold"
+                                   VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                        <Border Background="{DynamicResource PrimarySoftBrush}" CornerRadius="9"
+                                Padding="9,2" VerticalAlignment="Center">
+                          <TextBlock Text="{Binding VersionType}" FontSize="11" FontWeight="SemiBold"
+                                     Foreground="{DynamicResource AccentBrush}"/>
+                        </Border>
+                      </StackPanel>
+                      <TextBlock Text="{Binding Description}" FontSize="12"
+                                 Foreground="{DynamicResource TextSecondaryBrush}"
+                                 TextTrimming="CharacterEllipsis"
+                                 IsVisible="{Binding !IsEditingDescription}"/>
+                    </StackPanel>
+
+                    <Button Grid.Column="2" Classes="ghost" Content="编辑" FontSize="12" Padding="12,5"
+                            VerticalAlignment="Top"
                             Command="{Binding StartEditDescriptionCommand}"
-                            IsVisible="{Binding !IsEditingDescription}">
-                      <StackPanel Orientation="Horizontal" Spacing="3">
-                        <Path Data="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"
-                              Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
-                        <TextBlock Text="编辑" VerticalAlignment="Center"/>
-                      </StackPanel>
-                    </Button>
+                            IsVisible="{Binding !IsEditingDescription}"/>
                   </Grid>
-                  <TextBlock Text="{Binding Description}" FontSize="12" TextWrapping="Wrap"
-                             Foreground="{DynamicResource TextSecondaryBrush}"
-                             IsVisible="{Binding !IsEditingDescription}"/>
-                  <StackPanel IsVisible="{Binding IsEditingDescription}" Spacing="8">
+
+                  <!-- 编辑描述：就地展开，不弹窗 -->
+                  <StackPanel Spacing="10" IsVisible="{Binding IsEditingDescription}">
                     <TextBox Text="{Binding EditingDescription}" AcceptsReturn="True" TextWrapping="Wrap"
-                             Watermark="输入版本描述..." MinHeight="80" MaxWidth="600"/>
+                             Watermark="输入版本描述..." MinHeight="72"/>
                     <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
-                      <Button Content="取消" Classes="ghost" Command="{Binding CancelEditDescriptionCommand}"/>
-                      <Button Content="保存" Command="{Binding SaveDescriptionCommand}"/>
+                      <Button Content="取消" Classes="ghost" FontSize="12" Padding="12,5"
+                              Command="{Binding CancelEditDescriptionCommand}"/>
+                      <Button Content="保存" Classes="accent" FontSize="12" Padding="14,5"
+                              Command="{Binding SaveDescriptionCommand}"/>
                     </StackPanel>
                   </StackPanel>
-                </StackPanel>
 
-                <Separator Background="{DynamicResource DividerBrush}"/>
+                  <Separator Background="{DynamicResource DividerBrush}" Margin="-20,0"/>
 
-                <!-- 存储路径 -->
-                <StackPanel Spacing="8">
-                  <TextBlock Text="存储路径" FontSize="14" FontWeight="Medium"/>
-                  <Border Background="{DynamicResource LayerFillColorPrimaryBrush}" CornerRadius="6" Padding="10,8"
-                          BorderThickness="1" BorderBrush="{DynamicResource CardBorderBrush}">
-                    <Grid ColumnDefinitions="*,Auto">
-                      <TextBlock Text="{Binding StoragePath}" FontSize="11" FontFamily="Consolas" TextWrapping="Wrap"
-                                 Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" HorizontalAlignment="Left"/>
-                      <Button Grid.Column="1" Classes="ghost" Padding="6,4" VerticalAlignment="Center"
-                              Command="{Binding OpenFolderCommand}" ToolTip.Tip="打开文件夹">
-                        <Path Data="M20 6H12L10 4H4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V8C22 6.9 21.1 6 20 6M20 18H4V8H20V18Z"
-                              Width="16" Height="16" Stretch="Uniform" Fill="{DynamicResource AccentBrush}"/>
-                      </Button>
-                    </Grid>
-                  </Border>
-                </StackPanel>
-
-                <Separator Background="{DynamicResource DividerBrush}"/>
-
-                <!-- 快捷操作 -->
-                <StackPanel Spacing="8">
-                  <TextBlock Text="快捷操作" FontSize="14" FontWeight="Medium"/>
-                  <StackPanel Orientation="Horizontal" Spacing="2" HorizontalAlignment="Left">
-                    <Button Classes="ghost" Padding="10,6" Command="{Binding OpenModsFolderCommand}" ToolTip.Tip="打开Mod文件夹">
-                      <StackPanel Orientation="Horizontal" Spacing="4">
-                        <Path Data="M20 6H12L10 4H4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V8C22 6.9 21.1 6 20 6M20 18H4V8H20V18Z"
-                              Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
-                        <TextBlock Text="Mod" FontSize="12" VerticalAlignment="Center"/>
-                      </StackPanel>
-                    </Button>
-                    <Button Classes="ghost" Padding="10,6" Command="{Binding OpenShaderPacksFolderCommand}" ToolTip.Tip="打开Shader文件夹">
-                      <StackPanel Orientation="Horizontal" Spacing="4">
-                        <Path Data="M21 3H3C1.9 3 1 3.9 1 5V19C1 20.1 1.9 21 3 21H21C22.1 21 23 20.1 23 19V5C23 3.9 22.1 3 21 3M21 19H3V5H21V19M7.5 13.5L10 16.5L14 11.5L19 17H5L7.5 13.5Z"
-                              Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
-                        <TextBlock Text="Shader" FontSize="12" VerticalAlignment="Center"/>
-                      </StackPanel>
-                    </Button>
-                    <Button Classes="ghost" Padding="10,6" Command="{Binding OpenResourcePacksFolderCommand}" ToolTip.Tip="打开资源包文件夹">
-                      <StackPanel Orientation="Horizontal" Spacing="4">
-                        <Path Data="M11 21h2v-3h-2v3zM5 21h2v-3H5v3zM17 21h2v-3h-2v3zM5 17h2v-3H5v3zM17 17h2v-3h-2v3zM5 13h2v-3H5v3zM17 13h2v-3h-2v3zM11 17h2v-3h-2v3zM11 13h2v-3h-2v3zM11 9h2V6h2V4h-2V1h-2v3H9v2h2v3z"
-                              Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
-                        <TextBlock Text="资源包" FontSize="12" VerticalAlignment="Center"/>
-                      </StackPanel>
-                    </Button>
-                    <Button Classes="ghost" Padding="10,6" Command="{Binding OpenConfigFolderCommand}" ToolTip.Tip="打开配置文件夹">
-                      <StackPanel Orientation="Horizontal" Spacing="4">
-                        <Path Data="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"
-                              Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
-                        <TextBlock Text="配置" FontSize="12" VerticalAlignment="Center"/>
-                      </StackPanel>
-                    </Button>
-                  </StackPanel>
-                </StackPanel>
-
-                <Separator Background="{DynamicResource DividerBrush}"/>
-
-                <!-- ===== 高级管理 ===== -->
-                <StackPanel Spacing="10">
-                  <TextBlock Text="高级管理" FontSize="14" FontWeight="Medium"/>
-                  <TextBlock Text="版本运维工具，请谨慎操作" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}"/>
-                  <Grid ColumnDefinitions="*,*,*" ColumnSpacing="4" Margin="0,4,0,0">
-                    <Button Classes="ghost" Padding="8,10" Command="{Binding ExportLaunchScriptCommand}">
-                      <StackPanel Spacing="6" HorizontalAlignment="Center">
-                        <Path Data="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"
-                              Width="18" Height="18" Stretch="Uniform" Fill="{DynamicResource AccentBrush}"/>
-                        <TextBlock Text="导出启动脚本" FontSize="12"/>
-                      </StackPanel>
-                    </Button>
-                    <Button Grid.Column="1" Classes="ghost" Padding="8,10" Command="{Binding CompleteFilesCommand}">
-                      <StackPanel Spacing="6" HorizontalAlignment="Center">
-                        <Path Data="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"
-                              Width="18" Height="18" Stretch="Uniform" Fill="{DynamicResource AccentBrush}"/>
-                        <TextBlock Text="补全文件" FontSize="12"/>
-                      </StackPanel>
-                    </Button>
-                    <Button Grid.Column="2" Classes="danger" Padding="8,10" Command="{Binding DeleteVersionCommand}">
-                      <StackPanel Spacing="6" HorizontalAlignment="Center">
-                        <Path Data="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"
-                              Width="18" Height="18" Stretch="Uniform" Fill="White"/>
-                        <TextBlock Text="删除版本" FontSize="12" Foreground="White"/>
-                      </StackPanel>
-                    </Button>
+                  <Grid ColumnDefinitions="*,*,*">
+                    <StackPanel Spacing="3">
+                      <TextBlock Text="实际版本" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}"/>
+                      <TextBlock Text="{Binding ActualVersion}" FontSize="14" FontWeight="SemiBold"
+                                 TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Spacing="3" Margin="24,0,0,0">
+                      <TextBlock Text="版本类型" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}"/>
+                      <TextBlock Text="{Binding VersionType}" FontSize="14" FontWeight="SemiBold"
+                                 TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" Spacing="3" Margin="24,0,0,0">
+                      <TextBlock Text="上次游玩" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}"/>
+                      <TextBlock Text="{Binding LastPlayed}" FontSize="14" FontWeight="SemiBold"
+                                 TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
                   </Grid>
+                </StackPanel>
+              </Border>
+
+              <!-- ===== 快捷操作 ===== -->
+              <StackPanel Spacing="8">
+                <TextBlock Text="快捷操作" FontSize="12" FontWeight="Medium"
+                           Foreground="{DynamicResource TextTertiaryBrush}"/>
+                <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="8">
+                  <Button Grid.Column="0" Classes="secondary" Height="44" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                          Command="{Binding OpenModsFolderCommand}" ToolTip.Tip="打开 Mod 文件夹">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                      <Path Data="M20 6H12L10 4H4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V8C22 6.9 21.1 6 20 6M20 18H4V8H20V18Z"
+                            Width="16" Height="16" Stretch="Uniform" Fill="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+                      <TextBlock Text="Mod" FontSize="13" VerticalAlignment="Center"/>
+                    </StackPanel>
+                  </Button>
+                  <Button Grid.Column="1" Classes="secondary" Height="44" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                          Command="{Binding OpenShaderPacksFolderCommand}" ToolTip.Tip="打开光影文件夹">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                      <Path Data="M21 3H3C1.9 3 1 3.9 1 5V19C1 20.1 1.9 21 3 21H21C22.1 21 23 20.1 23 19V5C23 3.9 22.1 3 21 3M21 19H3V5H21V19M7.5 13.5L10 16.5L14 11.5L19 17H5L7.5 13.5Z"
+                            Width="16" Height="16" Stretch="Uniform" Fill="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+                      <TextBlock Text="光影" FontSize="13" VerticalAlignment="Center"/>
+                    </StackPanel>
+                  </Button>
+                  <Button Grid.Column="2" Classes="secondary" Height="44" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                          Command="{Binding OpenResourcePacksFolderCommand}" ToolTip.Tip="打开材质包文件夹">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                      <Path Data="M11 21h2v-3h-2v3zM5 21h2v-3H5v3zM17 21h2v-3h-2v3zM5 17h2v-3H5v3zM17 17h2v-3h-2v3zM5 13h2v-3H5v3zM17 13h2v-3h-2v3zM11 17h2v-3h-2v3zM11 13h2v-3h-2v3zM11 9h2V6h2V4h-2V1h-2v3H9v2h2v3z"
+                            Width="16" Height="16" Stretch="Uniform" Fill="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+                      <TextBlock Text="材质包" FontSize="13" VerticalAlignment="Center"/>
+                    </StackPanel>
+                  </Button>
+                  <Button Grid.Column="3" Classes="secondary" Height="44" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                          Command="{Binding OpenConfigFolderCommand}" ToolTip.Tip="打开配置文件夹">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                      <Path Data="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"
+                            Width="16" Height="16" Stretch="Uniform" Fill="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+                      <TextBlock Text="配置" FontSize="13" VerticalAlignment="Center"/>
+                    </StackPanel>
+                  </Button>
+                </Grid>
+              </StackPanel>
+
+              <!-- ===== 存储路径 ===== -->
+              <Border Background="{DynamicResource LayerFillColorPrimaryBrush}"
+                      CornerRadius="8" Padding="14,11"
+                      BorderThickness="1" BorderBrush="{DynamicResource CardBorderBrush}">
+                <Grid ColumnDefinitions="Auto,*,Auto">
+                  <TextBlock Text="存储路径" FontSize="12"
+                             Foreground="{DynamicResource TextTertiaryBrush}"
+                             VerticalAlignment="Center" Margin="0,0,16,0"/>
+                  <TextBlock Grid.Column="1" Text="{Binding StoragePath}" FontSize="12" FontFamily="Consolas"
+                             Foreground="{DynamicResource TextSecondaryBrush}"
+                             TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                  <Button Grid.Column="2" Classes="ghost" Content="打开" FontSize="12" Padding="10,4"
+                          VerticalAlignment="Center" Margin="12,0,0,0"
+                          Command="{Binding OpenFolderCommand}" ToolTip.Tip="在文件管理器中打开"/>
+                </Grid>
+              </Border>
+
+              <!-- ===== 高级管理 ===== -->
+              <StackPanel Spacing="8">
+                <TextBlock Text="高级管理" FontSize="12" FontWeight="Medium"
+                           Foreground="{DynamicResource TextTertiaryBrush}"/>
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <Button Classes="secondary" Content="导出启动脚本" FontSize="12" Padding="14,8"
+                          Command="{Binding ExportLaunchScriptCommand}"/>
+                  <Button Classes="secondary" Content="补全文件" FontSize="12" Padding="14,8"
+                          Command="{Binding CompleteFilesCommand}"/>
+                  <Button Content="删除版本" FontSize="12" Padding="14,8"
+                          Background="{DynamicResource DangerSoftBrush}" Foreground="{DynamicResource DangerBrush}"
+                          BorderThickness="0" CornerRadius="6" HorizontalContentAlignment="Center"
+                          Command="{Binding DeleteVersionCommand}"
+                          ToolTip.Tip="删除版本会连同游戏目录一起移除，不可撤销"/>
                 </StackPanel>
               </StackPanel>
+
             </StackPanel>
           </ScrollViewer>
         </ui:TabViewItem>
@@ -199,31 +229,30 @@
             <ui:PathIconSource Data="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
           </ui:TabViewItem.IconSource>
           <ScrollViewer VerticalScrollBarVisibility="Auto">
-            <StackPanel Margin="20" Spacing="12" MaxWidth="900" HorizontalAlignment="Stretch">
-              <StackPanel Spacing="14">
-                <!-- 版本隔离与分组 -->
-                <StackPanel Spacing="10">
-                  <TextBlock Text="版本隔离与分组" FontSize="14" FontWeight="Medium"/>
+            <StackPanel Margin="20,16,20,24" Spacing="12" MaxWidth="900" HorizontalAlignment="Stretch">
 
-                  <Grid ColumnDefinitions="*,Auto">
-                    <StackPanel>
-                      <TextBlock Text="版本隔离" FontSize="12" FontWeight="SemiBold"/>
-                      <TextBlock Text="开启后此版本使用独立的游戏目录" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,1,0,0"/>
-                    </StackPanel>
-                    <ComboBox Grid.Column="1" Width="140" SelectedIndex="{Binding IsolationMode}" FontSize="12">
+              <!-- ===== 版本隔离与分组 ===== -->
+              <ui:SettingsExpander Header="版本隔离与分组"
+                                   Description="决定这个版本用哪个游戏目录、归到哪个分组"
+                                   IsExpanded="True">
+                <ui:SettingsExpander.IconSource>
+                  <ui:SymbolIconSource Symbol="FolderLink"/>
+                </ui:SettingsExpander.IconSource>
+
+                <ui:SettingsExpanderItem Content="版本隔离" Description="开启后此版本使用独立的游戏目录">
+                  <ui:SettingsExpanderItem.Footer>
+                    <ComboBox Width="160" SelectedIndex="{Binding IsolationMode}" FontSize="12">
                       <ComboBoxItem Content="跟随全局"/>
                       <ComboBoxItem Content="开启"/>
                       <ComboBoxItem Content="关闭"/>
                     </ComboBox>
-                  </Grid>
+                  </ui:SettingsExpanderItem.Footer>
+                </ui:SettingsExpanderItem>
 
-                  <Grid ColumnDefinitions="*,Auto">
-                    <StackPanel>
-                      <TextBlock Text="版本分组" FontSize="12" FontWeight="SemiBold"/>
-                      <TextBlock Text="将此版本分配到指定分组" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,1,0,0"/>
-                    </StackPanel>
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
-                      <ComboBox Width="160"
+                <ui:SettingsExpanderItem Content="版本分组" Description="将此版本分配到指定分组">
+                  <ui:SettingsExpanderItem.Footer>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                      <ComboBox Width="180"
                                 ItemsSource="{Binding GroupListItems}"
                                 SelectedItem="{Binding SelectedGroupItem}"
                                 FontSize="12">
@@ -233,31 +262,32 @@
                           </DataTemplate>
                         </ComboBox.ItemTemplate>
                       </ComboBox>
-                      <Button Classes="ghost" Padding="10,0" Command="{Binding OpenGroupManagerCommand}" ToolTip.Tip="管理分组">
-                        <StackPanel Orientation="Horizontal" Spacing="4">
-                          <Path Data="M19.14 12.94C19.18 12.64 19.2 12.33 19.2 12C19.2 11.68 19.18 11.36 19.13 11.06L21.16 9.48C21.34 9.34 21.39 9.07 21.28 8.87L19.36 5.55C19.24 5.33 18.99 5.26 18.77 5.33L16.38 6.29C15.88 5.91 15.35 5.59 14.76 5.35L14.4 2.81C14.36 2.57 14.16 2.4 13.92 2.4H10.08C9.84 2.4 9.65 2.57 9.61 2.81L9.25 5.35C8.66 5.59 8.12 5.92 7.63 6.29L5.24 5.33C5.02 5.25 4.77 5.33 4.65 5.55L2.74 8.87C2.62 9.08 2.66 9.34 2.86 9.48L4.89 11.06C4.84 11.36 4.8 11.69 4.8 12C4.8 12.31 4.82 12.64 4.87 12.94L2.85 14.52C2.67 14.66 2.62 14.93 2.73 15.13L4.65 18.45C4.77 18.67 5.02 18.74 5.24 18.67L7.63 17.71C8.13 18.09 8.66 18.41 9.25 18.65L9.61 21.19C9.65 21.43 9.84 21.6 10.08 21.6H13.92C14.16 21.6 14.36 21.43 14.4 21.19L14.76 18.65C15.35 18.41 15.89 18.09 16.38 17.71L18.77 18.67C18.99 18.74 19.24 18.67 19.36 18.45L21.28 15.13C21.39 14.91 21.34 14.66 21.16 14.52L19.14 12.94ZM12 15.6C10.02 15.6 8.4 13.98 8.4 12C8.4 10.02 10.02 8.4 12 8.4C13.98 8.4 15.6 10.02 15.6 12C15.6 13.98 13.98 15.6 12 15.6Z"
-                                Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
-                          <TextBlock Text="管理分组" FontSize="12" VerticalAlignment="Center"/>
-                        </StackPanel>
-                      </Button>
+                      <Button Classes="ghost" Content="管理" FontSize="12" Padding="12,5"
+                              Command="{Binding OpenGroupManagerCommand}" ToolTip.Tip="管理分组"/>
                     </StackPanel>
-                  </Grid>
-                </StackPanel>
+                  </ui:SettingsExpanderItem.Footer>
+                </ui:SettingsExpanderItem>
+              </ui:SettingsExpander>
 
-                <Separator Background="{DynamicResource DividerBrush}"/>
+              <!-- ===== 内存配置 ===== -->
+              <ui:SettingsExpander Header="内存配置"
+                                   Description="不开启时跟随全局设置中分配的内存"
+                                   IsExpanded="True">
+                <ui:SettingsExpander.IconSource>
+                  <ui:SymbolIconSource Symbol="Calculator"/>
+                </ui:SettingsExpander.IconSource>
 
-                <!-- 内存配置 -->
-                <StackPanel Spacing="10">
+                <StackPanel Spacing="12">
                   <Grid ColumnDefinitions="*,Auto">
-                    <StackPanel>
-                      <TextBlock Text="内存配置" FontSize="14" FontWeight="Medium"/>
-                      <TextBlock Text="{Binding GlobalMemoryText}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,1,0,0"/>
-                    </StackPanel>
-                    <ToggleSwitch Grid.Column="1" IsChecked="{Binding UseCustomMemory}" OnContent="自定义" OffContent="跟随全局"/>
+                    <TextBlock Text="{Binding GlobalMemoryText}" FontSize="11"
+                               Foreground="{DynamicResource TextTertiaryBrush}"
+                               TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
+                               Margin="0,0,12,0"/>
+                    <ToggleSwitch Grid.Column="1" IsChecked="{Binding UseCustomMemory}"
+                                  OnContent="自定义" OffContent="跟随全局"/>
                   </Grid>
 
-                  <StackPanel Spacing="10" IsVisible="{Binding UseCustomMemory}">
-                    <Separator Background="{DynamicResource DividerBrush}"/>
+                  <StackPanel Spacing="12" IsVisible="{Binding UseCustomMemory}">
                     <!-- 最大内存 -->
                     <StackPanel Spacing="6">
                       <Grid ColumnDefinitions="*,Auto">
@@ -277,6 +307,7 @@
                                       HorizontalAlignment="Stretch"/>
                       </Grid>
                     </StackPanel>
+
                     <!-- 最小内存 -->
                     <StackPanel Spacing="6">
                       <Grid ColumnDefinitions="*,Auto">
@@ -296,29 +327,35 @@
                                       HorizontalAlignment="Stretch"/>
                       </Grid>
                     </StackPanel>
-                    <TextBlock Text="{Binding MemoryHint}"
-                               FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" TextWrapping="Wrap"
+
+                    <ui:InfoBar IsOpen="{Binding IsMemoryHintWarning}" Severity="Warning"
+                                IsClosable="False" Message="{Binding MemoryHint}"/>
+                    <TextBlock Text="{Binding MemoryHint}" FontSize="11" TextWrapping="Wrap"
+                               Foreground="{DynamicResource TextTertiaryBrush}"
                                IsVisible="{Binding !IsMemoryHintWarning}"/>
-                    <TextBlock Text="{Binding MemoryHint}"
-                               FontSize="11" Foreground="{DynamicResource WarningBrush}" TextWrapping="Wrap"
-                               IsVisible="{Binding IsMemoryHintWarning}"/>
                   </StackPanel>
                 </StackPanel>
+              </ui:SettingsExpander>
 
-                <Separator Background="{DynamicResource DividerBrush}"/>
+              <!-- ===== Java 路径 ===== -->
+              <ui:SettingsExpander Header="Java 路径"
+                                   Description="不开启时跟随全局设置选择的 Java 运行时"
+                                   IsExpanded="True">
+                <ui:SettingsExpander.IconSource>
+                  <ui:SymbolIconSource Symbol="Code"/>
+                </ui:SettingsExpander.IconSource>
 
-                <!-- Java 与 JVM 参数 -->
-                <StackPanel Spacing="10">
+                <StackPanel Spacing="12">
                   <Grid ColumnDefinitions="*,Auto">
-                    <StackPanel>
-                      <TextBlock Text="Java 路径" FontSize="14" FontWeight="Medium"/>
-                      <TextBlock Text="{Binding GlobalJavaText}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,1,0,0" TextTrimming="CharacterEllipsis"/>
-                    </StackPanel>
-                    <ToggleSwitch Grid.Column="1" IsChecked="{Binding UseCustomJava}" OnContent="自定义" OffContent="跟随全局"/>
+                    <TextBlock Text="{Binding GlobalJavaText}" FontSize="11"
+                               Foreground="{DynamicResource TextTertiaryBrush}"
+                               TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
+                               Margin="0,0,12,0"/>
+                    <ToggleSwitch Grid.Column="1" IsChecked="{Binding UseCustomJava}"
+                                  OnContent="自定义" OffContent="跟随全局"/>
                   </Grid>
 
-                  <StackPanel Spacing="6" IsVisible="{Binding UseCustomJava}">
-                    <Separator Background="{DynamicResource DividerBrush}"/>
+                  <StackPanel Spacing="10" IsVisible="{Binding UseCustomJava}">
                     <ComboBox ItemsSource="{Binding JavaOptions}"
                               SelectedItem="{Binding SelectedJavaOption}"
                               PlaceholderText="请选择 Java（扫描系统已安装的运行时）..."
@@ -343,29 +380,41 @@
                       <Button Grid.Column="1" Content="浏览" Width="72" Command="{Binding BrowseJavaCommand}"/>
                     </Grid>
 
-                    <TextBlock Text="{Binding JavaPathHint}"
-                               FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" TextWrapping="Wrap"
+                    <ui:InfoBar IsOpen="{Binding IsJavaPathWarning}" Severity="Warning"
+                                IsClosable="False" Message="{Binding JavaPathHint}"/>
+                    <TextBlock Text="{Binding JavaPathHint}" FontSize="11" TextWrapping="Wrap"
+                               Foreground="{DynamicResource TextTertiaryBrush}"
                                IsVisible="{Binding !IsJavaPathWarning}"/>
-                    <TextBlock Text="{Binding JavaPathHint}"
-                               FontSize="11" Foreground="{DynamicResource WarningBrush}" TextWrapping="Wrap"
-                               IsVisible="{Binding IsJavaPathWarning}"/>
                   </StackPanel>
+                </StackPanel>
+              </ui:SettingsExpander>
 
+              <!-- ===== JVM 参数 ===== -->
+              <ui:SettingsExpander Header="JVM 参数"
+                                   Description="不开启时跟随全局设置的启动参数"
+                                   IsExpanded="True">
+                <ui:SettingsExpander.IconSource>
+                  <ui:SymbolIconSource Symbol="Ruler"/>
+                </ui:SettingsExpander.IconSource>
+
+                <StackPanel Spacing="12">
                   <Grid ColumnDefinitions="*,Auto">
-                    <StackPanel>
-                      <TextBlock Text="JVM 参数" FontSize="14" FontWeight="Medium"/>
-                      <TextBlock Text="{Binding GlobalJvmText}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,1,0,0" TextTrimming="CharacterEllipsis"/>
-                    </StackPanel>
-                    <ToggleSwitch Grid.Column="1" IsChecked="{Binding UseCustomJvm}" OnContent="自定义" OffContent="跟随全局"/>
+                    <TextBlock Text="{Binding GlobalJvmText}" FontSize="11"
+                               Foreground="{DynamicResource TextTertiaryBrush}"
+                               TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
+                               Margin="0,0,12,0"/>
+                    <ToggleSwitch Grid.Column="1" IsChecked="{Binding UseCustomJvm}"
+                                  OnContent="自定义" OffContent="跟随全局"/>
                   </Grid>
 
                   <StackPanel Spacing="6" IsVisible="{Binding UseCustomJvm}">
-                    <Separator Background="{DynamicResource DividerBrush}"/>
-                    <TextBlock Text="自定义参数将完整替换全局参数" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}"/>
+                    <TextBlock Text="自定义参数将完整替换全局参数" FontSize="11"
+                               Foreground="{DynamicResource TextTertiaryBrush}"/>
                     <views:JvmArgumentsEditorView DataContext="{Binding JvmArgumentsEditor}" HorizontalAlignment="Stretch"/>
                   </StackPanel>
                 </StackPanel>
-              </StackPanel>
+              </ui:SettingsExpander>
+
             </StackPanel>
           </ScrollViewer>
         </ui:TabViewItem>
@@ -379,7 +428,7 @@
           <Grid ColumnDefinitions="Auto,*">
             <!-- 左侧二级导航：用 FluentAvalonia 原生 ListBox，
                  选中态交给控件主题（不再自绘按钮与激活类），背景与内容区一致、只留一条分隔线 -->
-            <ListBox Grid.Column="0" Width="188"
+            <ListBox Grid.Column="0" Width="200"
                      Background="Transparent"
                      BorderThickness="0,0,1,0"
                      BorderBrush="{DynamicResource DividerBrush}"
@@ -388,47 +437,43 @@
               <ListBox.Styles>
                 <Style Selector="ListBoxItem">
                   <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-                  <Setter Property="Padding" Value="10,8"/>
+                  <Setter Property="Padding" Value="12,9"/>
                 </Style>
               </ListBox.Styles>
               <ListBoxItem ToolTip.Tip="存档">
                 <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
-                  <Path Data="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2M12 20C7.59 20 4 16.41 4 12S7.59 4 12 4 20 7.59 20 12 16.41 20 12 20M11 7H13V13H11V7M11 15H13V17H11V15Z" Width="15" Height="15" Stretch="Uniform"
+                  <Path Data="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2M12 20C7.59 20 4 16.41 4 12S7.59 4 12 4 20 7.59 20 12 16.41 20 12 20M11 7H13V13H11V7M11 15H13V17H11V15Z" Width="16" Height="16" Stretch="Uniform"
                         Fill="{Binding $parent[ListBoxItem].Foreground}" VerticalAlignment="Center"/>
                   <TextBlock Grid.Column="1" Text="存档" FontSize="13"
                              VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                  <TextBlock Grid.Column="2" Text="{Binding Worlds.Count}" FontSize="10"
-                             Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center"/>
+                  <ui:InfoBadge Grid.Column="2" Value="{Binding Worlds.Count}" VerticalAlignment="Center"/>
                 </Grid>
               </ListBoxItem>
               <ListBoxItem ToolTip.Tip="Mod">
                 <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
-                  <Path Data="M20 6H12L10 4H4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V8C22 6.9 21.1 6 20 6M20 18H4V8H20V18Z" Width="15" Height="15" Stretch="Uniform"
+                  <Path Data="M20 6H12L10 4H4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V8C22 6.9 21.1 6 20 6M20 18H4V8H20V18Z" Width="16" Height="16" Stretch="Uniform"
                         Fill="{Binding $parent[ListBoxItem].Foreground}" VerticalAlignment="Center"/>
                   <TextBlock Grid.Column="1" Text="Mod" FontSize="13"
                              VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                  <TextBlock Grid.Column="2" Text="{Binding Mods.Count}" FontSize="10"
-                             Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center"/>
+                  <ui:InfoBadge Grid.Column="2" Value="{Binding Mods.Count}" VerticalAlignment="Center"/>
                 </Grid>
               </ListBoxItem>
               <ListBoxItem ToolTip.Tip="材质包">
                 <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
-                  <Path Data="M21 19V5C21 3.9 20.1 3 19 3H5C3.9 3 3 3.9 3 5V19C3 20.1 3.9 21 5 21H19C20.1 21 21 20.1 21 19M8.5 13.5L11 16.5L14.5 12L19 18H5L8.5 13.5Z" Width="15" Height="15" Stretch="Uniform"
+                  <Path Data="M21 19V5C21 3.9 20.1 3 19 3H5C3.9 3 3 3.9 3 5V19C3 20.1 3.9 21 5 21H19C20.1 21 21 20.1 21 19M8.5 13.5L11 16.5L14.5 12L19 18H5L8.5 13.5Z" Width="16" Height="16" Stretch="Uniform"
                         Fill="{Binding $parent[ListBoxItem].Foreground}" VerticalAlignment="Center"/>
                   <TextBlock Grid.Column="1" Text="材质包" FontSize="13"
                              VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                  <TextBlock Grid.Column="2" Text="{Binding ResourcePacks.Count}" FontSize="10"
-                             Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center"/>
+                  <ui:InfoBadge Grid.Column="2" Value="{Binding ResourcePacks.Count}" VerticalAlignment="Center"/>
                 </Grid>
               </ListBoxItem>
               <ListBoxItem ToolTip.Tip="光影">
                 <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
-                  <Path Data="M21 3H3C1.9 3 1 3.9 1 5V19C1 20.1 1.9 21 3 21H21C22.1 21 23 20.1 23 19V5C23 3.9 22.1 3 21 3M21 19H3V5H21V19M7.5 13.5L10 16.5L14.5 11.5L19 17H5L7.5 13.5Z" Width="15" Height="15" Stretch="Uniform"
+                  <Path Data="M21 3H3C1.9 3 1 3.9 1 5V19C1 20.1 1.9 21 3 21H21C22.1 21 23 20.1 23 19V5C23 3.9 22.1 3 21 3M21 19H3V5H21V19M7.5 13.5L10 16.5L14.5 11.5L19 17H5L7.5 13.5Z" Width="16" Height="16" Stretch="Uniform"
                         Fill="{Binding $parent[ListBoxItem].Foreground}" VerticalAlignment="Center"/>
                   <TextBlock Grid.Column="1" Text="光影" FontSize="13"
                              VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                  <TextBlock Grid.Column="2" Text="{Binding ShaderPacks.Count}" FontSize="10"
-                             Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center"/>
+                  <ui:InfoBadge Grid.Column="2" Value="{Binding ShaderPacks.Count}" VerticalAlignment="Center"/>
                 </Grid>
               </ListBoxItem>
             </ListBox>
@@ -437,15 +482,20 @@
             <Panel Grid.Column="1">
               <ScrollViewer VerticalScrollBarVisibility="Auto"
                             IsVisible="{Binding SelectedResourceTabIndex, Converter={x:Static converters:TabIndexToBoolConverter.Instance}, ConverterParameter=0}">
-                <StackPanel Margin="20" Spacing="12" MaxWidth="900" HorizontalAlignment="Stretch">
-                  <StackPanel Spacing="8">
+                <StackPanel Margin="20,16,20,24" Spacing="12" MaxWidth="900" HorizontalAlignment="Stretch">
+                  <StackPanel Spacing="12">
                     <Grid ColumnDefinitions="*,Auto">
-                      <TextBlock Text="存档管理" FontSize="14" FontWeight="Medium"/>
-                      <Button Grid.Column="1" Classes="ghost" FontSize="11" Padding="4,2"
+                      <StackPanel Spacing="2" VerticalAlignment="Center">
+                        <TextBlock Text="存档" FontSize="16" FontWeight="SemiBold"/>
+                        <TextBlock Text="这个版本里的世界列表" FontSize="11"
+                                   Foreground="{DynamicResource TextTertiaryBrush}"/>
+                      </StackPanel>
+                      <Button Grid.Column="1" Classes="ghost" FontSize="12" Padding="12,5"
+                              VerticalAlignment="Center"
                               Command="{Binding OpenSavesFolderCommand}">
-                        <StackPanel Orientation="Horizontal" Spacing="3">
-                          <Path Data="M20 6H12L10 4H4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V8C22 6.9 21.1 6 20 6M20 18H4V8H20V18Z" Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
-                          <TextBlock Text="打开存档文件夹" VerticalAlignment="Center"/>
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                          <Path Data="M20 6H12L10 4H4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V8C22 6.9 21.1 6 20 6M20 18H4V8H20V18Z" Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+                          <TextBlock Text="打开文件夹" VerticalAlignment="Center"/>
                         </StackPanel>
                       </Button>
                     </Grid>
@@ -454,13 +504,13 @@
                       <ItemsControl.ItemTemplate>
                         <DataTemplate>
                           <Border Background="{DynamicResource LayerFillColorPrimaryBrush}"
-                                  CornerRadius="6"
-                                  Padding="10"
-                                  Margin="0,0,0,6"
+                                  CornerRadius="8"
+                                  Padding="12"
+                                  Margin="0,0,0,8"
                                   BorderThickness="1"
                                   BorderBrush="{DynamicResource CardBorderBrush}">
-                            <Grid ColumnDefinitions="Auto,*,Auto">
-                              <Border Width="40" Height="40" CornerRadius="4" Margin="0,0,10,0"
+                            <Grid ColumnDefinitions="Auto,*">
+                              <Border Width="44" Height="44" CornerRadius="6" Margin="0,0,12,0"
                                       Background="{DynamicResource SurfaceBrush}"
                                       BorderThickness="1"
                                       BorderBrush="{DynamicResource CardBorderBrush}"
@@ -470,18 +520,16 @@
                                         Width="24" Height="24" Stretch="Uniform" Fill="{DynamicResource AccentBrush}"
                                         HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.6"/>
                                   <Image Source="{Binding IconPath, Converter={x:Static converters:FilePathToBitmapConverter.Instance}}"
-                                         Stretch="UniformToFill" Margin="2"/>
+                                         Stretch="UniformToFill"/>
                                 </Panel>
                               </Border>
-                              <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                              <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="3"
+                                          ToolTip.Tip="{Binding CreationTime, StringFormat='创建: {0:yyyy-MM-dd HH:mm}'}">
                                 <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="Medium" TextTrimming="CharacterEllipsis"/>
-                                <StackPanel Orientation="Horizontal" Spacing="8">
-                                  <TextBlock Text="{Binding GameVersion, StringFormat='版本: {0}'}" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}"/>
-                                  <TextBlock Text="{Binding WorldSizeDisplay, StringFormat='大小: {0}'}" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}"/>
-                                </StackPanel>
-                                <StackPanel Orientation="Horizontal" Spacing="8">
-                                  <TextBlock Text="{Binding CreationTime, StringFormat='创建: {0:yyyy-MM-dd HH:mm}'}" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}"/>
-                                  <TextBlock Text="{Binding LastModified, StringFormat='修改: {0:yyyy-MM-dd HH:mm}'}" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}"/>
+                                <StackPanel Orientation="Horizontal" Spacing="12">
+                                  <TextBlock Text="{Binding GameVersion, StringFormat='版本 {0}'}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}"/>
+                                  <TextBlock Text="{Binding WorldSizeDisplay, StringFormat='大小 {0}'}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}"/>
+                                  <TextBlock Text="{Binding LastModified, StringFormat='修改 {0:yyyy-MM-dd HH:mm}'}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}"/>
                                 </StackPanel>
                               </StackPanel>
                             </Grid>
@@ -490,28 +538,33 @@
                       </ItemsControl.ItemTemplate>
                     </ItemsControl>
 
-                    <TextBlock Text="暂无存档" FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}"
-                               HorizontalAlignment="Center" IsVisible="{Binding !HasWorlds}"/>
+                    <StackPanel Classes="empty-state" Margin="0,28,0,24" IsVisible="{Binding !HasWorlds}">
+                      <TextBlock Text="暂无存档" FontSize="13" Foreground="{DynamicResource TextTertiaryBrush}"/>
+                    </StackPanel>
                   </StackPanel>
                 </StackPanel>
               </ScrollViewer>
               <ScrollViewer VerticalScrollBarVisibility="Auto"
                             IsVisible="{Binding SelectedResourceTabIndex, Converter={x:Static converters:TabIndexToBoolConverter.Instance}, ConverterParameter=1}">
-                <StackPanel Margin="20" Spacing="12" MaxWidth="900" HorizontalAlignment="Stretch">
-                  <StackPanel Spacing="8">
+                <StackPanel Margin="20,16,20,24" Spacing="12" MaxWidth="900" HorizontalAlignment="Stretch">
+                  <StackPanel Spacing="12">
                     <Grid ColumnDefinitions="*,Auto">
-                      <TextBlock Text="Mod 管理" FontSize="14" FontWeight="Medium"/>
-                      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
-                        <Button Classes="ghost" FontSize="11" Padding="4,2" Command="{Binding RefreshModsCommand}">
-                          <StackPanel Orientation="Horizontal" Spacing="3">
-                            <Path Data="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+                      <StackPanel Spacing="2" VerticalAlignment="Center">
+                        <TextBlock Text="Mod" FontSize="16" FontWeight="SemiBold"/>
+                        <TextBlock Text="开关这个版本里已安装的 Mod" FontSize="11"
+                                   Foreground="{DynamicResource TextTertiaryBrush}"/>
+                      </StackPanel>
+                      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                        <Button Classes="ghost" FontSize="12" Padding="12,5" Command="{Binding RefreshModsCommand}">
+                          <StackPanel Orientation="Horizontal" Spacing="6">
+                            <Path Data="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
                             <TextBlock Text="刷新" VerticalAlignment="Center"/>
                           </StackPanel>
                         </Button>
-                        <Button Classes="ghost" FontSize="11" Padding="4,2" Command="{Binding OpenModsFolderCommand}">
-                          <StackPanel Orientation="Horizontal" Spacing="3">
-                            <Path Data="M20 6H12L10 4H4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V8C22 6.9 21.1 6 20 6M20 18H4V8H20V18Z" Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
-                            <TextBlock Text="打开Mod文件夹" VerticalAlignment="Center"/>
+                        <Button Classes="ghost" FontSize="12" Padding="12,5" Command="{Binding OpenModsFolderCommand}">
+                          <StackPanel Orientation="Horizontal" Spacing="6">
+                            <Path Data="M20 6H12L10 4H4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V8C22 6.9 21.1 6 20 6M20 18H4V8H20V18Z" Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+                            <TextBlock Text="打开文件夹" VerticalAlignment="Center"/>
                           </StackPanel>
                         </Button>
                       </StackPanel>
@@ -521,62 +574,67 @@
                       <ItemsControl.ItemTemplate>
                         <DataTemplate>
                           <Border Background="{DynamicResource LayerFillColorPrimaryBrush}"
-                                  CornerRadius="6"
-                                  Padding="10"
-                                  Margin="0,0,0,6"
+                                  CornerRadius="8"
+                                  Padding="12"
+                                  Margin="0,0,0,8"
                                   BorderThickness="1"
                                   BorderBrush="{Binding HasConflict, Converter={x:Static converters:BoolToBrushConverter.ConflictBorder}}">
                             <Grid ColumnDefinitions="Auto,*,Auto">
-                              <Border Width="32" Height="32" CornerRadius="4" Margin="0,0,10,0"
+                              <Border Width="40" Height="40" CornerRadius="6" Margin="0,0,12,0"
                                       Background="{DynamicResource SurfaceBrush}"
                                       BorderThickness="1" BorderBrush="{DynamicResource CardBorderBrush}"
                                       ClipToBounds="True">
                                 <Image Source="{Binding IconPath, Converter={x:Static converters:FilePathToBitmapConverter.Instance}}"
-                                       Stretch="Uniform" Margin="3"/>
+                                       Stretch="Uniform" Margin="4"/>
                               </Border>
-                              <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                <StackPanel Orientation="Horizontal" Spacing="6">
-                                  <TextBlock Text="{Binding FileName}" FontSize="12" FontWeight="Medium" TextTrimming="CharacterEllipsis"/>
-                                  <Border Background="{DynamicResource DangerSoftBrush}" CornerRadius="3" Padding="4,1" IsVisible="{Binding HasConflict}">
-                                    <TextBlock Text="冲突" FontSize="9" Foreground="{DynamicResource DangerBrush}" FontWeight="Medium"/>
+                              <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="3">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                  <TextBlock Text="{Binding FileName}" FontSize="13" FontWeight="Medium" TextTrimming="CharacterEllipsis"/>
+                                  <Border Background="{DynamicResource DangerSoftBrush}" CornerRadius="4" Padding="6,1" IsVisible="{Binding HasConflict}">
+                                    <TextBlock Text="冲突" FontSize="10" Foreground="{DynamicResource DangerBrush}" FontWeight="SemiBold"/>
                                   </Border>
                                 </StackPanel>
-                                <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,2,0,0">
-                                  <TextBlock Text="{Binding ModId}" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}" IsVisible="{Binding ModId, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
-                                  <TextBlock Text="{Binding Version}" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}" IsVisible="{Binding Version, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
-                                  <TextBlock Text="{Binding Loader}" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}" IsVisible="{Binding Loader, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                <StackPanel Orientation="Horizontal" Spacing="12">
+                                  <TextBlock Text="{Binding ModId}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" IsVisible="{Binding ModId, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                  <TextBlock Text="{Binding Version}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" IsVisible="{Binding Version, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                  <TextBlock Text="{Binding Loader}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" IsVisible="{Binding Loader, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                                 </StackPanel>
-                                <TextBlock Text="{Binding ConflictDescription}" FontSize="10" Foreground="{DynamicResource DangerBrush}" TextWrapping="Wrap" IsVisible="{Binding HasConflict}" Margin="0,2,0,0"/>
-                                <TextBlock Text="{Binding ConflictSuggestion}" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}" TextWrapping="Wrap" IsVisible="{Binding ConflictSuggestion, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Margin="0,2,0,0"/>
+                                <TextBlock Text="{Binding ConflictDescription}" FontSize="11" Foreground="{DynamicResource DangerBrush}" TextWrapping="Wrap" IsVisible="{Binding HasConflict}"/>
+                                <TextBlock Text="{Binding ConflictSuggestion}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" TextWrapping="Wrap" IsVisible="{Binding ConflictSuggestion, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                               </StackPanel>
-                              <ToggleSwitch Grid.Column="2" IsChecked="{Binding IsEnabled}" OnContent="" OffContent=""/>
+                              <ToggleSwitch Grid.Column="2" IsChecked="{Binding IsEnabled}" OnContent="" OffContent="" VerticalAlignment="Center"/>
                             </Grid>
                           </Border>
                         </DataTemplate>
                       </ItemsControl.ItemTemplate>
                     </ItemsControl>
 
-                    <TextBlock Text="暂无Mod" FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}"
-                               HorizontalAlignment="Center" IsVisible="{Binding !HasMods}"/>
+                    <StackPanel Classes="empty-state" Margin="0,28,0,24" IsVisible="{Binding !HasMods}">
+                      <TextBlock Text="暂无 Mod" FontSize="13" Foreground="{DynamicResource TextTertiaryBrush}"/>
+                    </StackPanel>
                   </StackPanel>
                 </StackPanel>
               </ScrollViewer>
               <ScrollViewer VerticalScrollBarVisibility="Auto"
                             IsVisible="{Binding SelectedResourceTabIndex, Converter={x:Static converters:TabIndexToBoolConverter.Instance}, ConverterParameter=2}">
-                <StackPanel Margin="20" Spacing="12" MaxWidth="900" HorizontalAlignment="Stretch">
-                  <StackPanel Spacing="8">
+                <StackPanel Margin="20,16,20,24" Spacing="12" MaxWidth="900" HorizontalAlignment="Stretch">
+                  <StackPanel Spacing="12">
                     <Grid ColumnDefinitions="*,Auto">
-                      <TextBlock Text="材质包管理" FontSize="14" FontWeight="Medium"/>
-                      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
-                        <Button Classes="ghost" FontSize="11" Padding="4,2" Command="{Binding RefreshResourcePacksCommand}">
-                          <StackPanel Orientation="Horizontal" Spacing="3">
-                            <Path Data="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+                      <StackPanel Spacing="2" VerticalAlignment="Center">
+                        <TextBlock Text="材质包" FontSize="16" FontWeight="SemiBold"/>
+                        <TextBlock Text="开关 resourcepacks 里的材质包" FontSize="11"
+                                   Foreground="{DynamicResource TextTertiaryBrush}"/>
+                      </StackPanel>
+                      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                        <Button Classes="ghost" FontSize="12" Padding="12,5" Command="{Binding RefreshResourcePacksCommand}">
+                          <StackPanel Orientation="Horizontal" Spacing="6">
+                            <Path Data="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
                             <TextBlock Text="刷新" VerticalAlignment="Center"/>
                           </StackPanel>
                         </Button>
-                        <Button Classes="ghost" FontSize="11" Padding="4,2" Command="{Binding OpenResourcePacksFolderCommand}">
-                          <StackPanel Orientation="Horizontal" Spacing="3">
-                            <Path Data="M20 6H12L10 4H4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V8C22 6.9 21.1 6 20 6M20 18H4V8H20V18Z" Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+                        <Button Classes="ghost" FontSize="12" Padding="12,5" Command="{Binding OpenResourcePacksFolderCommand}">
+                          <StackPanel Orientation="Horizontal" Spacing="6">
+                            <Path Data="M20 6H12L10 4H4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V8C22 6.9 21.1 6 20 6M20 18H4V8H20V18Z" Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
                             <TextBlock Text="打开文件夹" VerticalAlignment="Center"/>
                           </StackPanel>
                         </Button>
@@ -587,10 +645,10 @@
                       <ItemsControl.ItemTemplate>
                         <DataTemplate>
                           <Border Background="{DynamicResource LayerFillColorPrimaryBrush}"
-                                  CornerRadius="6" Padding="10" Margin="0,0,0,6"
+                                  CornerRadius="8" Padding="12" Margin="0,0,0,8"
                                   BorderThickness="1" BorderBrush="{DynamicResource CardBorderBrush}">
                             <Grid ColumnDefinitions="Auto,*,Auto,Auto">
-                              <Border Width="32" Height="32" CornerRadius="4" Margin="0,0,10,0"
+                              <Border Width="40" Height="40" CornerRadius="6" Margin="0,0,12,0"
                                       Background="{DynamicResource SurfaceBrush}"
                                       BorderThickness="1" BorderBrush="{DynamicResource CardBorderBrush}" ClipToBounds="True">
                                 <Panel>
@@ -598,47 +656,54 @@
                                         Width="20" Height="20" Stretch="Uniform" Fill="{DynamicResource AccentBrush}"
                                         HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.6"/>
                                   <Image Source="{Binding IconPath, Converter={x:Static converters:FilePathToBitmapConverter.Instance}}"
-                                         Stretch="Uniform" Margin="3"/>
+                                         Stretch="Uniform" Margin="4"/>
                                 </Panel>
                               </Border>
-                              <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                <TextBlock Text="{Binding DisplayName}" FontSize="12" FontWeight="Medium" TextTrimming="CharacterEllipsis"/>
-                                <TextBlock Text="{Binding Size, StringFormat='{}{0:F0} KB'}" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}" Margin="0,1,0,0"/>
+                              <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="3">
+                                <TextBlock Text="{Binding DisplayName}" FontSize="13" FontWeight="Medium" TextTrimming="CharacterEllipsis"/>
+                                <TextBlock Text="{Binding Size, StringFormat='{}{0:F0} KB'}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}"/>
                               </StackPanel>
-                              <Button Grid.Column="2" Classes="ghost" Padding="4,2" Margin="4,0,0,0"
+                              <Button Grid.Column="2" Classes="icon-ghost" Width="32" Height="32"
                                       Command="{Binding $parent[ItemsControl].((vm:InstanceViewModel)DataContext).DeleteResourcePackCommand}"
                                       CommandParameter="{Binding}" ToolTip.Tip="删除">
                                 <Path Data="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"
-                                      Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource DangerBrush}" VerticalAlignment="Center"/>
+                                      Width="16" Height="16" Stretch="Uniform" Fill="{DynamicResource DangerBrush}"
+                                      HorizontalAlignment="Center" VerticalAlignment="Center"/>
                               </Button>
-                              <ToggleSwitch Grid.Column="3" IsChecked="{Binding IsEnabled}" OnContent="" OffContent="" Margin="8,0,0,0"/>
+                              <ToggleSwitch Grid.Column="3" IsChecked="{Binding IsEnabled}" OnContent="" OffContent=""
+                                            Margin="12,0,0,0" VerticalAlignment="Center"/>
                             </Grid>
                           </Border>
                         </DataTemplate>
                       </ItemsControl.ItemTemplate>
                     </ItemsControl>
 
-                    <TextBlock Text="暂无材质包" FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}"
-                               HorizontalAlignment="Center" IsVisible="{Binding !HasResourcePacks}"/>
+                    <StackPanel Classes="empty-state" Margin="0,28,0,24" IsVisible="{Binding !HasResourcePacks}">
+                      <TextBlock Text="暂无材质包" FontSize="13" Foreground="{DynamicResource TextTertiaryBrush}"/>
+                    </StackPanel>
                   </StackPanel>
                 </StackPanel>
               </ScrollViewer>
               <ScrollViewer VerticalScrollBarVisibility="Auto"
                             IsVisible="{Binding SelectedResourceTabIndex, Converter={x:Static converters:TabIndexToBoolConverter.Instance}, ConverterParameter=3}">
-                <StackPanel Margin="20" Spacing="12" MaxWidth="900" HorizontalAlignment="Stretch">
-                  <StackPanel Spacing="8">
+                <StackPanel Margin="20,16,20,24" Spacing="12" MaxWidth="900" HorizontalAlignment="Stretch">
+                  <StackPanel Spacing="12">
                     <Grid ColumnDefinitions="*,Auto">
-                      <TextBlock Text="光影管理" FontSize="14" FontWeight="Medium"/>
-                      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
-                        <Button Classes="ghost" FontSize="11" Padding="4,2" Command="{Binding RefreshShaderPacksCommand}">
-                          <StackPanel Orientation="Horizontal" Spacing="3">
-                            <Path Data="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+                      <StackPanel Spacing="2" VerticalAlignment="Center">
+                        <TextBlock Text="光影" FontSize="16" FontWeight="SemiBold"/>
+                        <TextBlock Text="开关 shaderpacks 里的光影包" FontSize="11"
+                                   Foreground="{DynamicResource TextTertiaryBrush}"/>
+                      </StackPanel>
+                      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                        <Button Classes="ghost" FontSize="12" Padding="12,5" Command="{Binding RefreshShaderPacksCommand}">
+                          <StackPanel Orientation="Horizontal" Spacing="6">
+                            <Path Data="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
                             <TextBlock Text="刷新" VerticalAlignment="Center"/>
                           </StackPanel>
                         </Button>
-                        <Button Classes="ghost" FontSize="11" Padding="4,2" Command="{Binding OpenShaderPacksFolderCommand}">
-                          <StackPanel Orientation="Horizontal" Spacing="3">
-                            <Path Data="M20 6H12L10 4H4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V8C22 6.9 21.1 6 20 6M20 18H4V8H20V18Z" Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+                        <Button Classes="ghost" FontSize="12" Padding="12,5" Command="{Binding OpenShaderPacksFolderCommand}">
+                          <StackPanel Orientation="Horizontal" Spacing="6">
+                            <Path Data="M20 6H12L10 4H4C2.9 4 2 4.9 2 6V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V8C22 6.9 21.1 6 20 6M20 18H4V8H20V18Z" Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
                             <TextBlock Text="打开文件夹" VerticalAlignment="Center"/>
                           </StackPanel>
                         </Button>
@@ -649,10 +714,10 @@
                       <ItemsControl.ItemTemplate>
                         <DataTemplate>
                           <Border Background="{DynamicResource LayerFillColorPrimaryBrush}"
-                                  CornerRadius="6" Padding="10" Margin="0,0,0,6"
+                                  CornerRadius="8" Padding="12" Margin="0,0,0,8"
                                   BorderThickness="1" BorderBrush="{DynamicResource CardBorderBrush}">
                             <Grid ColumnDefinitions="Auto,*,Auto,Auto">
-                              <Border Width="32" Height="32" CornerRadius="4" Margin="0,0,10,0"
+                              <Border Width="40" Height="40" CornerRadius="6" Margin="0,0,12,0"
                                       Background="{DynamicResource SurfaceBrush}"
                                       BorderThickness="1" BorderBrush="{DynamicResource CardBorderBrush}" ClipToBounds="True">
                                 <Panel>
@@ -660,28 +725,31 @@
                                         Width="20" Height="20" Stretch="Uniform" Fill="{DynamicResource AccentBrush}"
                                         HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.6"/>
                                   <Image Source="{Binding IconPath, Converter={x:Static converters:FilePathToBitmapConverter.Instance}}"
-                                         Stretch="Uniform" Margin="3"/>
+                                         Stretch="Uniform" Margin="4"/>
                                 </Panel>
                               </Border>
-                              <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                <TextBlock Text="{Binding DisplayName}" FontSize="12" FontWeight="Medium" TextTrimming="CharacterEllipsis"/>
-                                <TextBlock Text="{Binding Size, StringFormat='{}{0:F0} KB'}" FontSize="10" Foreground="{DynamicResource TextTertiaryBrush}" Margin="0,1,0,0"/>
+                              <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="3">
+                                <TextBlock Text="{Binding DisplayName}" FontSize="13" FontWeight="Medium" TextTrimming="CharacterEllipsis"/>
+                                <TextBlock Text="{Binding Size, StringFormat='{}{0:F0} KB'}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}"/>
                               </StackPanel>
-                              <Button Grid.Column="2" Classes="ghost" Padding="4,2" Margin="4,0,0,0"
+                              <Button Grid.Column="2" Classes="icon-ghost" Width="32" Height="32"
                                       Command="{Binding $parent[ItemsControl].((vm:InstanceViewModel)DataContext).DeleteShaderPackCommand}"
                                       CommandParameter="{Binding}" ToolTip.Tip="删除">
                                 <Path Data="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"
-                                      Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource DangerBrush}" VerticalAlignment="Center"/>
+                                      Width="16" Height="16" Stretch="Uniform" Fill="{DynamicResource DangerBrush}"
+                                      HorizontalAlignment="Center" VerticalAlignment="Center"/>
                               </Button>
-                              <ToggleSwitch Grid.Column="3" IsChecked="{Binding IsEnabled}" OnContent="" OffContent="" Margin="8,0,0,0"/>
+                              <ToggleSwitch Grid.Column="3" IsChecked="{Binding IsEnabled}" OnContent="" OffContent=""
+                                            Margin="12,0,0,0" VerticalAlignment="Center"/>
                             </Grid>
                           </Border>
                         </DataTemplate>
                       </ItemsControl.ItemTemplate>
                     </ItemsControl>
 
-                    <TextBlock Text="暂无光影" FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}"
-                               HorizontalAlignment="Center" IsVisible="{Binding !HasShaderPacks}"/>
+                    <StackPanel Classes="empty-state" Margin="0,28,0,24" IsVisible="{Binding !HasShaderPacks}">
+                      <TextBlock Text="暂无光影" FontSize="13" Foreground="{DynamicResource TextTertiaryBrush}"/>
+                    </StackPanel>
                   </StackPanel>
                 </StackPanel>
               </ScrollViewer>
@@ -767,30 +835,30 @@
               <ItemsControl.ItemTemplate>
                 <DataTemplate>
                   <Border Background="{DynamicResource SurfaceBrush}"
-                          CornerRadius="6" Padding="12,10" Margin="0,0,0,4"
-                          BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
+                          CornerRadius="8" Padding="12" Margin="0,0,0,6"
+                          BorderThickness="1" BorderBrush="{DynamicResource CardBorderBrush}">
                     <Grid ColumnDefinitions="Auto,Auto,*,Auto">
                       <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="Medium" VerticalAlignment="Center"/>
-                      <Border Grid.Column="1" CornerRadius="3" Padding="4,1" Margin="6,0,0,0"
+                      <Border Grid.Column="1" CornerRadius="4" Padding="6,1" Margin="8,0,0,0"
                               Background="{DynamicResource SurfaceElevatedBrush}"
                               IsVisible="{Binding IsSystem}"
                               VerticalAlignment="Center">
-                        <TextBlock Text="系统组" FontSize="9" Foreground="{DynamicResource TextTertiaryBrush}"/>
+                        <TextBlock Text="系统组" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}"/>
                       </Border>
                       <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center"
                                   IsVisible="{Binding IsDeletable}">
-                        <Button Width="26" Height="26" Padding="0" Classes="ghost" ToolTip.Tip="重命名"
+                        <Button Width="30" Height="30" Classes="icon-ghost" ToolTip.Tip="重命名"
                                 Command="{Binding $parent[ItemsControl].((vm:InstanceViewModel)DataContext).RenameGroupCommand}"
                                 CommandParameter="{Binding}">
                           <Path Data="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"
-                                Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource TextBrush}"
+                                Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource TextSecondaryBrush}"
                                 HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Button>
-                        <Button Width="26" Height="26" Padding="0" Classes="ghost" ToolTip.Tip="删除"
+                        <Button Width="30" Height="30" Classes="icon-ghost" ToolTip.Tip="删除"
                                 Command="{Binding $parent[ItemsControl].((vm:InstanceViewModel)DataContext).DeleteGroupCommand}"
                                 CommandParameter="{Binding}">
                           <Path Data="M19 4H15.5L14.5 3H9.5L8.5 4H5V6H19M6 19A2 2 0 0 0 8 21H16A2 2 0 0 0 18 19V7H6V19Z"
-                                Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource DangerBrush}"
+                                Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource DangerBrush}"
                                 HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Button>
                       </StackPanel>

@@ -275,18 +275,21 @@ public static class AppearanceApplier
     /// <summary>
     /// FluentAvalonia TabView 主题资源：让 tab 选择栏跟随应用三级表面色阶，
     /// 避免 Fluent 默认暖灰（#282828 等）与冷色系主题产生隔阂。
-    /// 选中 tab 与内容区共用「页面底色」，tab 条与顶部标题栏同色。
+    /// 选中 tab 比标签条更实一档（90% 蒙层）形成「当前页浮起」，
+    /// tab 条 / 顶部标题栏 / 内容区统一 70% 半透明蒙层 —— 壁纸（WallpaperHost 按
+    /// WallpaperOpacity 设置渲染）从下面透出来，与主页内容区的观感一致。
     /// </summary>
     private static void ApplyTabViewTheme(IResourceDictionary resources, bool isLight, Color accentColor)
     {
         var accent = new SolidColorBrush(accentColor);
 
-        resources["TabViewBackground"] = new SolidColorBrush(Color.Parse(isLight ? "#FFFFFF" : "#141619"));
+        resources["TabViewBackground"] = new SolidColorBrush(Color.Parse(isLight ? "#B3FFFFFF" : "#B3141619"));
+        resources["InstanceHeaderBackgroundBrush"] = new SolidColorBrush(Color.Parse(isLight ? "#B3FFFFFF" : "#B3141619"));
         resources["TabViewBorderBrush"] = new SolidColorBrush(Color.Parse(isLight ? "#F1F5F9" : "#1E2128"));
         resources["TabViewItemHeaderBackground"] = Brushes.Transparent;
-        resources["TabViewItemHeaderBackgroundSelected"] = new SolidColorBrush(Color.Parse(isLight ? "#F8FAFC" : "#0B0D10"));
+        resources["TabViewItemHeaderBackgroundSelected"] = new SolidColorBrush(Color.Parse(isLight ? "#E6F8FAFC" : "#E60B0D10"));
         resources["TabViewItemHeaderBackgroundPointerOver"] = new SolidColorBrush(accentColor) { Opacity = isLight ? 0.10 : 0.08 };
-        resources["TabViewItemHeaderBackgroundPressed"] = new SolidColorBrush(Color.Parse(isLight ? "#F1F5F9" : "#1C1F26"));
+        resources["TabViewItemHeaderBackgroundPressed"] = new SolidColorBrush(Color.Parse(isLight ? "#80F1F5F9" : "#801C1F26"));
 
         resources["TabViewItemHeaderForeground"] = new SolidColorBrush(Color.Parse(isLight ? "#475569" : "#94A3B8"));
         resources["TabViewItemHeaderForegroundSelected"] = accent;

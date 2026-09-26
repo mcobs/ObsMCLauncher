@@ -44,6 +44,10 @@ public partial class InstanceViewModel : ViewModelBase
     [ObservableProperty]
     private string _versionType = "-";
 
+    /// <summary>当前版本的加载器图标（avares 资源路径），SetVersion 时同步。</summary>
+    [ObservableProperty]
+    private string _loaderIconPath = "";
+
     [ObservableProperty]
     private string _lastPlayed = "-";
 
@@ -197,6 +201,7 @@ public partial class InstanceViewModel : ViewModelBase
     {
         _version = version;
         _versionPath = version.Path;
+        LoaderIconPath = version.LoaderIconPath;
         IsVisible = true;
         _ = LoadAsync();
     }

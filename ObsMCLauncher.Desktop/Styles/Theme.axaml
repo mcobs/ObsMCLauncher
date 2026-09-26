@@ -183,15 +183,16 @@
     <SolidColorBrush x:Key="ControlFillColorDefaultBrush" Color="#141619"/>
 
     <!-- ===== FluentAvalonia TabView（版本实例页 tab 栏）主题资源 =====
-         tab 条与顶部标题栏同色（SurfaceBrush），选中 tab 与内容区共用页面底色（BackgroundBrush），
-         选中态文字用主题绿 + 加粗，与全局导航激活样式一致。
+         tab 条 / 顶部标题栏 / 内容区统一 70% 半透明蒙层（InstanceHeaderBackgroundBrush 同值），
+         壁纸由 WallpaperHost 按设置的壁纸不透明度渲染后从底下透出；选中 tab 用 90% 蒙层浮起。
          浅色模式由 SettingsViewModel.ApplyTabViewTheme 动态切换。 -->
-    <SolidColorBrush x:Key="TabViewBackground" Color="#141619"/>
+    <SolidColorBrush x:Key="TabViewBackground" Color="#B3141619"/>
+    <SolidColorBrush x:Key="InstanceHeaderBackgroundBrush" Color="#B3141619"/>
     <SolidColorBrush x:Key="TabViewBorderBrush" Color="#1E2128"/>
     <SolidColorBrush x:Key="TabViewItemHeaderBackground" Color="#00FFFFFF"/>
-    <SolidColorBrush x:Key="TabViewItemHeaderBackgroundSelected" Color="#0B0D10"/>
+    <SolidColorBrush x:Key="TabViewItemHeaderBackgroundSelected" Color="#E60B0D10"/>
     <SolidColorBrush x:Key="TabViewItemHeaderBackgroundPointerOver" Color="#10B981" Opacity="0.08"/>
-    <SolidColorBrush x:Key="TabViewItemHeaderBackgroundPressed" Color="#1C1F26"/>
+    <SolidColorBrush x:Key="TabViewItemHeaderBackgroundPressed" Color="#801C1F26"/>
     <SolidColorBrush x:Key="TabViewItemHeaderForeground" Color="#94A3B8"/>
     <SolidColorBrush x:Key="TabViewItemHeaderForegroundSelected" Color="#10B981"/>
     <SolidColorBrush x:Key="TabViewItemHeaderForegroundPointerOver" Color="#F1F5F9"/>

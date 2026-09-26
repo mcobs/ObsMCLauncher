@@ -208,10 +208,13 @@
     <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
   </Style>
 
-  <!-- ===== Slider ===== -->
+  <!-- ===== Slider =====
+       未填充轨道用 BorderBrush 而不是 SurfaceElevatedBrush：
+       滑块现在长在 SettingsExpander 卡片里，卡片底色就是 SurfaceElevated 一档，
+       两者同色会让"剩下的那截轨道"整段消失（看起来像滑块只有一半）。 -->
   <Style Selector="Slider">
     <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
-    <Setter Property="Background" Value="{DynamicResource SurfaceElevatedBrush}"/>
+    <Setter Property="Background" Value="{DynamicResource BorderBrush}"/>
   </Style>
 
   <Style Selector="Slider /template/ Border#TrackBackground">
