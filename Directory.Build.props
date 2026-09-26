@@ -9,7 +9,7 @@
       打 tag 发布时 release.yml 会用 -p:Version=<tag 去掉 v 前缀> 覆盖，
       命令行全局属性优先级高于本文件，无需在此处临时修改。
     -->
-    <Version>1.1.2-beta.1</Version>
+    <Version>1.1.2-beta.2</Version>
   </PropertyGroup>
 
 </Project>
