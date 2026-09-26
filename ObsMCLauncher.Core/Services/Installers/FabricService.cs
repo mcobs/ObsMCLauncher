@@ -769,10 +769,14 @@ namespace ObsMCLauncher.Core.Services.Installers
                 DebugLogger.Info("FabricService", $"库文件下载完成: {downloadedLibs}/{totalLibs}");
                 
                 // 验证关键库文件是否存在
+                // ⚠️ ASM 必须在内：Fabric Loader 起来第一件事就是校验 ASM 在不在 classpath，
+                // 缺了会直接 `IllegalStateException: ASM not detected on the classpath`。
+                // 而单个库的下载失败在上面只是记 Error 并继续，不校验的话安装会"成功"但启动必崩。
                 var criticalLibraries = new[]
                 {
                     "net/fabricmc/fabric-loader",
-                    "net/fabricmc/sponge-mixin"
+                    "net/fabricmc/sponge-mixin",
+                    "org/ow2/asm/asm"
                 };
                 
                 var missingCriticalLibs = new List<string>();

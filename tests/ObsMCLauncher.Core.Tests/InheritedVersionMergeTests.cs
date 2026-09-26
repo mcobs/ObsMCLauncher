@@ -181,3 +181,100 @@ public class InheritedVersionMergeTests : IDisposable
         Assert.Contains("--username", AsStrings(merged.Arguments!.Game));
     }
 }
+
+/// <summary>
+/// 启动时的缺失库检查：natives classifier 包缺失必须算**必需**并触发下载，
+/// 不能归到"可选"里（否则永远没人去下，natives 目录一直是空的）。
+/// </summary>
+public class MissingLibraryDetectionTests : IDisposable
+{
+    private readonly string _gameDir;
+
+    public MissingLibraryDetectionTests()
+    {
+        _gameDir = Path.Combine(Path.GetTempPath(), "omcl-missing-lib-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(Path.Combine(_gameDir, "libraries"));
+    }
+
+    public void Dispose()
+    {
+        try
+        {
+            if (Directory.Exists(_gameDir))
+                Directory.Delete(_gameDir, true);
+        }
+        catch
+        {
+            // 清理失败不影响断言
+        }
+
+        // 静态缓存里可能记着别的东西，无碍
+        GC.KeepAlive(typeof(GameLauncher));
+    }
+
+    private static GameLauncher.VersionInfo BuildLwjglVersion()
+        => new()
+        {
+            MainClass = "net.minecraft.client.main.Main",
+            Libraries = new[]
+            {
+                new GameLauncher.Library
+                {
+                    Name = "org.lwjgl:lwjgl:3.2.2",
+                    Natives = new Dictionary<string, string> { ["windows"] = "natives-windows" },
+                    Downloads = new GameLauncher.LibraryDownloads
+                    {
+                        Artifact = new GameLauncher.Artifact
+                        {
+                            Path = "org/lwjgl/lwjgl/3.2.2/lwjgl-3.2.2.jar",
+                            Size = 1
+                        },
+                        Classifiers = new Dictionary<string, GameLauncher.Artifact>
+                        {
+                            ["natives-windows"] = new GameLauncher.Artifact
+                            {
+                                Path = "org/lwjgl/lwjgl/3.2.2/lwjgl-3.2.2-natives-windows.jar",
+                                Size = 1
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+    private static (List<string> required, List<string> optional) GetMissing(string gameDir, GameLauncher.VersionInfo version)
+    {
+        var method = typeof(GameLauncher).GetMethod(
+            "GetMissingLibraries", BindingFlags.NonPublic | BindingFlags.Static)!;
+        var result = method.Invoke(null, new object[] { gameDir, version })!;
+        return ((List<string>, List<string>))result;
+    }
+
+    [Fact]
+    public void MissingNativesJarCountsAsRequired()
+    {
+        // 主 jar 在（1 字节，与声明大小一致），只缺 natives classifier
+        var mainJar = Path.Combine(_gameDir, "libraries", "org", "lwjgl", "lwjgl", "3.2.2", "lwjgl-3.2.2.jar");
+        Directory.CreateDirectory(Path.GetDirectoryName(mainJar)!);
+        File.WriteAllBytes(mainJar, new byte[1]);
+
+        var (required, optional) = GetMissing(_gameDir, BuildLwjglVersion());
+
+        Assert.Contains("org.lwjgl:lwjgl:3.2.2", required);
+        Assert.DoesNotContain("org.lwjgl:lwjgl:3.2.2", optional);
+    }
+
+    [Fact]
+    public void PresentNativesJarIsNotReportedMissing()
+    {
+        var dir = Path.Combine(_gameDir, "libraries", "org", "lwjgl", "lwjgl", "3.2.2");
+        Directory.CreateDirectory(dir);
+        File.WriteAllBytes(Path.Combine(dir, "lwjgl-3.2.2.jar"), new byte[1]);
+        File.WriteAllBytes(Path.Combine(dir, "lwjgl-3.2.2-natives-windows.jar"), new byte[1]);
+
+        var (required, optional) = GetMissing(_gameDir, BuildLwjglVersion());
+
+        Assert.DoesNotContain("org.lwjgl:lwjgl:3.2.2", required);
+        Assert.DoesNotContain("org.lwjgl:lwjgl:3.2.2", optional);
+    }
+}

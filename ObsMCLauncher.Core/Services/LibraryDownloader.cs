@@ -43,64 +43,77 @@ public static class LibraryDownloader
         }
 
         var versionJson = await File.ReadAllTextAsync(versionJsonPath, cancellationToken);
-        var versionDoc = JsonDocument.Parse(versionJson);
+        using var versionDoc = JsonDocument.Parse(versionJson);
         var root = versionDoc.RootElement;
 
-        var libraryDownloadMap = new Dictionary<string, LibraryDownloadInfo>();
+        // 同一个库名可能要下多份：主 artifact + 本平台的 natives classifier。
+        // 只认 downloads.artifact 的话，natives 目录永远是空的，
+        // 游戏一起来就 UnsatisfiedLinkError（no lwjgl in java.library.path）。
+        var downloadInfos = new List<LibraryDownloadInfo>();
+        var seenPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        // 库自己声明的 maven 基址（Fabric 是 https://maven.fabricmc.net/），取不到再退回公共源
+        var mavenBaseByLibName = new Dictionary<string, string>(StringComparer.Ordinal);
 
-        if (root.TryGetProperty("libraries", out var librariesElement))
+        void CollectFrom(JsonElement libraryElement)
         {
-            foreach (var lib in librariesElement.EnumerateArray())
+            if (libraryElement.ValueKind != JsonValueKind.Object)
+                return;
+            if (!libraryElement.TryGetProperty("name", out var nameElement))
+                return;
+
+            var libName = nameElement.GetString();
+            if (string.IsNullOrEmpty(libName) || !missingLibraryNames.Contains(libName))
+                return;
+
+            // 记下这个库声明的 maven 基址，Maven 兜底时优先用它
+            if (!mavenBaseByLibName.ContainsKey(libName) &&
+                libraryElement.TryGetProperty("url", out var urlElement) &&
+                urlElement.ValueKind == JsonValueKind.String)
             {
-                if (!lib.TryGetProperty("name", out var nameElement))
-                    continue;
-
-                var libName = nameElement.GetString();
-                if (string.IsNullOrEmpty(libName))
-                    continue;
-
-                if (!missingLibraryNames.Contains(libName))
-                    continue;
-
-                if (lib.TryGetProperty("downloads", out var downloads) &&
-                    downloads.TryGetProperty("artifact", out var artifact))
+                var declaredBase = urlElement.GetString();
+                if (!string.IsNullOrEmpty(declaredBase))
                 {
-                    if (artifact.TryGetProperty("url", out var urlElement) &&
-                        artifact.TryGetProperty("path", out var pathElement))
-                    {
-                        var url = urlElement.GetString();
-                        var path = pathElement.GetString();
-
-                        if (!string.IsNullOrEmpty(url) && !string.IsNullOrEmpty(path))
-                        {
-                            long size = 0;
-                            if (artifact.TryGetProperty("size", out var sizeElement))
-                            {
-                                size = sizeElement.GetInt64();
-                            }
-
-                            string? sha1 = null;
-                            if (artifact.TryGetProperty("sha1", out var sha1Element))
-                            {
-                                sha1 = sha1Element.GetString();
-                            }
-
-                            libraryDownloadMap[libName] = new LibraryDownloadInfo
-                            {
-                                Name = libName,
-                                Url = url,
-                                Path = path,
-                                Size = size,
-                                Sha1 = sha1
-                            };
-                        }
-                    }
+                    mavenBaseByLibName[libName] = declaredBase.TrimEnd('/');
                 }
+            }
+
+            if (!libraryElement.TryGetProperty("downloads", out var downloads) ||
+                downloads.ValueKind != JsonValueKind.Object)
+            {
+                return;
+            }
+
+            if (downloads.TryGetProperty("artifact", out var artifact) &&
+                artifact.ValueKind == JsonValueKind.Object)
+            {
+                AddDownloadInfo(downloadInfos, seenPaths, libName, artifact);
+            }
+
+            if (downloads.TryGetProperty("classifiers", out var classifiers) &&
+                classifiers.ValueKind == JsonValueKind.Object &&
+                libraryElement.TryGetProperty("natives", out var natives) &&
+                natives.ValueKind == JsonValueKind.Object &&
+                natives.TryGetProperty(GetCurrentOsName(), out var nativesKey) &&
+                nativesKey.ValueKind == JsonValueKind.String &&
+                classifiers.TryGetProperty(nativesKey.GetString()!, out var classifierArtifact) &&
+                classifierArtifact.ValueKind == JsonValueKind.Object)
+            {
+                AddDownloadInfo(downloadInfos, seenPaths, libName, classifierArtifact);
             }
         }
 
-        // inheritsFrom
-        if (root.TryGetProperty("inheritsFrom", out var inheritsFromElement))
+        if (root.TryGetProperty("libraries", out var librariesElement) &&
+            librariesElement.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var lib in librariesElement.EnumerateArray())
+            {
+                CollectFrom(lib);
+            }
+        }
+
+        // inheritsFrom：父版本 JSON 可能直接放在子版本目录里（PCL 同款约定）
+        if (root.TryGetProperty("inheritsFrom", out var inheritsFromElement) &&
+            inheritsFromElement.ValueKind == JsonValueKind.String)
         {
             var parentVersion = inheritsFromElement.GetString();
             if (!string.IsNullOrEmpty(parentVersion))
@@ -111,60 +124,15 @@ public static class LibraryDownloader
                 if (File.Exists(parentVersionJsonPath))
                 {
                     var parentVersionJson = await File.ReadAllTextAsync(parentVersionJsonPath, cancellationToken);
-                    var parentDoc = JsonDocument.Parse(parentVersionJson);
+                    using var parentDoc = JsonDocument.Parse(parentVersionJson);
                     var parentRoot = parentDoc.RootElement;
 
-                    if (parentRoot.TryGetProperty("libraries", out var parentLibrariesElement))
+                    if (parentRoot.TryGetProperty("libraries", out var parentLibrariesElement) &&
+                        parentLibrariesElement.ValueKind == JsonValueKind.Array)
                     {
                         foreach (var lib in parentLibrariesElement.EnumerateArray())
                         {
-                            if (!lib.TryGetProperty("name", out var nameElement))
-                                continue;
-
-                            var libName = nameElement.GetString();
-                            if (string.IsNullOrEmpty(libName))
-                                continue;
-
-                            if (libraryDownloadMap.ContainsKey(libName))
-                                continue;
-
-                            if (!missingLibraryNames.Contains(libName))
-                                continue;
-
-                            if (lib.TryGetProperty("downloads", out var downloads) &&
-                                downloads.TryGetProperty("artifact", out var artifact))
-                            {
-                                if (artifact.TryGetProperty("url", out var urlElement) &&
-                                    artifact.TryGetProperty("path", out var pathElement))
-                                {
-                                    var url = urlElement.GetString();
-                                    var path = pathElement.GetString();
-
-                                    if (!string.IsNullOrEmpty(url) && !string.IsNullOrEmpty(path))
-                                    {
-                                        long size = 0;
-                                        if (artifact.TryGetProperty("size", out var sizeElement))
-                                        {
-                                            size = sizeElement.GetInt64();
-                                        }
-
-                                        string? sha1 = null;
-                                        if (artifact.TryGetProperty("sha1", out var sha1Element))
-                                        {
-                                            sha1 = sha1Element.GetString();
-                                        }
-
-                                        libraryDownloadMap[libName] = new LibraryDownloadInfo
-                                        {
-                                            Name = libName,
-                                            Url = url,
-                                            Path = path,
-                                            Size = size,
-                                            Sha1 = sha1
-                                        };
-                                    }
-                                }
-                            }
+                            CollectFrom(lib);
                         }
                     }
                 }
@@ -174,14 +142,15 @@ public static class LibraryDownloader
         int successCount = 0;
         int failedCount = 0;
         int current = 0;
-        int total = libraryDownloadMap.Count;
+        int total = downloadInfos.Count;
 
         var librariesDir = Path.Combine(gameDirectory, "libraries");
 
-        foreach (var kvp in libraryDownloadMap)
+        foreach (var libInfo in downloadInfos)
         {
             current++;
-            var libInfo = kvp.Value;
+            if (cancellationToken.IsCancellationRequested)
+                break;
 
             try
             {
@@ -246,22 +215,32 @@ public static class LibraryDownloader
         }
 
         // 没下载信息的库：尝试 Maven
-        var missingDownloadInfo = missingLibraryNames.Where(name => !libraryDownloadMap.ContainsKey(name)).ToList();
+        var handledNames = downloadInfos.Select(d => d.Name).Distinct().ToList();
+        var missingDownloadInfo = missingLibraryNames.Where(name => !handledNames.Contains(name)).ToList();
 
         if (missingDownloadInfo.Count > 0)
         {
             foreach (var libName in missingDownloadInfo)
             {
-                var mavenSources = new[]
+                if (cancellationToken.IsCancellationRequested)
+                    break;
+
+                var sources = new List<string>();
+                if (mavenBaseByLibName.TryGetValue(libName, out var declaredBase) && !string.IsNullOrEmpty(declaredBase))
+                {
+                    sources.Add(declaredBase + "/");
+                }
+
+                sources.AddRange(new[]
                 {
                     "https://libraries.minecraft.net/",
                     "https://bmclapi2.bangbang93.com/maven/",
                     "https://maven.neoforged.net/releases/"
-                };
+                });
 
                 bool downloaded = false;
 
-                foreach (var baseUrl in mavenSources)
+                foreach (var baseUrl in sources)
                 {
                     try
                     {
@@ -300,6 +279,58 @@ public static class LibraryDownloader
         }
 
         return (successCount, failedCount);
+    }
+
+    /// <summary>从一个 `downloads.artifact` / `downloads.classifiers[*]` 节点收集下载信息（按目标路径去重）。</summary>
+    private static void AddDownloadInfo(
+        List<LibraryDownloadInfo> sink,
+        HashSet<string> seenPaths,
+        string libName,
+        JsonElement artifact)
+    {
+        if (!artifact.TryGetProperty("url", out var urlElement) ||
+            !artifact.TryGetProperty("path", out var pathElement))
+        {
+            return;
+        }
+
+        var url = urlElement.GetString();
+        var path = pathElement.GetString();
+
+        if (string.IsNullOrEmpty(url) || string.IsNullOrEmpty(path))
+            return;
+
+        if (!seenPaths.Add(path))
+            return;
+
+        long size = 0;
+        if (artifact.TryGetProperty("size", out var sizeElement) && sizeElement.ValueKind == JsonValueKind.Number)
+        {
+            size = sizeElement.GetInt64();
+        }
+
+        string? sha1 = null;
+        if (artifact.TryGetProperty("sha1", out var sha1Element) && sha1Element.ValueKind == JsonValueKind.String)
+        {
+            sha1 = sha1Element.GetString();
+        }
+
+        sink.Add(new LibraryDownloadInfo
+        {
+            Name = libName,
+            Url = url,
+            Path = path,
+            Size = size,
+            Sha1 = sha1
+        });
+    }
+
+    private static string GetCurrentOsName()
+    {
+        if (OperatingSystem.IsWindows()) return "windows";
+        if (OperatingSystem.IsLinux()) return "linux";
+        if (OperatingSystem.IsMacOS()) return "osx";
+        return "unknown";
     }
 
     private static string MavenCoordinateToPath(string coordinate)

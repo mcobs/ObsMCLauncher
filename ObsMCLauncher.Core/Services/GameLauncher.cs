@@ -291,6 +291,29 @@ public class GameLauncher
                 }
             }
 
+            // Maven 坐标式库（Fabric/Forge 常见：只有 name + url，没有 downloads.artifact）
+            // 之前一律算"可选"，于是**从来没人下载** —— ASM 就是这样缺的，
+            // 表现是 Fabric 起来就报 "ASM not detected on the classpath"。
+            // 这里也尽量补，但保持"可选"的语义：下载失败只告警，不阻断启动。
+            var optionalToTry = missingOptional.Distinct().ToList();
+            if (optionalToTry.Count > 0)
+            {
+                onProgressUpdate?.Invoke($"正在补全 {optionalToTry.Count} 个可选库文件...");
+
+                var (optionalSuccess, optionalFailed) = await LibraryDownloader.DownloadMissingLibrariesAsync(
+                    config.GameDirectory,
+                    versionId,
+                    optionalToTry,
+                    (progress, current, total) => { onProgressUpdate?.Invoke(progress); },
+                    cancellationToken).ConfigureAwait(false);
+
+                if (optionalFailed > 0)
+                {
+                    DebugLogger.Warn("GameLaunch",
+                        $"{optionalFailed} 个可选库未能下载（按原有行为继续启动），成功 {optionalSuccess} 个");
+                }
+            }
+
             onProgressUpdate?.Invoke("正在验证游戏资源...");
             cancellationToken.ThrowIfCancellationRequested();
             var assetsResult = await AssetsDownloadService.DownloadAndCheckAssetsAsync(
@@ -1359,7 +1382,7 @@ public class GameLauncher
         return allowed;
     }
 
-    private static (List<string> missingRequired, List<string> missingOptional) GetMissingLibraries(string gameDir, VersionInfo versionInfo)
+    internal static (List<string> missingRequired, List<string> missingOptional) GetMissingLibraries(string gameDir, VersionInfo versionInfo)
     {
         var missingRequired = new List<string>();
         var missingOptional = new List<string>();
@@ -1421,9 +1444,12 @@ public class GameLauncher
 
                             if (!File.Exists(nativesPath))
                             {
-                                if (!missingOptional.Contains(lib.Name ?? "Unknown"))
+                                // ⚠️ natives 缺失必须算**必需**并下载：没有它游戏一起来就
+                                // UnsatisfiedLinkError（no lwjgl in java.library.path），而且不会留崩溃报告。
+                                // 之前放进 missingOptional，启动只下载 missingRequired，于是永远缺着。
+                                if (!missingRequired.Contains(lib.Name ?? "Unknown"))
                                 {
-                                    missingOptional.Add(lib.Name ?? "Unknown");
+                                    missingRequired.Add(lib.Name ?? "Unknown");
                                 }
                             }
                         }
