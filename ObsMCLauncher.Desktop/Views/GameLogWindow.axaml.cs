@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
@@ -23,6 +24,23 @@ public partial class GameLogWindow : Window
 
     private const int MaxLines = 5000;
     private const int TrimTo = 3500;
+
+    // ===== 高吞吐日志的防卡死 =====
+    // 游戏（尤其带一堆 Mod 时）一秒能吐几千行。以前每行都 Dispatcher.Post 一次、
+    // 且超行后每行都触发一次全量 RebuildLog（O(n) 个 Run），UI 线程直接被灌满 → 软件假死。
+    // 现在：后台线程只入队，UI 线程按固定节奏**批量**消费一次。
+    private readonly ConcurrentQueue<string> _pendingLines = new();
+    private readonly DispatcherTimer _flushTimer;
+    private int _droppedLines;
+
+    /// <summary>刷新间隔（毫秒）—— 一秒内最多刷 ~8 次，肉眼看着仍是"实时"的。</summary>
+    private const int FlushIntervalMs = 120;
+
+    /// <summary>单次刷新最多处理多少行，避免一次卡顿太久。</summary>
+    private const int MaxLinesPerFlush = 600;
+
+    /// <summary>待处理队列上限，超出后丢最旧的（防内存无上限增长）。</summary>
+    private const int MaxPendingLines = 20000;
 
     [GeneratedRegex(@"\x1b\[(\d+(?:;\d+)*)m")]
     private static partial Regex AnsiEscapeRegex();
@@ -105,6 +123,23 @@ public partial class GameLogWindow : Window
         {
             Application.Current.ActualThemeVariantChanged += OnThemeChanged;
         }
+
+        _flushTimer = new DispatcherTimer(DispatcherPriority.Background)
+        {
+            Interval = TimeSpan.FromMilliseconds(FlushIntervalMs)
+        };
+        _flushTimer.Tick += (_, _) => FlushPendingLines();
+
+        Closed += (_, _) =>
+        {
+            _flushTimer.Stop();
+            if (Application.Current != null)
+            {
+                Application.Current.ActualThemeVariantChanged -= OnThemeChanged;
+            }
+        };
+
+        _flushTimer.Start();
     }
 
     public GameLogWindow(string versionName) : this()
@@ -299,7 +334,9 @@ public partial class GameLogWindow : Window
 
     private void TrimLogIfNeeded()
     {
-        if (_lineCount <= MaxLines) return;
+        // 多留一段余量再裁：裁剪要全量重建 Inlines（O(n) 个 Run），
+        // 每次刷新都裁一次会把 UI 线程钉死，攒够一批再裁划算得多。
+        if (_lineCount <= MaxLines + 1000) return;
 
         var removeCount = _lineCount - TrimTo;
         if (removeCount > 0 && removeCount < _logMessages.Count)
@@ -317,13 +354,98 @@ public partial class GameLogWindow : Window
         RebuildLog();
     }
 
+    /// <summary>
+    /// 由游戏进程的输出线程调用（可能每毫秒一次）：<b>只入队，不碰 UI</b>。
+    /// 真正往界面上加由 <see cref="FlushPendingLines"/> 在 UI 线程批量完成。
+    /// </summary>
     public void AppendGameOutput(string output)
     {
         if (string.IsNullOrWhiteSpace(output))
             return;
 
-        var converted = ConvertSectionCodes(output);
-        AppendLog(converted);
+        // 颜色码转换留在调用线程做，别占 UI 线程
+        _pendingLines.Enqueue(ConvertSectionCodes(output));
+
+        if (_pendingLines.Count > MaxPendingLines)
+        {
+            // UI 实在跟不上时丢最旧的，并记一笔，避免无上限吃内存
+            while (_pendingLines.Count > MaxPendingLines && _pendingLines.TryDequeue(out _))
+            {
+                _droppedLines++;
+            }
+        }
+    }
+
+    /// <summary>
+    /// 立刻把队列里剩下的行全部刷到界面（退出、导出、清空前都要先调一次，
+    /// 否则缓冲区里的最后几行会丢）。
+    /// </summary>
+    public void FlushPending()
+    {
+        if (!Dispatcher.UIThread.CheckAccess())
+        {
+            Dispatcher.UIThread.Post(FlushPending);
+            return;
+        }
+
+        // 与定时刷新不同：这里不限量，保证剩余内容一次性落地
+        var batch = new List<string>();
+        while (_pendingLines.TryDequeue(out var line))
+        {
+            batch.Add(line);
+            if (batch.Count >= MaxPendingLines) break;
+        }
+
+        if (_droppedLines > 0)
+        {
+            batch.Add($"… 界面刷新跟不上，已省略 {_droppedLines} 行日志");
+            _droppedLines = 0;
+        }
+
+        AppendLogBatch(batch);
+    }
+
+    /// <summary>把队列里的行批量刷到界面（在 UI 线程上，由定时器驱动）。</summary>
+    private void FlushPendingLines()
+    {
+        if (_pendingLines.IsEmpty)
+            return;
+
+        var batch = new List<string>();
+        while (batch.Count < MaxLinesPerFlush && _pendingLines.TryDequeue(out var line))
+        {
+            batch.Add(line);
+        }
+
+        if (_droppedLines > 0)
+        {
+            batch.Add($"… 界面刷新跟不上，已省略 {_droppedLines} 行日志");
+            _droppedLines = 0;
+        }
+
+        AppendLogBatch(batch);
+    }
+
+    /// <summary>批量追加：一次刷新只做一次计数更新、一次裁剪、一次滚动。</summary>
+    private void AppendLogBatch(IReadOnlyList<string> messages)
+    {
+        if (messages.Count == 0) return;
+
+        foreach (var message in messages)
+        {
+            _logMessages.Add(message);
+            AddColoredLine(message);
+            _lineCount++;
+        }
+
+        LineCountText.Text = $"{_lineCount} 行";
+
+        TrimLogIfNeeded();
+
+        if (AutoScrollCheckBox.IsChecked == true)
+        {
+            LogScrollViewer.ScrollToEnd();
+        }
     }
 
     private static string ConvertSectionCodes(string text)
@@ -347,6 +469,9 @@ public partial class GameLogWindow : Window
 
         StatusDot.Background = Brushes.Gray;
         StatusText.Text = $"游戏已退出 (代码: {exitCode})";
+
+        // 先把缓冲区里剩下的行落地，再写"已退出"，顺序才对
+        FlushPending();
 
         AppendLog("");
         if (exitCode == 0)
@@ -382,6 +507,9 @@ public partial class GameLogWindow : Window
         {
             LogTextBlock.Inlines.Clear();
         }
+        // 待处理队列也要清：否则清空后下一拍又把旧行刷回来
+        while (_pendingLines.TryDequeue(out _) ) { }
+        _droppedLines = 0;
         _logMessages.Clear();
         _lineCount = 0;
         LineCountText.Text = "0 行";
@@ -409,6 +537,9 @@ public partial class GameLogWindow : Window
         {
             try
             {
+                // 导出前把缓冲区刷干净，否则最后一段日志不在文件里
+                FlushPending();
+
                 var path = file.Path.LocalPath;
                 var cleanMessages = new List<string>(_logMessages.Count);
                 foreach (var msg in _logMessages)
