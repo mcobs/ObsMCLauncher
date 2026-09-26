@@ -1649,24 +1649,28 @@ public class GameLauncher
         }
     }
 
-    private static string GetLibraryKey(string? libraryName)
+    /// <summary>
+    /// 库去重键：<b>完整坐标</b>（含 version）＋ 是否本平台 natives 变体。
+    ///
+    /// ⚠️ **绝不能只按 group:artifact 去重**：1.18.2 的 JSON 里 LWJGL 同时声明了
+    /// <c>org.lwjgl:lwjgl:3.2.1</c>（rules 仅 osx）和 <c>org.lwjgl:lwjgl:3.2.2</c>（rules 非 osx）两份。
+    /// 按 group:artifact 去重会把 3.2.2 当成重复项丢掉，等拼 classpath 时 3.2.1 又因平台规则被过滤，
+    /// 结果 Windows 上一个 lwjgl 都进不了 classpath —— 表现是 Fabric 一起就
+    /// <c>ClassNotFoundException: org/lwjgl/system/Platform</c>（2026-09-26 实测）。
+    /// </summary>
+    private static string GetLibraryKey(Library library)
     {
-        if (string.IsNullOrEmpty(libraryName))
-            return string.Empty;
+        var name = library.Name ?? string.Empty;
 
-        var parts = libraryName.Split(':');
-
-        if (parts.Length >= 4)
+        // 同名库还可能有"带 natives"的一份（走 classifier，落盘路径不同），必须区分开
+        if (library.Natives != null &&
+            library.Natives.TryGetValue(GetOSName(), out var nativesKey) &&
+            !string.IsNullOrEmpty(nativesKey))
         {
-            return $"{parts[0]}:{parts[1]}:{parts[3]}";
+            return name + ":natives:" + nativesKey;
         }
 
-        if (parts.Length >= 2)
-        {
-            return $"{parts[0]}:{parts[1]}";
-        }
-
-        return libraryName;
+        return name;
     }
 
     private static VersionInfo MergeInheritedVersion(string gameDirectory, string childVersionId, VersionInfo childVersion)
@@ -1715,7 +1719,7 @@ public class GameLauncher
                 foreach (var library in childVersion.Libraries)
                 {
                     mergedLibraries.Add(library);
-                    var libKey = GetLibraryKey(library.Name);
+                    var libKey = GetLibraryKey(library);
                     libraryKeys.Add(libKey);
                 }
             }
@@ -1724,7 +1728,7 @@ public class GameLauncher
             {
                 foreach (var library in parentVersion.Libraries)
                 {
-                    var libKey = GetLibraryKey(library.Name);
+                    var libKey = GetLibraryKey(library);
                     if (!libraryKeys.Contains(libKey))
                     {
                         mergedLibraries.Add(library);

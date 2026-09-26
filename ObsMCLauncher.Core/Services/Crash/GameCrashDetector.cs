@@ -128,9 +128,13 @@ public static class GameCrashDetector
             CollectFrom(dir, notBefore, found);
         }
 
-        return found.Count == 0
-            ? null
-            : found.OrderByDescending(r => r.CreatedTime).First();
+        if (found.Count == 0) return null;
+
+        // 真正的崩溃报告优先于"只有日志"的兜底；同类里取最新的
+        return found
+            .OrderBy(r => r.Kind == CrashReportKind.GameLog ? 1 : 0)
+            .ThenByDescending(r => r.CreatedTime)
+            .First();
 
         static void CollectFrom(string directory, DateTime notBefore, List<CrashReportInfo> sink)
         {
@@ -145,6 +149,21 @@ public static class GameCrashDetector
             if (Directory.Exists(directory))
             {
                 TryAdd(Directory.GetFiles(directory, "hs_err_pid*.log"), CrashReportKind.JvmFatalErrorLog, notBefore, sink);
+            }
+
+            // ⚠️ 兜底：很多崩溃**不会**生成 crash-reports —— 比如 Fabric 在 preLaunch 阶段就挂了
+            // （Mod 初始化异常），Minecraft 的崩溃报告处理器还没起来，堆栈只落在 logs/latest.log 里。
+            // 以前这时一律显示"报告：<未找到>"，用户明明有日志却看不到。
+            var logsDir = Path.Combine(directory, "logs");
+            if (Directory.Exists(logsDir))
+            {
+                TryAdd(Directory.GetFiles(logsDir, "*.log"), CrashReportKind.GameLog, notBefore, sink);
+            }
+
+            // 启动器另外把游戏的 stderr 单独存了一份（没有 log4j，只有真正的异常输出）
+            if (Directory.Exists(directory))
+            {
+                TryAdd(Directory.GetFiles(directory, "stderr_stream.log"), CrashReportKind.GameLog, notBefore, sink);
             }
         }
 

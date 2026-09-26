@@ -11,7 +11,14 @@ public enum CrashReportKind
     MinecraftCrashReport,
 
     /// <summary>JVM 致命错误日志（hs_err_pid*.log，通常是显卡驱动或 native 崩溃）</summary>
-    JvmFatalErrorLog
+    JvmFatalErrorLog,
+
+    /// <summary>
+    /// 游戏日志 / 启动器捕获的 stderr（logs/latest.log、stderr_stream.log）。
+    /// Mod 加载期崩溃（例如 Fabric 的 preLaunch 阶段）往往<b>根本不会生成 crash-reports</b>，
+    /// 堆栈只写进日志 —— 这时"报告：未找到"是假的。
+    /// </summary>
+    GameLog
 }
 
 /// <summary>

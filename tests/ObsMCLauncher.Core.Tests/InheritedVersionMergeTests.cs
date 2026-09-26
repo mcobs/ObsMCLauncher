@@ -278,3 +278,85 @@ public class MissingLibraryDetectionTests : IDisposable
         Assert.DoesNotContain("org.lwjgl:lwjgl:3.2.2", optional);
     }
 }
+
+/// <summary>
+/// 库合并的去重键必须保留版本：1.18.2 的 JSON 里 LWJGL 同时有 3.2.1（仅 osx）与 3.2.2（非 osx），
+/// 按 group:artifact 去重会把 3.2.2 挤掉，Windows 上就一个 lwjgl 都进不了 classpath。
+/// </summary>
+public class LibraryMergeDedupTests : IDisposable
+{
+    private readonly string _gameDir;
+
+    public LibraryMergeDedupTests()
+    {
+        _gameDir = Path.Combine(Path.GetTempPath(), "omcl-libmerge-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(Path.Combine(_gameDir, "versions"));
+    }
+
+    public void Dispose()
+    {
+        try
+        {
+            if (Directory.Exists(_gameDir))
+                Directory.Delete(_gameDir, true);
+        }
+        catch
+        {
+            // 清理失败不影响断言
+        }
+    }
+
+    private void WriteVersion(string versionId, string json)
+    {
+        var dir = Path.Combine(_gameDir, "versions", versionId);
+        Directory.CreateDirectory(dir);
+        File.WriteAllText(Path.Combine(dir, $"{versionId}.json"), json);
+    }
+
+    private const string ParentJson = """
+    {
+      "id": "1.18.2",
+      "mainClass": "net.minecraft.client.main.Main",
+      "libraries": [
+        { "name": "org.lwjgl:lwjgl:3.2.1", "rules": [ { "action": "allow", "os": { "name": "osx" } } ] },
+        { "name": "org.lwjgl:lwjgl:3.2.2", "rules": [ { "action": "allow" }, { "action": "disallow", "os": { "name": "osx" } } ] },
+        { "name": "org.lwjgl:lwjgl:3.2.2", "rules": [ { "action": "allow" }, { "action": "disallow", "os": { "name": "osx" } } ],
+          "natives": { "windows": "natives-windows", "linux": "natives-linux", "osx": "natives-macos" } }
+      ]
+    }
+    """;
+
+    private const string ChildJson = """
+    {
+      "id": "My Pack",
+      "inheritsFrom": "1.18.2",
+      "mainClass": "net.fabricmc.loader.impl.launch.knot.KnotClient",
+      "libraries": [ { "name": "net.fabricmc:fabric-loader:0.19.3" } ]
+    }
+    """;
+
+    [Fact]
+    public void BothLibraryVersionsSurviveTheMerge()
+    {
+        WriteVersion("1.18.2", ParentJson);
+
+        var method = typeof(GameLauncher).GetMethod(
+            "MergeInheritedVersion", BindingFlags.NonPublic | BindingFlags.Static)!;
+
+        var child = JsonSerializer.Deserialize<GameLauncher.VersionInfo>(
+            ChildJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
+
+        var merged = (GameLauncher.VersionInfo)method.Invoke(
+            null, new object[] { _gameDir, "My Pack", child })!;
+
+        var names = merged.Libraries!.Select(l => l.Name).ToList();
+
+        // 关键：3.2.2 不能被 3.2.1 "去重"掉，否则非 osx 平台上没有 lwjgl 可用
+        Assert.Contains("org.lwjgl:lwjgl:3.2.2", names);
+        Assert.Contains("org.lwjgl:lwjgl:3.2.1", names);
+        Assert.Contains("net.fabricmc:fabric-loader:0.19.3", names);
+
+        // natives 变体（同名但走 classifier）也要保留
+        Assert.Equal(2, names.Count(n => n == "org.lwjgl:lwjgl:3.2.2"));
+    }
+}
