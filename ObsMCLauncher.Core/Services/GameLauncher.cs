@@ -1713,8 +1713,24 @@ public class GameLauncher
                 childVersion.AssetIndex = parentVersion.AssetIndex;
             if (string.IsNullOrEmpty(childVersion.Assets) && !string.IsNullOrEmpty(parentVersion.Assets))
                 childVersion.Assets = parentVersion.Assets;
-            if (childVersion.Arguments == null && parentVersion.Arguments != null)
-                childVersion.Arguments = parentVersion.Arguments;
+
+            // ⚠️ arguments 必须「相加」合并，不能写成「子版本为 null 才继承父版本」。
+            // Fabric / Forge 安装器生成的子版本 JSON 自带
+            //   arguments.jvm = ["-DFabricMcEmu=…"]、arguments.game = []
+            // ——它一旦非 null，父版本的
+            //   --username / --accessToken / --uuid / --gameDir / --assetsDir / --assetIndex
+            // 以及 -Djava.library.path=… 等 JVM 参数就**全被丢掉**，
+            // JVM 拿不到必要参数会立刻退出（退出码 1，而且不会留下崩溃报告，非常难查）。
+            // 实测事故：整合包导出再导入后启动即退出，就是这里。
+            if (parentVersion.Arguments != null || childVersion.Arguments != null)
+            {
+                childVersion.Arguments = new GameArguments
+                {
+                    Game = ConcatArgumentList(parentVersion.Arguments?.Game, childVersion.Arguments?.Game),
+                    Jvm = ConcatJvmArguments(parentVersion.Arguments?.Jvm, childVersion.Arguments?.Jvm)
+                };
+            }
+
             if (string.IsNullOrEmpty(childVersion.MinecraftArguments) && !string.IsNullOrEmpty(parentVersion.MinecraftArguments))
                 childVersion.MinecraftArguments = parentVersion.MinecraftArguments;
 
@@ -1724,6 +1740,49 @@ public class GameLauncher
         {
             return childVersion;
         }
+    }
+
+    /// <summary>父在前、子在后地合并参数列表；空的一方直接返回另一方。</summary>
+    private static List<object>? ConcatArgumentList(List<object>? parent, List<object>? child)
+    {
+        if (parent == null || parent.Count == 0)
+            return child;
+        if (child == null || child.Count == 0)
+            return parent;
+
+        var merged = new List<object>(parent.Count + child.Count);
+        merged.AddRange(parent);
+        merged.AddRange(child);
+        return merged;
+    }
+
+    /// <summary>
+    /// JVM 参数合并：父在前、子在后，并按字面量去重（父子的 JSON 常带同一个开关，
+    /// 重复传会被 JVM 当成覆盖，虽然多数无害但会让命令行很难看）。
+    /// </summary>
+    private static List<object>? ConcatJvmArguments(List<object>? parent, List<object>? child)
+    {
+        if (parent == null || parent.Count == 0)
+            return child;
+        if (child == null || child.Count == 0)
+            return parent;
+
+        var merged = new List<object>(parent.Count + child.Count);
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var arg in parent)
+        {
+            if (seen.Add(arg?.ToString() ?? string.Empty))
+                merged.Add(arg!);
+        }
+
+        foreach (var arg in child)
+        {
+            if (seen.Add(arg?.ToString() ?? string.Empty))
+                merged.Add(arg!);
+        }
+
+        return merged;
     }
 
     private static void EnsureOldVersionIconsExist(string gameDirectory)

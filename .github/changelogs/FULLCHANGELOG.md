@@ -4,6 +4,18 @@
 
 # Changelog
 
+## [unreleased] - 2026-xx-xx
+
+### 新增
+
+
+### 修复
+- 【启动】修复带 `inheritsFrom` 的版本（整合包导入、Fabric/Forge 衍生版本）启动即退出、退出码 1 且没有崩溃报告的问题
+- 【下载】修复从未下载过 natives 原生库（classifier）的问题
+
+### 优化
+
+
 ## [v1.1.2-beta.1] - 2026-09-25
 
 ### 新增
@@ -14,6 +26,8 @@
 - 【版本】「已安装版本」工具栏新增「导入整合包」：选择本地 .zip / .mrpack 文件即可安装
 
 ### 修复
+- 【启动】修复带 `inheritsFrom` 的版本（整合包导入、Fabric/Forge 衍生版本）启动即退出、退出码 1 且没有崩溃报告的问题：合并父版本时 `arguments` 写成了「子版本非 null 就整段沿用」，而加载器生成的子版本 JSON 自带 `arguments.jvm`、`game` 是空数组，导致父版本的 --username/--accessToken/--gameDir/--assetIndex 与 -Djava.library.path 等参数全部丢失；现在改为父在前、子在后相加（JVM 参数按字面量去重）
+- 【下载】修复从未下载过 natives 原生库（classifier）的问题：下载库文件时只处理主 artifact，LWJGL 的 *-natives-windows.jar 之类的包一直没被下载，natives 目录是空的，游戏会报 UnsatisfiedLinkError（no lwjgl in java.library.path）；现在会一并下载本平台需要的 natives 包，进度统计也包含它们
 - 【账号】修复离线账号头像可能被残留皮肤缓存顶掉的问题
 - 【账号】修复账号列表头像偶发空白的问题
 - 【更新】修复「自动检查更新」开关完全无效的问题：该开关此前没有任何代码读取，无论开关都只在手动点「检查更新」时才会发起检查；现在启动后会在后台静默检查（12 小时节流），发现新版本发通知提示，可在「更多 → 关于」更新

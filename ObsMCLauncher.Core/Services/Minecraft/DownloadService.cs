@@ -144,10 +144,21 @@ namespace ObsMCLauncher.Core.Services.Minecraft
                 {
                     foreach (var lib in versionInfo.Libraries)
                     {
-                        if (IsLibraryAllowed(lib) && lib.Downloads?.Artifact != null)
+                        if (!IsLibraryAllowed(lib))
+                            continue;
+
+                        if (lib.Downloads?.Artifact != null)
                         {
                             totalFiles++;
                             totalBytes += lib.Downloads.Artifact.Size;
+                        }
+
+                        // natives 的 classifier 包同样要下（否则 natives 目录是空的）
+                        var nativeArtifact = GetNativeArtifact(lib);
+                        if (nativeArtifact != null)
+                        {
+                            totalFiles++;
+                            totalBytes += nativeArtifact.Size;
                         }
                     }
                 }
@@ -360,6 +371,24 @@ namespace ObsMCLauncher.Core.Services.Minecraft
             return true;
         }
 
+        /// <summary>
+        /// 取本平台需要的 natives classifier 包（<c>downloads.classifiers[natives[osName]]</c>）。
+        /// 库里没写 natives、或本平台不在表里、或没有对应 classifier 时返回 <c>null</c>。
+        /// </summary>
+        private static Artifact? GetNativeArtifact(Library library)
+        {
+            if (library.Natives == null || library.Downloads?.Classifiers == null)
+                return null;
+
+            if (!library.Natives.TryGetValue(GetCurrentOsName(), out var classifierKey)
+                || string.IsNullOrEmpty(classifierKey))
+            {
+                return null;
+            }
+
+            return library.Downloads.Classifiers.TryGetValue(classifierKey, out var artifact) ? artifact : null;
+        }
+
         private static string GetCurrentOsName()
         {
             if (OperatingSystem.IsWindows()) return "windows";
@@ -475,14 +504,29 @@ namespace ObsMCLauncher.Core.Services.Minecraft
             var semaphore = new System.Threading.SemaphoreSlim(maxConcurrent, maxConcurrent);
             var lockObject = new object();
 
+            // 先把「待下载的 artifact」拍平：一个库可能要下两份 —— 主 artifact + 本平台的 natives classifier。
+            // 缺了 natives classifier，natives 目录就是空的，游戏一起来就
+            // UnsatisfiedLinkError（no lwjgl in java.library.path），而且不会有崩溃报告，极难查。
+            var pendingArtifacts = new List<Artifact>();
             foreach (var library in libraries)
             {
                 if (cancellationToken.IsCancellationRequested) break;
 
                 if (!IsLibraryAllowed(library)) continue;
 
-                var artifact = library.Downloads?.Artifact;
-                if (artifact == null || string.IsNullOrEmpty(artifact.Path)) continue;
+                if (library.Downloads?.Artifact != null)
+                    pendingArtifacts.Add(library.Downloads.Artifact);
+
+                var nativeArtifact = GetNativeArtifact(library);
+                if (nativeArtifact != null)
+                    pendingArtifacts.Add(nativeArtifact);
+            }
+
+            foreach (var artifact in pendingArtifacts)
+            {
+                if (cancellationToken.IsCancellationRequested) break;
+
+                if (string.IsNullOrEmpty(artifact.Path)) continue;
 
                 var libraryPath = Path.Combine(librariesPath, artifact.Path.Replace('/', Path.DirectorySeparatorChar));
                 
@@ -617,13 +661,25 @@ namespace ObsMCLauncher.Core.Services.Minecraft
 
         private class Library
         {
+            public string? Name { get; set; }
             public LibraryDownloads? Downloads { get; set; }
             public List<Rule>? Rules { get; set; }
+
+            /// <summary>形如 <c>{ "windows": "natives-windows" }</c>：本平台要从哪个 classifier 取原生库。</summary>
+            public Dictionary<string, string>? Natives { get; set; }
         }
 
         private class LibraryDownloads
         {
             public Artifact? Artifact { get; set; }
+
+            /// <summary>
+            /// 原生库（natives）以 classifier 形式挂在同一个库里，例如
+            /// <c>lwjgl-3.2.2-natives-windows.jar</c>。**只下 Artifact 是不够的** ——
+            /// 那样 natives 目录会是空的，游戏一起来就
+            /// <c>UnsatisfiedLinkError: no lwjgl in java.library.path</c>。
+            /// </summary>
+            public Dictionary<string, Artifact>? Classifiers { get; set; }
         }
 
         private class Artifact
