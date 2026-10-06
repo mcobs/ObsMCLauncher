@@ -9,16 +9,22 @@
 
   <!-- 崩溃弹窗（ContentDialog）的内容体：四种状态共用一块区域。
        底部的主操作按钮由 ContentDialog 自己的按钮槽承担（见 GameCrashDialog.cs），
-       这里只放"工具型"按钮（打开目录 / 查看原文）。 -->
+       这里只放"工具型"按钮（打开目录 / 查看原文）。
+       排版：警示图标头部 → 插件槽 → 四态（询问 / 分析中 / 结果 / 无报告）。
+       状态提示统一 ui:InfoBar（FA 主题配色，亮暗自适应）；键值信息行统一 crash-info-label/value。 -->
   <ScrollViewer MaxHeight="430"
                 VerticalScrollBarVisibility="Auto"
                 HorizontalScrollBarVisibility="Disabled">
     <StackPanel Width="580" Margin="0,2,0,2" Spacing="0">
 
-      <!-- 头部 -->
+      <!-- 头部：警示图标 + 副标题 -->
       <StackPanel Orientation="Horizontal" Spacing="10">
-        <ui:SymbolIcon Symbol="Alert" FontSize="20" Foreground="#F59E0B"
-                       VerticalAlignment="Top" Margin="0,1,0,0"/>
+        <Border Width="30" Height="30" CornerRadius="8"
+                Background="{DynamicResource WarningSoftBrush}">
+          <ui:SymbolIcon Symbol="Alert" FontSize="16"
+                         Foreground="{DynamicResource WarningBrush}"
+                         HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        </Border>
         <TextBlock Name="CrashDialogHeader" Text="{Binding SubHeaderText}" FontSize="13"
                    Foreground="{DynamicResource TextSecondaryBrush}"
                    TextWrapping="Wrap" VerticalAlignment="Center"/>
@@ -34,32 +40,31 @@
       <StackPanel IsVisible="{Binding IsPromptState}" Margin="0,14,0,0">
         <TextBlock Text="是否分析崩溃日志？" FontSize="14" FontWeight="Medium"
                    Margin="0,0,0,10"/>
-        <Border Background="{DynamicResource SurfaceBrush}"
+
+        <!-- 版本 / 退出代码 / 报告文件 / 崩溃时间 -->
+        <Border Background="{DynamicResource SurfaceElevatedBrush}"
                 BorderBrush="{DynamicResource BorderBrush}"
-                BorderThickness="1" CornerRadius="10"
-                Padding="14,12">
+                BorderThickness="1" CornerRadius="8"
+                Padding="14,10">
           <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto">
-            <TextBlock Grid.Row="0" Grid.Column="0" Text="版本" FontSize="12"
-                       Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,12,6"/>
-            <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding VersionText}" FontSize="12"
-                       FontWeight="Medium" Margin="0,0,0,6"/>
-            <TextBlock Grid.Row="1" Grid.Column="0" Text="退出代码" FontSize="12"
-                       Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,12,6"/>
-            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding ExitCodeText}" FontSize="12"
-                       TextWrapping="Wrap" Margin="0,0,0,6"/>
-            <TextBlock Grid.Row="2" Grid.Column="0" Text="报告文件" FontSize="12"
-                       Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,12,6"/>
-            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding ReportNameText}" FontSize="12"
-                       TextTrimming="CharacterEllipsis" Margin="0,0,0,6"/>
-            <TextBlock Grid.Row="3" Grid.Column="0" Text="崩溃时间" FontSize="12"
-                       Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,12,0"/>
-            <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding ReportTimeText}" FontSize="12"/>
+            <TextBlock Grid.Row="0" Grid.Column="0" Classes="crash-info-label" Text="版本" Margin="0,0,16,6"/>
+            <TextBlock Grid.Row="0" Grid.Column="1" Classes="crash-info-value" FontWeight="Medium"
+                       Text="{Binding VersionText}" Margin="0,0,0,6"/>
+            <TextBlock Grid.Row="1" Grid.Column="0" Classes="crash-info-label" Text="退出代码" Margin="0,0,16,6"/>
+            <TextBlock Grid.Row="1" Grid.Column="1" Classes="crash-info-value"
+                       Text="{Binding ExitCodeText}" Margin="0,0,0,6"/>
+            <TextBlock Grid.Row="2" Grid.Column="0" Classes="crash-info-label" Text="报告文件" Margin="0,0,16,6"/>
+            <TextBlock Grid.Row="2" Grid.Column="1" Classes="crash-info-value"
+                       Text="{Binding ReportNameText}" TextTrimming="CharacterEllipsis" Margin="0,0,0,6"/>
+            <TextBlock Grid.Row="3" Grid.Column="0" Classes="crash-info-label" Text="崩溃时间"/>
+            <TextBlock Grid.Row="3" Grid.Column="1" Classes="crash-info-value"
+                       Text="{Binding ReportTimeText}"/>
           </Grid>
         </Border>
 
-        <TextBlock Text="分析在本地完成，不会上传任何数据。"
-                   FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}"
-                   Margin="0,10,0,0"/>
+        <ui:InfoBar IsOpen="True" IsClosable="False" IsIconVisible="False" Severity="Informational"
+                    Message="分析在本地完成，不会上传任何数据。"
+                    FontSize="12" Margin="0,10,0,0"/>
 
         <Grid ColumnDefinitions="*,Auto" Margin="0,10,0,0">
           <CheckBox Grid.Column="0" Content="以后自动分析，不再询问"
@@ -106,10 +111,10 @@
 
       <!-- ④ 未找到报告 -->
       <StackPanel IsVisible="{Binding IsNoReportState}" Margin="0,14,0,0" Spacing="10">
-        <TextBlock Text="没有找到本次崩溃对应的报告文件。" FontSize="13" TextWrapping="Wrap"/>
-        <TextBlock Text="通常意味着游戏在写出报告前就退出了：缺少前置 Mod / Java 版本不匹配 / 内存参数错误，或进程被外部强制结束。可以先查看游戏日志（logs/latest.log）中的报错。"
-                   FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}"
-                   TextWrapping="Wrap" LineHeight="19"/>
+        <ui:InfoBar IsOpen="True" IsClosable="False" Severity="Warning"
+                    Title="没有找到本次崩溃对应的报告文件。"
+                    Message="通常意味着游戏在写出报告前就退出了：缺少前置 Mod / Java 版本不匹配 / 内存参数错误，或进程被外部强制结束。可以先查看游戏日志（logs/latest.log）中的报错。"
+                    FontSize="12"/>
         <Button Content="打开游戏日志文件夹"
                 Command="{Binding OpenReportFolderCommand}"
                 Classes="ghost" Padding="10,4" FontSize="12"

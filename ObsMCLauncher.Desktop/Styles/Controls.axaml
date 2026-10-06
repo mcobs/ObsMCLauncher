@@ -499,4 +499,69 @@
     结果就是一个 51px 高的"假参数行"。要分组就用嵌套 ui:SettingsExpander（默认收起）。
   -->
 
+  <!-- ===== 崩溃分析页（MoreView 崩溃标签 + CrashAnalysisPanel + GameCrashDialogContent 共用） ===== -->
+
+  <!-- 文字徽标 chip：FA 2.4.1 的 InfoBadge 只有 IconSource/Value 放不了文字，文字徽标统一走这套 -->
+  <Style Selector="Border.crash-chip">
+    <Setter Property="CornerRadius" Value="999" />
+    <Setter Property="Padding" Value="9,2" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
+  </Style>
+  <Style Selector="Border.crash-chip TextBlock">
+    <Setter Property="FontSize" Value="11" />
+    <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+  </Style>
+
+  <!-- 语义色变体：底色换语义 soft 色阶，文字换语义色 -->
+  <Style Selector="Border.crash-chip-danger">
+    <Setter Property="Background" Value="{DynamicResource DangerSoftBrush}" />
+  </Style>
+  <Style Selector="Border.crash-chip-danger TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource DangerBrush}" />
+    <Setter Property="FontWeight" Value="Medium" />
+  </Style>
+
+  <!-- 图标容器（结论区 / 原因卡片 / 弹窗头部共用） -->
+  <Style Selector="Border.crash-icon-box">
+    <Setter Property="Width" Value="34" />
+    <Setter Property="Height" Value="34" />
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
+  </Style>
+
+  <!-- 原因卡片 -->
+  <Style Selector="Border.crash-cause-card">
+    <Setter Property="Background" Value="{DynamicResource SurfaceElevatedBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="Padding" Value="14,12" />
+  </Style>
+
+  <!-- 分区标题（可能原因 / 可疑 Mod 等） -->
+  <Style Selector="TextBlock.crash-section-title">
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+  </Style>
+
+  <!-- 键值信息行（崩溃弹窗询问态） -->
+  <Style Selector="TextBlock.crash-info-label">
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+  </Style>
+  <Style Selector="TextBlock.crash-info-value">
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+  </Style>
+
+  <!-- 等宽文本（报告预览） -->
+  <Style Selector="SelectableTextBlock.crash-code, TextBlock.crash-code">
+    <Setter Property="FontFamily" Value="Consolas,Menlo,monospace" />
+    <Setter Property="FontSize" Value="11" />
+    <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+  </Style>
+
 </Styles>

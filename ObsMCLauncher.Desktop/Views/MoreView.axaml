@@ -941,8 +941,8 @@
           </Grid.ColumnDefinitions>
 
           <!-- 左侧：版本筛选 + 报告列表 -->
-          <Border Grid.Column="0" Background="{DynamicResource SurfaceBrush}" CornerRadius="12"
-                  BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
+          <Border Grid.Column="0" Background="{DynamicResource CardBackgroundBrush}" CornerRadius="{DynamicResource CardCornerRadius}"
+                  BorderThickness="1" BorderBrush="{DynamicResource CardBorderBrush}">
             <Grid RowDefinitions="Auto,Auto,Auto,Auto,*">
 
               <!-- 筛选 + 刷新 -->
@@ -995,10 +995,8 @@
                                      Foreground="{DynamicResource TextTertiaryBrush}"/>
                         </StackPanel>
                       </StackPanel>
-                      <Border Grid.Column="2" CornerRadius="999" Padding="8,2" Margin="6,0,2,0"
-                              Background="{DynamicResource SurfaceHoverBrush}" VerticalAlignment="Center">
-                        <TextBlock Text="{Binding KindLabel}" FontSize="10" FontWeight="SemiBold"
-                                   Foreground="{DynamicResource TextSecondaryBrush}"/>
+                      <Border Grid.Column="2" Classes="crash-chip" Margin="6,0,2,0">
+                        <TextBlock Text="{Binding KindLabel}" FontWeight="SemiBold"/>
                       </Border>
                     </Grid>
                   </DataTemplate>
@@ -1006,7 +1004,7 @@
               </ListBox>
 
               <!-- 空状态 -->
-              <StackPanel Grid.Row="4" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="10"
+              <StackPanel Grid.Row="4" Classes="empty-state" Spacing="10"
                           IsVisible="{Binding IsEmpty}" Margin="16">
                 <ui:SymbolIcon Symbol="Document" FontSize="40" Foreground="{DynamicResource TextTertiaryBrush}"/>
                 <TextBlock Text="未发现崩溃报告" FontSize="13"
@@ -1020,12 +1018,12 @@
           </Border>
 
           <!-- 右侧：分析详情 -->
-          <Border Grid.Column="2" Background="{DynamicResource SurfaceBrush}" CornerRadius="12"
-                  BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
+          <Border Grid.Column="2" Background="{DynamicResource CardBackgroundBrush}" CornerRadius="{DynamicResource CardCornerRadius}"
+                  BorderThickness="1" BorderBrush="{DynamicResource CardBorderBrush}">
             <Grid>
 
               <!-- 无选中占位 -->
-              <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="12"
+              <StackPanel Classes="empty-state" Spacing="12"
                           IsVisible="{Binding Analysis, Converter={x:Static converters:NullToBoolConverter.Instance}, ConverterParameter=Invert}">
                 <ui:SymbolIcon Symbol="Find" FontSize="44" Foreground="{DynamicResource TextTertiaryBrush}"
                                HorizontalAlignment="Center"/>

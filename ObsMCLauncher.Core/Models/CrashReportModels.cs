@@ -143,4 +143,10 @@ public class CrashAnalysisResult
 
     /// <summary>最可能原因的一句话标题</summary>
     public string Headline => Causes.Count > 0 ? Causes[0].Title : "未能确定具体原因";
+
+    /// <summary>
+    /// 首条原因的分类键（无原因时为 Unknown）。
+    /// 结论区的头部图标按它选（避免在 XAML 里绑 Causes[0]——空列表时绑定会抛错而不是走 FallbackValue）。
+    /// </summary>
+    public string PrimaryCategory => Causes.Count > 0 ? Causes[0].Category : "Unknown";
 }

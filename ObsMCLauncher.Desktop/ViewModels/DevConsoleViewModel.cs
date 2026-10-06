@@ -1,12 +1,15 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Text;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using ObsMCLauncher.Core.Models;
 using ObsMCLauncher.Core.Services;
+using ObsMCLauncher.Core.Services.Crash;
 using ObsMCLauncher.Core.Services.Minecraft;
 using ObsMCLauncher.Core.Utils;
 using ObsMCLauncher.Desktop.ViewModels.Dialogs;
@@ -41,6 +44,7 @@ public partial class DevConsoleViewModel : ObservableObject
         _commands["update"] = args => ShowUpdateDialog(args);
         _commands["welcome"] = args => ShowWelcomeCommand(args);
         _commands["notify"] = args => ShowNotifyCommand(args);
+        _commands["crashdialog"] = args => ShowGameCrashDialog(args);
     }
 
     private void ShowHelp()
@@ -55,6 +59,9 @@ public partial class DevConsoleViewModel : ObservableObject
   welcome              打开欢迎窗口（不影响完成标记）
   welcome reset        重置欢迎界面完成标记（下次启动重新显示）
   notify [类型]        发送测试通知（info/success/warning/error/progress/countdown，默认全部）
+
+崩溃分析调试:
+  crashdialog [noreport]  用合成数据打开游戏崩溃弹窗（noreport = 无报告态）
 ";
         AppendOutput(help);
     }
@@ -240,6 +247,111 @@ public partial class DevConsoleViewModel : ObservableObject
     {
         Output += text + "\r\n";
     }
+
+    // ==================== 崩溃分析调试命令 ====================
+
+    /// <summary>
+    /// crashdialog 命令：用合成数据打开游戏崩溃弹窗，走真实的 GameCrashDialog 链路。
+    /// 带参数 noreport 时进入「没有找到报告」态；否则先写一份合成报告到临时目录（查看原文/打开目录也可用）。
+    /// </summary>
+    private void ShowGameCrashDialog(string[] args)
+    {
+        var noReport = args.Length > 0 && args[0].Equals("noreport", StringComparison.OrdinalIgnoreCase);
+
+        string? reportPath = null;
+        if (!noReport)
+        {
+            reportPath = WriteSampleReport();
+            if (reportPath == null)
+            {
+                AppendOutput("[error] 写入合成报告失败");
+                return;
+            }
+        }
+
+        var host = ResolveHostWindow();
+        if (host == null)
+        {
+            AppendOutput("[error] 没有可用的宿主窗口");
+            return;
+        }
+
+        var info = new GameCrashInfo
+        {
+            VersionId = "1.20.1-fabric",
+            ExitCode = 1,
+            IsCrash = true,
+            ReportFound = !noReport,
+            ReportPath = reportPath,
+            Kind = CrashReportKind.MinecraftCrashReport,
+            ReportTime = DateTime.Now
+        };
+
+        var dialog = new GameCrashDialog(info, host, NavigationStore.MainWindow?.Notifications);
+        _ = dialog.ShowAsync();
+        AppendOutput(noReport
+            ? "[info] 已打开崩溃弹窗（无报告态）"
+            : $"[info] 已打开崩溃弹窗（询问态，合成报告: {reportPath}）");
+    }
+
+    private Window? ResolveHostWindow()
+    {
+        if (Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+            && desktop.MainWindow != null)
+        {
+            return desktop.MainWindow;
+        }
+        return _window;
+    }
+
+    /// <summary>把一份真实格式的 Forge 缺依赖崩溃报告写到临时目录，供 crashdialog 使用</summary>
+    private static string? WriteSampleReport()
+    {
+        try
+        {
+            var path = Path.Combine(Path.GetTempPath(), "OMCL-dev-crash-sample.txt");
+            File.WriteAllText(path, SampleReportText);
+            return path;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private const string SampleReportText = """
+---- Minecraft Crash Report ----
+// Hi. I'm Minecraft, and I'm a crashaholic.
+
+Time: 2026-09-26 12:00:00
+Description: Mod loading error has occurred
+
+net.minecraftforge.fml.ModLoadingException: Some mods failed to load
+	at net.minecraftforge.fml.ModLoader.waitForTransition(ModLoader.java:246)
+
+A detailed walkthrough of the error, its code path and all known details is as follows:
+---------------------------------------------------------------------------------------
+
+-- Head --
+Thread: Render thread
+Suspected Mod: Example Mod (examplemod), Version: 1.0
+Stacktrace:
+	at net.minecraftforge.fml.loading.FMLLoader.findMods(FMLLoader.java:100)
+
+-- MOD examplemod --
+Details:
+	Mod File: /C:/games/mc/mods/examplemod-1.0.jar
+	Failure message: Mod examplemod requires jei 15 or above
+		Currently, jei is not installed
+	Mod Version: 1.0
+
+-- System Details --
+Details:
+	Minecraft Version: 1.20.1
+	Java Version: 17.0.8, Eclipse Adoptium
+	Operating System: Windows 11 (amd64) version 10.0
+	Forge: net.minecraftforge:47.2.0
+""";
 
     [RelayCommand]
     private void Execute()
