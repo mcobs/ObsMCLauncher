@@ -1,6 +1,6 @@
 # Changelog
 
-## [unreleased] - 2026-xx-xx
+## [v1.1.2-beta.2] - 2026-10-06
 
 ### 新增
 - 【控制台】开发者控制台新增 crashdialog 命令
