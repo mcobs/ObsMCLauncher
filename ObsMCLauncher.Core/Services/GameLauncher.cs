@@ -1444,12 +1444,12 @@ public class GameLauncher
 
                             if (!File.Exists(nativesPath))
                             {
-                                // ⚠️ natives 缺失必须算**必需**并下载：没有它游戏一起来就
-                                // UnsatisfiedLinkError（no lwjgl in java.library.path），而且不会留崩溃报告。
-                                // 之前放进 missingOptional，启动只下载 missingRequired，于是永远缺着。
-                                if (!missingRequired.Contains(lib.Name ?? "Unknown"))
+                                // natives 归到"可选"：启动时照样会尝试补下（缺了会 UnsatisfiedLinkError，
+                                // 而且不留崩溃报告），但下载失败只告警、不阻断启动。
+                                // 低版本里有些库本来就不加载，下载源又常挂，卡在"必需"上会直接开不了游戏。
+                                if (!missingOptional.Contains(lib.Name ?? "Unknown"))
                                 {
-                                    missingRequired.Add(lib.Name ?? "Unknown");
+                                    missingOptional.Add(lib.Name ?? "Unknown");
                                 }
                             }
                         }

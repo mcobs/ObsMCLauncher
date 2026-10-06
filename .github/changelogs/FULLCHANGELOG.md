@@ -17,6 +17,7 @@
 - 【启动】修复 Fabric/Forge 依赖（如 ASM）启动报 “ASM not detected on the classpath” 的问题
 - 【启动】修复带 `inheritsFrom` 的版本（整合包导入、Fabric/Forge 衍生版本）启动即退出、退出码 1 且没有崩溃报告的问题
 - 【下载】修复从未下载过 natives 原生库（classifier）的问题
+- 【启动】修复低版本因个别 natives 库补全失败而直接无法启动的问题：natives 仍会尝试补下，但失败只告警、不再阻断启动
 
 ### 优化
 - 【实例】版本实例页面界面全面重构：采用 FluentAvalonia 原生控件与卡片式布局
