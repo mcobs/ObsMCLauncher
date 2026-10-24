@@ -144,7 +144,14 @@
   </UserControl.Styles>
 
   <Grid>
-    <Grid x:Name="VersionListGrid" Margin="24,16,24,24" RowDefinitions="Auto,*">
+    <!--
+      实例详情页（InstanceView）是"透出壁纸"的透明覆盖层：它的可读性靠 Hero 卡与标签条
+      自带底色，但**透明区域会把本页内容原样透出来**，看起来就是"版本列表映射进了实例页"。
+      所以实例页显示时必须把本页主体收起来 —— 与 HomeView 同一条规则，
+      以后任何页面再嵌 InstanceView 都要加这个绑定。
+    -->
+    <Grid x:Name="VersionListGrid" Margin="24,16,24,24" RowDefinitions="Auto,*"
+          IsVisible="{Binding !InstanceViewModel.IsVisible}">
 
       <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,8">
         <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">

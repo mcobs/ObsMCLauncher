@@ -12,8 +12,18 @@
          ZIndex="10"
          HorizontalAlignment="Stretch"
          VerticalAlignment="Stretch">
-    <!-- 覆盖层根透明：壁纸（WallpaperHost 的 Opacity=壁纸不透明度设置）直接透出来，
-         与主页内容区一致；可读性由 Hero 卡 / TabView 标签条等自带底色的元素负责 -->
+    <!--
+      覆盖层根透明：壁纸（WallpaperHost 的 Opacity=壁纸不透明度设置）直接透出来，
+      与主页内容区一致；可读性由 Hero 卡 / TabView 标签条等自带底色的元素负责。
+
+      ⚠️ 这条透明是有代价的：**宿主页面必须在自己身上把内容收起来**
+      （`IsVisible="{Binding !InstanceViewModel.IsVisible}"`），否则底层列表会从透明区
+      原样透出来，看起来像"内容映射进了实例页"。现有两个宿主都照此处理：
+        · Views/HomeView.axaml          —— 收 ScrollViewer + HomeActionBar
+        · Views/VersionDownloadView.axaml —— 收 VersionListGrid
+      新增宿主页时请沿用同一条规则。不要靠给这里加不透明底色来"堵"：
+      那会把壁纸一起盖掉，实例页就不再与主页一致了。
+    -->
     <Border Background="Transparent">
     <Grid RowDefinitions="Auto,*">
       <!-- 顶部标题栏：返回 + 版本名（主标题）+ 关键信息徽章；半透明蒙层，与 TabView 标签条同款 -->
