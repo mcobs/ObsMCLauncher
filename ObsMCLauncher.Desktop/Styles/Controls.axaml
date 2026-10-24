@@ -1,4 +1,4 @@
-<Styles xmlns="https://github.com/avaloniaui"
+﻿<Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:dg="using:Avalonia.Controls"
         xmlns:ui="using:FluentAvalonia.UI.Controls">
@@ -29,22 +29,30 @@
     <Setter Property="Background" Value="{DynamicResource SurfaceElevatedBrush}" />
   </Style>
 
-  <!-- ===== 主色/强调按钮 primary & accent（共用样式） ===== -->
-  <Style Selector="Button.primary, Button.accent">
+  <!-- ===== 主色按钮 primary =====
+       前景取 OnAccentBrush 而不是 White：品牌绿上白字只有 2.54:1，
+       这个键由 AppearanceApplier 按实际填充色算出（默认绿给近黑，7.67:1）。
+
+       ⚠️ 类名只能用 primary，**不要用 accent**：FluentAvalonia 自己的
+       AccentButtonStyle 就绑在 `Button.accent` 上，它会用
+       AccentFillColorDefaultBrush 直接画模板底色，彻底盖掉我们设的 Background ——
+       表现为"按钮颜色改不动、永远是 FA 的默认紫"。改名前它就是靠
+       CustomAccentColor 恰好也是绿才看不出来。 -->
+  <Style Selector="Button.primary">
     <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
-    <Setter Property="Foreground" Value="White" />
+    <Setter Property="Foreground" Value="{DynamicResource OnAccentBrush}" />
     <Setter Property="BorderThickness" Value="0" />
     <Setter Property="FontWeight" Value="Medium" />
   </Style>
 
-  <Style Selector="Button.primary:pointerover /template/ ContentPresenter,
-                   Button.accent:pointerover /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource AccentSecondaryBrush}" />
+  <!-- 悬停/按下统一往暗走：原先的 AccentSecondaryBrush(#34D399) 是往亮走，
+       白字会从 2.54 掉到 1.92:1；压暗则两种前景都只会更清晰。 -->
+  <Style Selector="Button.primary:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource AccentFillHoverBrush}" />
   </Style>
 
-  <Style Selector="Button.primary:pressed /template/ ContentPresenter,
-                   Button.accent:pressed /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource AccentSecondaryBrush}" />
+  <Style Selector="Button.primary:pressed /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource AccentFillPressedBrush}" />
   </Style>
 
   <!-- ===== 次级按钮 secondary ===== -->
@@ -60,20 +68,22 @@
     <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
   </Style>
 
-  <!-- ===== 危险按钮 danger ===== -->
+  <!-- ===== 危险按钮 danger =====
+       填充用 DangerFillBrush(#DC2626) 而不是 DangerBrush(#EF4444)：
+       后者上的白字只有 3.76:1，压一档到 4.83:1 才合规。 -->
   <Style Selector="Button.danger">
-    <Setter Property="Background" Value="{DynamicResource DangerBrush}" />
+    <Setter Property="Background" Value="{DynamicResource DangerFillBrush}" />
     <Setter Property="Foreground" Value="White" />
     <Setter Property="BorderThickness" Value="0" />
     <Setter Property="FontWeight" Value="Medium" />
   </Style>
 
   <Style Selector="Button.danger:pointerover /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource DangerDarkBrush}" />
+    <Setter Property="Background" Value="{DynamicResource DangerFillHoverBrush}" />
   </Style>
 
   <Style Selector="Button.danger:pressed /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource DangerDarkBrush}" />
+    <Setter Property="Background" Value="{DynamicResource DangerFillHoverBrush}" />
   </Style>
 
   <!-- ===== 幽灵/文字按钮 ghost ===== -->
@@ -134,12 +144,16 @@
     <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseLowBrush}"/>
   </Style>
 
+  <!-- 原先 Background 绑的是 SystemAccentColor（一个 Color），而 Background 要的是 IBrush，
+       靠隐式转换才没炸；这里换成真正的画刷，前景同步走 OnAccentBrush。 -->
   <Style Selector="Button.dialog-button.primary">
-    <Setter Property="Background" Value="{DynamicResource SystemAccentColor}"/>
-    <Setter Property="Foreground" Value="White"/>
+    <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource OnAccentBrush}"/>
   </Style>
 
-  <!-- ===== TextBox ===== -->
+  <!-- ===== TextBox =====
+       高度写 Height=40：实测 Height 与 MinHeight 同时存在时 MinHeight 胜出
+       （多行输入框靠自己的 MinHeight=72/76 撑开），所以这里不会压扁它们。 -->
   <Style Selector="TextBox">
     <Setter Property="CornerRadius" Value="8"/>
     <Setter Property="Height" Value="40"/>
@@ -324,7 +338,7 @@
   </Style>
 
   <Style Selector="Border.card:pointerover">
-    <Setter Property="BoxShadow" Value="0 6 16 0 #30000000" />
+    <Setter Property="BoxShadow" Value="{DynamicResource CardShadowHover}" />
   </Style>
 
   <!-- 可交互卡片（悬停上浮） -->
@@ -344,7 +358,7 @@
   </Style>
 
   <Style Selector="Border.card-interactive:pointerover">
-    <Setter Property="BoxShadow" Value="0 6 16 0 #30000000" />
+    <Setter Property="BoxShadow" Value="{DynamicResource CardShadowHover}" />
     <Setter Property="RenderTransform" Value="translateY(-2px)" />
   </Style>
 
@@ -411,19 +425,55 @@
     <Setter Property="BorderThickness" Value="1" />
   </Style>
 
-  <!-- ===== 标签徽章（依赖类型 / 来源 / 最新） ===== -->
+  <!-- ===== 空槽位按钮（主页账号位 / 版本位为空时的占位控件） =====
+       它站的是 ComboBox 的位置，所以必须长得像控件：同样 42 高、输入框底色、
+       1px 描边、左对齐 + 右侧箭头。做成居中灰字的 ghost 按钮会被读成
+       "不可点的占位符"，和旁边真的 ComboBox 并排时像少了半个控件。 -->
+  <Style Selector="Button.slot-empty">
+    <Setter Property="Height" Value="42"/>
+    <Setter Property="HorizontalAlignment" Value="Stretch"/>
+    <Setter Property="HorizontalContentAlignment" Value="Left"/>
+    <Setter Property="Padding" Value="12,0"/>
+    <Setter Property="Background" Value="{DynamicResource InputBackgroundBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="CornerRadius" Value="8"/>
+    <Setter Property="FontWeight" Value="Normal"/>
+  </Style>
+
+  <Style Selector="Button.slot-empty:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}"/>
+  </Style>
+
+  <Style Selector="Button.slot-empty:pressed /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource SurfaceElevatedBrush}"/>
+  </Style>
+
+  <!-- ===== 标签徽章（依赖类型 / 来源 / 最新） =====
+       前景不再写死 White：这批底色（#1BD96A 绿 / #F16436 橙 / #E74C3C 红 / #95A5A6 灰）
+       亮度都偏高，白字只有 1.9~3.2:1；近黑在它们上面是 5.1~10.4:1。
+       三种前景：
+         · 中性标签（surface 底）      → TextSecondaryBrush
+         · 亮品牌色底                  → 近黑，加 .tag-brand
+         · 跟随用户强调色的底          → OnAccentBrush，用 .tag-accent -->
   <Style Selector="Border.tag">
-    <Setter Property="CornerRadius" Value="3" />
-    <Setter Property="Padding" Value="4,1" />
+    <Setter Property="CornerRadius" Value="4" />
+    <Setter Property="Padding" Value="6,2" />
     <Setter Property="VerticalAlignment" Value="Center" />
   </Style>
   <Style Selector="Border.tag TextBlock">
-    <Setter Property="FontSize" Value="9" />
+    <Setter Property="FontSize" Value="11" />
     <Setter Property="FontWeight" Value="SemiBold" />
-    <Setter Property="Foreground" Value="White" />
+    <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+  </Style>
+  <Style Selector="Border.tag-brand TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource OnBrandBrush}" />
   </Style>
   <Style Selector="Border.tag-accent">
     <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+  </Style>
+  <Style Selector="Border.tag-accent TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource OnAccentBrush}" />
   </Style>
 
   <!-- ===== 链接文字按钮（依赖跳转等） ===== -->

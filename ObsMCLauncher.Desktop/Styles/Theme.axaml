@@ -1,212 +1,294 @@
-<Styles xmlns="https://github.com/avaloniaui"
+﻿<Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:sys="clr-namespace:System;assembly=System.Runtime"
         xmlns:a="using:Avalonia.Media">
 
+  <!--
+    ============================================================================
+    主题资源：深/浅两套值放在 ThemeDictionaries 里，由 Avalonia 按 ActualThemeVariant
+    自动选，**不再靠 AppearanceApplier 手写覆盖**。
+
+    历史做法是"只写深色 + 20 个 Light* 键 + 一段命令式代码覆盖 35 个资源"，代价是：
+    新增一个 token 要改两处、Light* 键全项目零引用、跟随系统时系统主题翻转只重算一次。
+
+    现在分三层：
+      1. 与变体无关（字体/圆角/密度/动效/语义色）        → 直接放本字典
+      2. 随深浅色变化（表面/文字/边框/FA 控件/阴影）      → ThemeDictionaries
+      3. 随用户强调色变化（Accent*/Primary*/NavItemSelected/TabView 选中）
+                                                        → 放本字典当默认值，
+                                                          AppearanceApplier 运行期重写
+
+    ⚠️ 新增颜色的正确做法是往 Default 和 Light 两个字典里各加一条；
+       只加在 Default 里，浅色模式会静默拿到深色值。
+
+    ===========================================================================
+    字号尺度（全项目只用这 9 档，不要再手调出第 10 档）
+        11  caption / 徽标 / 元信息          ← 中文最小可读字号，不要再往下
+        12  body-small / 说明文字 / 次要行
+        13  body / 正文、列表主文本
+        14  subtitle / 卡片标题、按钮、空态标题
+        16  section / 分组标题、弹窗标题
+        20  page-title / 页面标题
+        24  display / 大标题、统计数字
+        32  hero / 欢迎页主标题、OOBE 动画
+        40  icon / 空态装饰图标（不是文字）
+
+      11~14 是 1px 步进，这是中文密集界面下的刻意选择：字号在这里同时承担
+      "角色"（说明/正文/标题），不像英文那样可以靠字重拉开。16 以上才按 1.25 倍跳。
+    ===========================================================================
+  -->
   <Styles.Resources>
+    <ResourceDictionary>
 
-    <!-- ============================================================
-         三级表面色阶（新规范）
-         通过固定明度差表达层级，不依赖透明度
-         LayerFillColorDefault  : 窗口最底层背景
-         LayerFillColorAlt      : 标题栏 / 导航栏 / 内容区
-         LayerFillColorPrimary  : 卡片 / 浮层面板
-         LayerFillColorSecondary: 悬浮态 / 二级卡片
-         ============================================================ -->
-    <SolidColorBrush x:Key="LayerFillColorDefaultBrush" Color="#0B0D10"/>
-    <SolidColorBrush x:Key="LayerFillColorAltBrush" Color="#141619"/>
-    <SolidColorBrush x:Key="LayerFillColorPrimaryBrush" Color="#1C1F26"/>
-    <SolidColorBrush x:Key="LayerFillColorSecondaryBrush" Color="#252830"/>
+      <!-- ===== 与主题变体无关 ===== -->
 
-    <!-- 全局字体：默认内置 HarmonyOS Sans SC，运行时由 SettingsViewModel 按配置覆盖 -->
-    <FontFamily x:Key="GlobalFontFamily">avares://ObsMCLauncher.Desktop/Assets/Fonts/#HarmonyOS Sans SC, HarmonyOS Sans SC, Microsoft YaHei UI, PingFang SC, Noto Sans SC, Segoe UI, sans-serif</FontFamily>
-    <FontFamily x:Key="ContentControlThemeFontFamily">avares://ObsMCLauncher.Desktop/Assets/Fonts/#HarmonyOS Sans SC, HarmonyOS Sans SC, Microsoft YaHei UI, PingFang SC, Noto Sans SC, Segoe UI, sans-serif</FontFamily>
-    <FontWeight x:Key="GlobalFontWeight">Normal</FontWeight>
+      <!-- 全局字体：默认内置 HarmonyOS Sans SC，运行时由 SettingsViewModel 按配置覆盖 -->
+      <FontFamily x:Key="GlobalFontFamily">avares://ObsMCLauncher.Desktop/Assets/Fonts/#HarmonyOS Sans SC, HarmonyOS Sans SC, Microsoft YaHei UI, PingFang SC, Noto Sans SC, Segoe UI, sans-serif</FontFamily>
+      <FontFamily x:Key="ContentControlThemeFontFamily">avares://ObsMCLauncher.Desktop/Assets/Fonts/#HarmonyOS Sans SC, HarmonyOS Sans SC, Microsoft YaHei UI, PingFang SC, Noto Sans SC, Segoe UI, sans-serif</FontFamily>
+      <FontWeight x:Key="GlobalFontWeight">Normal</FontWeight>
 
-    <!-- 壁纸不再走全局资源：改由 Controls/WallpaperHost 承载（静态 Image + 动图合成器），
-         导航栏让位所需的 NavigationView*PaneBackground 由 WallpaperService 按配置覆写 -->
-    <!-- FA 左展开态导航栏实际读取的背景键，默认给不透明底色防止透出窗口底 -->
-    <SolidColorBrush x:Key="NavigationViewExpandedPaneBackground" Color="#141619"/>
+      <!-- ===== 圆角 ===== -->
+      <CornerRadius x:Key="ControlCornerRadius">8</CornerRadius>
+      <CornerRadius x:Key="OverlayCornerRadius">12</CornerRadius>
+      <CornerRadius x:Key="CardCornerRadius">12</CornerRadius>
 
-    <!-- ===== 主色：单一 AccentBrush，旧别名全部指向同一色值 ===== -->
-    <Color x:Key="AccentColor">#10B981</Color>
-    <SolidColorBrush x:Key="AccentBrush" Color="#10B981"/>
-    <SolidColorBrush x:Key="AccentSecondaryBrush" Color="#34D399"/>
-    <!-- 拖拽落点蒙版：主色的低透明度版本，铺在卡片缩略图上表示"松手会插到这里"。
-         因为只叠在图上，浅色/深色模式共用同一值，不需要在主题切换里覆写。 -->
-    <SolidColorBrush x:Key="AccentOverlayBrush" Color="#5910B981"/>
+      <!-- ===== 布局：密度/边距（由设置页按密度覆盖） =====
+           ContentMargin = 内容区相对导航栏的外框
+           PageMargin    = 页面自身的留白（真正决定"松/紧"的那层） -->
+      <Thickness x:Key="ContentMargin">20,20,20,20</Thickness>
+      <Thickness x:Key="PageMargin">24,24,24,16</Thickness>
 
-    <!-- 主页欢迎卡片渐变（运行时由设置按强调色覆盖，此处为默认绿） -->
-    <Color x:Key="HomeWelcomeGradientStart">#059669</Color>
-    <Color x:Key="HomeWelcomeGradientEnd">#10B981</Color>
+      <!-- ===== 动画：时长与开关（由设置页按级别覆盖） ===== -->
+      <sys:TimeSpan x:Key="DefaultTransitionDuration">00:00:00.2500000</sys:TimeSpan>
+      <x:Boolean x:Key="EnabledAnimations">true</x:Boolean>
 
-    <!-- 旧主色别名，全部收敛到 #10B981 / #34D399，保证向后兼容 -->
-    <SolidColorBrush x:Key="PrimaryBrush" Color="#10B981"/>
-    <SolidColorBrush x:Key="PrimaryDarkBrush" Color="#10B981"/>
-    <SolidColorBrush x:Key="PrimaryLightBrush" Color="#34D399"/>
-    <!-- 主色的低透明度实心版本，直接当 Background 用（Opacity 设在 brush 上，不会连带压暗子元素） -->
-    <SolidColorBrush x:Key="PrimarySoftBrush" Color="#10B981" Opacity="0.18"/>
-    <SolidColorBrush x:Key="BrandBrush" Color="#10B981"/>
-    <SolidColorBrush x:Key="SecondaryBrush" Color="#34D399"/>
-    <SolidColorBrush x:Key="Primary600Brush" Color="#10B981"/>
-    <SolidColorBrush x:Key="Primary500Brush" Color="#10B981"/>
-    <SolidColorBrush x:Key="Primary400Brush" Color="#34D399"/>
-    <SolidColorBrush x:Key="Primary300Brush" Color="#34D399"/>
-    <SolidColorBrush x:Key="Primary100Brush" Color="#10B981"/>
-    <SolidColorBrush x:Key="Primary50Brush"  Color="#10B981"/>
+      <!-- ===== 语义色：不随强调色、不随深浅色变化 =====
+           SuccessBrush 不再与 AccentBrush 共用同一个值 —— 强调色改成蓝的之后，
+           "成功"仍然应该是绿的。 -->
+      <SolidColorBrush x:Key="DangerBrush" Color="#EF4444"/>
+      <SolidColorBrush x:Key="DangerSoftBrush" Color="#EF4444" Opacity="0.18"/>
+      <SolidColorBrush x:Key="DangerFillBrush" Color="#DC2626"/>
+      <SolidColorBrush x:Key="DangerFillHoverBrush" Color="#B91C1C"/>
+      <SolidColorBrush x:Key="WarningBrush" Color="#F59E0B"/>
+      <SolidColorBrush x:Key="WarningSoftBrush" Color="#F59E0B" Opacity="0.18"/>
+      <SolidColorBrush x:Key="SuccessBrush" Color="#10B981"/>
 
-    <!-- ===== 深色模式中性色（与三级表面对齐） ===== -->
-    <SolidColorBrush x:Key="BackgroundBrush" Color="#0B0D10"/>
-    <SolidColorBrush x:Key="SurfaceBrush" Color="#141619"/>
-    <SolidColorBrush x:Key="SurfaceElevatedBrush" Color="#1C1F26"/>
-    <SolidColorBrush x:Key="SurfaceHoverBrush" Color="#252830"/>
-    <SolidColorBrush x:Key="NavHoverBrush" Color="#252830"/>
+      <!-- ===== 强调色家族（默认值；运行时由 AppearanceApplier 整族重写） =====
+           改强调色时这些键必须一起更新，否则会出现"按钮变了、导航选中没变"的半截状态。 -->
+      <Color x:Key="AccentColor">#10B981</Color>
+      <SolidColorBrush x:Key="AccentBrush" Color="#10B981"/>
+      <SolidColorBrush x:Key="AccentSecondaryBrush" Color="#13DA98"/>
+      <SolidColorBrush x:Key="AccentOverlayBrush" Color="#5910B981"/>
+      <!-- 填充型强调面（实心按钮 / 徽标 / 角标）上的前景色。
+           #10B981 上的白字只有 2.54:1，默认给近黑（7.67:1）；强调色换成深色时自动变白。
+           规则：背景是 AccentBrush，前景就取它，不要写死 White。 -->
+      <SolidColorBrush x:Key="OnAccentBrush" Color="#0B0D10"/>
+      <SolidColorBrush x:Key="AccentFillHoverBrush" Color="#0E9F6F"/>
+      <SolidColorBrush x:Key="AccentFillPressedBrush" Color="#0C895F"/>
+      <SolidColorBrush x:Key="PrimaryBrush" Color="#10B981"/>
+      <SolidColorBrush x:Key="PrimarySoftBrush" Color="#10B981" Opacity="0.18"/>
+      <SolidColorBrush x:Key="NavItemSelectedBackgroundBrush" Color="#10B981" Opacity="0.08"/>
+      <Color x:Key="HomeWelcomeGradientStart">#0C815A</Color>
+      <Color x:Key="HomeWelcomeGradientEnd">#10B981</Color>
+      <Color x:Key="SystemAccentColor">#10B981</Color>
+      <!-- TabView 选中态里跟强调色走的三条（其余 TabView 键在 ThemeDictionaries） -->
+      <SolidColorBrush x:Key="TabViewItemHeaderForegroundSelected" Color="#10B981"/>
+      <SolidColorBrush x:Key="TabViewItemIconForegroundSelected" Color="#10B981"/>
+      <SolidColorBrush x:Key="TabViewItemHeaderBackgroundPointerOver" Color="#10B981" Opacity="0.08"/>
 
-    <SolidColorBrush x:Key="TextBrush" Color="#F1F5F9"/>
-    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#94A3B8"/>
-    <SolidColorBrush x:Key="TextTertiaryBrush" Color="#64748B"/>
+      <!-- ===== 遮罩 / 第三方品牌色：与变体无关，也不受强调色影响 ===== -->
+      <!-- 弹窗、抽屉后面压住背景的那层。深色下也用它，不要各写各的透明度。 -->
+      <SolidColorBrush x:Key="ScrimBrush" Color="#80000000"/>
+      <SolidColorBrush x:Key="ScrimStrongBrush" Color="#CC000000"/>
+      <!-- CurseForge / Modrinth 的官方品牌色。只出现在来源徽标上，
+           不要拿它当强调色或状态色 —— 语义色走 Success/Danger/Info。 -->
+      <SolidColorBrush x:Key="CurseForgeBrush" Color="#F16436"/>
+      <SolidColorBrush x:Key="ModrinthBrush" Color="#1BD96A"/>
+      <!-- 强调色的 8% 淡底：选中态 / 拖拽落点 / 悬停高亮。
+           不要在这些地方写死 #1410B981 —— 那是"绿色 accent 的 8%"，换强调色就露馅。 -->
+      <SolidColorBrush x:Key="AccentTintBrush" Color="#10B981" Opacity="0.08"/>
+      <!-- 亮品牌色底上的文字（近黑）。配 .tag-brand 用，比 #0B0D10 字面量更能说明意图。 -->
+      <SolidColorBrush x:Key="OnBrandBrush" Color="#0B0D10"/>
 
-    <SolidColorBrush x:Key="BorderBrush" Color="#2A2E37"/>
-    <SolidColorBrush x:Key="DividerBrush" Color="#1E2128"/>
+      <!-- 自绘标题栏圆角窗口的投影，本项目不画窗口阴影 -->
+      <BoxShadows x:Key="WindowShadow">0 0 0 0 transparent</BoxShadows>
 
-    <SolidColorBrush x:Key="InputBackgroundBrush" Color="#141619"/>
-    <SolidColorBrush x:Key="InputForegroundBrush" Color="#F1F5F9"/>
+      <!-- FA 控件主题会按名字读这几个键，项目侧零引用但保留（删了控件会退回内部默认值） -->
+      <Color x:Key="SystemAltHighColor">#0B0D10</Color>
+      <Color x:Key="SystemAltLowColor">#0B0D10</Color>
+      <Color x:Key="SystemBaseHighColor">#F1F5F9</Color>
+      <Color x:Key="SystemBaseMediumColor">#8B99AE</Color>
 
-    <SolidColorBrush x:Key="GlassmorphismBackgroundBrush" Color="#141619" Opacity="0.88"/>
-    <SolidColorBrush x:Key="GlassmorphismBorderBrush" Color="#FFFFFF" Opacity="0.08"/>
+      <!-- ============================================================
+           按主题变体取值（Default = 深色；Avalonia 对未匹配的变体回落到 Default）
+           ============================================================ -->
+      <ResourceDictionary.ThemeDictionaries>
 
-    <!-- ===== 浅色模式中性色（默认隐藏，由代码动态切换） ===== -->
-    <SolidColorBrush x:Key="LightBackgroundBrush" Color="#F8FAFC"/>
-    <SolidColorBrush x:Key="LightSurfaceBrush" Color="#FFFFFF"/>
-    <SolidColorBrush x:Key="LightSurfaceElevatedBrush" Color="#F1F5F9"/>
-    <SolidColorBrush x:Key="LightSurfaceHoverBrush" Color="#E8ECF1"/>
-    <SolidColorBrush x:Key="LightNavHoverBrush" Color="#E8ECF1"/>
+        <!-- ================= 深色 ================= -->
+        <ResourceDictionary x:Key="Default">
 
-    <SolidColorBrush x:Key="LightTextBrush" Color="#0F172A"/>
-    <SolidColorBrush x:Key="LightTextSecondaryBrush" Color="#475569"/>
-    <SolidColorBrush x:Key="LightTextTertiaryBrush" Color="#94A3B8"/>
+          <!-- 三级表面色阶：用固定明度差表达层级，不依赖透明度
+               Default=窗口底 / Alt=标题栏·导航栏 / Primary=卡片 / Secondary=悬浮态 -->
+          <SolidColorBrush x:Key="LayerFillColorDefaultBrush" Color="#0B0D10"/>
+          <SolidColorBrush x:Key="LayerFillColorAltBrush" Color="#141619"/>
+          <SolidColorBrush x:Key="LayerFillColorPrimaryBrush" Color="#1C1F26"/>
+          <SolidColorBrush x:Key="LayerFillColorSecondaryBrush" Color="#252830"/>
 
-    <SolidColorBrush x:Key="LightBorderBrush" Color="#E2E8F0"/>
-    <SolidColorBrush x:Key="LightDividerBrush" Color="#F1F5F9"/>
+          <SolidColorBrush x:Key="BackgroundBrush" Color="#0B0D10"/>
+          <SolidColorBrush x:Key="SurfaceBrush" Color="#141619"/>
+          <SolidColorBrush x:Key="SurfaceElevatedBrush" Color="#1C1F26"/>
+          <SolidColorBrush x:Key="SurfaceHoverBrush" Color="#252830"/>
+          <SolidColorBrush x:Key="NavHoverBrush" Color="#252830"/>
 
-    <SolidColorBrush x:Key="LightInputBackgroundBrush" Color="#FFFFFF"/>
-    <SolidColorBrush x:Key="LightInputForegroundBrush" Color="#0F172A"/>
+          <SolidColorBrush x:Key="TextBrush" Color="#F1F5F9"/>
+          <SolidColorBrush x:Key="TextSecondaryBrush" Color="#94A3B8"/>
+          <SolidColorBrush x:Key="TextTertiaryBrush" Color="#8B99AE"/>
 
-    <SolidColorBrush x:Key="LightGlassmorphismBackgroundBrush" Color="#FFFFFF" Opacity="0.92"/>
-    <SolidColorBrush x:Key="LightGlassmorphismBorderBrush" Color="#000000" Opacity="0.06"/>
+          <SolidColorBrush x:Key="BorderBrush" Color="#2A2E37"/>
+          <SolidColorBrush x:Key="DividerBrush" Color="#1E2128"/>
 
-    <SolidColorBrush x:Key="LightSystemControlBackgroundBaseHighBrush" Color="#F8FAFC"/>
-    <SolidColorBrush x:Key="LightSystemControlBackgroundAltHighBrush" Color="#FFFFFF"/>
-    <SolidColorBrush x:Key="LightSystemControlBackgroundBaseLowBrush" Color="#E8ECF1"/>
-    <SolidColorBrush x:Key="LightSystemControlBackgroundBaseMediumBrush" Color="#F1F5F9"/>
-    <SolidColorBrush x:Key="LightSystemControlForegroundBaseHighBrush" Color="#0F172A"/>
-    <SolidColorBrush x:Key="LightSystemControlForegroundBaseLowBrush" Color="#E2E8F0"/>
+          <SolidColorBrush x:Key="InputBackgroundBrush" Color="#141619"/>
+          <SolidColorBrush x:Key="InputForegroundBrush" Color="#F1F5F9"/>
 
-    <!-- ===== 功能色 ===== -->
-    <SolidColorBrush x:Key="DangerBrush" Color="#EF4444"/>
-    <SolidColorBrush x:Key="DangerDarkBrush" Color="#DC2626"/>
-    <SolidColorBrush x:Key="DangerSoftBrush" Color="#EF4444" Opacity="0.18"/>
-    <SolidColorBrush x:Key="WarningBrush" Color="#F59E0B"/>
-    <SolidColorBrush x:Key="WarningSoftBrush" Color="#F59E0B" Opacity="0.18"/>
-    <SolidColorBrush x:Key="InfoBrush" Color="#3B82F6"/>
-    <SolidColorBrush x:Key="SuccessBrush" Color="#10B981"/>
+          <SolidColorBrush x:Key="GlassmorphismBackgroundBrush" Color="#141619" Opacity="0.88"/>
+          <SolidColorBrush x:Key="GlassmorphismBorderBrush" Color="#FFFFFF" Opacity="0.08"/>
 
-    <!-- ===== 系统色（深色模式默认值） ===== -->
-    <SolidColorBrush x:Key="SystemControlBackgroundBaseHighBrush" Color="#0B0D10"/>
-    <SolidColorBrush x:Key="SystemControlBackgroundAltHighBrush" Color="#141619"/>
-    <SolidColorBrush x:Key="SystemControlBackgroundBaseLowBrush" Color="#252830"/>
-    <SolidColorBrush x:Key="SystemControlBackgroundBaseMediumBrush" Color="#1C1F26"/>
+          <SolidColorBrush x:Key="SystemControlBackgroundBaseHighBrush" Color="#0B0D10"/>
+          <SolidColorBrush x:Key="SystemControlBackgroundAltHighBrush" Color="#141619"/>
+          <SolidColorBrush x:Key="SystemControlBackgroundBaseLowBrush" Color="#252830"/>
+          <SolidColorBrush x:Key="SystemControlBackgroundBaseMediumBrush" Color="#1C1F26"/>
+          <SolidColorBrush x:Key="SystemControlForegroundBaseHighBrush" Color="#F1F5F9"/>
+          <SolidColorBrush x:Key="SystemControlForegroundBaseLowBrush" Color="#2A2E37"/>
 
-    <SolidColorBrush x:Key="SystemControlForegroundBaseHighBrush" Color="#F1F5F9"/>
-    <SolidColorBrush x:Key="SystemControlForegroundBaseLowBrush" Color="#2A2E37"/>
+          <SolidColorBrush x:Key="CardBackgroundBrush" Color="#1C1F26"/>
+          <SolidColorBrush x:Key="CardBorderBrush" Color="#2A2E37"/>
+          <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#0B0D10"/>
+          <SolidColorBrush x:Key="NavBackgroundBrush" Color="#141619"/>
+          <SolidColorBrush x:Key="NavBorderBrush" Color="#1E2128"/>
+          <SolidColorBrush x:Key="TitleBarBackgroundBrush" Color="#141619"/>
+          <SolidColorBrush x:Key="TitleBarBorderBrush" Color="#1E2128"/>
 
-    <Color x:Key="SystemAccentColor">#10B981</Color>
+          <!-- 自绘标题栏的系统按钮底：悬停/按下用低透明度叠层，深色叠白、浅色叠黑 -->
+          <SolidColorBrush x:Key="TitleBarButtonHoverBrush" Color="#FFFFFF" Opacity="0.09"/>
+          <SolidColorBrush x:Key="TitleBarButtonPressedBrush" Color="#FFFFFF" Opacity="0.16"/>
 
-    <Color x:Key="SystemAltHighColor">#0B0D10</Color>
-    <Color x:Key="SystemAltLowColor">#0B0D10</Color>
-    <Color x:Key="SystemBaseHighColor">#F1F5F9</Color>
-    <Color x:Key="SystemBaseMediumColor">#64748B</Color>
+          <!-- FluentAvalonia 控件资源（NavigationView / SettingsExpander 等） -->
+          <SolidColorBrush x:Key="NavigationViewDefaultPaneBackground" Color="#141619"/>
+          <SolidColorBrush x:Key="NavigationViewExpandedPaneBackground" Color="#141619"/>
+          <SolidColorBrush x:Key="NavigationViewContentBackground" Color="Transparent"/>
+          <SolidColorBrush x:Key="CardStrokeColorDefaultBrush" Color="#2A2E37"/>
+          <SolidColorBrush x:Key="DividerStrokeColorDefaultBrush" Color="#1E2128"/>
+          <SolidColorBrush x:Key="TextFillColorPrimaryBrush" Color="#F1F5F9"/>
+          <SolidColorBrush x:Key="TextFillColorSecondaryBrush" Color="#94A3B8"/>
+          <SolidColorBrush x:Key="TextFillColorTertiaryBrush" Color="#8B99AE"/>
+          <SolidColorBrush x:Key="SubtleFillColorSecondaryBrush" Color="#252830"/>
+          <SolidColorBrush x:Key="SubtleFillColorTertiaryBrush" Color="#1C1F26"/>
+          <SolidColorBrush x:Key="ControlFillColorDefaultBrush" Color="#141619"/>
 
-    <!-- ===== 圆角 ===== -->
-    <CornerRadius x:Key="ControlCornerRadius">8</CornerRadius>
-    <CornerRadius x:Key="OverlayCornerRadius">12</CornerRadius>
-    <CornerRadius x:Key="CardCornerRadius">12</CornerRadius>
+          <!-- TabView（版本实例页 tab 栏）：70% 半透明蒙层让壁纸透出 -->
+          <SolidColorBrush x:Key="TabViewBackground" Color="#B3141619"/>
+          <SolidColorBrush x:Key="InstanceHeaderBackgroundBrush" Color="#B3141619"/>
+          <SolidColorBrush x:Key="TabViewBorderBrush" Color="#1E2128"/>
+          <SolidColorBrush x:Key="TabViewItemHeaderBackground" Color="#00FFFFFF"/>
+          <SolidColorBrush x:Key="TabViewItemHeaderBackgroundSelected" Color="#E60B0D10"/>
+          <SolidColorBrush x:Key="TabViewItemHeaderBackgroundPressed" Color="#801C1F26"/>
+          <SolidColorBrush x:Key="TabViewItemHeaderForeground" Color="#94A3B8"/>
+          <SolidColorBrush x:Key="TabViewItemHeaderForegroundPointerOver" Color="#F1F5F9"/>
+          <SolidColorBrush x:Key="TabViewItemHeaderForegroundPressed" Color="#94A3B8"/>
+          <SolidColorBrush x:Key="TabViewItemIconForeground" Color="#94A3B8"/>
+          <SolidColorBrush x:Key="TabViewItemIconForegroundPointerOver" Color="#F1F5F9"/>
+          <SolidColorBrush x:Key="TabViewItemIconForegroundPressed" Color="#94A3B8"/>
 
-    <!-- ===== 布局：密度/边距（由设置页按密度覆盖） ===== -->
-    <Thickness x:Key="ContentMargin">20,20,20,20</Thickness>
-    <x:Double x:Key="InnerSpacing">12</x:Double>
+          <!-- InfoBar 信息级底色：默认 50% 半透明叠在内容上读不清，改不透明 -->
+          <SolidColorBrush x:Key="InfoBarInformationalSeverityBackgroundBrush" Color="#1C1F26"/>
 
-    <!-- ===== 动画：时长与开关（由设置页按级别覆盖） ===== -->
-    <sys:TimeSpan x:Key="DefaultTransitionDuration">00:00:00.2500000</sys:TimeSpan>
-    <x:Boolean x:Key="EnabledAnimations">true</x:Boolean>
+          <!-- 深色下不画卡片阴影：表面色阶本身已经表达层级，
+               #20000000 叠在 #0B0D10 上几乎不可见，却每张卡片都要跑一次模糊。 -->
+          <BoxShadows x:Key="CardShadow">0 0 0 0 transparent</BoxShadows>
+          <BoxShadows x:Key="CardShadowHover">0 0 0 0 transparent</BoxShadows>
+        </ResourceDictionary>
 
-    <!-- ===== 输入框聚焦光晕色 ===== -->
-    <SolidColorBrush x:Key="InputFocusGlowBrush" Color="#10B981" Opacity="0.15"/>
+        <!-- ================= 浅色 ================= -->
+        <ResourceDictionary x:Key="Light">
 
-    <!-- ===== 选中项浅底色 ===== -->
-    <SolidColorBrush x:Key="NavItemSelectedBackgroundBrush" Color="#10B981" Opacity="0.08"/>
-    <SolidColorBrush x:Key="LightNavItemSelectedBackgroundBrush" Color="#10B981" Opacity="0.06"/>
+          <SolidColorBrush x:Key="LayerFillColorDefaultBrush" Color="#F1F5F9"/>
+          <SolidColorBrush x:Key="LayerFillColorAltBrush" Color="#F8FAFC"/>
+          <SolidColorBrush x:Key="LayerFillColorPrimaryBrush" Color="#FFFFFF"/>
+          <SolidColorBrush x:Key="LayerFillColorSecondaryBrush" Color="#E8ECF1"/>
 
-    <!-- 阴影资源 -->
-    <BoxShadows x:Key="CardShadow">0 4 12 0 #20000000</BoxShadows>
-    <BoxShadows x:Key="ChromeShadow">0 1 4 0 #18000000</BoxShadows>
-    <BoxShadows x:Key="NavShadow">2 0 8 0 #12000000</BoxShadows>
-    <BoxShadows x:Key="WindowShadow">0 0 0 0 transparent</BoxShadows>
+          <SolidColorBrush x:Key="BackgroundBrush" Color="#F8FAFC"/>
+          <SolidColorBrush x:Key="SurfaceBrush" Color="#FFFFFF"/>
+          <SolidColorBrush x:Key="SurfaceElevatedBrush" Color="#F1F5F9"/>
+          <SolidColorBrush x:Key="SurfaceHoverBrush" Color="#E8ECF1"/>
+          <SolidColorBrush x:Key="NavHoverBrush" Color="#E8ECF1"/>
 
-    <!-- 卡片资源 -->
-    <SolidColorBrush x:Key="CardBackgroundBrush" Color="#1C1F26"/>
-    <SolidColorBrush x:Key="CardBorderBrush" Color="#2A2E37"/>
+          <SolidColorBrush x:Key="TextBrush" Color="#0F172A"/>
+          <SolidColorBrush x:Key="TextSecondaryBrush" Color="#475569"/>
+          <!-- 三级文字原为 #94A3B8（白底 2.56:1）。#5A6675 在白/浅灰/选中底上
+               分别 5.85 / 5.34 / 4.93，是浅色表面里最暗又全过 4.5:1 的取值。 -->
+          <SolidColorBrush x:Key="TextTertiaryBrush" Color="#5A6675"/>
 
-    <!-- 窗口背景资源 -->
-    <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#0B0D10"/>
+          <SolidColorBrush x:Key="BorderBrush" Color="#E2E8F0"/>
+          <SolidColorBrush x:Key="DividerBrush" Color="#F1F5F9"/>
 
-    <!-- 导航栏背景资源，默认与窗口背景一致 -->
-    <SolidColorBrush x:Key="NavBackgroundBrush" Color="#141619"/>
-    <SolidColorBrush x:Key="NavBorderBrush" Color="#1E2128"/>
-    <SolidColorBrush x:Key="TitleBarBackgroundBrush" Color="#141619"/>
-    <SolidColorBrush x:Key="TitleBarBorderBrush" Color="#1E2128"/>
+          <SolidColorBrush x:Key="InputBackgroundBrush" Color="#FFFFFF"/>
+          <SolidColorBrush x:Key="InputForegroundBrush" Color="#0F172A"/>
 
-    <!-- 自绘标题栏的系统按钮底：悬停/按下用低透明度叠层，深色叠白、浅色叠黑 -->
-    <SolidColorBrush x:Key="TitleBarButtonHoverBrush" Color="#FFFFFF" Opacity="0.09"/>
-    <SolidColorBrush x:Key="TitleBarButtonPressedBrush" Color="#FFFFFF" Opacity="0.16"/>
+          <SolidColorBrush x:Key="GlassmorphismBackgroundBrush" Color="#FFFFFF" Opacity="0.92"/>
+          <SolidColorBrush x:Key="GlassmorphismBorderBrush" Color="#000000" Opacity="0.06"/>
 
-    <!-- ===== FluentAvalonia 控件资源（NavigationView / SettingsExpander 等），深色默认值 ===== -->
-    <SolidColorBrush x:Key="NavigationViewDefaultPaneBackground" Color="#141619"/>
-    <SolidColorBrush x:Key="NavigationViewContentBackground" Color="Transparent"/>
-    <SolidColorBrush x:Key="CardStrokeColorDefaultBrush" Color="#2A2E37"/>
-    <SolidColorBrush x:Key="DividerStrokeColorDefaultBrush" Color="#1E2128"/>
-    <SolidColorBrush x:Key="TextFillColorPrimaryBrush" Color="#F1F5F9"/>
-    <SolidColorBrush x:Key="TextFillColorSecondaryBrush" Color="#94A3B8"/>
-    <SolidColorBrush x:Key="TextFillColorTertiaryBrush" Color="#64748B"/>
-    <SolidColorBrush x:Key="SubtleFillColorSecondaryBrush" Color="#252830"/>
-    <SolidColorBrush x:Key="SubtleFillColorTertiaryBrush" Color="#1C1F26"/>
-    <SolidColorBrush x:Key="ControlFillColorDefaultBrush" Color="#141619"/>
+          <SolidColorBrush x:Key="SystemControlBackgroundBaseHighBrush" Color="#F8FAFC"/>
+          <SolidColorBrush x:Key="SystemControlBackgroundAltHighBrush" Color="#FFFFFF"/>
+          <SolidColorBrush x:Key="SystemControlBackgroundBaseLowBrush" Color="#E8ECF1"/>
+          <SolidColorBrush x:Key="SystemControlBackgroundBaseMediumBrush" Color="#F1F5F9"/>
+          <SolidColorBrush x:Key="SystemControlForegroundBaseHighBrush" Color="#0F172A"/>
+          <SolidColorBrush x:Key="SystemControlForegroundBaseLowBrush" Color="#E2E8F0"/>
 
-    <!-- ===== FluentAvalonia TabView（版本实例页 tab 栏）主题资源 =====
-         tab 条 / 顶部标题栏 / 内容区统一 70% 半透明蒙层（InstanceHeaderBackgroundBrush 同值），
-         壁纸由 WallpaperHost 按设置的壁纸不透明度渲染后从底下透出；选中 tab 用 90% 蒙层浮起。
-         浅色模式由 SettingsViewModel.ApplyTabViewTheme 动态切换。 -->
-    <SolidColorBrush x:Key="TabViewBackground" Color="#B3141619"/>
-    <SolidColorBrush x:Key="InstanceHeaderBackgroundBrush" Color="#B3141619"/>
-    <SolidColorBrush x:Key="TabViewBorderBrush" Color="#1E2128"/>
-    <SolidColorBrush x:Key="TabViewItemHeaderBackground" Color="#00FFFFFF"/>
-    <SolidColorBrush x:Key="TabViewItemHeaderBackgroundSelected" Color="#E60B0D10"/>
-    <SolidColorBrush x:Key="TabViewItemHeaderBackgroundPointerOver" Color="#10B981" Opacity="0.08"/>
-    <SolidColorBrush x:Key="TabViewItemHeaderBackgroundPressed" Color="#801C1F26"/>
-    <SolidColorBrush x:Key="TabViewItemHeaderForeground" Color="#94A3B8"/>
-    <SolidColorBrush x:Key="TabViewItemHeaderForegroundSelected" Color="#10B981"/>
-    <SolidColorBrush x:Key="TabViewItemHeaderForegroundPointerOver" Color="#F1F5F9"/>
-    <SolidColorBrush x:Key="TabViewItemHeaderForegroundPressed" Color="#64748B"/>
-    <SolidColorBrush x:Key="TabViewItemIconForeground" Color="#94A3B8"/>
-    <SolidColorBrush x:Key="TabViewItemIconForegroundSelected" Color="#10B981"/>
-    <SolidColorBrush x:Key="TabViewItemIconForegroundPointerOver" Color="#F1F5F9"/>
-    <SolidColorBrush x:Key="TabViewItemIconForegroundPressed" Color="#64748B"/>
+          <SolidColorBrush x:Key="CardBackgroundBrush" Color="#FFFFFF"/>
+          <SolidColorBrush x:Key="CardBorderBrush" Color="#E2E8F0"/>
+          <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#F8FAFC"/>
+          <SolidColorBrush x:Key="NavBackgroundBrush" Color="#FFFFFF"/>
+          <SolidColorBrush x:Key="NavBorderBrush" Color="#E2E8F0"/>
+          <SolidColorBrush x:Key="TitleBarBackgroundBrush" Color="#FFFFFF"/>
+          <SolidColorBrush x:Key="TitleBarBorderBrush" Color="#E2E8F0"/>
 
-    <!-- ===== InfoBar 信息级通知背景 =====
-         Fluent 默认的 Informational 背景为 50% 透明度（#80FFFFFF/#80F6F6F6），
-         通知悬浮在内容上时难以阅读，改为不透明表面色（随深浅色切换）。 -->
-    <SolidColorBrush x:Key="InfoBarInformationalSeverityBackgroundBrush" Color="#1C1F26"/>
+          <SolidColorBrush x:Key="TitleBarButtonHoverBrush" Color="#000000" Opacity="0.06"/>
+          <SolidColorBrush x:Key="TitleBarButtonPressedBrush" Color="#000000" Opacity="0.10"/>
 
+          <SolidColorBrush x:Key="NavigationViewDefaultPaneBackground" Color="#F8FAFC"/>
+          <SolidColorBrush x:Key="NavigationViewExpandedPaneBackground" Color="#FFFFFF"/>
+          <SolidColorBrush x:Key="NavigationViewContentBackground" Color="Transparent"/>
+          <SolidColorBrush x:Key="CardStrokeColorDefaultBrush" Color="#E2E8F0"/>
+          <SolidColorBrush x:Key="DividerStrokeColorDefaultBrush" Color="#F1F5F9"/>
+          <SolidColorBrush x:Key="TextFillColorPrimaryBrush" Color="#0F172A"/>
+          <SolidColorBrush x:Key="TextFillColorSecondaryBrush" Color="#475569"/>
+          <SolidColorBrush x:Key="TextFillColorTertiaryBrush" Color="#5A6675"/>
+          <SolidColorBrush x:Key="SubtleFillColorSecondaryBrush" Color="#E8ECF1"/>
+          <SolidColorBrush x:Key="SubtleFillColorTertiaryBrush" Color="#F1F5F9"/>
+          <SolidColorBrush x:Key="ControlFillColorDefaultBrush" Color="#FFFFFF"/>
+
+          <SolidColorBrush x:Key="TabViewBackground" Color="#B3FFFFFF"/>
+          <SolidColorBrush x:Key="InstanceHeaderBackgroundBrush" Color="#B3FFFFFF"/>
+          <SolidColorBrush x:Key="TabViewBorderBrush" Color="#F1F5F9"/>
+          <SolidColorBrush x:Key="TabViewItemHeaderBackground" Color="#00FFFFFF"/>
+          <SolidColorBrush x:Key="TabViewItemHeaderBackgroundSelected" Color="#E6F8FAFC"/>
+          <SolidColorBrush x:Key="TabViewItemHeaderBackgroundPressed" Color="#80F1F5F9"/>
+          <SolidColorBrush x:Key="TabViewItemHeaderForeground" Color="#475569"/>
+          <SolidColorBrush x:Key="TabViewItemHeaderForegroundPointerOver" Color="#0F172A"/>
+          <SolidColorBrush x:Key="TabViewItemHeaderForegroundPressed" Color="#94A3B8"/>
+          <SolidColorBrush x:Key="TabViewItemIconForeground" Color="#475569"/>
+          <SolidColorBrush x:Key="TabViewItemIconForegroundPointerOver" Color="#0F172A"/>
+          <SolidColorBrush x:Key="TabViewItemIconForegroundPressed" Color="#94A3B8"/>
+
+          <SolidColorBrush x:Key="InfoBarInformationalSeverityBackgroundBrush" Color="#FFFFFF"/>
+
+          <!-- 浅色下白底白卡分不开，卡片阴影保留 -->
+          <BoxShadows x:Key="CardShadow">0 4 12 0 #1A0F172A</BoxShadows>
+          <BoxShadows x:Key="CardShadowHover">0 6 16 0 #26173454</BoxShadows>
+        </ResourceDictionary>
+
+      </ResourceDictionary.ThemeDictionaries>
+    </ResourceDictionary>
   </Styles.Resources>
 
   <!-- 字体从 Window 级继承，TextBlock 不应锁死 Normal，否则自定义字重失效 -->

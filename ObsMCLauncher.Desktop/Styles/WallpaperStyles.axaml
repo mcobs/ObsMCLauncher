@@ -1,4 +1,4 @@
-<Styles xmlns="https://github.com/avaloniaui"
+﻿<Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
   <!--
@@ -24,6 +24,9 @@
 
   <!-- ===== 卡片容器 ===== -->
   <Style Selector="Border.wallpaper-card">
+    <!-- 固定 150 高：不复用图片的自然尺寸，否则缩略图约 104 高、
+         而「添加壁纸」方块是 150，两者并排时行高参差。 -->
+    <Setter Property="Height" Value="150" />
     <Setter Property="Background" Value="{DynamicResource CardBackgroundBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}" />
     <Setter Property="BorderThickness" Value="1" />
@@ -103,12 +106,14 @@
     <Setter Property="Background" Value="#73000000" />
   </Style>
 
+  <!-- 悬停/按下压深遮罩而不是换强调色：图标是写死白色的（底片内容不可控，
+       白字在照片上最稳的就是压深），换成 AccentBrush 后白色图标只剩 2.54:1。 -->
   <Style Selector="Button.wallpaper-card-action:pointerover /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+    <Setter Property="Background" Value="{DynamicResource ScrimStrongBrush}" />
   </Style>
 
   <Style Selector="Button.wallpaper-card-action:pressed /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource AccentSecondaryBrush}" />
+    <Setter Property="Background" Value="#E6000000" />
   </Style>
 
   <Style Selector="Button.wallpaper-card-action:disabled /template/ ContentPresenter">

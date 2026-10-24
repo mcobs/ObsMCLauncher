@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.ComponentModel;
 using System.Linq;
 using Avalonia;
@@ -240,11 +240,4 @@ public partial class MainWindow : Window
         }
     }
 
-    private void AuthUrlOverlay_PointerPressed(object? sender, PointerPressedEventArgs e)
-    {
-        if (_vm?.Dialogs?.IsAuthUrlOpen == true)
-        {
-            _vm.Dialogs.CloseAuthUrlCommand.Execute(true);
-        }
-    }
 }

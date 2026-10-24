@@ -100,12 +100,12 @@
                         Command="{Binding BackCommand}"
                         IsVisible="{Binding CanGoBack}"
                         ToolTip.Tip="上一步">
-                    <ui:SymbolIcon Symbol="ChevronLeft" FontSize="18" />
+                    <ui:SymbolIcon Symbol="ChevronLeft" FontSize="16" />
                 </Button>
-                <Button Classes="wizard-nav accent"
+                <Button Classes="wizard-nav primary"
                         Command="{Binding NextCommand}"
                         ToolTip.Tip="{Binding NextToolTip}">
-                    <ui:SymbolIcon Symbol="ChevronRight" FontSize="18" />
+                    <ui:SymbolIcon Symbol="ChevronRight" FontSize="16" />
                 </Button>
             </StackPanel>
         </StackPanel>

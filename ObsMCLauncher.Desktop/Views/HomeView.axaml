@@ -14,7 +14,7 @@
   <Grid RowDefinitions="*,Auto">
     <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto"
                   IsVisible="{Binding !InstanceViewModel.IsVisible}">
-      <ItemsControl ItemsSource="{Binding HomeRows}" Margin="24,24,24,16">
+      <ItemsControl ItemsSource="{Binding HomeRows}" Margin="{DynamicResource PageMargin}">
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="vm:HomeRowViewModel">
             <Panel Margin="0,0,0,16">

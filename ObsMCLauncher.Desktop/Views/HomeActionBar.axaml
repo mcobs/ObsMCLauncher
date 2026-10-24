@@ -1,4 +1,4 @@
-<UserControl xmlns="https://github.com/avaloniaui"
+﻿<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:converters="using:ObsMCLauncher.Desktop.Converters"
              xmlns:controls="using:ObsMCLauncher.Desktop.Controls"
@@ -12,7 +12,7 @@
   </UserControl.Resources>
 
   <!-- 主页底部操作区：账号/版本/启动 + 日志开关，固定结构不参与主页自定义编辑 -->
-  <StackPanel Margin="24,12,24,24">
+  <StackPanel Margin="{DynamicResource PageMargin}">
     <Separator Margin="0,0,0,16" Background="{DynamicResource DividerBrush}"/>
     <Grid RowDefinitions="Auto,Auto">
 
@@ -49,7 +49,7 @@
                     <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="8,0,0,0">
                       <TextBlock Text="{Binding Username}" FontSize="13" FontWeight="Medium" TextTrimming="CharacterEllipsis"/>
                       <TextBlock Text="{Binding Type, Converter={x:Static converters:EnumToChineseTextConverter.Instance}}"
-                                 FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                 FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
                     </StackPanel>
                   </Grid>
                 </DataTemplate>
@@ -79,18 +79,23 @@
             </ComboBox>
 
             <Button
-                    Height="42"
-                    HorizontalAlignment="Stretch"
-                    Classes="ghost"
+                    Classes="slot-empty"
                     IsVisible="{Binding !HasAccounts}"
                     Command="{Binding GoToCommand}"
                     CommandParameter="accounts"
                     ToolTip.Tip="前往账号管理">
-              <TextBlock Text="添加账号，点击前往"
-                         FontSize="13"
-                         Foreground="{DynamicResource TextSecondaryBrush}"
-                         VerticalAlignment="Center"
-                         HorizontalAlignment="Center"/>
+              <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Grid.Column="0"
+                           Text="添加游戏账号"
+                           FontSize="13"
+                           Foreground="{DynamicResource TextSecondaryBrush}"
+                           VerticalAlignment="Center"/>
+                <Path Grid.Column="1"
+                      Data="M9 6L15 12L9 18"
+                      Width="12" Height="12" Stretch="Uniform"
+                      Stroke="{DynamicResource TextTertiaryBrush}" StrokeThickness="1.6"
+                      VerticalAlignment="Center"/>
+              </Grid>
             </Button>
           </Grid>
 
@@ -144,18 +149,23 @@
             </ComboBox>
 
             <Button
-                    Height="42"
-                    HorizontalAlignment="Stretch"
-                    Classes="ghost"
+                    Classes="slot-empty"
                     IsVisible="{Binding !HasInstalledVersions}"
                     Command="{Binding GoToCommand}"
                     CommandParameter="versions"
                     ToolTip.Tip="前往下载版本">
-              <TextBlock Text="暂无本地版本，点击下载"
-                         FontSize="13"
-                         Foreground="{DynamicResource TextSecondaryBrush}"
-                         VerticalAlignment="Center"
-                         HorizontalAlignment="Center"/>
+              <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Grid.Column="0"
+                           Text="下载游戏版本"
+                           FontSize="13"
+                           Foreground="{DynamicResource TextSecondaryBrush}"
+                           VerticalAlignment="Center"/>
+                <Path Grid.Column="1"
+                      Data="M9 6L15 12L9 18"
+                      Width="12" Height="12" Stretch="Uniform"
+                      Stroke="{DynamicResource TextTertiaryBrush}" StrokeThickness="1.6"
+                      VerticalAlignment="Center"/>
+              </Grid>
             </Button>
           </Grid>
 
@@ -174,14 +184,14 @@
 
         <Button Grid.Column="4"
                 Height="42" MinWidth="140"
-                FontSize="15"
+                FontSize="14"
                 FontWeight="SemiBold"
-                Classes="accent"
+                Classes="primary"
                 Command="{Binding LaunchCommand}"
                 IsEnabled="{Binding CanLaunch}">
           <StackPanel Orientation="Horizontal" Spacing="8">
             <Path Data="M8 5V19L19 12L8 5Z" Width="14" Height="14"
-                  Stretch="Uniform" Fill="White"
+                  Stretch="Uniform" Fill="{DynamicResource OnAccentBrush}"
                   VerticalAlignment="Center"/>
             <TextBlock Text="启动游戏" VerticalAlignment="Center"/>
           </StackPanel>
@@ -189,7 +199,7 @@
       </Grid>
 
       <!-- 日志开关回到启动按钮正下方 -->
-      <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,10,0,0" HorizontalAlignment="Right">
+      <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,12,0,0" HorizontalAlignment="Right">
         <CheckBox Content="启动时显示游戏日志"
                   IsChecked="{Binding ShowGameLog}"
                   FontSize="12"/>

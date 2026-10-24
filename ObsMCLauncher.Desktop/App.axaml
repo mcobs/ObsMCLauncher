@@ -1,4 +1,4 @@
-<Application xmlns="https://github.com/avaloniaui"
+﻿<Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="ObsMCLauncher.Desktop.App"
              xmlns:local="using:ObsMCLauncher.Desktop"
@@ -49,11 +49,13 @@
             </Border>
 
             <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="6">
+              <!-- 背景是从强调色压暗出来的渐变，白字在两端只有 3.77 / 2.54:1；
+                   近黑在同样的两端是 5.16 / 7.67:1，且强调色换成深色时该键会自动变白。 -->
               <TextBlock Text="{Binding Title}"
                          FontSize="24" FontWeight="SemiBold"
-                         Foreground="White"/>
+                         Foreground="{DynamicResource OnAccentBrush}"/>
               <TextBlock Text="{Binding Description}"
-                         FontSize="13" Foreground="#CCFFFFFF"/>
+                         FontSize="13" Foreground="{DynamicResource OnAccentBrush}"/>
             </StackPanel>
           </Grid>
         </Border>
@@ -65,7 +67,7 @@
                 Background="{DynamicResource LayerFillColorPrimaryBrush}"
                 CornerRadius="{DynamicResource CardCornerRadius}"
                 Padding="16"
-                Margin="0,0,10,10"
+                Margin="0,0,12,12"
                 MinWidth="{Binding MinWidth}"
                 MinHeight="84"
                 VerticalAlignment="Top"
@@ -82,7 +84,7 @@
                     HorizontalAlignment="Center" VerticalAlignment="Center"/>
               <TextBlock Text="{Binding Card.Icon}"
                          IsVisible="{Binding Card.Icon, Converter={StaticResource CardIconConverter}, ConverterParameter=IsText}"
-                         FontSize="22"
+                         FontSize="20"
                          Foreground="{DynamicResource AccentBrush}"
                          HorizontalAlignment="Center" VerticalAlignment="Center"/>
             </Grid>

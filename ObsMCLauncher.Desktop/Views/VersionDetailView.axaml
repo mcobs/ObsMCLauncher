@@ -1,4 +1,4 @@
-<UserControl xmlns="https://github.com/avaloniaui"
+﻿<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:ObsMCLauncher.Desktop.ViewModels"
              xmlns:ui="using:FluentAvalonia.UI.Controls"
@@ -49,32 +49,32 @@
           <TextBlock Text="版本信息" FontSize="16" FontWeight="Medium" Margin="0,0,0,12"/>
 
           <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto" Margin="0,0,0,4">
-            <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,8,10">
-              <TextBlock Text="版本号" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,6"/>
-              <TextBlock Text="{Binding SelectedMcVersion}" FontSize="15" FontWeight="Medium"/>
+            <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,8,12">
+              <TextBlock Text="版本号" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,8"/>
+              <TextBlock Text="{Binding SelectedMcVersion}" FontSize="14" FontWeight="Medium"/>
             </StackPanel>
 
-            <StackPanel Grid.Row="0" Grid.Column="1" Margin="8,0,0,10">
-              <TextBlock Text="发布日期" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,6"/>
-              <TextBlock Text="{Binding ReleaseDate}" FontSize="15" FontWeight="Medium"/>
+            <StackPanel Grid.Row="0" Grid.Column="1" Margin="8,0,0,12">
+              <TextBlock Text="发布日期" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,8"/>
+              <TextBlock Text="{Binding ReleaseDate}" FontSize="14" FontWeight="Medium"/>
             </StackPanel>
 
-            <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,8,10">
-              <TextBlock Text="版本类型" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,6"/>
+            <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,8,12">
+              <TextBlock Text="版本类型" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,8"/>
               <Border Background="{Binding VersionTypeColor}" CornerRadius="4" Padding="8,4" HorizontalAlignment="Left">
-                <TextBlock Text="{Binding VersionTypeText}" FontSize="12" FontWeight="SemiBold" Foreground="White"/>
+                <TextBlock Text="{Binding VersionTypeText}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource OnBrandBrush}"/>
               </Border>
             </StackPanel>
 
-            <StackPanel Grid.Row="1" Grid.Column="1" Margin="8,0,0,10">
-              <TextBlock Text="下载大小" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,6"/>
-              <TextBlock Text="{Binding TotalDownloadSize}" FontSize="15" FontWeight="Medium"/>
+            <StackPanel Grid.Row="1" Grid.Column="1" Margin="8,0,0,12">
+              <TextBlock Text="下载大小" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,8"/>
+              <TextBlock Text="{Binding TotalDownloadSize}" FontSize="14" FontWeight="Medium"/>
             </StackPanel>
 
             <StackPanel Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,4,0,0">
-              <TextBlock Text="安装名称" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,6"/>
+              <TextBlock Text="安装名称" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,8"/>
               <TextBox Text="{Binding CustomVersionName}" Watermark="自定义版本名称" FontSize="14"/>
-              <TextBlock FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,6,0,0">
+              <TextBlock FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,8,0,0">
                 <Run Text="提示：版本将安装到 "/>
                 <Run Text=".minecraft/versions/" FontWeight="SemiBold"/>
                 <Run Text="{Binding CustomVersionName}" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}"/>
@@ -83,7 +83,7 @@
                          FontSize="12"
                          Foreground="{DynamicResource DangerBrush}"
                          IsVisible="{Binding IsVersionNameConflict}"
-                         Margin="0,6,0,0"/>
+                         Margin="0,8,0,0"/>
             </StackPanel>
           </Grid>
         </StackPanel>
@@ -161,7 +161,7 @@
             </Grid>
 
             <!-- OptiFine -->
-            <Separator Margin="0,6"/>
+            <Separator Margin="0,8"/>
             <Grid ColumnDefinitions="*,Auto">
               <CheckBox IsChecked="{Binding IsOptiFineEnabled}" VerticalAlignment="Center">
                 <StackPanel Orientation="Horizontal" Spacing="8">
@@ -197,11 +197,11 @@
         <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,16">
           <StackPanel Grid.Column="0" VerticalAlignment="Center">
             <TextBlock Text="准备安装版本" FontSize="14" FontWeight="Medium"/>
-            <TextBlock Text="点击「开始安装」将下载并安装该版本" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,6,0,0"/>
+            <TextBlock Text="点击「开始安装」将下载并安装该版本" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,8,0,0"/>
           </StackPanel>
 
-          <Button Grid.Column="1" Content="开始安装" Height="46" Width="160" FontSize="15"
-                  Classes="accent" Background="{DynamicResource AccentBrush}" Foreground="White"
+          <Button Grid.Column="1" Content="开始安装" Height="46" Width="160" FontSize="14"
+                  Classes="primary"
                   Command="{Binding InstallCommand}" IsVisible="{Binding !IsBusy}"/>
         </Grid>
 
@@ -209,7 +209,7 @@
     </ScrollViewer>
 
     <!-- 安装进度覆盖层 -->
-    <Border Background="#CC000000"
+    <Border Background="{DynamicResource ScrimStrongBrush}"
             IsVisible="{Binding IsBusy}"
             ZIndex="100">
       <Border Background="{DynamicResource SurfaceBrush}"
@@ -224,11 +224,11 @@
           <!-- 标题 -->
           <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,4">
             <StackPanel>
-              <TextBlock Text="正在安装版本" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,4"/>
+              <TextBlock Text="正在安装版本" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,4"/>
               <TextBlock Text="{Binding SelectedMcVersion, StringFormat='Minecraft {0}'}" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}"/>
             </StackPanel>
             <TextBlock Grid.Column="1" Text="{Binding Progress, StringFormat='{}{0:F0}%'}"
-                       FontSize="28" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryBrush}" VerticalAlignment="Center"/>
+                       FontSize="24" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryBrush}" VerticalAlignment="Center"/>
           </Grid>
 
           <!-- 总体进度 -->
@@ -247,14 +247,14 @@
           <!-- 详细信息 -->
           <Border Background="{DynamicResource SurfaceElevatedBrush}" CornerRadius="6" Padding="12">
             <Grid RowDefinitions="Auto,Auto,Auto,Auto" ColumnDefinitions="Auto,*">
-              <TextBlock Grid.Row="0" Grid.Column="0" Text="状态：" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,6"/>
-              <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Status}" FontSize="12" FontWeight="Medium" Margin="0,0,0,6"/>
+              <TextBlock Grid.Row="0" Grid.Column="0" Text="状态：" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,8"/>
+              <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Status}" FontSize="12" FontWeight="Medium" Margin="0,0,0,8"/>
 
-              <TextBlock Grid.Row="1" Grid.Column="0" Text="速度：" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,6"/>
-              <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding DownloadSpeed}" FontSize="12" Margin="0,0,0,6"/>
+              <TextBlock Grid.Row="1" Grid.Column="0" Text="速度：" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,8"/>
+              <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding DownloadSpeed}" FontSize="12" Margin="0,0,0,8"/>
 
-              <TextBlock Grid.Row="2" Grid.Column="0" Text="大小：" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,6"/>
-              <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding DownloadSizeStatus}" FontSize="12" Margin="0,0,0,6"/>
+              <TextBlock Grid.Row="2" Grid.Column="0" Text="大小：" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,8"/>
+              <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding DownloadSizeStatus}" FontSize="12" Margin="0,0,0,8"/>
 
               <TextBlock Grid.Row="3" Grid.Column="0" Text="文件：" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}"/>
               <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding FileCountStatus}" FontSize="12"/>

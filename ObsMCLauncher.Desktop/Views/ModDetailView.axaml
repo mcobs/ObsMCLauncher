@@ -1,4 +1,4 @@
-<UserControl xmlns="https://github.com/avaloniaui"
+﻿<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:ObsMCLauncher.Desktop.ViewModels"
              xmlns:conv="using:ObsMCLauncher.Desktop.Converters"
@@ -105,7 +105,7 @@
 
     <!-- 返回按钮 -->
     <Button Grid.Row="0" Classes="ghost" Command="{Binding BackCommand}"
-            HorizontalAlignment="Left" Margin="0,0,0,10" Padding="8,4">
+            HorizontalAlignment="Left" Margin="0,0,0,12" Padding="8,4">
       <StackPanel Orientation="Horizontal" Spacing="6">
         <ui:SymbolIcon Symbol="Back" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
         <TextBlock Text="返回" FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}"/>
@@ -113,7 +113,7 @@
     </Button>
 
     <!-- 标题行 -->
-    <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="0,0,0,10">
+    <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="0,0,0,12">
       <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="14">
         <Border Width="56" Height="56" CornerRadius="10"
                 Background="{DynamicResource SurfaceElevatedBrush}"
@@ -156,7 +156,7 @@
     </Grid>
 
     <!-- 摘要（可展开） -->
-    <StackPanel Grid.Row="2" Margin="0,0,0,10">
+    <StackPanel Grid.Row="2" Margin="0,0,0,12">
       <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" FontSize="12"
                  Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                  MaxLines="{Binding SummaryMaxLines}" TextTrimming="CharacterEllipsis"/>
@@ -165,7 +165,7 @@
               Padding="0" Margin="0,2,0,0">
         <StackPanel Orientation="Horizontal" Spacing="4">
           <TextBlock Text="{Binding SummaryToggleText}" FontSize="11" Foreground="{DynamicResource AccentBrush}"/>
-          <ui:SymbolIcon Symbol="ChevronDown" FontSize="10" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+          <ui:SymbolIcon Symbol="ChevronDown" FontSize="11" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
         </StackPanel>
       </Button>
     </StackPanel>
@@ -173,7 +173,7 @@
     <!-- 下载 / 安装结果提示 -->
     <ui:InfoBar Grid.Row="3" IsOpen="{Binding IsInfoBarOpen}" Severity="{Binding InfoBarSeverity}"
                 Title="{Binding InfoBarTitle}" Message="{Binding InfoBarMessage}"
-                IsClosable="True" Margin="0,0,0,10"/>
+                IsClosable="True" Margin="0,0,0,12"/>
 
     <Separator Grid.Row="4" Margin="0,0,0,12" Background="{DynamicResource DividerBrush}"/>
 
@@ -181,7 +181,7 @@
     <Grid Grid.Row="5">
       <Grid RowDefinitions="Auto,Auto,*">
 
-        <TextBlock Grid.Row="0" Text="可用版本" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,10"/>
+        <TextBlock Grid.Row="0" Text="可用版本" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,12"/>
 
         <!-- 加载器筛选栏 -->
         <ListBox Grid.Row="1" Classes="loader-filter"
@@ -200,7 +200,7 @@
                        Width="14" Height="14" VerticalAlignment="Center"
                        IsVisible="{Binding IconUri, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                 <TextBlock Text="{Binding LoaderName}" VerticalAlignment="Center"/>
-                <TextBlock Text="{Binding Count, StringFormat='({0})'}" FontSize="10"
+                <TextBlock Text="{Binding Count, StringFormat='({0})'}" FontSize="11"
                            Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center"/>
               </StackPanel>
             </DataTemplate>
@@ -232,8 +232,8 @@
 
                       <StackPanel>
                         <!-- 前置资源：本 MC 版本组内所有文件、所有加载器合并去重（PCL 口径） -->
-                        <StackPanel IsVisible="{Binding HasDependencies}" Margin="0,2,0,10">
-                          <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,6">
+                        <StackPanel IsVisible="{Binding HasDependencies}" Margin="0,2,0,12">
+                          <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,8">
                             <TextBlock Classes="section-title" Text="前置资源"/>
                             <TextBlock Grid.Column="1" Classes="section-count" Text="{Binding DependenciesDisplay}"/>
                           </Grid>
@@ -247,21 +247,21 @@
                                     <Border Grid.Column="0" Width="36" Height="36" CornerRadius="8"
                                             Background="{DynamicResource SurfaceHoverBrush}" VerticalAlignment="Center">
                                       <Grid>
-                                        <ui:SymbolIcon Symbol="Library" FontSize="15"
+                                        <ui:SymbolIcon Symbol="Library" FontSize="14"
                                                        Foreground="{DynamicResource TextTertiaryBrush}"
                                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                         <Image Source="{Binding Icon}" Width="36" Height="36"/>
                                       </Grid>
                                     </Border>
 
-                                    <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
+                                    <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
                                       <StackPanel Orientation="Horizontal" Spacing="6">
                                         <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="Medium"
                                                    TextTrimming="CharacterEllipsis" MaxWidth="280" VerticalAlignment="Center"/>
-                                        <Border Classes="tag" Background="{Binding SourceTagColor}">
+                                        <Border Classes="tag tag-brand" Background="{Binding SourceTagColor}">
                                           <TextBlock Text="{Binding SourceTag}"/>
                                         </Border>
-                                        <Border Classes="tag" Background="{Binding TypeTagColor}">
+                                        <Border Classes="tag tag-brand" Background="{Binding TypeTagColor}">
                                           <TextBlock Text="{Binding TypeTag}"/>
                                         </Border>
                                       </StackPanel>
@@ -299,7 +299,7 @@
                                     <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2"
                                                 VerticalAlignment="Center" IsVisible="{Binding CanNavigate}">
                                       <TextBlock Text="详情" FontSize="11" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
-                                      <ui:SymbolIcon Symbol="ChevronRight" FontSize="10" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+                                      <ui:SymbolIcon Symbol="ChevronRight" FontSize="11" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
                                     </StackPanel>
                                   </Grid>
                                 </Border>
@@ -314,13 +314,13 @@
                         </StackPanel>
 
                         <!-- 版本列表：与前置区块分开，避免两者混在一起 -->
-                        <TextBlock Classes="section-title" Text="版本列表" Margin="0,0,0,6"
+                        <TextBlock Classes="section-title" Text="版本列表" Margin="0,0,0,8"
                                    IsVisible="{Binding HasDependencies}"/>
 
                         <ItemsControl ItemsSource="{Binding FilteredLoaderGroups}">
                           <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:LoaderSubGroupViewModel">
-                              <StackPanel Margin="0,0,0,6">
+                              <StackPanel Margin="0,0,0,8">
 
                                 <Border Classes="loader-chip">
                                   <TextBlock Text="{Binding LoaderName}" FontSize="12" FontWeight="Medium"
@@ -346,10 +346,10 @@
                                               <ui:ProgressRing Width="16" Height="16" IsIndeterminate="True" IsActive="True"/>
                                               <TextBlock Text="下载中..." FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
                                             </StackPanel>
-                                            <Border Classes="tag" Background="{DynamicResource SuccessBrush}" IsVisible="{Binding IsDownloaded}">
+                                            <Border Classes="tag tag-brand" Background="{DynamicResource SuccessBrush}" IsVisible="{Binding IsDownloaded}">
                                               <TextBlock Text="已下载"/>
                                             </Border>
-                                            <Button Content="下载" Classes="accent" FontSize="12" Padding="14,6"
+                                            <Button Content="下载" Classes="primary" FontSize="12" Padding="14,6"
                                                     IsEnabled="{Binding !IsDownloading}"
                                                     Command="{Binding #Root.DataContext.DownloadVersionCommand}"
                                                     CommandParameter="{Binding}"/>
@@ -379,8 +379,8 @@
 
           <!-- 空状态 -->
           <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding IsEmptyVisible}" Classes="empty-state">
-            <ui:SymbolIcon Symbol="Find" FontSize="36" Foreground="{DynamicResource TextTertiaryBrush}" HorizontalAlignment="Center"/>
-            <TextBlock Text="没有找到可用版本" FontSize="15" FontWeight="Medium" HorizontalAlignment="Center"/>
+            <ui:SymbolIcon Symbol="Find" FontSize="40" Foreground="{DynamicResource TextTertiaryBrush}" HorizontalAlignment="Center"/>
+            <TextBlock Text="没有找到可用版本" FontSize="14" FontWeight="Medium" HorizontalAlignment="Center"/>
             <TextBlock Text="该资源可能不支持当前筛选条件" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center"/>
           </StackPanel>
         </Grid>

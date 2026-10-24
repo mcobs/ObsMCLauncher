@@ -1,4 +1,4 @@
-<UserControl xmlns="https://github.com/avaloniaui"
+﻿<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:ObsMCLauncher.Desktop.ViewModels"
              xmlns:ui="using:FluentAvalonia.UI.Controls"
@@ -113,7 +113,7 @@
       <Setter Property="BorderThickness" Value="1.5"/>
       <Setter Property="CornerRadius" Value="7"/>
       <Setter Property="Margin" Value="-3"/>
-      <Setter Property="Background" Value="#1410B981"/>
+      <Setter Property="Background" Value="{DynamicResource AccentTintBrush}"/>
       <Setter Property="Opacity" Value="1"/>
     </Style>
     <!-- 选中组件右上角的删除按钮 -->
@@ -148,7 +148,7 @@
       <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
       <Setter Property="BorderThickness" Value="1.5"/>
       <Setter Property="CornerRadius" Value="8"/>
-      <Setter Property="Background" Value="#1410B981"/>
+      <Setter Property="Background" Value="{DynamicResource AccentTintBrush}"/>
     </Style>
     <Style Selector="Border.edit-row-toolbar">
       <Setter Property="Opacity" Value="0"/>
@@ -204,7 +204,7 @@
     </Style>
     <Style Selector="Border.add-row-slot:pointerover">
       <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
-      <Setter Property="Background" Value="#1410B981"/>
+      <Setter Property="Background" Value="{DynamicResource AccentTintBrush}"/>
     </Style>
     <Style Selector="Button.add-row-btn">
       <Setter Property="Background" Value="Transparent"/>
@@ -233,10 +233,10 @@
 
   <Grid x:Name="PageRoot">
     <ScrollViewer x:Name="PageScroll" VerticalScrollBarVisibility="Auto">
-      <StackPanel Margin="12,16,12,24" Spacing="14">
+      <StackPanel Margin="12,16,12,24" Spacing="14" MaxWidth="1000">
 
         <Grid ColumnDefinitions="*,Auto">
-          <TextBlock Grid.Column="0" Text="主页自定义" FontSize="22" FontWeight="SemiBold" VerticalAlignment="Center"/>
+          <TextBlock Grid.Column="0" Text="主页自定义" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center"/>
           <Button Grid.Column="1" Content="恢复默认布局" Classes="ghost"
                   Command="{Binding ResetLayoutCommand}" VerticalAlignment="Center"/>
         </Grid>
@@ -310,7 +310,7 @@
         <StackPanel Spacing="8">
           <StackPanel Orientation="Horizontal" Spacing="8">
             <ui:SymbolIcon Symbol="Library" FontSize="14" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
-            <TextBlock Text="组件库" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center"/>
+            <TextBlock Text="组件库" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"/>
             <TextBlock Text="点击或拖拽到上方预览中添加，同一组件可添加多个" FontSize="11"
                        Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
           </StackPanel>
@@ -318,7 +318,7 @@
           <ItemsControl ItemsSource="{Binding LibraryGroups}">
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="vm:LibraryGroupViewModel">
-                <StackPanel Margin="0,0,0,10" Spacing="6">
+                <StackPanel Margin="0,0,0,12" Spacing="6">
                   <TextBlock Text="{Binding DisplayName}" FontSize="12" FontWeight="Medium"
                              Foreground="{DynamicResource TextSecondaryBrush}"/>
                   <ItemsControl ItemsSource="{Binding Items}">
@@ -347,7 +347,7 @@
                             </Grid>
                             <StackPanel VerticalAlignment="Center">
                               <TextBlock Text="{Binding Title}" FontSize="12" FontWeight="Medium"/>
-                              <TextBlock Text="{Binding Description}" FontSize="10"
+                              <TextBlock Text="{Binding Description}" FontSize="11"
                                          Foreground="{DynamicResource TextSecondaryBrush}" MaxLines="1" TextTrimming="CharacterEllipsis"/>
                             </StackPanel>
                           </StackPanel>

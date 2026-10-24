@@ -1,4 +1,4 @@
-<Window xmlns="https://github.com/avaloniaui"
+﻿<Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:ObsMCLauncher.Desktop.ViewModels"
         xmlns:converters="using:ObsMCLauncher.Desktop.Converters"
@@ -12,7 +12,7 @@
   <Grid RowDefinitions="Auto,*,Auto" Margin="16" RowSpacing="12">
 
     <StackPanel Grid.Row="0" Spacing="6">
-      <TextBlock Text="选择要安装数据包的存档" FontSize="18" FontWeight="Medium" />
+      <TextBlock Text="选择要安装数据包的存档" FontSize="16" FontWeight="Medium" />
       <TextBlock Text="请选择一个世界（world）文件夹" Opacity="0.75" />
     </StackPanel>
 
@@ -21,7 +21,7 @@
             Background="{DynamicResource SystemControlBackgroundBaseHighBrush}">
       <ListBox ItemsSource="{Binding Worlds}"
                SelectedItem="{Binding SelectedWorld}"
-               Margin="10"
+               Margin="12"
                >
         <ListBox.ItemTemplate>
           <DataTemplate>

@@ -1,4 +1,4 @@
-<UserControl xmlns="https://github.com/avaloniaui"
+﻿<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:ObsMCLauncher.Desktop.ViewModels"
              xmlns:views="using:ObsMCLauncher.Desktop.Views"
@@ -30,14 +30,14 @@
                   <Border CornerRadius="3" Padding="4,1"
                           Background="{DynamicResource SurfaceElevatedBrush}"
                           IsVisible="{Binding IsSystem}" VerticalAlignment="Center">
-                    <TextBlock Text="系统组" FontSize="9" Foreground="{DynamicResource TextTertiaryBrush}"/>
+                    <TextBlock Text="系统组" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}"/>
                   </Border>
                 </StackPanel>
                 <Border Grid.Column="1" CornerRadius="8" Padding="8,2"
                         Background="{DynamicResource SurfaceElevatedBrush}"
                         VerticalAlignment="Center">
                   <TextBlock Text="{Binding VersionCount, StringFormat='{}{0} 个版本'}"
-                             FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                             FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
                 </Border>
               </Grid>
               <!-- 固定单行高度：分组头之间也要等高，否则虚拟化在滚动中会反复重估内容总高 -->
@@ -58,15 +58,15 @@
                   MinHeight="74"
                   BorderThickness="1" BorderBrush="{DynamicResource CardBorderBrush}">
             <Grid ColumnDefinitions="Auto,*,Auto">
-              <Image Grid.Column="0" Width="24" Height="24" Margin="0,0,10,0"
+              <Image Grid.Column="0" Width="24" Height="24" Margin="0,0,12,0"
                      Source="{Binding LoaderIconPath, Converter={StaticResource BitmapConverter}}"/>
               <StackPanel Grid.Column="1" VerticalAlignment="Center">
                 <StackPanel Orientation="Horizontal" Spacing="6">
                   <TextBlock Text="{Binding Id}" FontSize="13" FontWeight="Medium"/>
                   <Border Background="{DynamicResource AccentBrush}"
-                          CornerRadius="4" Padding="5,1"
+                          CornerRadius="4" Padding="6,2"
                           IsVisible="{Binding IsSelected}">
-                    <TextBlock Text="当前版本" FontSize="9" FontWeight="SemiBold" Foreground="White"/>
+                    <TextBlock Text="当前版本" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource OnAccentBrush}"/>
                   </Border>
                 </StackPanel>
                 <TextBlock Text="{Binding DetailText}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,1,0,0"/>
@@ -78,7 +78,7 @@
                   布局 pass 内累积 ≥10 次，Avalonia 就打出 [Layout] Layout cycle detected。
                   改成等高后实测：滚动 89 步的重估次数从 73 次降到个位数。
                 -->
-                <TextBlock Text="{Binding Description}" FontSize="10"
+                <TextBlock Text="{Binding Description}" FontSize="11"
                            Foreground="{DynamicResource TextTertiaryBrush}" Margin="0,3,0,0"
                            Height="15" MaxLines="1" TextTrimming="CharacterEllipsis"/>
               </StackPanel>
@@ -136,10 +136,10 @@
 
     <!-- 删除按钮：默认透明，悬停时红色背景 + 红色图标 -->
     <Style Selector="Button.ghost.delete-icon:pointerover /template/ ContentPresenter">
-      <Setter Property="Background" Value="#20E81123" />
+      <Setter Property="Background" Value="{DynamicResource DangerSoftBrush}" />
     </Style>
     <Style Selector="Button.ghost.delete-icon:pointerover Path">
-      <Setter Property="Fill" Value="#E81123" />
+      <Setter Property="Fill" Value="{DynamicResource DangerBrush}" />
     </Style>
   </UserControl.Styles>
 
@@ -184,15 +184,15 @@
                 </TextBlock>
                 <Border CornerRadius="4" Padding="6,2" Background="{DynamicResource SurfaceElevatedBrush}"
                         IsVisible="{Binding !IsCurrentDirectoryValid}">
-                  <TextBlock Text="目录无效" FontSize="10" Foreground="#E81123"/>
+                  <TextBlock Text="目录无效" FontSize="11" Foreground="{DynamicResource DangerBrush}"/>
                 </Border>
                 <ProgressBar Width="80" Height="4" IsIndeterminate="True"
                              IsVisible="{Binding IsRefreshingVersions}" VerticalAlignment="Center"/>
                 <Ellipse Width="6" Height="6" Margin="8,0,0,0"
-                         Fill="#22C55E"
+                         Fill="{DynamicResource SuccessBrush}"
                          IsVisible="{Binding IsCurrentDirectoryValid}"/>
                 <Ellipse Width="6" Height="6" Margin="8,0,0,0"
-                         Fill="#E81123"
+                         Fill="{DynamicResource DangerBrush}"
                          IsVisible="{Binding !IsCurrentDirectoryValid}"/>
                 <TextBlock Text="{Binding CurrentDirectoryDisplay}"
                            FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}"
@@ -247,7 +247,7 @@
               <TextBox Grid.Column="0" Watermark="搜索版本号..." FontSize="13"
                        Margin="0,0,12,0" Text="{Binding SearchText}"/>
               <ComboBox Grid.Column="1" Width="120" FontSize="13"
-                        Margin="0,0,10,0" SelectedIndex="{Binding SelectedTypeIndex}">
+                        Margin="0,0,12,0" SelectedIndex="{Binding SelectedTypeIndex}">
                 <ComboBoxItem Content="全部版本"/>
                 <ComboBoxItem Content="正式版"/>
                 <ComboBoxItem Content="快照版"/>
@@ -289,16 +289,16 @@
                                 CornerRadius="6" Padding="10,8"
                                 BorderThickness="1" BorderBrush="{DynamicResource CardBorderBrush}">
                           <Grid ColumnDefinitions="Auto,*,Auto">
-                            <Image Width="24" Height="24" Margin="0,0,10,0"
+                            <Image Width="24" Height="24" Margin="0,0,12,0"
                                    Source="{Binding IconPath, Converter={StaticResource BitmapConverter}}"/>
                             <StackPanel Grid.Column="1" VerticalAlignment="Center">
                               <StackPanel Orientation="Horizontal" Spacing="6">
                                 <TextBlock Text="{Binding Id}" FontSize="13" FontWeight="Medium"/>
-                                <Border CornerRadius="4" Padding="5,1"
+                                <Border CornerRadius="4" Padding="6,2"
                                         Background="{Binding Type, Converter={x:Static converters:VersionTypeColorConverter.Instance}}"
                                         IsVisible="{Binding Type, Converter={x:Static converters:VersionTypeTagVisibleConverter.Instance}}">
                                   <TextBlock Text="{Binding Type, Converter={x:Static converters:VersionTypeTextConverter.Instance}}"
-                                             FontSize="9" FontWeight="SemiBold" Foreground="White"/>
+                                             FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource OnBrandBrush}"/>
                                 </Border>
                                 <Border CornerRadius="4" Padding="5,1"
                                         Background="#20FFFFFF"
@@ -310,7 +310,7 @@
                                       <Binding Path="#Root.DataContext.InstalledVersionIds" />
                                     </MultiBinding>
                                   </Border.IsVisible>
-                                  <TextBlock Text="已安装" FontSize="9" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}"/>
+                                  <TextBlock Text="已安装" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}"/>
                                 </Border>
                               </StackPanel>
                               <TextBlock Text="{Binding ReleaseTime, StringFormat='发布时间: {0:yyyy-MM-dd HH:mm}'}"
@@ -342,7 +342,7 @@
                 <Border Background="{DynamicResource SurfaceElevatedBrush}" CornerRadius="6" Padding="10,8" Margin="0,0,0,4" Opacity="0.6"
                         BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
                   <Grid ColumnDefinitions="Auto,*,Auto">
-                    <Border Grid.Column="0" Width="24" Height="24" CornerRadius="12" Background="{DynamicResource SurfaceHoverBrush}" Margin="0,0,10,0"/>
+                    <Border Grid.Column="0" Width="24" Height="24" CornerRadius="12" Background="{DynamicResource SurfaceHoverBrush}" Margin="0,0,12,0"/>
                     <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="6">
                       <Border Width="130" Height="12" HorizontalAlignment="Left" Background="{DynamicResource SurfaceHoverBrush}" CornerRadius="4"/>
                       <Border Width="90" Height="8" HorizontalAlignment="Left" Background="{DynamicResource SurfaceHoverBrush}" CornerRadius="4"/>
@@ -352,7 +352,7 @@
                 <Border Background="{DynamicResource SurfaceElevatedBrush}" CornerRadius="6" Padding="10,8" Margin="0,0,0,4" Opacity="0.4"
                         BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
                   <Grid ColumnDefinitions="Auto,*,Auto">
-                    <Border Grid.Column="0" Width="24" Height="24" CornerRadius="12" Background="{DynamicResource SurfaceHoverBrush}" Margin="0,0,10,0"/>
+                    <Border Grid.Column="0" Width="24" Height="24" CornerRadius="12" Background="{DynamicResource SurfaceHoverBrush}" Margin="0,0,12,0"/>
                     <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="6">
                       <Border Width="130" Height="12" HorizontalAlignment="Left" Background="{DynamicResource SurfaceHoverBrush}" CornerRadius="4"/>
                       <Border Width="90" Height="8" HorizontalAlignment="Left" Background="{DynamicResource SurfaceHoverBrush}" CornerRadius="4"/>
@@ -377,7 +377,7 @@
     <views:InstanceView DataContext="{Binding InstanceViewModel}"/>
 
     <Rectangle Name="SidebarOverlay"
-               Fill="#80000000"
+               Fill="{DynamicResource ScrimBrush}"
                IsHitTestVisible="{Binding IsSidebarOpen}"
                IsVisible="{Binding IsSidebarOpen}">
       <Rectangle.Transitions>
@@ -408,7 +408,7 @@
                 BorderBrush="{DynamicResource BorderBrush}">
           <Grid ColumnDefinitions="*,Auto">
             <StackPanel Grid.Column="0">
-              <TextBlock Text="游戏目录" FontSize="15" FontWeight="Medium"/>
+              <TextBlock Text="游戏目录" FontSize="14" FontWeight="Medium"/>
               <TextBlock Text="管理多个 Minecraft 目录" FontSize="11"
                          Foreground="{DynamicResource TextTertiaryBrush}"
                          Margin="0,2,0,0"/>
@@ -434,10 +434,10 @@
           <Grid ColumnDefinitions="*,Auto">
             <StackPanel Grid.Column="0" VerticalAlignment="Center" Orientation="Horizontal" Spacing="6">
               <Ellipse Width="8" Height="8"
-                       Fill="#22C55E"
+                       Fill="{DynamicResource SuccessBrush}"
                        IsVisible="{Binding IsCurrentDirectoryValid}"/>
               <Ellipse Width="8" Height="8"
-                       Fill="#E81123"
+                       Fill="{DynamicResource DangerBrush}"
                        IsVisible="{Binding !IsCurrentDirectoryValid}"/>
               <TextBlock Text="{Binding CurrentDirectoryDisplay}"
                          FontSize="11"
@@ -449,7 +449,7 @@
             <Border Grid.Column="1" CornerRadius="3" Padding="4,1"
                     Background="{DynamicResource SurfaceBrush}"
                     IsVisible="{Binding IsRefreshingVersions}">
-              <TextBlock Text="同步中..." FontSize="9" Foreground="{DynamicResource TextTertiaryBrush}"/>
+              <TextBlock Text="同步中..." FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}"/>
             </Border>
           </Grid>
         </Border>
@@ -491,35 +491,36 @@
 
                       <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="4" Margin="0,0,0,8">
                         <TextBlock Text="{Binding Path}"
-                                   FontSize="10"
+                                   FontSize="11"
                                    Foreground="{DynamicResource TextTertiaryBrush}"
                                    TextTrimming="CharacterEllipsis"
                                    VerticalAlignment="Center"
                                    MaxWidth="140"/>
 
-                        <Border CornerRadius="3" Padding="4,1"
+                        <Border CornerRadius="4" Padding="6,2"
                                 Background="{DynamicResource PrimaryBrush}"
                                 IsVisible="{Binding IsCurrent}">
                           <TextBlock Text="当前"
-                                     FontSize="9"
-                                     Foreground="White"/>
+                                     FontSize="11"
+                                     Foreground="{DynamicResource OnAccentBrush}"/>
                         </Border>
 
-                        <Border CornerRadius="3" Padding="4,1"
+                        <!-- 原先整块 Opacity=0.6，连文字一起压淡 —— 9px 白字本来就不过关，
+                             再乘 0.6 更是读不出来。用文案本身区分即可。 -->
+                        <Border CornerRadius="4" Padding="6,2"
                                 Background="{DynamicResource PrimaryBrush}"
-                                Opacity="0.6"
                                 IsVisible="{Binding IsDefault}">
                           <TextBlock Text="默认"
-                                     FontSize="9"
-                                     Foreground="White"/>
+                                     FontSize="11"
+                                     Foreground="{DynamicResource OnAccentBrush}"/>
                         </Border>
 
                         <Border CornerRadius="3" Padding="4,1"
-                                Background="#20E81123"
+                                Background="{DynamicResource DangerSoftBrush}"
                                 IsVisible="{Binding !IsValid}">
                           <TextBlock Text="无效"
-                                     FontSize="9"
-                                     Foreground="#E81123"/>
+                                     FontSize="11"
+                                     Foreground="{DynamicResource DangerBrush}"/>
                         </Border>
                       </StackPanel>
 

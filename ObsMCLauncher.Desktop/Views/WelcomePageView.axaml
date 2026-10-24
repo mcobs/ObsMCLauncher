@@ -78,11 +78,11 @@
                     VerticalAlignment="Top"
                     Width="48" Height="48"
                     CornerRadius="24"
-                    Classes="accent"
+                    Classes="primary"
                     ToolTip.Tip="下一步"
                     Command="{Binding NextCommand}"
                     Margin="0 16 0 0">
-                <ui:SymbolIcon Symbol="ChevronRight" FontSize="18" />
+                <ui:SymbolIcon Symbol="ChevronRight" FontSize="16" />
             </Button>
 
             <!-- 底部：版本号 + 数据迁移入口（动画结束后显示，翻页后随页面隐藏） -->

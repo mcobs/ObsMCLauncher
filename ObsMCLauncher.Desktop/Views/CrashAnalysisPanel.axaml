@@ -1,4 +1,4 @@
-<UserControl xmlns="https://github.com/avaloniaui"
+﻿<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:converters="using:ObsMCLauncher.Desktop.Converters"
              xmlns:coremodels="using:ObsMCLauncher.Core.Models"
@@ -16,13 +16,13 @@
     <!-- 结论横条：类别图标 + 主标题 + 来源 -->
     <StackPanel Orientation="Horizontal" Spacing="12">
       <Border Classes="crash-icon-box" Background="{DynamicResource DangerSoftBrush}">
-        <ui:SymbolIcon FontSize="17"
+        <ui:SymbolIcon FontSize="16"
                        Foreground="{DynamicResource DangerBrush}"
                        HorizontalAlignment="Center" VerticalAlignment="Center"
                        Symbol="{Binding PrimaryCategory, Converter={x:Static converters:CrashCategoryToSymbolConverter.Instance}}"/>
       </Border>
       <StackPanel VerticalAlignment="Center" Spacing="2">
-        <TextBlock Text="{Binding Headline}" FontSize="18" FontWeight="SemiBold"
+        <TextBlock Text="{Binding Headline}" FontSize="16" FontWeight="SemiBold"
                    TextWrapping="Wrap"/>
         <TextBlock Text="{Binding FileName, StringFormat='来源：{0}'}" FontSize="11"
                    Foreground="{DynamicResource TextTertiaryBrush}"
@@ -31,24 +31,24 @@
     </StackPanel>
 
     <!-- 元信息 chips（MC 版本 / 加载器 / Java / 崩溃时间） -->
-    <WrapPanel Margin="0,10,0,0">
-      <Border Classes="crash-chip" Margin="0,0,6,6"
+    <WrapPanel Margin="0,12,0,0">
+      <Border Classes="crash-chip" Margin="0,0,8,8"
               IsVisible="{Binding MinecraftVersion, Converter={x:Static converters:NotNullConverter.Instance}}">
         <TextBlock>
           <Run Text="MC "/><Run Text="{Binding MinecraftVersion}"/>
         </TextBlock>
       </Border>
-      <Border Classes="crash-chip" Margin="0,0,6,6"
+      <Border Classes="crash-chip" Margin="0,0,8,8"
               IsVisible="{Binding LoaderInfo, Converter={x:Static converters:NotNullConverter.Instance}}">
         <TextBlock Text="{Binding LoaderInfo}"/>
       </Border>
-      <Border Classes="crash-chip" Margin="0,0,6,6"
+      <Border Classes="crash-chip" Margin="0,0,8,8"
               IsVisible="{Binding JavaVersion, Converter={x:Static converters:NotNullConverter.Instance}}">
         <TextBlock>
           <Run Text="Java "/><Run Text="{Binding JavaVersion}"/>
         </TextBlock>
       </Border>
-      <Border Classes="crash-chip" Margin="0,0,6,6"
+      <Border Classes="crash-chip" Margin="0,0,8,8"
               IsVisible="{Binding CrashTime, Converter={x:Static converters:NotNullConverter.Instance}}">
         <TextBlock Text="{Binding CrashTime}"/>
       </Border>
@@ -59,7 +59,7 @@
                 IsVisible="{Binding Causes.Count, Converter={x:Static converters:GreaterThanZeroToIsVisibleConverter.Instance}}">
       <TextBlock Classes="crash-section-title" Text="可能原因" VerticalAlignment="Center"/>
       <ui:InfoBadge Value="{Binding Causes.Count}"
-                    Background="{DynamicResource AccentBrush}" Foreground="White"/>
+                    Background="{DynamicResource AccentBrush}" Foreground="{DynamicResource OnAccentBrush}"/>
     </StackPanel>
 
     <ItemsControl ItemsSource="{Binding Causes}">
@@ -79,7 +79,7 @@
                   <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="Medium"
                              TextWrapping="Wrap" MaxWidth="520"
                              VerticalAlignment="Center" Margin="0,0,8,0"/>
-                  <Border Classes="crash-chip" Margin="0,0,6,0">
+                  <Border Classes="crash-chip" Margin="0,0,8,0">
                     <TextBlock Text="{Binding CategoryLabel}"/>
                   </Border>
                   <Border Classes="crash-chip"
@@ -111,7 +111,7 @@
       <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
         <TextBlock Classes="crash-section-title" Text="可疑 Mod" VerticalAlignment="Center"/>
         <ui:InfoBadge Value="{Binding SuspectedMods.Count}"
-                      Background="{DynamicResource DangerBrush}" Foreground="White"/>
+                      Background="{DynamicResource DangerFillBrush}" Foreground="White"/>
       </StackPanel>
       <ItemsControl ItemsSource="{Binding SuspectedMods}">
         <ItemsControl.ItemsPanel>
@@ -121,7 +121,7 @@
         </ItemsControl.ItemsPanel>
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="x:String">
-            <Border Classes="crash-chip crash-chip-danger" Margin="0,0,6,6">
+            <Border Classes="crash-chip crash-chip-danger" Margin="0,0,8,8">
               <TextBlock Text="{Binding}"/>
             </Border>
           </DataTemplate>

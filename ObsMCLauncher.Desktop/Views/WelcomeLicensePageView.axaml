@@ -1,4 +1,4 @@
-<UserControl xmlns="https://github.com/avaloniaui"
+﻿<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:ObsMCLauncher.Desktop.ViewModels"
              xmlns:ui="using:FluentAvalonia.UI.Controls"
@@ -11,7 +11,7 @@
     <UserControl.Styles>
         <!-- 许可链接：蓝色下划线 -->
         <Style Selector="HyperlinkButton.license-link">
-            <Setter Property="Foreground" Value="#0078D4" />
+            <Setter Property="Foreground" Value="{DynamicResource InfoBrush}" />
             <Setter Property="Padding" Value="0" />
             <Setter Property="Margin" Value="0 -2 0 0" />
             <Setter Property="VerticalAlignment" Value="Center" />
@@ -44,10 +44,10 @@
                 ToolTip.Tip="{Binding NextToolTip}"
                 Width="48" Height="48"
                 CornerRadius="24"
-                Classes="accent"
+                Classes="primary"
                 HorizontalAlignment="Center"
                 Margin="0 16 0 0">
-            <ui:SymbolIcon Symbol="ChevronRight" FontSize="18" />
+            <ui:SymbolIcon Symbol="ChevronRight" FontSize="16" />
         </Button>
     </StackPanel>
 

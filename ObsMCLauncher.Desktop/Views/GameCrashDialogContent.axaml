@@ -1,4 +1,4 @@
-<UserControl xmlns="https://github.com/avaloniaui"
+﻿<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:ObsMCLauncher.Desktop.ViewModels"
              xmlns:views="using:ObsMCLauncher.Desktop.Views"
@@ -34,12 +34,12 @@
       <controls:PluginSlotHost SlotId="crash.dialog.actions"
                                SlotContext="{Binding SlotContext}"
                                Orientation="Horizontal" Spacing="8"
-                               Margin="0,10,0,0"/>
+                               Margin="0,12,0,0"/>
 
       <!-- ① 询问态 -->
       <StackPanel IsVisible="{Binding IsPromptState}" Margin="0,14,0,0">
         <TextBlock Text="是否分析崩溃日志？" FontSize="14" FontWeight="Medium"
-                   Margin="0,0,0,10"/>
+                   Margin="0,0,0,12"/>
 
         <!-- 版本 / 退出代码 / 报告文件 / 崩溃时间 -->
         <Border Background="{DynamicResource SurfaceElevatedBrush}"
@@ -47,15 +47,15 @@
                 BorderThickness="1" CornerRadius="8"
                 Padding="14,10">
           <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto">
-            <TextBlock Grid.Row="0" Grid.Column="0" Classes="crash-info-label" Text="版本" Margin="0,0,16,6"/>
+            <TextBlock Grid.Row="0" Grid.Column="0" Classes="crash-info-label" Text="版本" Margin="0,0,16,8"/>
             <TextBlock Grid.Row="0" Grid.Column="1" Classes="crash-info-value" FontWeight="Medium"
-                       Text="{Binding VersionText}" Margin="0,0,0,6"/>
-            <TextBlock Grid.Row="1" Grid.Column="0" Classes="crash-info-label" Text="退出代码" Margin="0,0,16,6"/>
+                       Text="{Binding VersionText}" Margin="0,0,0,8"/>
+            <TextBlock Grid.Row="1" Grid.Column="0" Classes="crash-info-label" Text="退出代码" Margin="0,0,16,8"/>
             <TextBlock Grid.Row="1" Grid.Column="1" Classes="crash-info-value"
-                       Text="{Binding ExitCodeText}" Margin="0,0,0,6"/>
-            <TextBlock Grid.Row="2" Grid.Column="0" Classes="crash-info-label" Text="报告文件" Margin="0,0,16,6"/>
+                       Text="{Binding ExitCodeText}" Margin="0,0,0,8"/>
+            <TextBlock Grid.Row="2" Grid.Column="0" Classes="crash-info-label" Text="报告文件" Margin="0,0,16,8"/>
             <TextBlock Grid.Row="2" Grid.Column="1" Classes="crash-info-value"
-                       Text="{Binding ReportNameText}" TextTrimming="CharacterEllipsis" Margin="0,0,0,6"/>
+                       Text="{Binding ReportNameText}" TextTrimming="CharacterEllipsis" Margin="0,0,0,8"/>
             <TextBlock Grid.Row="3" Grid.Column="0" Classes="crash-info-label" Text="崩溃时间"/>
             <TextBlock Grid.Row="3" Grid.Column="1" Classes="crash-info-value"
                        Text="{Binding ReportTimeText}"/>
@@ -64,9 +64,9 @@
 
         <ui:InfoBar IsOpen="True" IsClosable="False" IsIconVisible="False" Severity="Informational"
                     Message="分析在本地完成，不会上传任何数据。"
-                    FontSize="12" Margin="0,10,0,0"/>
+                    FontSize="12" Margin="0,12,0,0"/>
 
-        <Grid ColumnDefinitions="*,Auto" Margin="0,10,0,0">
+        <Grid ColumnDefinitions="*,Auto" Margin="0,12,0,0">
           <CheckBox Grid.Column="0" Content="以后自动分析，不再询问"
                     IsChecked="{Binding AutoAnalyzeNextTime}"
                     FontSize="12" VerticalAlignment="Center"/>

@@ -1,4 +1,4 @@
-<UserControl xmlns="https://github.com/avaloniaui"
+﻿<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:ObsMCLauncher.Desktop.ViewModels"
              xmlns:ui="using:FluentAvalonia.UI.Controls"
@@ -15,9 +15,9 @@
   -->
 
   <ScrollViewer VerticalScrollBarVisibility="Auto">
-    <StackPanel Margin="12,16,12,24" Spacing="16">
+    <StackPanel Margin="12,16,12,24" Spacing="16" MaxWidth="1000">
 
-      <TextBlock Text="下载设置" FontSize="22" FontWeight="SemiBold"/>
+      <TextBlock Text="下载设置" FontSize="20" FontWeight="SemiBold"/>
 
       <!-- ===== 下载源 ===== -->
       <ui:SettingsExpander Header="下载源" IsExpanded="True">

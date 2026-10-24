@@ -1,4 +1,4 @@
-<UserControl xmlns="https://github.com/avaloniaui"
+﻿<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:ObsMCLauncher.Desktop.ViewModels"
              xmlns:converters="using:ObsMCLauncher.Desktop.Converters"
@@ -85,14 +85,14 @@
 
               <StackPanel Grid.Column="1" VerticalAlignment="Center">
                 <TextBlock Text="ObsMCLauncher"
-                           FontSize="22" FontWeight="SemiBold"
+                           FontSize="20" FontWeight="SemiBold"
                            PointerPressed="TitleText_PointerPressed"/>
 
                 <TextBlock Text="黑曜石 Minecraft 启动器"
                            FontSize="13" Foreground="{DynamicResource TextSecondaryBrush}"
                            Margin="0,3,0,0"/>
 
-                <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,6,0,0">
+                <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,8,0,0">
                   <TextBlock Text="{Binding VersionText}"
                              FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}"/>
                   <TextBlock Text="{Binding UpdateChannelText}"
@@ -234,7 +234,7 @@
               <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,*">
 
                 <!-- 搜索框 -->
-                <Grid Grid.Row="0" Margin="12,12,12,10">
+                <Grid Grid.Row="0" Margin="12,12,12,12">
                   <TextBox Text="{Binding SearchText}" Watermark="搜索插件..." Padding="26,7"/>
                   <Path Data="M15.5 14H14.71L14.43 13.73C15.41 12.59 16 11.11 16 9.5C16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16C11.11 16 12.59 15.41 13.73 14.43L14 14.71V15.5L19 20.49L20.49 19L15.5 14M9.5 14C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14Z"
                         Width="15" Height="15" Stretch="Uniform"
@@ -244,7 +244,7 @@
                 </Grid>
 
                 <!-- 筛选：分类 + 平台（仅市场） -->
-                <Grid Grid.Row="1" ColumnDefinitions="*,*,*" ColumnSpacing="8" Margin="12,0,12,10"
+                <Grid Grid.Row="1" ColumnDefinitions="*,*,*" ColumnSpacing="8" Margin="12,0,12,12"
                       IsVisible="{Binding IsMarket}">
                   <ComboBox Grid.Column="0" ItemsSource="{Binding Categories}" SelectedItem="{Binding SelectedCategory}"
                             PlaceholderText="分类">
@@ -279,12 +279,12 @@
                   <Button DockPanel.Dock="Right" Content="{Binding UpdateAllButtonText}"
                           Command="{Binding UpdateAllCommand}" IsEnabled="{Binding UpdateAllEnabled}"
                           IsVisible="{Binding HasUpdates}"
-                          Classes="accent" Padding="12,4" FontSize="12" VerticalAlignment="Center"/>
+                          Classes="primary" Padding="12,4" FontSize="12" VerticalAlignment="Center"/>
                   <Button DockPanel.Dock="Right" Content="检查更新" Command="{Binding CheckUpdatesCommand}"
-                          Classes="ghost" Padding="12,4" FontSize="12" Margin="0,0,6,0"
+                          Classes="ghost" Padding="12,4" FontSize="12" Margin="0,0,8,0"
                           VerticalAlignment="Center"/>
                   <Button DockPanel.Dock="Right" Content="刷新" Command="{Binding RefreshCommand}"
-                          Classes="ghost" Padding="12,4" FontSize="12" Margin="0,0,6,0"
+                          Classes="ghost" Padding="12,4" FontSize="12" Margin="0,0,8,0"
                           VerticalAlignment="Center"/>
                 </DockPanel>
 
@@ -293,7 +293,7 @@
                              Margin="12,4,12,0" IsVisible="{Binding IsMarketLoading}"/>
 
                 <!-- 待重启生效提示 -->
-                <Border Grid.Row="4" Margin="12,0,12,6" CornerRadius="8" Padding="10,8"
+                <Border Grid.Row="4" Margin="12,0,12,8" CornerRadius="8" Padding="10,8"
                         Background="{DynamicResource WarningSoftBrush}"
                         IsVisible="{Binding HasPendingRestart}">
                   <Grid ColumnDefinitions="*,Auto">
@@ -301,7 +301,7 @@
                                Foreground="{DynamicResource WarningBrush}" VerticalAlignment="Center"
                                TextWrapping="Wrap" Margin="0,0,8,0"/>
                     <Button Grid.Column="1" Content="立即重启" Command="{Binding RestartLauncherCommand}"
-                            Classes="accent" Height="26" Padding="12,0" FontSize="12"
+                            Classes="primary" Height="26" Padding="12,0" FontSize="12"
                             VerticalAlignment="Center"/>
                   </Grid>
                 </Border>
@@ -311,11 +311,11 @@
                          Background="Transparent" BorderThickness="0" Padding="8,4,8,8">
                   <ListBox.ItemTemplate>
                     <DataTemplate x:DataType="vm:PluginListItemViewModel">
-                      <Border CornerRadius="8" Padding="10" Margin="4,2,4,6"
+                      <Border CornerRadius="8" Padding="10" Margin="4,2,4,8"
                               Background="{DynamicResource SurfaceElevatedBrush}"
                               BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
                         <Grid ColumnDefinitions="Auto,*,Auto">
-                          <Border Grid.Column="0" Width="32" Height="32" CornerRadius="6" Margin="0,0,10,0"
+                          <Border Grid.Column="0" Width="32" Height="32" CornerRadius="6" Margin="0,0,12,0"
                                   Background="{DynamicResource SurfaceBrush}"
                                   IsVisible="{Binding IconUrl, Converter={x:Static converters:PluginIconVisibleConverter.Instance}}">
                             <Image Stretch="UniformToFill">
@@ -335,17 +335,17 @@
                                        TextTrimming="CharacterEllipsis"/>
                           </StackPanel>
                           <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6"
-                                      VerticalAlignment="Center" Margin="6,0,0,0">
+                                      VerticalAlignment="Center" Margin="8,0,0,0">
                             <Border CornerRadius="999" Padding="8,1"
                                     Background="{DynamicResource PrimarySoftBrush}"
                                     ToolTip.Tip="{Binding UpdateTooltip}"
                                     IsVisible="{Binding HasUpdate}">
-                              <TextBlock Text="{Binding UpdateBadgeText}" FontSize="10" FontWeight="SemiBold"
+                              <TextBlock Text="{Binding UpdateBadgeText}" FontSize="11" FontWeight="SemiBold"
                                          Foreground="{DynamicResource PrimaryBrush}"
                                          HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Border>
                             <Border Width="18" Height="18" CornerRadius="9"
-                                    Background="{DynamicResource DangerBrush}"
+                                    Background="{DynamicResource DangerFillBrush}"
                                     ToolTip.Tip="插件加载异常"
                                     IsVisible="{Binding HasError}">
                               <TextBlock Text="!" FontSize="11" FontWeight="Bold" Foreground="White"
@@ -355,7 +355,7 @@
                                     Background="{DynamicResource WarningSoftBrush}"
                                     ToolTip.Tip="{Binding IncompatibleReason}"
                                     IsVisible="{Binding IsIncompatible}">
-                              <TextBlock Text="不兼容" FontSize="10" FontWeight="SemiBold"
+                              <TextBlock Text="不兼容" FontSize="11" FontWeight="SemiBold"
                                          Foreground="{DynamicResource WarningBrush}"
                                          HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Border>
@@ -412,7 +412,7 @@
 
                   <StackPanel Grid.Column="1" VerticalAlignment="Center">
                     <WrapPanel Orientation="Horizontal">
-                      <TextBlock Text="{Binding Detail.Title}" FontSize="18" FontWeight="SemiBold"
+                      <TextBlock Text="{Binding Detail.Title}" FontSize="16" FontWeight="SemiBold"
                                  TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
                       <Border Background="{DynamicResource PrimarySoftBrush}" CornerRadius="999"
                               Padding="10,2" Margin="8,0,0,0" VerticalAlignment="Center"
@@ -458,7 +458,7 @@
                     <Button Content="{Binding Detail.UpdateText}" Command="{Binding UpdatePluginCommand}"
                             IsEnabled="{Binding Detail.UpdateEnabled}"
                             IsVisible="{Binding Detail.UpdateVisible}"
-                            Classes="accent" Height="32" Padding="16,0" FontSize="13"/>
+                            Classes="primary" Height="32" Padding="16,0" FontSize="13"/>
                     <Button Content="取消更新" Command="{Binding CancelUpdateCommand}"
                             IsVisible="{Binding Detail.CancelUpdateVisible}"
                             ToolTip.Tip="放弃这次已下载的更新，重启后不会生效"
@@ -470,7 +470,7 @@
                             IsEnabled="{Binding Detail.PrimaryActionEnabled}"
                             IsVisible="{Binding Detail.PrimaryActionVisible}"
                             ToolTip.Tip="{Binding Detail.IncompatibleReason}"
-                            Classes="accent" Height="32" Padding="16,0" FontSize="13"/>
+                            Classes="primary" Height="32" Padding="16,0" FontSize="13"/>
                     <Button Content="主页" Command="{Binding OpenHomeCommand}"
                             IsVisible="{Binding Detail.HomeVisible}"
                             Classes="ghost" Height="32" Padding="12,0" FontSize="13"/>
@@ -505,7 +505,7 @@
                                   Margin="12,8,12,12"
                                   IsVisible="{Binding Detail.PlainTextVisible}">
                       <SelectableTextBlock Text="{Binding Detail.PlainText}" TextWrapping="Wrap"
-                                           FontSize="12.5"
+                                           FontSize="13"
                                            Foreground="{DynamicResource TextSecondaryBrush}"/>
                     </ScrollViewer>
                   </Panel>
@@ -614,7 +614,7 @@
         <StackPanel Grid.Row="1" Classes="empty-state"
                     IsVisible="{Binding IsEmpty}">
           <Path Data="M8.5 13.5L2.5 15.5L4.5 9.5L15.5 3.5L20.5 8.5L14.5 19.5L8.5 13.5ZM12 16L13.5 14.5L9.5 10.5L8 12L12 16ZM14.5 4.5L19.5 9.5L20.5 8.5L15.5 3.5L14.5 4.5Z" Width="64" Height="64" Stretch="Uniform" Fill="{DynamicResource TextTertiaryBrush}" HorizontalAlignment="Center" Margin="0,0,0,16"/>
-          <TextBlock Text="暂无截图" FontSize="18" FontWeight="SemiBold"
+          <TextBlock Text="暂无截图" FontSize="16" FontWeight="SemiBold"
                      HorizontalAlignment="Center" Margin="0,0,0,8"
                      Foreground="{DynamicResource TextSecondaryBrush}"/>
           <TextBlock Text="您还没有任何游戏截图" FontSize="13"
@@ -660,7 +660,7 @@
                         Command="{Binding ExportServersCommand}"
                         Padding="16,8" FontSize="13"
                         ToolTip.Tip="导出服务器列表到JSON文件"/>
-                <Button Content="添加服务器" Classes="accent"
+                <Button Content="添加服务器" Classes="primary"
                         Command="{Binding AddServerCommand}"
                         Padding="20,8" FontSize="14"/>
               </StackPanel>
@@ -702,15 +702,15 @@
                         Width="340" MinHeight="230"
                         BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
                   <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto">
-                    <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,10">
+                    <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,12">
                       <Border Grid.Column="0" Width="40" Height="40" CornerRadius="6"
-                              ClipToBounds="True" Margin="0,0,10,0"
+                              ClipToBounds="True" Margin="0,0,12,0"
                               Background="{DynamicResource BorderBrush}">
                         <Image Source="{Binding IconPath, Converter={x:Static converters:FilePathToBitmapConverter.Instance}}"
                                Stretch="UniformToFill"/>
                       </Border>
                       <TextBlock Grid.Column="1" Text="{Binding Name}"
-                                 FontSize="17" FontWeight="Medium"
+                                 FontSize="16" FontWeight="Medium"
                                  TextTrimming="CharacterEllipsis"
                                  VerticalAlignment="Center"/>
                       <Border Grid.Column="2" CornerRadius="10" Padding="8,3"
@@ -728,7 +728,7 @@
                     </Grid>
                     <TextBlock Grid.Row="1" Text="{Binding FullAddress}" FontSize="13"
                                Foreground="{DynamicResource TextSecondaryBrush}"
-                               TextTrimming="CharacterEllipsis" Margin="0,0,0,6"/>
+                               TextTrimming="CharacterEllipsis" Margin="0,0,0,8"/>
                     <TextBlock Grid.Row="2" Text="{Binding FormattedVersion, StringFormat='版本: {0}'}"
                                 FontSize="12" Foreground="{DynamicResource TextTertiaryBrush}"
                                 Margin="0,0,0,8"
@@ -769,7 +769,7 @@
                                  MaxLines="2" TextWrapping="Wrap"/>
                     </StackPanel>
                     <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
-                      <Button Content="连接" Classes="accent"
+                      <Button Content="连接" Classes="primary"
                               Padding="16,7" FontSize="13"
                               Command="{Binding $parent[ListBox].((vm:ServersViewModel)DataContext).ConnectServerCommand}"
                               CommandParameter="{Binding}"
@@ -820,7 +820,7 @@
                 Fill="{DynamicResource TextTertiaryBrush}"
                 HorizontalAlignment="Center" Margin="0,0,0,20" Opacity="0.6"/>
           <TextBlock Text="暂无服务器" FontSize="20" FontWeight="Medium"
-                     HorizontalAlignment="Center" Margin="0,0,0,10"
+                     HorizontalAlignment="Center" Margin="0,0,0,12"
                      Foreground="{DynamicResource TextSecondaryBrush}"/>
           <TextBlock Text="点击「添加服务器」按钮添加您喜欢的服务器" FontSize="14"
                      HorizontalAlignment="Center"
@@ -828,7 +828,7 @@
         </StackPanel>
 
         <Border Grid.Row="0" Grid.RowSpan="2"
-                Background="#80000000"
+                Background="{DynamicResource ScrimBrush}"
                 IsVisible="{Binding IsAddServerDialogOpen}"
                 HorizontalAlignment="Stretch"
                 VerticalAlignment="Stretch">
@@ -868,7 +868,7 @@
               <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="12">
                 <Button Content="取消" Command="{Binding CancelAddServerCommand}"
                         Padding="20,8" FontSize="14"/>
-                <Button Content="确定" Classes="accent" Command="{Binding ConfirmAddServerCommand}"
+                <Button Content="确定" Classes="primary" Command="{Binding ConfirmAddServerCommand}"
                         Padding="20,8" FontSize="14"/>
               </StackPanel>
             </StackPanel>
@@ -876,7 +876,7 @@
         </Border>
 
         <Border Grid.Row="0" Grid.RowSpan="2"
-                Background="#80000000"
+                Background="{DynamicResource ScrimBrush}"
                 IsVisible="{Binding IsEditServerDialogOpen}"
                 HorizontalAlignment="Stretch"
                 VerticalAlignment="Stretch">
@@ -916,7 +916,7 @@
               <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="12">
                 <Button Content="取消" Command="{Binding CancelEditServerCommand}"
                         Padding="20,8" FontSize="14"/>
-                <Button Content="保存" Classes="accent" Command="{Binding ConfirmEditServerCommand}"
+                <Button Content="保存" Classes="primary" Command="{Binding ConfirmEditServerCommand}"
                         Padding="20,8" FontSize="14"/>
               </StackPanel>
             </StackPanel>
@@ -946,7 +946,7 @@
             <Grid RowDefinitions="Auto,Auto,Auto,Auto,*">
 
               <!-- 筛选 + 刷新 -->
-              <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="12,12,12,10">
+              <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="12,12,12,12">
                 <ComboBox Grid.Column="0" ItemsSource="{Binding Versions}"
                           SelectedItem="{Binding SelectedVersion}"
                           PlaceholderText="选择版本"/>
@@ -995,7 +995,7 @@
                                      Foreground="{DynamicResource TextTertiaryBrush}"/>
                         </StackPanel>
                       </StackPanel>
-                      <Border Grid.Column="2" Classes="crash-chip" Margin="6,0,2,0">
+                      <Border Grid.Column="2" Classes="crash-chip" Margin="8,0,2,0">
                         <TextBlock Text="{Binding KindLabel}" FontWeight="SemiBold"/>
                       </Border>
                     </Grid>
@@ -1025,7 +1025,7 @@
               <!-- 无选中占位 -->
               <StackPanel Classes="empty-state" Spacing="12"
                           IsVisible="{Binding Analysis, Converter={x:Static converters:NullToBoolConverter.Instance}, ConverterParameter=Invert}">
-                <ui:SymbolIcon Symbol="Find" FontSize="44" Foreground="{DynamicResource TextTertiaryBrush}"
+                <ui:SymbolIcon Symbol="Find" FontSize="40" Foreground="{DynamicResource TextTertiaryBrush}"
                                HorizontalAlignment="Center"/>
                 <TextBlock Text="选择一份报告查看分析结果" FontSize="14"
                            Foreground="{DynamicResource TextSecondaryBrush}"/>

@@ -1,4 +1,4 @@
-<UserControl xmlns="https://github.com/avaloniaui"
+﻿<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:ObsMCLauncher.Desktop.ViewModels"
              xmlns:views="using:ObsMCLauncher.Desktop.Views"
@@ -91,7 +91,7 @@
 
                     <StackPanel Grid.Column="1" Margin="16,0,12,0" VerticalAlignment="Center" Spacing="4">
                       <StackPanel Orientation="Horizontal" Spacing="10">
-                        <TextBlock Text="{Binding VersionId}" FontSize="18" FontWeight="SemiBold"
+                        <TextBlock Text="{Binding VersionId}" FontSize="16" FontWeight="SemiBold"
                                    VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
                         <Border Background="{DynamicResource PrimarySoftBrush}" CornerRadius="9"
                                 Padding="9,2" VerticalAlignment="Center">
@@ -118,7 +118,7 @@
                     <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
                       <Button Content="取消" Classes="ghost" FontSize="12" Padding="12,5"
                               Command="{Binding CancelEditDescriptionCommand}"/>
-                      <Button Content="保存" Classes="accent" FontSize="12" Padding="14,5"
+                      <Button Content="保存" Classes="primary" FontSize="12" Padding="14,5"
                               Command="{Binding SaveDescriptionCommand}"/>
                     </StackPanel>
                   </StackPanel>
@@ -591,7 +591,7 @@
                                 <StackPanel Orientation="Horizontal" Spacing="8">
                                   <TextBlock Text="{Binding FileName}" FontSize="13" FontWeight="Medium" TextTrimming="CharacterEllipsis"/>
                                   <Border Background="{DynamicResource DangerSoftBrush}" CornerRadius="4" Padding="6,1" IsVisible="{Binding HasConflict}">
-                                    <TextBlock Text="冲突" FontSize="10" Foreground="{DynamicResource DangerBrush}" FontWeight="SemiBold"/>
+                                    <TextBlock Text="冲突" FontSize="11" Foreground="{DynamicResource DangerBrush}" FontWeight="SemiBold"/>
                                   </Border>
                                 </StackPanel>
                                 <StackPanel Orientation="Horizontal" Spacing="12">
@@ -835,7 +835,7 @@
               <ItemsControl.ItemTemplate>
                 <DataTemplate>
                   <Border Background="{DynamicResource SurfaceBrush}"
-                          CornerRadius="8" Padding="12" Margin="0,0,0,6"
+                          CornerRadius="8" Padding="12" Margin="0,0,0,8"
                           BorderThickness="1" BorderBrush="{DynamicResource CardBorderBrush}">
                     <Grid ColumnDefinitions="Auto,Auto,*,Auto">
                       <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="Medium" VerticalAlignment="Center"/>
@@ -843,7 +843,7 @@
                               Background="{DynamicResource SurfaceElevatedBrush}"
                               IsVisible="{Binding IsSystem}"
                               VerticalAlignment="Center">
-                        <TextBlock Text="系统组" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                        <TextBlock Text="系统组" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
                       </Border>
                       <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center"
                                   IsVisible="{Binding IsDeletable}">

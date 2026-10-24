@@ -1,8 +1,9 @@
-using System;
+﻿using System;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Markup.Xaml.MarkupExtensions;
 using Avalonia.Media;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -14,16 +15,11 @@ namespace ObsMCLauncher.Desktop.ViewModels.Dialogs;
 public partial class DialogService : ObservableObject
 {
     [ObservableProperty]
-    private AuthUrlDialogRequest? authUrlCurrent;
-
-    [ObservableProperty]
     private UpdateDialogRequest? updateDialogCurrent;
-
-    public bool IsAuthUrlOpen => AuthUrlCurrent != null;
 
     public bool IsUpdateDialogOpen => UpdateDialogCurrent != null;
 
-    public bool IsAnyModalOpen => IsAuthUrlOpen || IsUpdateDialogOpen;
+    public bool IsAnyModalOpen => IsUpdateDialogOpen;
 
     // ===== 常规对话框：改用 FluentAvalonia ContentDialog =====
 
@@ -146,59 +142,93 @@ public partial class DialogService : ObservableObject
         return null;
     }
 
-    // ===== 授权链接对话框（保留自定义实现） =====
+    // ===== 授权链接对话框：走 FluentAvalonia ContentDialog =====
 
+    private ContentDialog? _authDialog;
+    private bool _authCompleted;
+
+    /// <summary>
+    /// 显示「浏览器已打开授权页」的对话框并等待其关闭。
+    /// 返回 true = 授权流程自己关掉的，false = 用户手动关闭/取消。
+    /// </summary>
     public Task<bool> ShowAuthUrlAsync(string url, string title = "微软账户登录")
-    {
-        if (IsAnyModalOpen)
-        {
-            return Task.FromResult(false);
-        }
+        => Dispatcher.UIThread.InvokeAsync(() => ShowAuthUrlCoreAsync(url, title));
 
-        var req = new AuthUrlDialogRequest
+    private async Task<bool> ShowAuthUrlCoreAsync(string url, string title)
+    {
+        var window = GetMainWindow();
+        if (window == null || _authDialog != null) return false;
+
+        var hint = new TextBlock
         {
-            Url = url,
-            Title = title
+            Text = "浏览器应已自动打开，如果没有，请手动复制下方链接并在浏览器中打开。完成授权后此对话框会自动关闭。",
+            TextWrapping = TextWrapping.Wrap,
+            FontSize = 13,
+            MaxWidth = 460
+        };
+        hint[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("TextSecondaryBrush");
+
+        var caption = new TextBlock { Text = "授权链接", FontSize = 11 };
+        caption[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("TextTertiaryBrush");
+
+        var link = new SelectableTextBlock
+        {
+            Text = url,
+            TextWrapping = TextWrapping.Wrap,
+            FontFamily = new FontFamily("Consolas, Menlo, monospace"),
+            FontSize = 12,
+            MaxHeight = 120
+        };
+        link[!SelectableTextBlock.ForegroundProperty] = new DynamicResourceExtension("TextBrush");
+
+        var linkBox = new Border
+        {
+            CornerRadius = new CornerRadius(8),
+            BorderThickness = new Thickness(1),
+            Padding = new Thickness(12),
+            Child = link
+        };
+        linkBox[!Border.BackgroundProperty] = new DynamicResourceExtension("BackgroundBrush");
+        linkBox[!Border.BorderBrushProperty] = new DynamicResourceExtension("BorderBrush");
+
+        // 复制按钮放在内容里而不是当对话框主按钮：点了不该关闭对话框
+        var copy = new Button { Content = "复制授权链接", HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch };
+        copy.Classes.Add("primary");
+        copy.Click += async (_, _) =>
+        {
+            try { await window.Clipboard!.SetTextAsync(url); } catch { /* 剪贴板占用时忽略 */ }
         };
 
-        AuthUrlCurrent = req;
-        OnPropertyChanged(nameof(IsAuthUrlOpen));
-        OnPropertyChanged(nameof(IsAnyModalOpen));
+        var content = new StackPanel { Spacing = 12, Width = 460 };
+        content.Children.Add(hint);
+        content.Children.Add(caption);
+        content.Children.Add(linkBox);
+        content.Children.Add(copy);
 
-        return req.Completion.Task;
+        var dialog = new ContentDialog
+        {
+            Title = title,
+            Content = content,
+            CloseButtonText = "关闭",
+            DefaultButton = ContentDialogButton.None
+        };
+
+        _authDialog = dialog;
+        _authCompleted = false;
+        try { await dialog.ShowAsync(window); }
+        finally { _authDialog = null; }
+
+        return _authCompleted;
     }
 
-    [RelayCommand]
-    private async Task CopyAuthUrlAsync()
-    {
-        if (AuthUrlCurrent == null)
-            return;
-
-        try
-        {
-            if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop &&
-                desktop.MainWindow != null)
-            {
-                await desktop.MainWindow.Clipboard!.SetTextAsync(AuthUrlCurrent.Url);
-            }
-        }
-        catch
-        {
-        }
-    }
-
+    /// <summary>关闭授权对话框（cancelled=true 表示用户取消 → 返回 false）</summary>
     [RelayCommand]
     private void CloseAuthUrl(bool cancelled)
     {
-        if (AuthUrlCurrent == null)
-            return;
+        if (_authDialog is not { } dialog) return;
 
-        var req = AuthUrlCurrent;
-        AuthUrlCurrent = null;
-        OnPropertyChanged(nameof(IsAuthUrlOpen));
-        OnPropertyChanged(nameof(IsAnyModalOpen));
-
-        req.Completion.TrySetResult(!cancelled);
+        _authCompleted = !cancelled;
+        dialog.Hide();
     }
 
     // ===== 更新对话框（保留自定义实现） =====
@@ -256,9 +286,4 @@ public partial class DialogService : ObservableObject
         OnPropertyChanged(nameof(IsAnyModalOpen));
     }
 
-    partial void OnAuthUrlCurrentChanged(AuthUrlDialogRequest? value)
-    {
-        OnPropertyChanged(nameof(IsAuthUrlOpen));
-        OnPropertyChanged(nameof(IsAnyModalOpen));
-    }
 }

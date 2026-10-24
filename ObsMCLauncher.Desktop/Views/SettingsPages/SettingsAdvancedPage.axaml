@@ -1,4 +1,4 @@
-<UserControl xmlns="https://github.com/avaloniaui"
+﻿<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:ObsMCLauncher.Desktop.ViewModels"
              xmlns:ui="using:FluentAvalonia.UI.Controls"
@@ -12,9 +12,9 @@
   -->
 
   <ScrollViewer VerticalScrollBarVisibility="Auto">
-    <StackPanel Margin="12,16,12,24" Spacing="16">
+    <StackPanel Margin="12,16,12,24" Spacing="16" MaxWidth="1000">
 
-      <TextBlock Text="窗口设置" FontSize="22" FontWeight="SemiBold"/>
+      <TextBlock Text="窗口设置" FontSize="20" FontWeight="SemiBold"/>
 
       <!-- ===== 窗口 ===== -->
       <ui:SettingsExpander Header="窗口" Description="启动器窗口的标题栏与外观行为" IsExpanded="True">
