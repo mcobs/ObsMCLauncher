@@ -124,4 +124,79 @@ public class VersionInfoTests
         var result = VersionInfo.ResolveAppBaseDirectory(baseDir);
         Assert.Equal(baseDir + Path.DirectorySeparatorChar, result);
     }
+
+    [Fact]
+    public void ResolveDataRoot_MacInsideAppBundle_UsesUserDataRoot()
+    {
+        // 程序在 ObsMCLauncher.app/Contents/MacOS 里跑：数据不能留在包内，
+        // 否则删除应用=删数据，接入签名后写包内还会破坏签名
+        var bundle = Path.Combine(Path.GetTempPath(), "Applications", "ObsMCLauncher.app", "Contents", "MacOS");
+        var userData = Path.Combine(Path.GetTempPath(), "Home", "Library", "Application Support", "ObsMCLauncher")
+                       + Path.DirectorySeparatorChar;
+
+        var result = VersionInfo.ResolveDataRoot(bundle, VersionInfo.HostPlatform.MacOS, userData, isAppImage: false);
+
+        Assert.Equal(userData, result);
+    }
+
+    [Fact]
+    public void ResolveDataRoot_MacOutsideBundle_KeepsBaseDir()
+    {
+        // 开发/调试时程序不在 .app 里，仍用程序目录，避免把临时数据写到用户目录
+        var baseDir = Path.Combine(Path.GetTempPath(), "bin", "Debug", "net8.0");
+        var userData = Path.Combine(Path.GetTempPath(), "Home", "Library", "Application Support", "ObsMCLauncher")
+                       + Path.DirectorySeparatorChar;
+
+        var result = VersionInfo.ResolveDataRoot(baseDir, VersionInfo.HostPlatform.MacOS, userData, isAppImage: false);
+
+        Assert.Equal(baseDir + Path.DirectorySeparatorChar, result);
+    }
+
+    [Fact]
+    public void ResolveDataRoot_LinuxAppImage_UsesUserDataRoot()
+    {
+        // AppImage 挂载点是只读的，往里面写 OMCL 必然失败
+        var mount = Path.Combine(Path.GetTempPath(), ".mount_ObsMCLauncher", "usr", "bin");
+        var userData = Path.Combine(Path.GetTempPath(), "Home", ".local", "share", "ObsMCLauncher")
+                       + Path.DirectorySeparatorChar;
+
+        var result = VersionInfo.ResolveDataRoot(mount, VersionInfo.HostPlatform.Linux, userData, isAppImage: true);
+
+        Assert.Equal(userData, result);
+    }
+
+    [Fact]
+    public void ResolveDataRoot_LinuxWithoutAppImage_KeepsBaseDir()
+    {
+        var baseDir = Path.Combine(Path.GetTempPath(), "opt", "ObsMCLauncher");
+        var userData = Path.Combine(Path.GetTempPath(), "Home", ".local", "share", "ObsMCLauncher")
+                       + Path.DirectorySeparatorChar;
+
+        var result = VersionInfo.ResolveDataRoot(baseDir, VersionInfo.HostPlatform.Linux, userData, isAppImage: false);
+
+        Assert.Equal(baseDir + Path.DirectorySeparatorChar, result);
+    }
+
+    [Fact]
+    public void ResolveDataRoot_Windows_IgnoresUserDataRoot()
+    {
+        // Windows 行为必须完全不变：安装模式仍然退到 current 的父级
+        var baseDir = Path.Combine(Path.GetTempPath(), "ObsMCLauncher", "current");
+
+        var result = VersionInfo.ResolveDataRoot(
+            baseDir, VersionInfo.HostPlatform.Windows, "/home/x/.local/share/ObsMCLauncher/", isAppImage: true);
+
+        Assert.Equal(Path.Combine(Path.GetTempPath(), "ObsMCLauncher") + Path.DirectorySeparatorChar, result);
+    }
+
+    [Theory]
+    [InlineData("/Applications/ObsMCLauncher.app/Contents/MacOS", true)]
+    [InlineData("/Users/a/Applications/ObsMCLauncher.app/Contents/", true)]
+    [InlineData("/Applications/ObsMCLauncher.app", false)]
+    [InlineData("/Users/a/Contents/MacOS", false)]
+    [InlineData("/Users/a/App.app/Contents/MacOS/", true)]
+    public void IsInsideAppBundle_DetectsBundle(string path, bool expected)
+    {
+        Assert.Equal(expected, VersionInfo.IsInsideAppBundle(path));
+    }
 }

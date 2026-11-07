@@ -379,13 +379,10 @@ namespace ObsMCLauncher.Core.Plugins
 | API | 说明 | 引入版本 |
 | --- | --- | --- |
 | `PluginDataDirectory` | 当前插件的专属数据目录（`<启动器基础目录>/OMCL/config/plugins/{插件ID}`），插件配置和数据应保存在这里 | `1.0.0` |
-| `LauncherBaseDirectory` | 启动器基础目录（Velopack 安装模式下自动定位到 `current` 的父级） | `1.0.0` |
+| `LauncherBaseDirectory` | 启动器基础目录（Velopack 安装模式下定位到 `current` 的父级；macOS 安装版定位到 `~/Library/Application Support/ObsMCLauncher`，Linux AppImage 定位到 `~/.local/share/ObsMCLauncher`） | `1.0.0` |
 | `LauncherDataDirectory` | 启动器数据目录（`<启动器基础目录>/OMCL`，存放启动器配置/账户/缓存） | `1.0.0` |
 | `GameDirectory` | 当前激活的游戏目录（`.minecraft` 根目录，随用户在设置中的切换实时变化） | `1.0.0` |
 
-> ⚠️ **数据目录位置变更**：早期版本的 `PluginDataDirectory` 指向插件安装目录本身（`OMCL/plugins/{插件ID}`），
-> 导致"更新插件"会连带删掉用户配置。现已改为 `OMCL/config/plugins/{插件ID}`，与插件本体分离。
-> **旧位置的历史文件不会自动迁移**：如果你的插件以前把数据写在 `OMCL/plugins/{插件ID}/` 下，
 > 升级后需要自己（或引导用户）把文件挪到 `PluginDataDirectory` 指向的新位置。
 > 之后请只使用 `PluginDataDirectory` / `GetConfig<T>()` / `SaveConfig<T>()`——
 > 写在插件安装目录里的文件会在插件更新时随目录一起被替换掉。
@@ -415,6 +412,11 @@ public void OnLoad(IPluginContext context)
 > ⚠️ 生产环境下启动器运行在 Velopack 的 `current` 子目录中（更新时该目录会被整体替换）。
 > 上述 API 返回的路径都已自动跳出 `current`。插件**不要**自行拼接
 > `AppContext.BaseDirectory` 来定位数据目录，否则数据会写入 `current` 内并在更新时丢失。
+>
+> ⚠️ macOS 安装版运行在 `ObsMCLauncher.app/Contents/MacOS` 内，数据根已被重定向到
+> `~/Library/Application Support/ObsMCLauncher`；Linux AppImage（`APPIMAGE` 环境变量存在时）
+> 重定向到 `~/.local/share/ObsMCLauncher`。往应用包或只读挂载点里写文件会破坏签名、且随应用删除而丢失，
+> 同样不要自行拼 `AppContext.BaseDirectory`。
 
 #### 版本与兼容性
 

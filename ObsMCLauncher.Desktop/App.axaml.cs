@@ -36,6 +36,11 @@ public partial class App : Application
         {
             DisableAvaloniaDataAnnotationValidation();
 
+            // ⚠️ 必须在读配置之前：macOS(.app 内) / Linux AppImage 上数据根会从程序目录换到用户目录，
+            // 而 LauncherConfig.Load() 会顺手 CreateDirectory(新根/OMCL/config)。若先读配置，
+            // 迁移就会看到"目标已存在"而跳过，老数据留在包里等下一次更新被整包替换掉。
+            ObsMCLauncher.Core.Bootstrap.LauncherBootstrap.Initialize();
+
             var config = ObsMCLauncher.Core.Models.LauncherConfig.Load();
 
             // 强制 FluentAvalonia 使用强调色，避免回退到系统蓝
@@ -49,8 +54,6 @@ public partial class App : Application
             desktop.ShutdownMode = Avalonia.Controls.ShutdownMode.OnExplicitShutdown;
 
             SetupExceptionHandling(desktop);
-
-            ObsMCLauncher.Core.Bootstrap.LauncherBootstrap.Initialize();
 
             ObsMCLauncher.Core.Services.UpdateService.Initialize(config.UpdateChannel);
 

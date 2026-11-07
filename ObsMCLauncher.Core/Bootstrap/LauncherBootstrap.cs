@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using ObsMCLauncher.Core.Services;
 using ObsMCLauncher.Core.Utils;
 
 namespace ObsMCLauncher.Core.Bootstrap;
@@ -8,6 +9,8 @@ public static class LauncherBootstrap
 {
     public static void Initialize()
     {
+        // 必须在任何代码读写 OMCL 之前：macOS/AppImage 下数据根可能从程序目录换到用户目录
+        LegacyDataMigration.MigrateIfDataRootChanged();
         EnsureOmclDirectories();
     }
 

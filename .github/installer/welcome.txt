@@ -1,0 +1,12 @@
+欢迎安装 ObsMCLauncher
+
+ObsMCLauncher 是一款开源的 Minecraft 启动器，
+支持版本隔离、整合包导入与增量更新。
+
+本向导将会：
+  1. 把程序安装到你选择的位置
+  2. 创建启动入口（快捷方式或应用程序图标）
+  3. 登记卸载信息，方便日后移除
+
+本程序以 GNU GPLv3 发布，源码与问题反馈见
+https://github.com/mcobs/ObsMCLauncher

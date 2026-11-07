@@ -77,10 +77,91 @@ public static class VersionInfo
     /// 无论哪种情况 current 都会被更新流程整体替换。因此只要基目录名为 current
     /// 就一律向上退一层，避免数据目录（OMCL、.minecraft 等）落在会被覆盖的目录里。
     /// 便携模式和开发模式直接使用 BaseDirectory。
+    ///
+    /// macOS 与 Linux(AppImage) 例外：程序目录在 .app 包内 / 只读挂载点里——
+    /// 写进去会破坏签名，删除应用时数据也会一起没。这两种情况改用用户数据目录。
     /// </summary>
     public static string GetAppBaseDirectory()
     {
+        return ResolveDataRoot(
+            AppDomain.CurrentDomain.BaseDirectory,
+            CurrentPlatform,
+            GetUserDataRoot(),
+            IsRunningFromAppImage);
+    }
+
+    /// <summary>
+    /// 迁移前使用的旧数据根（不做 .app / AppImage 重定向）。
+    /// 只给「把老数据从程序目录搬出来」用，业务代码不要拿它拼路径。
+    /// </summary>
+    internal static string GetLegacyBaseDirectory()
+    {
         return ResolveAppBaseDirectory(AppDomain.CurrentDomain.BaseDirectory);
+    }
+
+    internal enum HostPlatform
+    {
+        Windows,
+        MacOS,
+        Linux
+    }
+
+    internal static HostPlatform CurrentPlatform =>
+        OperatingSystem.IsWindows() ? HostPlatform.Windows
+        : OperatingSystem.IsMacOS() ? HostPlatform.MacOS
+        : HostPlatform.Linux;
+
+    /// <summary>AppImage 运行时由 AppImage runtime 注入，指向 .AppImage 文件本身。</summary>
+    internal static bool IsRunningFromAppImage =>
+        !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("APPIMAGE"));
+
+    /// <summary>
+    /// 各平台的可写数据根；Windows 返回 null（Windows 不需要重定向）。
+    /// </summary>
+    internal static string? GetUserDataRoot()
+    {
+        // Windows 不需要重定向：先短路，避免每次取路径都多一次 GetFolderPath
+        if (OperatingSystem.IsWindows()) return null;
+
+        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        if (string.IsNullOrEmpty(home)) return null;
+
+        if (OperatingSystem.IsMacOS())
+            return Path.Combine(home, "Library", "Application Support", ProductName) + Path.DirectorySeparatorChar;
+
+        if (OperatingSystem.IsLinux())
+        {
+            var xdg = Environment.GetEnvironmentVariable("XDG_DATA_HOME");
+            var root = string.IsNullOrWhiteSpace(xdg) ? Path.Combine(home, ".local", "share") : xdg;
+            return Path.Combine(root, ProductName) + Path.DirectorySeparatorChar;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// 解析数据根目录（纯函数，便于测试）。
+    /// </summary>
+    internal static string ResolveDataRoot(
+        string baseDirectory, HostPlatform platform, string? userDataRoot, bool isAppImage)
+    {
+        var resolved = ResolveAppBaseDirectory(baseDirectory);
+
+        if (userDataRoot is null) return resolved;
+        if (platform == HostPlatform.MacOS && IsInsideAppBundle(baseDirectory)) return userDataRoot;
+        if (platform == HostPlatform.Linux && isAppImage) return userDataRoot;
+
+        return resolved;
+    }
+
+    /// <summary>
+    /// 程序是否运行在 macOS 的 .app 包内部（Contents/MacOS 下）。
+    /// </summary>
+    internal static bool IsInsideAppBundle(string path)
+    {
+        var normalized = path.Replace('\\', '/').TrimEnd('/');
+        return normalized.Contains(".app/Contents/", StringComparison.OrdinalIgnoreCase)
+               || normalized.EndsWith(".app/Contents", StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>

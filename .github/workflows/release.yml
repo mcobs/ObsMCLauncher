@@ -183,9 +183,33 @@ jobs:
         # 输出目录与上一步 vpk download 保持一致，否则 --delta 找不到基准包
         pack_args=(-u ObsMCLauncher -v "${{ steps.version.outputs.version_number }}" -p "./publish/${{ matrix.rid }}" -e "$main_exe" -o ./vpk-build --delta BestSpeed -c "${rid}-${channel}" -r "$rid" -i "$icon_path")
 
-        # Windows才需要--noInst，Linux/macOS不生成安装程序
+        # 签名接入口（现在没证书，暂时跳过）。接的时候在这里追加，别写到别处：
+        #   Windows + Azure Artifact Signing：pack_args+=(--azureTrustedSignFile ./azure-signing.json)，凭据走 AZURE_* 环境变量
+        #   Windows + 传统证书：pack_args+=(--signParams "/td sha256 /fd sha256 /f /abs/path/cert.pfx /tr http://timestamp.digicert.com")（必须绝对路径）
+        #   macOS：pack_args+=(--signAppIdentity "Developer ID Application: 名字" --signInstallIdentity "Developer ID Installer: 名字" --notaryProfile <profile> --keychain $RUNNER_TEMP/app-signing.keychain-db)
+        # 注意 macOS 的 signAppIdentity 不能带团队名后缀。
+
+        # 安装向导的许可页只接受 .txt / .md / .rtf：直接喂仓库根目录的 LICENSE（无扩展名）
+        # 会抛 ArgumentException。这里复制一份带扩展名的临时文件，避免仓库里再存一份 GPL 正文。
+        cp LICENSE ./installer-license.txt
+
         if [[ "$rid" == win-* ]]; then
-          pack_args+=(--noInst true)
+          # ⚠️ --noInst 会连 --msi 一起关掉（实测：两个参数并存时不产出任何安装程序），
+          # 所以不能在保留 --noInst 的前提下单独开 MSI。便携包不受影响，Portable.zip 照常产出。
+          # --instLocation PerUser：装到 %LocalAppData%，不需要管理员，更新不弹 UAC。
+          pack_args+=(--msi --instLocation PerUser
+                      --instWelcome         ./.github/installer/welcome.txt
+                      --instLicense         ./installer-license.txt
+                      --instReadme          ./.github/installer/readme-win.txt
+                      --instConclusion      ./.github/installer/conclusion-win.txt
+                      --msiTopBanner        ./.github/installer/msi-top-banner.bmp
+                      --msiDialogBackground ./.github/installer/msi-dialog-background.bmp)
+        else
+          # macOS 的 pkg 内容页只认 .txt / .rtf / .html（不接受 .md），所以统一用 txt。
+          pack_args+=(--instWelcome    ./.github/installer/welcome.txt
+                      --instLicense    ./installer-license.txt
+                      --instReadme     ./.github/installer/readme-mac.txt
+                      --instConclusion ./.github/installer/conclusion-mac.txt)
         fi
 
         vpk pack "${pack_args[@]}"
@@ -221,6 +245,21 @@ jobs:
         else
           for f in ./vpk-output/ObsMCLauncher*Portable*.zip; do
             [ -f "$f" ] && mv "$f" "./vpk-output/ObsMCLauncher-${version}-${rid}.zip"
+          done
+        fi
+
+        # 安装包重命名：vpk 产出的名字是 ObsMCLauncher-win-x64-stable.msi / .pkg，不含版本号，
+        # 直接上传会导致不同版本的下载链接同名。同样必须在 upload --regenerate 之后改，
+        # 因为 vpk 是照打包时记录的原文件名去复制资产的。
+        if [[ "$rid" == win-* ]]; then
+          for f in ./vpk-output/*.msi; do
+            [ -f "$f" ] && mv "$f" "./vpk-output/ObsMCLauncher-${version}-${rid}-setup.msi"
+          done
+          # Setup.exe 是一键安装版，本版不发布（安装程序统一走 MSI 向导），删掉避免被误传
+          rm -f ./vpk-output/*-Setup.exe
+        elif [[ "$rid" == osx-* ]]; then
+          for f in ./vpk-output/*.pkg; do
+            [ -f "$f" ] && mv "$f" "./vpk-output/ObsMCLauncher-${version}-${rid}-setup.pkg"
           done
         fi
 
@@ -287,7 +326,9 @@ jobs:
         version="${{ steps.version.outputs.version }}"
         mkdir -p ./release
 
-        find ./artifacts -type f \( -name "*.zip" -o -name "*.AppImage" -o -name "*.nupkg" -o -name "releases.*.json" -o -name "RELEASES" \) -exec cp {} ./release/ \;
+        # .msi / .pkg 是安装程序（Windows MSI 向导 / macOS pkg），与便携包一起发布。
+        # 注意不要收 *-Setup.exe：一键安装版不对外发布，避免和 MSI 的入口混淆。
+        find ./artifacts -type f \( -name "*.zip" -o -name "*.AppImage" -o -name "*.msi" -o -name "*.pkg" -o -name "*.nupkg" -o -name "releases.*.json" -o -name "RELEASES" \) -exec cp {} ./release/ \;
 
         echo "Release 目录内容:"
         ls -la ./release/
@@ -367,7 +408,10 @@ jobs:
           // ---- 构建下载表格 ----
           const releaseDir = './release';
           const allFiles = fs.readdirSync(releaseDir).filter(f => fs.statSync(path.join(releaseDir, f)).isFile());
-          const userFiles = allFiles.filter(f => f.endsWith('.zip') || f.endsWith('.AppImage'));
+          // 安装包（msi/pkg）与便携包（zip/AppImage）都算用户可下载项。
+          // 两者的文件名都含 rid，所以必须按扩展名分别取，不能像以前那样 find(f => f.includes(rid))。
+          const userFiles = allFiles.filter(f =>
+            f.endsWith('.zip') || f.endsWith('.AppImage') || f.endsWith('.msi') || f.endsWith('.pkg'));
 
           const platformMap = {
             'win-x86': { platform: 'Windows', arch: 'x86 (32位)' },
@@ -380,19 +424,25 @@ jobs:
           };
 
           let body = '## 下载\n\n';
-          body += '| 平台 | 架构 | 文件 |\n';
-          body += '|:----:|:----:|:----:|\n';
+          body += '| 平台 | 架构 | 安装程序 | 便携包 |\n';
+          body += '|:----:|:----:|:----:|:----:|\n';
 
           const ridOrder = ['win-x86', 'win-x64', 'win-arm64', 'linux-x64', 'linux-arm64', 'osx-x64', 'osx-arm64'];
           for (const rid of ridOrder) {
-            const matched = userFiles.find(f => f.includes(rid));
-            if (matched) {
-              const info = platformMap[rid];
-              const url = `https://github.com/${{ github.repository }}/releases/download/${version}/${matched}`;
-              body += `| ${info.platform} | ${info.arch} | [${matched}](${url}) |\n`;
-            }
+            const info = platformMap[rid];
+            const installer = userFiles.find(f => f.includes(rid) && (f.endsWith('.msi') || f.endsWith('.pkg')));
+            const portable = userFiles.find(f => f.includes(rid) && (f.endsWith('.zip') || f.endsWith('.AppImage')));
+            if (!installer && !portable) continue;
+            const cell = (f) => f
+              ? `[${f}](https://github.com/${{ github.repository }}/releases/download/${version}/${f})`
+              : '—';
+            body += `| ${info.platform} | ${info.arch} | ${cell(installer)} | ${cell(portable)} |\n`;
           }
           body += '\n';
+          body += '> **安装程序 vs 便携包**\n';
+          body += '> - `.msi` / `.pkg` — 带安装向导：可选安装位置、创建快捷方式、在系统里登记卸载项；Windows 默认装到当前用户目录，不需要管理员\n';
+          body += '> - `.zip` / `.AppImage` — 便携版：解压（Linux 为 `chmod +x`）即用，同样支持自动更新，不写入系统\n';
+          body += '> - 两种方式装完之后都是同一个程序，自动更新行为一致\n\n';
           body += '> **其他文件说明**\n';
           body += '> - `.nupkg` — Velopack 自动更新使用的更新包（full 为完整包，delta 为差异包），无需手动下载\n';
           body += '> - `releases.*.json` — 更新索引文件，供启动器检查更新时读取，无需手动下载\n\n';
