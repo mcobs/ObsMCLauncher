@@ -53,7 +53,8 @@
       <converters:GroupItemTemplateSelector.VersionTemplate>
         <DataTemplate x:DataType="mc:InstalledVersion">
           <!-- MinHeight 与分组头一致：条目等高，避免滚动时虚拟化反复重估（见分组头注释） -->
-          <Border Background="{DynamicResource LayerFillColorPrimaryBrush}"
+          <Border Classes="version-row"
+                  Background="{DynamicResource LayerFillColorPrimaryBrush}"
                   CornerRadius="6" Padding="10,8" Margin="0,2"
                   MinHeight="74"
                   BorderThickness="1" BorderBrush="{DynamicResource CardBorderBrush}">
@@ -82,7 +83,13 @@
                            Foreground="{DynamicResource TextTertiaryBrush}" Margin="0,3,0,0"
                            Height="15" MaxLines="1" TextTrimming="CharacterEllipsis"/>
               </StackPanel>
-              <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+              <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center"
+                          Classes="version-actions">
+                <StackPanel.Transitions>
+                  <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.12"/>
+                  </Transitions>
+                </StackPanel.Transitions>
                 <Button Width="26" Height="26" Padding="0" Classes="ghost"
                         ToolTip.Tip="选择为当前版本"
                         Command="{Binding #Root.((vm:VersionDownloadViewModel)DataContext).SelectInstalledCommand}"
@@ -140,6 +147,28 @@
     </Style>
     <Style Selector="Button.ghost.delete-icon:pointerover Path">
       <Setter Property="Fill" Value="{DynamicResource DangerBrush}" />
+    </Style>
+
+    <!--
+      版本行操作按钮（选中 / 启动 / 管理 / 删除）：默认隐藏，鼠标悬浮该行或键盘焦点进入时才显示。
+
+      ⚠️ 用 Opacity 而不是 IsVisible：四个按钮必须始终占位，行高与文字列宽保持不变。
+      若悬停时才把按钮塞进布局，条目宽度/高度会来回抖，VirtualizingStackPanel 在滚动中反复重估
+      内容总高 —— 就是分组头注释里那个 [Layout] Layout cycle detected。
+      IsHitTestVisible 一起跟随，避免"看不见却点得到"。
+    -->
+    <Style Selector="Border.version-row StackPanel.version-actions">
+      <Setter Property="Opacity" Value="0" />
+      <Setter Property="IsHitTestVisible" Value="False" />
+    </Style>
+    <Style Selector="Border.version-row:pointerover StackPanel.version-actions, Border.version-row:focus-within StackPanel.version-actions">
+      <Setter Property="Opacity" Value="1" />
+      <Setter Property="IsHitTestVisible" Value="True" />
+    </Style>
+
+    <!-- 悬浮行轻微提亮：否则"按钮凭空冒出来"没有任何可发现性线索 -->
+    <Style Selector="Border.version-row:pointerover">
+      <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}" />
     </Style>
   </UserControl.Styles>
 
