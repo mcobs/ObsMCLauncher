@@ -184,9 +184,9 @@ ObsMCLauncher/
 
 ## 运行要求
 
-- Windows 10/11、Linux、macOS
-- [.NET 8.0 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/8.0)
-  - 如果运行时提示缺少 .NET，请下载并安装上述 Runtime
+- Windows 10/11、Linux、macOS（x64 / ARM64）
+- **发布包自带 .NET 8 运行时**：解压（安装版则安装）后直接运行
+- 只有从源码构建运行才需要 [.NET 8.0 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)，见下一节
 
 ---
 
