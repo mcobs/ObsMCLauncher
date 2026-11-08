@@ -397,7 +397,7 @@ namespace ObsMCLauncher.Core.Plugins
 
                 Directory.CreateDirectory(pluginTargetDir);
 
-                SafeZipExtractor.ExtractToDirectory(tempZipPath, pluginTargetDir);
+                SafeZipExtractor.ExtractToDirectory(tempZipPath, pluginTargetDir, flattenSingleRoot: true);
 
                 progress?.Report(100);
                 DebugLogger.Info("PluginMarket", $"插件安装成功: {plugin.Name}");
@@ -486,7 +486,7 @@ namespace ObsMCLauncher.Core.Plugins
         }
 
         /// <summary>
-        /// 校验插件包：必须在压缩包<b>根目录</b>能解析出 plugin.json，且 id 与预期一致。
+        /// 校验插件包：必须能解析出 plugin.json（位于压缩包<b>根目录</b>，或唯一的顶层文件夹内），且 id 与预期一致。
         /// 这是安装/更新的最后一道闸门——防止结构不对的包把插件目录写坏。
         /// </summary>
         /// <param name="zipPath">插件包路径</param>
@@ -498,11 +498,10 @@ namespace ObsMCLauncher.Core.Plugins
             {
                 using var archive = ZipFile.OpenRead(zipPath);
 
-                var manifestEntry = archive.Entries.FirstOrDefault(e =>
-                    string.Equals(e.FullName.Replace('\\', '/').TrimStart('/'), "plugin.json", StringComparison.OrdinalIgnoreCase));
+                var manifestEntry = FindManifestEntry(archive.Entries);
 
                 if (manifestEntry == null)
-                    return "压缩包根目录缺少 plugin.json";
+                    return "压缩包内未找到 plugin.json（根目录或单一顶层文件夹）";
 
                 if (manifestEntry.Length > MaxManifestBytes)
                     return "plugin.json 体积异常";
@@ -535,6 +534,18 @@ namespace ObsMCLauncher.Core.Plugins
             {
                 return $"无法解析插件包: {ex.Message}";
             }
+        }
+
+        /// <summary>
+        /// 定位插件清单。兼容两种打包方式：plugin.json 直接在根目录，或所有文件都套在一个顶层文件夹里。
+        /// </summary>
+        private static ZipArchiveEntry? FindManifestEntry(IReadOnlyCollection<ZipArchiveEntry> entries)
+        {
+            var rootPrefix = SafeZipExtractor.GetSingleRootDirectory(entries);
+            var manifestPath = string.IsNullOrEmpty(rootPrefix) ? "plugin.json" : rootPrefix + "/plugin.json";
+
+            return entries.FirstOrDefault(e =>
+                string.Equals(SafeZipExtractor.NormalizeEntryPath(e.FullName), manifestPath, StringComparison.OrdinalIgnoreCase));
         }
 
         /// <summary>把任意字符串压成安全的文件名片段（插件 id 理论上已受正则约束，这里只做兜底）</summary>

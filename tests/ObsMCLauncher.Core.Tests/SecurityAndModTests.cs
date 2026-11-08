@@ -142,6 +142,53 @@ public class SafeZipExtractorTests
             File.Delete(zipPath);
         }
     }
+
+    [Fact]
+    public void ExtractToDirectory_FlattenSingleRoot_StripsWrapperDirectory()
+    {
+        // 发布包常见结构：所有文件都套在一个顶层文件夹里
+        var zipPath = CreateTestZip(
+            ("HelloPlugin/plugin.json", "{}"),
+            ("HelloPlugin/libs/a.dll", "binary"));
+
+        var destDir = Path.Combine(Path.GetTempPath(), "safzeziptest_" + Guid.NewGuid());
+        try
+        {
+            SafeZipExtractor.ExtractToDirectory(zipPath, destDir, flattenSingleRoot: true);
+
+            Assert.True(File.Exists(Path.Combine(destDir, "plugin.json")));
+            Assert.True(File.Exists(Path.Combine(destDir, "libs", "a.dll")));
+            Assert.False(Directory.Exists(Path.Combine(destDir, "HelloPlugin")));
+        }
+        finally
+        {
+            if (Directory.Exists(destDir)) Directory.Delete(destDir, true);
+            File.Delete(zipPath);
+        }
+    }
+
+    [Fact]
+    public void ExtractToDirectory_FlattenSingleRoot_WithMultipleTopLevelDirectories_KeepsStructure()
+    {
+        // 没有唯一的顶层文件夹时不能乱削，保持原结构
+        var zipPath = CreateTestZip(
+            ("a/x.txt", "1"),
+            ("b/y.txt", "2"));
+
+        var destDir = Path.Combine(Path.GetTempPath(), "safzeziptest_" + Guid.NewGuid());
+        try
+        {
+            SafeZipExtractor.ExtractToDirectory(zipPath, destDir, flattenSingleRoot: true);
+
+            Assert.True(File.Exists(Path.Combine(destDir, "a", "x.txt")));
+            Assert.True(File.Exists(Path.Combine(destDir, "b", "y.txt")));
+        }
+        finally
+        {
+            if (Directory.Exists(destDir)) Directory.Delete(destDir, true);
+            File.Delete(zipPath);
+        }
+    }
 }
 
 public class FileHashVerifierTests

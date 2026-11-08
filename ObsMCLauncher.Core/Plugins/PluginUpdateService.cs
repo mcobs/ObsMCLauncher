@@ -454,7 +454,7 @@ public static class PluginUpdateService
                 return (false, "下载失败", null);
             }
 
-            // 3. 包体校验（根目录含 plugin.json 且 id 一致）
+            // 3. 包体校验（根目录或单一顶层文件夹内含 plugin.json 且 id 一致）
             var validationError = PluginMarketService.ValidatePluginPackage(zipPath, plugin.Id);
             if (validationError != null)
             {
@@ -462,10 +462,10 @@ public static class PluginUpdateService
                 return (false, validationError, null);
             }
 
-            // 4. 解压到暂存目录（进度 60-100）
+            // 4. 解压到暂存目录（进度 60-100）；单层包裹目录会被削掉，保证 plugin.json 落在暂存根目录
             var stagedDir = GetStagedDirectory(pluginsDirectory, plugin.Id);
             DeleteDirectoryQuiet(stagedDir);
-            SafeZipExtractor.ExtractToDirectory(zipPath, stagedDir);
+            SafeZipExtractor.ExtractToDirectory(zipPath, stagedDir, flattenSingleRoot: true);
             progress?.Report(100);
 
             var metadata = TryReadManifest(Path.Combine(stagedDir, "plugin.json"));

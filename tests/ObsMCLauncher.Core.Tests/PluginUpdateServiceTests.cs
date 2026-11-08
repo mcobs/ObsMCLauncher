@@ -120,19 +120,20 @@ public class PluginUpdateServiceTests : IDisposable
     };
 
     /// <summary>在系统临时目录打一个合法的插件包 zip</summary>
-    private static string CreatePackage(string id, string version, bool includeManifest = true)
+    private static string CreatePackage(string id, string version, bool includeManifest = true, string? rootDir = null)
     {
         var path = Path.Combine(Path.GetTempPath(), $"omcl-pkg-{Guid.NewGuid():N}.zip");
+        var prefix = string.IsNullOrEmpty(rootDir) ? string.Empty : rootDir + "/";
 
         using var archive = ZipFile.Open(path, ZipArchiveMode.Create);
         if (includeManifest)
         {
-            var entry = archive.CreateEntry("plugin.json");
+            var entry = archive.CreateEntry(prefix + "plugin.json");
             using var writer = new StreamWriter(entry.Open());
             writer.Write(ManifestJson(id, version));
         }
 
-        var readme = archive.CreateEntry("README.md");
+        var readme = archive.CreateEntry(prefix + "README.md");
         using var readmeWriter = new StreamWriter(readme.Open());
         readmeWriter.Write("# " + id);
 
@@ -291,6 +292,21 @@ public class PluginUpdateServiceTests : IDisposable
     public void ValidatePluginPackage_AcceptsWellFormedPackage()
     {
         var zip = CreatePackage(PluginId, "1.0.0");
+        try
+        {
+            Assert.Null(PluginMarketService.ValidatePluginPackage(zip, PluginId));
+        }
+        finally
+        {
+            File.Delete(zip);
+        }
+    }
+
+    [Fact]
+    public void ValidatePluginPackage_AcceptsPackageWrappedInSingleFolder()
+    {
+        // 常见发布包结构：所有文件都套在一个顶层文件夹里
+        var zip = CreatePackage(PluginId, "1.0.0", rootDir: "HelloPlugin");
         try
         {
             Assert.Null(PluginMarketService.ValidatePluginPackage(zip, PluginId));
