@@ -12,19 +12,29 @@
     <!-- 资源行底色放在样式里，悬浮态才能覆盖；写在 Border 上的本地值优先级更高，会盖掉 :pointerover -->
     <Style Selector="Border.resource-row">
       <Setter Property="Background" Value="{DynamicResource LayerFillColorPrimaryBrush}"/>
+      <Setter Property="Transitions">
+        <Transitions>
+          <BrushTransition Property="Background" Duration="0:0:0.15"/>
+        </Transitions>
+      </Setter>
     </Style>
     <Style Selector="Border.resource-row:pointerover">
       <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}"/>
     </Style>
 
     <!--
-      资源管理列表的操作区（删除按钮 / 启用开关）：默认隐藏，鼠标悬浮该行或键盘焦点进入时显示。
+      资源管理列表的操作区（删除按钮 / 启用开关）：默认隐藏，鼠标悬浮该行或键盘焦点进入时淡入。
       用 Opacity 而不是 IsVisible，操作区始终占位，行高与文字列宽不会随悬浮来回抖。
       IsHitTestVisible 一起跟随，避免「看不见却点得到」。
     -->
     <Style Selector="Border.resource-row StackPanel.resource-actions">
       <Setter Property="Opacity" Value="0"/>
       <Setter Property="IsHitTestVisible" Value="False"/>
+      <Setter Property="Transitions">
+        <Transitions>
+          <DoubleTransition Property="Opacity" Duration="0:0:0.15"/>
+        </Transitions>
+      </Setter>
     </Style>
     <Style Selector="Border.resource-row:pointerover StackPanel.resource-actions, Border.resource-row:focus-within StackPanel.resource-actions">
       <Setter Property="Opacity" Value="1"/>
@@ -537,13 +547,13 @@
                     <ItemsControl ItemsSource="{Binding Worlds}">
                       <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                          <Border Background="{DynamicResource LayerFillColorPrimaryBrush}"
+                          <Border Classes="resource-row"
                                   CornerRadius="8"
                                   Padding="12"
                                   Margin="0,0,0,8"
                                   BorderThickness="1"
                                   BorderBrush="{DynamicResource CardBorderBrush}">
-                            <Grid ColumnDefinitions="Auto,*">
+                            <Grid ColumnDefinitions="Auto,*,Auto">
                               <Border Width="44" Height="44" CornerRadius="6" Margin="0,0,12,0"
                                       Background="{DynamicResource SurfaceBrush}"
                                       BorderThickness="1"
@@ -565,6 +575,15 @@
                                   <TextBlock Text="{Binding WorldSizeDisplay, StringFormat='大小 {0}'}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}"/>
                                   <TextBlock Text="{Binding LastModified, StringFormat='修改 {0:yyyy-MM-dd HH:mm}'}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}"/>
                                 </StackPanel>
+                              </StackPanel>
+                              <StackPanel Grid.Column="2" Classes="resource-actions" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                <Button Classes="icon-ghost" Width="32" Height="32"
+                                        Command="{Binding $parent[ItemsControl].((vm:InstanceViewModel)DataContext).DeleteWorldCommand}"
+                                        CommandParameter="{Binding}" ToolTip.Tip="删除">
+                                  <Path Data="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"
+                                        Width="16" Height="16" Stretch="Uniform" Fill="{DynamicResource DangerBrush}"
+                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Button>
                               </StackPanel>
                             </Grid>
                           </Border>
@@ -690,7 +709,7 @@
                           <Border Classes="resource-row"
                                   CornerRadius="8" Padding="12" Margin="0,0,0,8"
                                   BorderThickness="1" BorderBrush="{DynamicResource CardBorderBrush}">
-                            <Grid ColumnDefinitions="Auto,*">
+                            <Grid ColumnDefinitions="Auto,*,Auto">
                               <Border Width="40" Height="40" CornerRadius="6" Margin="0,0,12,0"
                                       Background="{DynamicResource SurfaceBrush}"
                                       BorderThickness="1" BorderBrush="{DynamicResource CardBorderBrush}" ClipToBounds="True">
@@ -760,7 +779,7 @@
                           <Border Classes="resource-row"
                                   CornerRadius="8" Padding="12" Margin="0,0,0,8"
                                   BorderThickness="1" BorderBrush="{DynamicResource CardBorderBrush}">
-                            <Grid ColumnDefinitions="Auto,*">
+                            <Grid ColumnDefinitions="Auto,*,Auto">
                               <Border Width="40" Height="40" CornerRadius="6" Margin="0,0,12,0"
                                       Background="{DynamicResource SurfaceBrush}"
                                       BorderThickness="1" BorderBrush="{DynamicResource CardBorderBrush}" ClipToBounds="True">

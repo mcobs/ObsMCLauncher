@@ -572,6 +572,30 @@ public partial class InstanceViewModel : ViewModelBase
     }
 
     [RelayCommand]
+    private async Task DeleteWorldAsync(WorldInfo world)
+    {
+        if (world == null) return;
+
+        var result = await _dialogService.ShowQuestion("确认删除",
+            $"确定要删除存档 \"{world.Name}\" 吗？整个存档文件夹都会被删除，无法恢复。");
+        if (result != DialogResult.Yes) return;
+
+        try
+        {
+            if (Directory.Exists(world.Path))
+            {
+                Directory.Delete(world.Path, true);
+                Worlds.Remove(world);
+                HasWorlds = Worlds.Count > 0;
+            }
+        }
+        catch (Exception ex)
+        {
+            _notificationService.Show("删除失败", ex.Message, NotificationType.Error);
+        }
+    }
+
+    [RelayCommand]
     private void OpenModsFolder()
     {
         var gameDir = GetGameDirectory();
