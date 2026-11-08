@@ -4,6 +4,8 @@
 
 # Changelog
 
+## [unreleased] - 2026-xx-xx
+
 ## [v1.1.2] - 2026-11-08
 
 ### 新增
