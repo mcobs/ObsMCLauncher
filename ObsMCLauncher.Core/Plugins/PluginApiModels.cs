@@ -96,6 +96,142 @@ public class GameLaunchHookContext
 }
 
 /// <summary>
+/// 插件启动步骤的执行状态
+/// </summary>
+public enum LaunchStepPhase
+{
+    /// <summary>等待执行</summary>
+    Waiting,
+
+    /// <summary>正在执行</summary>
+    Running,
+
+    /// <summary>执行完毕</summary>
+    Completed,
+
+    /// <summary>被插件主动跳过</summary>
+    Skipped,
+
+    /// <summary>执行出错（不会中断启动，进度按该步骤已完成的权重继续）</summary>
+    Failed,
+
+    /// <summary>被取消（启动流程随即中止）</summary>
+    Cancelled
+}
+
+/// <summary>
+/// 插件注册的一个启动步骤。
+///
+/// 步骤在启动器完成游戏文件准备（完整性校验、补缺依赖、资源校验）之后、
+/// 构建启动参数并拉起进程之前执行，排在所有内置阶段后面。
+/// </summary>
+public class PluginLaunchStep
+{
+    /// <summary>步骤标识（插件内唯一，不要带插件前缀，启动器会自己加）</summary>
+    public string StepId { get; set; } = string.Empty;
+
+    /// <summary>显示名称，会出现在启动遮罩的状态行上</summary>
+    public string DisplayName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 权重，决定这一步分到多少进度区间。默认 1，必须大于 0。
+    /// 插件步骤整体只占整个启动进度的 86% - 96%，权重按比例分配这 10 个百分点。
+    /// </summary>
+    public double Weight { get; set; } = 1;
+
+    /// <summary>执行体；抛异常或返回的任务失败都算 Failed，启动会继续</summary>
+    public Func<PluginLaunchStepContext, Task>? ExecuteAsync { get; set; }
+}
+
+/// <summary>
+/// 启动步骤上下文
+/// </summary>
+public class PluginLaunchStepContext
+{
+    public string VersionId { get; set; } = string.Empty;
+
+    public string McVersion { get; set; } = string.Empty;
+
+    public string GameDirectory { get; set; } = string.Empty;
+
+    public string JavaPath { get; set; } = string.Empty;
+
+    /// <summary>设为 true 会中止本次启动，遮罩上显示"已被插件步骤取消"</summary>
+    public bool CancelLaunch { get; set; }
+
+    /// <summary>当前步骤的进度上报入口；由启动器注入</summary>
+    internal Action<double, string?>? ProgressCallback { get; set; }
+
+    /// <summary>
+    /// 上报当前步骤的进度（0-100）。可以多次调用，启动器会把它映射到该步骤的权重区间。
+    /// </summary>
+    /// <param name="percent">0-100，超出范围会被夹紧</param>
+    /// <param name="message">可选状态文字，显示在遮罩状态行上</param>
+    public void ReportProgress(double percent, string? message = null)
+    {
+        ProgressCallback?.Invoke(percent, message);
+    }
+
+    /// <summary>
+    /// 只更新状态文字，不动进度
+    /// </summary>
+    public void ReportStatus(string message)
+    {
+        ProgressCallback?.Invoke(double.NaN, message);
+    }
+}
+
+/// <summary>
+/// 启动步骤的进度快照。
+///
+/// <see cref="CompletedWeight"/> 是当前步骤之前已经完成的权重之和（失败/跳过的步骤按完成计），
+/// 加上 <see cref="Weight"/> * <see cref="StepPercent"/> / 100 就是当前的整体已完成权重。
+/// </summary>
+public class LaunchStepProgress
+{
+    public string StepId { get; set; } = string.Empty;
+
+    public string DisplayName { get; set; } = string.Empty;
+
+    public LaunchStepPhase Phase { get; set; } = LaunchStepPhase.Waiting;
+
+    /// <summary>当前步骤序号，从 0 开始</summary>
+    public int Index { get; set; }
+
+    /// <summary>步骤总数</summary>
+    public int Total { get; set; }
+
+    public double Weight { get; set; }
+
+    /// <summary>当前步骤之前已完成的权重</summary>
+    public double CompletedWeight { get; set; }
+
+    /// <summary>全部步骤的权重之和</summary>
+    public double TotalWeight { get; set; }
+
+    /// <summary>当前步骤自身的进度（0-100）</summary>
+    public double StepPercent { get; set; }
+
+    /// <summary>插件上报的状态文字；没上报时为 null</summary>
+    public string? Message { get; set; }
+}
+
+/// <summary>
+/// 一轮启动步骤跑完的结果
+/// </summary>
+public class LaunchStepResult
+{
+    /// <summary>是否有步骤要求中止启动</summary>
+    public bool Cancelled { get; set; }
+
+    /// <summary>取消时最后收到的状态文字</summary>
+    public string? CancelMessage { get; set; }
+
+    /// <summary>本轮登记的步骤数（含没有执行体的空步骤）</summary>
+    public int StepCount { get; set; }
+}
+
+/// <summary>
 /// 插件提交的下载请求
 /// </summary>
 public class PluginDownloadRequest

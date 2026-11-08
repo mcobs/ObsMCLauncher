@@ -33,6 +33,10 @@ public class PluginContext : IPluginContext
     private static readonly Dictionary<string, (GameLaunchPhase phase, Func<GameLaunchHookContext, Task> handler)> _asyncLaunchHooks = new();
     private static readonly object _asyncLaunchHooksLock = new();
 
+    /// <summary>启动步骤表：key = $"{pluginId}.{stepId}"，value = 步骤定义</summary>
+    private static readonly Dictionary<string, PluginLaunchStep> _launchSteps = new();
+    private static readonly object _launchStepsLock = new();
+
     public static Action<string, string, string, string?, object?>? OnTabRegistered { get; set; }
 
     public static Action<string, string, string, object?, object?>? OnTabRegisteredWithContent { get; set; }
@@ -763,6 +767,26 @@ public class PluginContext : IPluginContext
         }
     }
 
+    public void RegisterLaunchStep(PluginLaunchStep step)
+    {
+        if (step == null || string.IsNullOrEmpty(step.StepId)) return;
+        var fullId = $"{_pluginId}.{step.StepId}";
+        lock (_launchStepsLock)
+        {
+            _launchSteps[fullId] = step;
+        }
+    }
+
+    public void UnregisterLaunchStep(string stepId)
+    {
+        if (string.IsNullOrEmpty(stepId)) return;
+        var fullId = $"{_pluginId}.{stepId}";
+        lock (_launchStepsLock)
+        {
+            _launchSteps.Remove(fullId);
+        }
+    }
+
     public string RequestDownload(PluginDownloadRequest request)
     {
         if (request == null) return string.Empty;
@@ -1184,6 +1208,152 @@ public class PluginContext : IPluginContext
     }
 
     /// <summary>
+    /// 移除指定插件的所有启动步骤（插件卸载时调用）
+    /// </summary>
+    public static void RemovePluginLaunchSteps(string pluginId)
+    {
+        var prefix = $"{pluginId}.";
+        lock (_launchStepsLock)
+        {
+            var keysToRemove = _launchSteps.Keys.Where(k => k.StartsWith(prefix)).ToList();
+            foreach (var key in keysToRemove)
+            {
+                _launchSteps.Remove(key);
+            }
+        }
+    }
+
+    /// <summary>
+    /// 依次执行插件登记的启动步骤，按 key（{pluginId}.{stepId}）字典序。
+    ///
+    /// 所有步骤共占整个启动进度的一小段（由调用方决定换算），这里只负责算权重：
+    /// 每个步骤分到的区间是 Weight / TotalWeight，步骤内百分比由插件自己上报。
+    /// 步骤抛异常记 Failed，不中断启动；插件把 CancelLaunch 置 true 才中止。
+    /// </summary>
+    /// <param name="seed">种子上下文（版本信息等，会被复制给每个步骤）</param>
+    /// <param name="onProgress">进度回调；没有登记任何步骤时一次都不会调用</param>
+    public static async Task<LaunchStepResult> RunLaunchStepsAsync(PluginLaunchStepContext seed, Action<LaunchStepProgress>? onProgress)
+    {
+        var result = new LaunchStepResult();
+
+        List<KeyValuePair<string, PluginLaunchStep>> snapshot;
+        lock (_launchStepsLock)
+        {
+            snapshot = _launchSteps.OrderBy(k => k.Key).ToList();
+        }
+
+        if (snapshot.Count == 0) return result;
+        result.StepCount = snapshot.Count;
+
+        double totalWeight = 0;
+        foreach (var kvp in snapshot)
+        {
+            totalWeight += NormalizeStepWeight(kvp.Value.Weight);
+        }
+
+        double completedWeight = 0;
+        for (int index = 0; index < snapshot.Count; index++)
+        {
+            var step = snapshot[index].Value;
+            var weight = NormalizeStepWeight(step.Weight);
+
+            if (step.ExecuteAsync == null)
+            {
+                // 空步骤直接跳过，但仍要让它占的那段进度走完
+                onProgress?.Invoke(BuildProgress(step, LaunchStepPhase.Skipped, index, snapshot.Count,
+                    weight, completedWeight, totalWeight, 100, null));
+                completedWeight += weight;
+                continue;
+            }
+
+            var ctx = new PluginLaunchStepContext
+            {
+                VersionId = seed.VersionId,
+                McVersion = seed.McVersion,
+                GameDirectory = seed.GameDirectory,
+                JavaPath = seed.JavaPath
+            };
+
+            double stepPercent = 0;
+            string? message = null;
+            ctx.ProgressCallback = (percent, msg) =>
+            {
+                if (!double.IsNaN(percent))
+                {
+                    stepPercent = percent < 0 ? 0 : percent > 100 ? 100 : percent;
+                }
+                if (msg != null) message = msg;
+                onProgress?.Invoke(BuildProgress(step, LaunchStepPhase.Running, index, snapshot.Count,
+                    weight, completedWeight, totalWeight, stepPercent, message));
+            };
+
+            onProgress?.Invoke(BuildProgress(step, LaunchStepPhase.Running, index, snapshot.Count,
+                weight, completedWeight, totalWeight, 0, null));
+
+            LaunchStepPhase phase;
+            try
+            {
+                await step.ExecuteAsync(ctx).ConfigureAwait(false);
+                phase = ctx.CancelLaunch ? LaunchStepPhase.Cancelled : LaunchStepPhase.Completed;
+            }
+            catch (Exception ex)
+            {
+                DebugLogger.Error("PluginContext", $"启动步骤异常 [{snapshot[index].Key}]: {ex.Message}");
+                phase = LaunchStepPhase.Failed;
+            }
+
+            if (phase == LaunchStepPhase.Completed) stepPercent = 100;
+
+            onProgress?.Invoke(BuildProgress(step, phase, index, snapshot.Count,
+                weight, completedWeight, totalWeight, stepPercent, message));
+
+            // 失败、跳过也按"这段走完了"算，进度条才不会卡在中间
+            completedWeight += weight;
+
+            if (phase == LaunchStepPhase.Cancelled)
+            {
+                result.Cancelled = true;
+                result.CancelMessage = message;
+                break;
+            }
+        }
+
+        return result;
+    }
+
+    private static double NormalizeStepWeight(double weight)
+    {
+        if (double.IsNaN(weight) || double.IsInfinity(weight) || weight <= 0) return 1;
+        return weight;
+    }
+
+    private static LaunchStepProgress BuildProgress(
+        PluginLaunchStep step,
+        LaunchStepPhase phase,
+        int index,
+        int total,
+        double weight,
+        double completedWeight,
+        double totalWeight,
+        double stepPercent,
+        string? message)
+    {
+        return new LaunchStepProgress
+        {
+            StepId = step.StepId,
+            DisplayName = step.DisplayName,
+            Phase = phase,
+            Index = index,
+            Total = total,
+            Weight = weight,
+            CompletedWeight = completedWeight,
+            TotalWeight = totalWeight,
+            StepPercent = stepPercent,
+            Message = message
+        };
+    }
+
+    /// <summary>
     /// 移除指定插件的所有事件订阅（插件卸载时调用）
     /// </summary>
     public static void RemovePluginEventHandlers(string pluginId)
@@ -1221,6 +1391,10 @@ public class PluginContext : IPluginContext
         lock (_asyncLaunchHooksLock)
         {
             _asyncLaunchHooks.Clear();
+        }
+        lock (_launchStepsLock)
+        {
+            _launchSteps.Clear();
         }
         lock (_uiReadyLock)
         {

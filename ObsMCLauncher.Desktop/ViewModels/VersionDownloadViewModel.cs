@@ -791,6 +791,7 @@ public partial class VersionDownloadViewModel : ViewModelBase
                             $"版本 {version.Id} 已退出 ({exitCode})",
                             exitCode == 0 ? NotificationType.Info : NotificationType.Warning));
                 },
+                null,
                 launchCts.Token);
 
             _notificationService.Remove(notifId);

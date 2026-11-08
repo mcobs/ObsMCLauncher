@@ -460,4 +460,22 @@ public interface IPluginContext
     /// 注销异步启动生命周期钩子（同时注销同名同步钩子）
     /// </summary>
     void UnregisterGameLaunchHookAsync(string hookId);
+
+    /// <summary>
+    /// 注册一个带进度的启动步骤。
+    ///
+    /// 执行时机在启动器准备完游戏文件之后、拉起进程之前，排在所有内置阶段后面；
+    /// 多个插件/多个步骤按 <c>{pluginId}.{stepId}</c> 字典序依次执行。
+    /// 步骤可以调 <see cref="PluginLaunchStepContext.ReportProgress"/> 上报进度，
+    /// 启动遮罩上的整体进度条会跟着走。
+    /// 插件卸载时启动器会自动清理该插件注册的全部步骤。
+    /// </summary>
+    /// <param name="step">步骤定义（标识、显示名、权重与执行体）</param>
+    void RegisterLaunchStep(PluginLaunchStep step);
+
+    /// <summary>
+    /// 注销启动步骤
+    /// </summary>
+    /// <param name="stepId">步骤标识（与注册时相同）</param>
+    void UnregisterLaunchStep(string stepId);
 }

@@ -288,6 +288,10 @@ namespace ObsMCLauncher.Core.Plugins
         void RegisterGameLaunchHookAsync(string hookId, GameLaunchPhase phase, Func<GameLaunchHookContext, Task> handler);
         void UnregisterGameLaunchHookAsync(string hookId);
 
+        // 启动步骤（见 5，1.1.3+）
+        void RegisterLaunchStep(PluginLaunchStep step);
+        void UnregisterLaunchStep(string stepId);
+
         // 下载（见 6）
         string RequestDownload(PluginDownloadRequest request);
         PluginDownloadTaskStatus? GetDownloadTaskStatus(string taskId);
@@ -345,6 +349,7 @@ namespace ObsMCLauncher.Core.Plugins
 | 通知 | `ShowNotification` / `UpdateNotification` / `CloseNotification` | 显示、更新、关闭通知 | `1.0.0` | [4](#4-通知系统) |
 | 钩子 | `RegisterGameLaunchHook` / `UnregisterGameLaunchHook` | 启动前/启动后/退出/崩溃时回调（同步） | `1.0.0` | [5](#5-游戏启动生命周期钩子) |
 | 钩子 | `RegisterGameLaunchHookAsync` / `UnregisterGameLaunchHookAsync` | 同上，异步版本 | `1.1.0` | [5](#5-游戏启动生命周期钩子) |
+| 钩子 | `RegisterLaunchStep` / `UnregisterLaunchStep` | 注册带进度的启动步骤（进度同步到主页启动遮罩） | `1.1.3` | [5](#5-游戏启动生命周期钩子) |
 | 下载 | `RequestDownload` | 提交下载请求 | `1.0.0` | [6](#6-下载) |
 | 下载 | `GetDownloadTaskStatus` | 查询单个任务状态 | `1.1.0` | [6](#6-下载) |
 | 下载 | `GetDownloadTasks` | 查询全部任务列表 | `1.1.1` | [8](#8-日志与配置) |
@@ -1138,6 +1143,87 @@ public void OnUnload()
     // 但如需动态卸载，可调用：
     // _context?.UnregisterGameLaunchHook("add-jvm-args");
     // _context?.UnregisterGameLaunchHookAsync("upload-crash");
+}
+```
+
+#### 启动步骤（带进度）
+
+钩子只负责时机，没有进度；如果插件想在启动遮罩的整体进度条上占一段，并在这段里持续上报百分比，
+用启动步骤。适用于"更新模组"、"校验整合包配置"、"准备联机凭据"这类需要几秒到几十秒的准备动作。
+
+**方法签名**：
+
+```csharp
+// 引入版本：1.1.3
+void RegisterLaunchStep(PluginLaunchStep step);
+void UnregisterLaunchStep(string stepId);
+```
+
+**PluginLaunchStep 字段**：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `StepId` | `string` | 步骤标识，插件内唯一（启动器会自己加上 `{pluginId}.` 前缀） |
+| `DisplayName` | `string` | 显示名称，出现在启动遮罩的状态行上 |
+| `Weight` | `double` | 权重，默认 `1`；小于等于 0 按 `1` 处理。决定这一步在插件步骤区间里分到多少 |
+| `ExecuteAsync` | `Func<PluginLaunchStepContext, Task>?` | 执行体；为空时这一步直接跳过 |
+
+**PluginLaunchStepContext 字段与方法**：
+
+| 成员 | 类型 | 说明 |
+|------|------|------|
+| `VersionId` | `string` | 启动的版本ID |
+| `McVersion` | `string` | Minecraft 版本号 |
+| `GameDirectory` | `string` | 游戏运行目录 |
+| `JavaPath` | `string` | Java 可执行文件路径 |
+| `CancelLaunch` | `bool` | 设为 true 会停止执行剩余步骤并中止本次启动 |
+| `ReportProgress(double percent, string? message = null)` | 方法 | 上报当前步骤的进度（0-100，越界会夹紧）；`message` 会显示在遮罩状态行 |
+| `ReportStatus(string message)` | 方法 | 只更新状态文字，进度不动 |
+
+**执行时机**：启动器完成游戏文件准备（完整性校验、补缺依赖、Java 与 natives、库文件、资源下载）之后，
+构造启动参数、拉起进程之前。`BeforeLaunch` 钩子在启动步骤之后才触发。
+
+**执行顺序**：所有插件步骤按 `{pluginId}.{stepId}` 字典序依次执行，与注册先后无关。
+
+**进度如何显示**：插件步骤整体只占启动遮罩的 86%–96%（10 个百分点），多个步骤按 `Weight` 比例分配这 10 个点，
+步骤内部再由 `ReportProgress` 的 0-100 换算。没有注册任何步骤时不占进度，直接跳到"准备启动参数"。
+
+**异常与取消**：步骤抛异常记为该步骤失败，写日志后继续执行后续步骤，启动不会中断；
+需要中止启动请显式设置 `ctx.CancelLaunch = true`。
+
+**卸载清理**：插件卸载或禁用时，启动器会自动清掉该插件的全部步骤，正常情况下不需要手动注销。
+
+**示例**：
+
+```csharp
+public void OnLoad(IPluginContext ctx)
+{
+    _context = ctx;
+
+    ctx.RegisterLaunchStep(new PluginLaunchStep
+    {
+        StepId = "sync-config",
+        DisplayName = "同步整合包配置",
+        Weight = 2,
+        ExecuteAsync = SyncConfigAsync
+    });
+}
+
+private async Task SyncConfigAsync(PluginLaunchStepContext ctx)
+{
+    var files = CollectConfigFiles(ctx.GameDirectory);
+
+    for (int i = 0; i < files.Count; i++)
+    {
+        await UploadAsync(files[i]);
+        ctx.ReportProgress((i + 1) * 100.0 / files.Count, $"已同步 {i + 1}/{files.Count}");
+    }
+}
+
+public void OnUnload()
+{
+    // 启动器会自动清理，这里只是演示手动注销
+    _context?.UnregisterLaunchStep("sync-config");
 }
 ```
 

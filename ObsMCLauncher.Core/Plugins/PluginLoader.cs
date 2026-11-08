@@ -483,6 +483,7 @@ public class PluginLoader
 
             PluginContext.RemovePluginCommands(pluginId);
             PluginContext.RemovePluginLaunchHooks(pluginId);
+            PluginContext.RemovePluginLaunchSteps(pluginId);
             PluginContext.RemovePluginEventHandlers(pluginId);
             PluginContext.RemovePluginSlots(pluginId);
 
@@ -632,6 +633,7 @@ public class PluginLoader
 
             PluginContext.RemovePluginCommands(pluginId);
             PluginContext.RemovePluginLaunchHooks(pluginId);
+            PluginContext.RemovePluginLaunchSteps(pluginId);
             PluginContext.RemovePluginEventHandlers(pluginId);
             PluginContext.RemovePluginSlots(pluginId);
 

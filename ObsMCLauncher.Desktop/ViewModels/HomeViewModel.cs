@@ -1,12 +1,15 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Media.Imaging;
 using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.Input;
 using ObsMCLauncher.Core.Models;
 using ObsMCLauncher.Core.Plugins;
@@ -173,6 +176,99 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
         }
     }
 
+    // ===== 启动遮罩 =====
+
+    /// <summary>遮罩当前展示的状态</summary>
+    public enum LaunchOverlayState
+    {
+        Running,
+        Success,
+        Failed,
+        Canceled
+    }
+
+    private bool _isLaunchOverlayVisible;
+    public bool IsLaunchOverlayVisible
+    {
+        get => _isLaunchOverlayVisible;
+        private set => SetProperty(ref _isLaunchOverlayVisible, value);
+    }
+
+    private LaunchOverlayState _launchState = LaunchOverlayState.Running;
+    public LaunchOverlayState LaunchState
+    {
+        get => _launchState;
+        private set
+        {
+            if (SetProperty(ref _launchState, value))
+            {
+                OnPropertyChanged(nameof(IsLaunchFailed));
+                OnPropertyChanged(nameof(IsLaunchRunning));
+            }
+        }
+    }
+
+    public bool IsLaunchFailed => _launchState == LaunchOverlayState.Failed;
+
+    public bool IsLaunchRunning => _launchState == LaunchOverlayState.Running;
+
+    private string _launchStatusText = "";
+    public string LaunchStatusText
+    {
+        get => _launchStatusText;
+        private set => SetProperty(ref _launchStatusText, value);
+    }
+
+    private string _launchErrorMessage = "";
+    public string LaunchErrorMessage
+    {
+        get => _launchErrorMessage;
+        private set => SetProperty(ref _launchErrorMessage, value);
+    }
+
+    private double _launchPercent;
+    public double LaunchPercent
+    {
+        get => _launchPercent;
+        private set
+        {
+            if (SetProperty(ref _launchPercent, value))
+            {
+                OnPropertyChanged(nameof(LaunchPercentText));
+            }
+        }
+    }
+
+    public string LaunchPercentText => $"{Math.Round(_launchPercent)}%";
+
+    /// <summary>遮罩里滚动的最近几行</summary>
+    public ObservableCollection<string> LaunchLogLines { get; } = new();
+
+    private string _echoCaveText = "";
+    public string EchoCaveText
+    {
+        get => _echoCaveText;
+        private set => SetProperty(ref _echoCaveText, value);
+    }
+
+    public IRelayCommand CancelLaunchCommand { get; }
+    public IRelayCommand RetryLaunchCommand { get; }
+    public IRelayCommand DismissLaunchOverlayCommand { get; }
+    public IRelayCommand NextEchoCaveCommand { get; }
+
+    private CancellationTokenSource? _launchCts;
+    private LaunchProgressTracker _progressTracker = new();
+    private bool _launchCancelRequested;
+    private int _launchSession;
+
+    /// <summary>游戏输出先进队列，界面线程按帧取，免得日志洪峰把 UI 卡住</summary>
+    private readonly ConcurrentQueue<string> _launchLogQueue = new();
+    private readonly DispatcherTimer _overlayTimer;
+    private readonly DispatcherTimer _echoTimer;
+    private const int LaunchLogMaxLines = 3;
+    private const int LaunchLogQueueLimit = 300;
+    private const int LaunchLogMaxLength = 180;
+
     public IRelayCommand OpenVersionDetailCommand { get; }
     public IAsyncRelayCommand LaunchCommand { get; }
 
@@ -199,6 +295,21 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
 
         OpenVersionDetailCommand = new RelayCommand(OpenVersionDetail, CanOpenVersionDetail);
 
+        CancelLaunchCommand = new RelayCommand(CancelLaunch);
+        RetryLaunchCommand = new RelayCommand(RetryLaunch);
+        DismissLaunchOverlayCommand = new RelayCommand(DismissLaunchOverlay);
+        NextEchoCaveCommand = new RelayCommand(() => EchoCaveText = EchoCave.Next());
+
+        _overlayTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(80) };
+        _overlayTimer.Tick += OnOverlayTick;
+
+        // 回声洞轮播：遮罩挂着的时候每 7 秒换一句，不跟着进度条走
+        _echoTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(7) };
+        _echoTimer.Tick += (_, _) =>
+        {
+            if (IsLaunchOverlayVisible) EchoCaveText = EchoCave.Next();
+        };
+
         var config = LauncherConfig.Load();
         SelectedVersionId = config.SelectedVersion;
         _showGameLog = config.ShowGameLogOnLaunch;
@@ -212,6 +323,8 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     public void Dispose()
     {
         AccountEvents.AccountsChanged -= OnAccountsChanged;
+        _overlayTimer.Stop();
+        _echoTimer.Stop();
         GC.SuppressFinalize(this);
     }
 
@@ -849,41 +962,38 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
             return;
         }
 
-        var launchCts = new System.Threading.CancellationTokenSource();
+        var launchCts = new CancellationTokenSource();
+        _launchCts = launchCts;
+        var session = ++_launchSession;
         var versionId = SelectedInstalledVersion.Id;
         var account = SelectedAccount;
-        
+        var tracker = new LaunchProgressTracker();
+        _progressTracker = tracker;
+        _launchCancelRequested = false;
+
+        ResetLaunchOverlay();
+        EchoCaveText = EchoCave.Next();
+        IsLaunchOverlayVisible = true;
+        _overlayTimer.Start();
+        _echoTimer.Start();
+
         try
         {
             IsLaunching = true;
             var config = LauncherConfig.Load();
 
-            // 将 launchCts 绑定到通知，实现点击关闭即取消
-            var notifId = _notificationService.Show("正在启动", "正在检查游戏完整性...", NotificationType.Progress, cts: launchCts);
-
-            // 1. 检查完整性
+            // 1. 检查完整性。进度现在由遮罩展示，不再开通知卡片
             var integrity = await ObsMCLauncher.Core.Services.GameLauncher.CheckGameIntegrityAsync(
                 versionId,
                 config,
-                (msg) => 
-                {
-                    if (msg.Contains("|"))
-                    {
-                        var parts = msg.Split('|');
-                        if (double.TryParse(parts[1], out double p))
-                        {
-                            _notificationService.Update(notifId, parts[0], p);
-                            return;
-                        }
-                    }
-                    _notificationService.Update(notifId, msg);
-                },
+                (msg) => ReportLaunchProgress(tracker, msg),
                 launchCts.Token);
 
             if (integrity.HasIssue && integrity.MissingLibraries.Count > 0)
             {
                 var missingCount = integrity.MissingLibraries.Count;
-                _notificationService.Update(notifId, $"正在补全 {missingCount} 个缺失依赖...", 0);
+                ReportLaunchProgress(tracker, $"正在补全 {missingCount} 个缺失依赖...",
+                    LaunchProgressTracker.StageMissingDependencies, 0);
 
                 try
                 {
@@ -891,30 +1001,33 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
                         config.GameDirectory,
                         versionId,
                         integrity.MissingLibraries,
-                        (progress, current, total) =>
-                        {
-                            _notificationService.Update(notifId, progress, current * 100.0 / Math.Max(1, total));
-                        },
+                        (progress, current, total) => ReportLaunchProgress(tracker, progress,
+                            LaunchProgressTracker.StageMissingDependencies,
+                            current * 100.0 / Math.Max(1, total)),
                         launchCts.Token);
 
                     if (failedCount > 0)
                     {
-                        _notificationService.Show("依赖补全失败", $"{failedCount} 个必需库文件下载失败，请检查网络后重试", NotificationType.Error);
-                        _notificationService.Remove(notifId);
+                        SetLaunchFailure($"{failedCount} 个必需库文件下载失败，请检查网络后重试");
                         return;
                     }
 
-                    _notificationService.Update(notifId, $"已成功补全 {successCount} 个依赖", 100);
+                    ReportLaunchProgress(tracker, $"已成功补全 {successCount} 个依赖",
+                        LaunchProgressTracker.StageMissingDependencies, 100);
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
                 }
                 catch (Exception dlEx)
                 {
-                    _notificationService.Show("依赖补全失败", dlEx.Message, NotificationType.Error);
-                    _notificationService.Remove(notifId);
+                    SetLaunchFailure($"依赖补全失败：{dlEx.Message}");
                     return;
                 }
             }
 
             // 1.5 模组冲突检测
+            ReportLaunchProgress(tracker, "正在检测模组冲突...", LaunchProgressTracker.StageConflictCheck);
             var modsDir = Path.Combine(config.GetRunDirectory(versionId), "mods");
             var conflicts = ObsMCLauncher.Core.Services.ModConflictDetector.DetectConflicts(modsDir);
             var errors = conflicts.Where(c => c.Severity == ObsMCLauncher.Core.Services.ConflictSeverity.Error).ToList();
@@ -926,23 +1039,23 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
                     $"发现 {errors.Count} 个严重冲突，可能导致游戏崩溃：\n\n{conflictMsg}\n\n是否仍要启动游戏？");
                 if (result != DialogResult.Yes)
                 {
-                    _notificationService.Remove(notifId);
+                    LaunchState = LaunchOverlayState.Canceled;
+                    LaunchStatusText = "启动已取消";
+                    _ = HideLaunchOverlayAfterAsync(900, session);
                     return;
                 }
             }
 
-            // 2. 准备日志窗口
+            // 2. 准备日志窗口（独立窗口照常保留，遮罩日志只是它的缩略）
             GameLogWindow? logWindow = null;
             if (config.ShowGameLogOnLaunch)
             {
-                await _dispatcher.InvokeAsync(() => 
+                await _dispatcher.InvokeAsync(() =>
                 {
                     logWindow = new GameLogWindow(versionId);
                     logWindow.Show();
                 });
             }
-
-            _notificationService.Update(notifId, "正在启动 Minecraft...");
 
             // 记录启动时刻：崩溃检测要靠它排除历史崩溃报告
             var launchStartedAt = DateTime.Now;
@@ -951,25 +1064,40 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
                 versionId,
                 account,
                 config,
-                (progress) => _notificationService.Update(notifId, progress),
-                (output) => logWindow?.AppendGameOutput(output),
+                (progress) => ReportLaunchProgress(tracker, progress),
+                (output) =>
+                {
+                    logWindow?.AppendGameOutput(output);
+                    AppendLaunchLog(output);
+                },
                 (exitCode) =>
                 {
                     logWindow?.OnGameExit(exitCode);
                     CrashAnalysisPromptService.NotifyGameExit(versionId, exitCode, launchStartedAt);
-                    _dispatcher.InvokeAsync(() =>
+                    _dispatcher.Post(() =>
                         _notificationService.Show(
                             "游戏退出",
                             $"游戏已退出，退出代码: {exitCode}",
                             exitCode == 0 ? NotificationType.Info : NotificationType.Warning));
                 },
+                (stepProgress) => tracker.ReportStep(stepProgress),
                 launchCts.Token);
 
-            _notificationService.Remove(notifId);
+            if (_launchCancelRequested)
+            {
+                LaunchState = LaunchOverlayState.Canceled;
+                LaunchStatusText = "已取消启动";
+                _ = HideLaunchOverlayAfterAsync(900, session);
+                return;
+            }
 
             if (launchResult.Success)
             {
-                _notificationService.Show("启动成功", $"Minecraft {versionId} 已成功拉起", NotificationType.Success);
+                LaunchState = LaunchOverlayState.Success;
+                LaunchStatusText = "启动成功";
+                tracker.Complete();
+                LaunchPercent = 100;
+                _ = HideLaunchOverlayAfterAsync(1200, session);
 
                 if (config.CloseAfterLaunch)
                 {
@@ -984,21 +1112,171 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
             }
             else
             {
-                _notificationService.Show("启动失败", string.IsNullOrEmpty(launchResult.ErrorMessage) ? "请检查日志或Java配置" : launchResult.ErrorMessage, NotificationType.Error);
+                SetLaunchFailure(string.IsNullOrEmpty(launchResult.ErrorMessage)
+                    ? "请检查日志或 Java 配置"
+                    : launchResult.ErrorMessage);
             }
         }
         catch (OperationCanceledException)
         {
-            _notificationService.Show("已取消", "启动流程已取消", NotificationType.Info);
+            LaunchState = LaunchOverlayState.Canceled;
+            LaunchStatusText = "已取消启动";
+            _ = HideLaunchOverlayAfterAsync(900, session);
         }
         catch (Exception ex)
         {
-            _notificationService.Show("启动异常", ex.Message, NotificationType.Error);
+            SetLaunchFailure(ex.Message);
         }
         finally
         {
             IsLaunching = false;
             launchCts.Dispose();
+            if (_launchCts == launchCts) _launchCts = null;
         }
+    }
+
+    private void ResetLaunchOverlay()
+    {
+        LaunchState = LaunchOverlayState.Running;
+        LaunchStatusText = "正在准备启动...";
+        LaunchErrorMessage = "";
+        LaunchPercent = 0;
+        LaunchLogLines.Clear();
+        while (_launchLogQueue.TryDequeue(out _)) { }
+        _progressTracker.Reset();
+    }
+
+    private void SetLaunchFailure(string message)
+    {
+        LaunchState = LaunchOverlayState.Failed;
+        LaunchStatusText = "启动失败";
+        LaunchErrorMessage = message;
+    }
+
+    /// <summary>
+    /// 进度回调的公共入口。回调大多来自后台线程，所以算进度和改状态都挪到界面线程。
+    /// </summary>
+    private void ReportLaunchProgress(LaunchProgressTracker tracker, string? message, int? stage = null, double? percent = null)
+    {
+        var clean = LaunchProgressTracker.CleanMessage(message);
+        if (clean.Length == 0) return;
+
+        // 资源下载回调把百分比塞在 "xxx (45%)|45" 里，这里解出来当真实进度用
+        if (percent == null && message != null)
+        {
+            var barIndex = message.LastIndexOf('|');
+            if (barIndex >= 0 && double.TryParse(message.Substring(barIndex + 1), out var parsed))
+            {
+                percent = parsed;
+                if (stage == null) stage = LaunchProgressTracker.StageAssets;
+            }
+        }
+
+        _dispatcher.Post(() =>
+        {
+            // 换了一轮启动之后，上一轮迟到的回调直接丢掉
+            if (!IsLaunchOverlayVisible || tracker != _progressTracker) return;
+
+            if (stage.HasValue)
+            {
+                tracker.ReportPhase(stage.Value, clean, percent);
+            }
+            else
+            {
+                tracker.Report(clean);
+            }
+
+            LaunchStatusText = clean;
+            AppendLaunchLog(clean);
+        });
+    }
+
+    /// <summary>游戏输出可能一秒上百行，这里只入队，界面线程定时搬</summary>
+    private void AppendLaunchLog(string? line)
+    {
+        if (string.IsNullOrWhiteSpace(line)) return;
+
+        var text = line.Trim();
+        if (text.Length > LaunchLogMaxLength) text = text.Substring(0, LaunchLogMaxLength) + " ...";
+
+        while (_launchLogQueue.Count >= LaunchLogQueueLimit && _launchLogQueue.TryDequeue(out _)) { }
+        _launchLogQueue.Enqueue(text);
+    }
+
+    private void OnOverlayTick(object? sender, EventArgs e)
+    {
+        if (!IsLaunchOverlayVisible)
+        {
+            _overlayTimer.Stop();
+            return;
+        }
+
+        // 一次把队列搬空，只保留最后三行
+        var pending = new List<string>(LaunchLogMaxLines);
+        var drained = 0;
+        while (drained < LaunchLogQueueLimit && _launchLogQueue.TryDequeue(out var line))
+        {
+            drained++;
+            pending.Add(line);
+            if (pending.Count > LaunchLogMaxLines) pending.RemoveAt(0);
+        }
+
+        if (drained > 0)
+        {
+            foreach (var line in pending) LaunchLogLines.Add(line);
+            while (LaunchLogLines.Count > LaunchLogMaxLines) LaunchLogLines.RemoveAt(0);
+        }
+
+        if (_launchState != LaunchOverlayState.Running) return;
+
+        var target = _progressTracker.TargetPercent;
+        if (target <= LaunchPercent) return;
+
+        // 越靠近目标走得越慢，看起来像在磨进度，而不是匀速计时
+        var step = (target - LaunchPercent) * 0.12;
+        if (step < 0.2) step = 0.2;
+        if (step > 4) step = 4;
+
+        LaunchPercent = Math.Min(target, LaunchPercent + step);
+    }
+
+    private void CancelLaunch()
+    {
+        if (!IsLaunching) return;
+        _launchCancelRequested = true;
+        LaunchStatusText = "正在取消启动...";
+        try
+        {
+            _launchCts?.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+        }
+    }
+
+    private void RetryLaunch()
+    {
+        HideLaunchOverlay();
+        if (CanLaunch) LaunchCommand.Execute(null);
+    }
+
+    private void DismissLaunchOverlay()
+    {
+        if (IsLaunching) return;
+        HideLaunchOverlay();
+    }
+
+    private void HideLaunchOverlay()
+    {
+        _overlayTimer.Stop();
+        _echoTimer.Stop();
+        IsLaunchOverlayVisible = false;
+    }
+
+    private async Task HideLaunchOverlayAfterAsync(int delayMilliseconds, int session)
+    {
+        await Task.Delay(delayMilliseconds);
+        if (session != _launchSession) return;
+        await _dispatcher.InvokeAsync(HideLaunchOverlay);
     }
 }

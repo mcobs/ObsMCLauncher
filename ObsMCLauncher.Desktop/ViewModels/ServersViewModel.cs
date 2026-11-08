@@ -511,6 +511,7 @@ public partial class ServersViewModel : ViewModelBase, IDisposable
                             exitCode == 0 ? NotificationType.Info : NotificationType.Warning);
                     });
                 },
+                null,
                 launchCts.Token);
 
             _notificationService.Remove(notifId);

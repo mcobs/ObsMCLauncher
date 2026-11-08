@@ -122,9 +122,10 @@ public class GameLauncher
         Action<string>? onProgressUpdate = null,
         Action<string>? onGameOutput = null,
         Action<int>? onGameExit = null,
+        Action<LaunchStepProgress>? onLaunchStepProgress = null,
         CancellationToken cancellationToken = default)
     {
-        return await LaunchGameInternalAsync(versionId, account, config, null, 0, onProgressUpdate, onGameOutput, onGameExit, cancellationToken);
+        return await LaunchGameInternalAsync(versionId, account, config, null, 0, onProgressUpdate, onGameOutput, onGameExit, onLaunchStepProgress, cancellationToken);
     }
 
     public static async Task<GameLaunchResult> LaunchAndConnectServerAsync(
@@ -136,9 +137,10 @@ public class GameLauncher
         Action<string>? onProgressUpdate = null,
         Action<string>? onGameOutput = null,
         Action<int>? onGameExit = null,
+        Action<LaunchStepProgress>? onLaunchStepProgress = null,
         CancellationToken cancellationToken = default)
     {
-        return await LaunchGameInternalAsync(versionId, account, config, serverAddress, serverPort, onProgressUpdate, onGameOutput, onGameExit, cancellationToken);
+        return await LaunchGameInternalAsync(versionId, account, config, serverAddress, serverPort, onProgressUpdate, onGameOutput, onGameExit, onLaunchStepProgress, cancellationToken);
     }
 
     private static async Task<GameLaunchResult> LaunchGameInternalAsync(
@@ -150,6 +152,7 @@ public class GameLauncher
         Action<string>? onProgressUpdate,
         Action<string>? onGameOutput,
         Action<int>? onGameExit,
+        Action<LaunchStepProgress>? onLaunchStepProgress,
         CancellationToken cancellationToken)
     {
         var errorMessage = string.Empty;
@@ -329,6 +332,32 @@ public class GameLauncher
             if (!assetsResult.Success)
             {
                 errorMessage = "❌ 游戏资源检查或下载失败！";
+                return new GameLaunchResult { Success = false, ErrorMessage = errorMessage };
+            }
+
+            // 插件启动步骤：文件都备齐了，但还没拼启动参数。
+            // 放在这个位置是故意的——步骤里做的事（更新模组、生成配置）可以被随后的参数构建看到，
+            // 而失败/取消也不需要回滚已经下载好的游戏文件。
+            var stepContext = new PluginLaunchStepContext
+            {
+                VersionId = versionId,
+                McVersion = actualMcVersion,
+                GameDirectory = config.GameDirectory,
+                JavaPath = actualJavaPath
+            };
+            var stepResult = await PluginContext.RunLaunchStepsAsync(stepContext, progress =>
+            {
+                if (progress.Phase == LaunchStepPhase.Running)
+                {
+                    var text = progress.Message ?? $"正在执行插件步骤：{progress.DisplayName}";
+                    onProgressUpdate?.Invoke(text);
+                }
+                onLaunchStepProgress?.Invoke(progress);
+            });
+
+            if (stepResult.Cancelled)
+            {
+                errorMessage = "启动已被插件步骤取消";
                 return new GameLaunchResult { Success = false, ErrorMessage = errorMessage };
             }
 

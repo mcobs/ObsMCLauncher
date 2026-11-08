@@ -163,6 +163,8 @@
           <SolidColorBrush x:Key="CardBackgroundBrush" Color="#1C1F26"/>
           <SolidColorBrush x:Key="CardBorderBrush" Color="#2A2E37"/>
           <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#0B0D10"/>
+          <!-- 启动遮罩底：接近页面底色但不完全挡住，留一点操作区的影子 -->
+          <SolidColorBrush x:Key="LaunchOverlayBrush" Color="#E60B0D10"/>
           <SolidColorBrush x:Key="NavBackgroundBrush" Color="#141619"/>
           <SolidColorBrush x:Key="NavBorderBrush" Color="#1E2128"/>
           <SolidColorBrush x:Key="TitleBarBackgroundBrush" Color="#141619"/>
@@ -253,6 +255,7 @@
           <SolidColorBrush x:Key="CardBackgroundBrush" Color="#FAFBFD"/>
           <SolidColorBrush x:Key="CardBorderBrush" Color="#DDE3EA"/>
           <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#EEF1F5"/>
+          <SolidColorBrush x:Key="LaunchOverlayBrush" Color="#EDEEF1F5"/>
           <SolidColorBrush x:Key="NavBackgroundBrush" Color="#F2F5F9"/>
           <SolidColorBrush x:Key="NavBorderBrush" Color="#DDE3EA"/>
           <SolidColorBrush x:Key="TitleBarBackgroundBrush" Color="#F2F5F9"/>
