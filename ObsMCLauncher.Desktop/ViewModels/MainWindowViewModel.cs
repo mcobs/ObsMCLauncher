@@ -81,6 +81,9 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     private HomeViewModel? _homeViewModel;
     private MoreViewModel? _moreViewModel;
 
+    /// <summary>账号管理的导航项：不显示在侧栏，仅用于页面路由</summary>
+    private NavItemViewModel? _accountNavItem;
+
     /// <summary>主页 ViewModel（供其它页面直接引用，避免按导航标题查找）</summary>
     public HomeViewModel Home => _homeViewModel!;
 
@@ -165,7 +168,8 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         const string iconBase = "avares://ObsMCLauncher.Desktop/Assets/SidebarIcons/";
         NavItems.Add(new NavItemViewModel("主页", Home, "🏠") { IconPath = iconBase + "dashboard.svg" });
         NavItems.Add(new NavItemViewModel("多人联机", new MultiplayerViewModel(Notifications, Dialogs), "🌐") { IconPath = iconBase + "multiplayer.svg" });
-        NavItems.Add(new NavItemViewModel("账号管理", AccountManagement, "👤") { IconPath = iconBase + "accounts.svg" });
+        // 账号管理不占侧栏位置，入口在主页账号区；保留导航项供 NavToPage 路由
+        _accountNavItem = new NavItemViewModel("账号管理", AccountManagement, "👤") { IconPath = iconBase + "accounts.svg" };
         NavItems.Add(new NavItemViewModel("版本管理", VersionDownload, "📥") { IconPath = iconBase + "versions.svg" });
         NavItems.Add(new NavItemViewModel("资源下载", new ResourcesViewModel(), "📦") { IconPath = iconBase + "resources.svg" });
 
@@ -634,7 +638,8 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         if (!pageMapping.TryGetValue(page.ToLowerInvariant(), out var navTitle)) return;
 
         var targetNav = NavItems.FirstOrDefault(n => n.Title == navTitle)
-            ?? BottomNavItems.FirstOrDefault(n => n.Title == navTitle);
+            ?? BottomNavItems.FirstOrDefault(n => n.Title == navTitle)
+            ?? (_accountNavItem?.Title == navTitle ? _accountNavItem : null);
         if (targetNav == null) return;
 
         if (NavItems.Contains(targetNav))
@@ -644,6 +649,11 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         else if (BottomNavItems.Contains(targetNav))
         {
             SelectedBottomNavItem = targetNav;
+        }
+        else
+        {
+            // 隐藏页不在侧栏集合里，仍由 SelectedNavItem 承载当前页面
+            SelectedNavItem = targetNav;
         }
     }
 

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.ComponentModel;
 using System.Linq;
 using Avalonia;
@@ -151,9 +151,13 @@ public partial class MainWindow : Window
         if (_vm == null) return;
 
         var entry = _vm.SelectedNavEntry;
-        if (entry != null && !ReferenceEquals(MainNav.SelectedItem, entry))
+        // 隐藏页（账号管理）不在侧栏数据源中，此时清空侧栏选中避免残留高亮
+        var paneItem = entry != null && (_vm.NavItems.Contains(entry) || _vm.BottomNavItems.Contains(entry))
+            ? entry
+            : null;
+        if (!ReferenceEquals(MainNav.SelectedItem, paneItem))
         {
-            MainNav.SelectedItem = entry;
+            MainNav.SelectedItem = paneItem;
         }
 
         var page = _vm.CurrentPage;
