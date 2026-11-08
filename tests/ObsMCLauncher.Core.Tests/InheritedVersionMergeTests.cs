@@ -183,8 +183,9 @@ public class InheritedVersionMergeTests : IDisposable
 }
 
 /// <summary>
-/// 启动时的缺失库检查：natives classifier 包缺失必须算**必需**并触发下载，
-/// 不能归到"可选"里（否则永远没人去下，natives 目录一直是空的）。
+/// 启动时的缺失库检查：natives classifier 包缺失归到"可选"。
+/// 启动时照样会把可选库尝试补下，但下载失败只告警、不阻断启动——
+/// 低版本里有些库本来就不加载，下载源又常挂，卡在"必需"上会直接开不了游戏。
 /// </summary>
 public class MissingLibraryDetectionTests : IDisposable
 {
@@ -251,7 +252,7 @@ public class MissingLibraryDetectionTests : IDisposable
     }
 
     [Fact]
-    public void MissingNativesJarCountsAsRequired()
+    public void MissingNativesJarCountsAsOptional()
     {
         // 主 jar 在（1 字节，与声明大小一致），只缺 natives classifier
         var mainJar = Path.Combine(_gameDir, "libraries", "org", "lwjgl", "lwjgl", "3.2.2", "lwjgl-3.2.2.jar");
@@ -260,8 +261,8 @@ public class MissingLibraryDetectionTests : IDisposable
 
         var (required, optional) = GetMissing(_gameDir, BuildLwjglVersion());
 
-        Assert.Contains("org.lwjgl:lwjgl:3.2.2", required);
-        Assert.DoesNotContain("org.lwjgl:lwjgl:3.2.2", optional);
+        Assert.Contains("org.lwjgl:lwjgl:3.2.2", optional);
+        Assert.DoesNotContain("org.lwjgl:lwjgl:3.2.2", required);
     }
 
     [Fact]
