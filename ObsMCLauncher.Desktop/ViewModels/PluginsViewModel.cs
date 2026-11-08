@@ -720,10 +720,18 @@ public partial class PluginsViewModel : ViewModelBase
 
             if (token.IsCancellationRequested) return;
 
+            // 本地已安装的插件（含被禁用/加载失败的），市场条目据此标记"已安装"
+            var installedById = new Dictionary<string, LoadedPlugin>(StringComparer.OrdinalIgnoreCase);
+            foreach (var local in _pluginLoader.LoadedPlugins)
+            {
+                if (!string.IsNullOrWhiteSpace(local.Id)) installedById[local.Id] = local;
+            }
+
             LeftItems.Clear();
             foreach (var p in filtered)
             {
-                LeftItems.Add(PluginListItemViewModel.FromMarket(p));
+                installedById.TryGetValue(p.Id, out var localPlugin);
+                LeftItems.Add(PluginListItemViewModel.FromMarket(p, localPlugin));
             }
 
             IsEmptyHintVisible = LeftItems.Count == 0;
@@ -751,6 +759,14 @@ public partial class PluginsViewModel : ViewModelBase
             }
             else if (item.Source == PluginItemSource.Market && item.MarketPlugin != null)
             {
+                if (item.IsInstalledLocally)
+                {
+                    _notificationService.Show("插件市场",
+                        $"{item.MarketPlugin.Name} 已在本地安装，可在「已安装」列表中管理",
+                        NotificationType.Info);
+                    return;
+                }
+
                 if (!item.MarketPlugin.IsApiVersionCompatible)
                 {
                     _notificationService.Show("无法安装",
@@ -995,7 +1011,18 @@ public partial class PluginListItemViewModel : ObservableObject
                 ? $"可更新 {info.InstalledVersion} → {info.AvailableVersion}"
                 : HasUpdate ? "有可用的新版本" : null;
 
-    private PluginListItemViewModel(PluginItemSource source, string title, string meta, bool hasError, LoadedPlugin? installed, MarketPlugin? marketPlugin, string? iconUrl = null, bool isIncompatible = false, string? incompatibleReason = null, PluginUpdateInfo? update = null)
+    // ---- 插件更新 ----
+
+    /// <summary>列表条目对应的本地同名插件（市场条目用它判断是否已安装）</summary>
+    public LoadedPlugin? LocalInstalled { get; }
+
+    /// <summary>本地已安装该插件（市场条目用）</summary>
+    public bool IsInstalledLocally => Source == PluginItemSource.Installed || LocalInstalled != null;
+
+    /// <summary>市场列表里显示「已安装」角标（已安装列表本身不需要再标记）</summary>
+    public bool ShowInstalledBadge => Source == PluginItemSource.Market && LocalInstalled != null;
+
+    private PluginListItemViewModel(PluginItemSource source, string title, string meta, bool hasError, LoadedPlugin? installed, MarketPlugin? marketPlugin, string? iconUrl = null, bool isIncompatible = false, string? incompatibleReason = null, PluginUpdateInfo? update = null, LoadedPlugin? localInstalled = null)
     {
         Source = source;
         Title = title;
@@ -1007,6 +1034,7 @@ public partial class PluginListItemViewModel : ObservableObject
         IsIncompatible = isIncompatible;
         IncompatibleReason = incompatibleReason;
         Update = update;
+        LocalInstalled = localInstalled;
     }
 
     /// <summary>远程图标下载完成后通知重新求值图标绑定</summary>
@@ -1022,14 +1050,21 @@ public partial class PluginListItemViewModel : ObservableObject
             !string.IsNullOrEmpty(p.ErrorOutput), p, null, p.IconPath, update: update);
     }
 
-    public static PluginListItemViewModel FromMarket(MarketPlugin p)
+    public static PluginListItemViewModel FromMarket(MarketPlugin p, LoadedPlugin? localInstalled = null)
     {
         var platforms = string.Join(", ", p.Platforms);
         var meta = string.IsNullOrEmpty(platforms)
             ? $"{p.Version} | {p.Author}"
             : $"{p.Version} | {p.Author} | {platforms}";
+
+        // 本地已安装时把本地版本也带上，方便一眼看出是否需要更新
+        if (!string.IsNullOrWhiteSpace(localInstalled?.Version))
+        {
+            meta += $" | 已安装 {localInstalled.Version}";
+        }
+
         return new PluginListItemViewModel(PluginItemSource.Market, p.Name, meta, false, null, p, p.Icon,
-            !p.IsApiVersionCompatible, p.IncompatibleReason);
+            !p.IsApiVersionCompatible, p.IncompatibleReason, localInstalled: localInstalled);
     }
 
     public PluginDetailViewModel ToDetail()
@@ -1094,6 +1129,7 @@ public partial class PluginListItemViewModel : ObservableObject
                 : $"v{MarketPlugin.Version} | {MarketPlugin.Author} | {platforms}";
 
             var compatible = MarketPlugin.IsApiVersionCompatible;
+            var installedLocally = LocalInstalled != null;
 
             var detail = new PluginDetailViewModel
             {
@@ -1102,13 +1138,14 @@ public partial class PluginListItemViewModel : ObservableObject
                 IconUrl = MarketPlugin.Icon,
                 Description = MarketPlugin.Description,
                 OutputVisible = false,
-                PrimaryActionText = "安装",
-                PrimaryActionEnabled = compatible,
+                PrimaryActionText = installedLocally ? "已安装" : "安装",
+                PrimaryActionEnabled = compatible && !installedLocally,
                 PrimaryActionVisible = true,
                 SecondaryActionVisible = false,
                 SecondaryActionText = "",
                 IsIncompatibleStatus = !compatible,
-                IncompatibleReason = MarketPlugin.IncompatibleReason
+                IncompatibleReason = MarketPlugin.IncompatibleReason,
+                IsInstalledStatus = installedLocally
             };
 
             detail.HomeUrl = MarketPlugin.Repository;
@@ -1161,6 +1198,9 @@ public partial class PluginDetailViewModel : ObservableObject
 
     /// <summary>插件 API 版本区间不覆盖当前启动器</summary>
     [ObservableProperty] private bool _isIncompatibleStatus;
+
+    /// <summary>市场条目对应的插件已经装在本地</summary>
+    [ObservableProperty] private bool _isInstalledStatus;
 
     /// <summary>不兼容原因，用于按钮提示</summary>
     [ObservableProperty] private string? _incompatibleReason;

@@ -1,4 +1,4 @@
-﻿<UserControl xmlns="https://github.com/avaloniaui"
+<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:ObsMCLauncher.Desktop.ViewModels"
              xmlns:converters="using:ObsMCLauncher.Desktop.Converters"
@@ -337,6 +337,13 @@
                           <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6"
                                       VerticalAlignment="Center" Margin="8,0,0,0">
                             <Border CornerRadius="999" Padding="8,1"
+                                    Background="{DynamicResource SurfaceHoverBrush}"
+                                    IsVisible="{Binding ShowInstalledBadge}">
+                              <TextBlock Text="已安装" FontSize="11" FontWeight="SemiBold"
+                                         Foreground="{DynamicResource TextSecondaryBrush}"
+                                         HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <Border CornerRadius="999" Padding="8,1"
                                     Background="{DynamicResource PrimarySoftBrush}"
                                     ToolTip.Tip="{Binding UpdateTooltip}"
                                     IsVisible="{Binding HasUpdate}">
@@ -438,6 +445,13 @@
                               IsVisible="{Binding Detail.IsIncompatibleStatus}">
                         <TextBlock Text="不兼容" FontSize="11" FontWeight="SemiBold"
                                    Foreground="{DynamicResource WarningBrush}"/>
+                      </Border>
+                      <Border Background="{DynamicResource SurfaceHoverBrush}" CornerRadius="999"
+                              Padding="10,2" Margin="8,0,0,0" VerticalAlignment="Center"
+                              ToolTip.Tip="本地已经安装该插件，可在「已安装」列表中管理"
+                              IsVisible="{Binding Detail.IsInstalledStatus}">
+                        <TextBlock Text="已安装" FontSize="11" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"/>
                       </Border>
                       <Border Background="{DynamicResource PrimarySoftBrush}" CornerRadius="999"
                               Padding="10,2" Margin="8,0,0,0" VerticalAlignment="Center"
