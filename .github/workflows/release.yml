@@ -191,7 +191,10 @@ jobs:
 
         # 安装向导的许可页只接受 .txt / .md / .rtf：直接喂仓库根目录的 LICENSE（无扩展名）
         # 会抛 ArgumentException。这里复制一份带扩展名的临时文件，避免仓库里再存一份 GPL 正文。
-        cp LICENSE ./installer-license.txt
+        # 只有 Windows（MSI）和 macOS（pkg）会用到，Linux 的 AppImage 没有安装向导。
+        if [[ "$rid" == win-* || "$rid" == osx-* ]]; then
+          cp LICENSE ./installer-license.txt
+        fi
 
         if [[ "$rid" == win-* ]]; then
           # ⚠️ --noInst 会连 --msi 一起关掉（实测：两个参数并存时不产出任何安装程序），
@@ -204,13 +207,15 @@ jobs:
                       --instConclusion      ./.github/installer/conclusion-win.txt
                       --msiTopBanner        ./.github/installer/msi-top-banner.bmp
                       --msiDialogBackground ./.github/installer/msi-dialog-background.bmp)
-        else
+        elif [[ "$rid" == osx-* ]]; then
           # macOS 的 pkg 内容页只认 .txt / .rtf / .html（不接受 .md），所以统一用 txt。
           pack_args+=(--instWelcome    ./.github/installer/welcome.txt
                       --instLicense    ./installer-license.txt
                       --instReadme     ./.github/installer/readme-mac.txt
                       --instConclusion ./.github/installer/conclusion-mac.txt)
         fi
+        # Linux 的 vpk pack 只产 AppImage，安装向导参数（--inst*/--msi*）在 Linux 版 CLI 里
+        # 根本不存在，传了会以 "Unrecognized command or argument" 直接失败，故不加任何参数。
 
         vpk pack "${pack_args[@]}"
 
