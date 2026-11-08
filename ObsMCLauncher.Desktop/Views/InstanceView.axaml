@@ -8,6 +8,30 @@
              x:Class="ObsMCLauncher.Desktop.Views.InstanceView"
              x:DataType="vm:InstanceViewModel">
 
+  <UserControl.Styles>
+    <!-- 资源行底色放在样式里，悬浮态才能覆盖；写在 Border 上的本地值优先级更高，会盖掉 :pointerover -->
+    <Style Selector="Border.resource-row">
+      <Setter Property="Background" Value="{DynamicResource LayerFillColorPrimaryBrush}"/>
+    </Style>
+    <Style Selector="Border.resource-row:pointerover">
+      <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}"/>
+    </Style>
+
+    <!--
+      资源管理列表的操作区（删除按钮 / 启用开关）：默认隐藏，鼠标悬浮该行或键盘焦点进入时显示。
+      用 Opacity 而不是 IsVisible，操作区始终占位，行高与文字列宽不会随悬浮来回抖。
+      IsHitTestVisible 一起跟随，避免「看不见却点得到」。
+    -->
+    <Style Selector="Border.resource-row StackPanel.resource-actions">
+      <Setter Property="Opacity" Value="0"/>
+      <Setter Property="IsHitTestVisible" Value="False"/>
+    </Style>
+    <Style Selector="Border.resource-row:pointerover StackPanel.resource-actions, Border.resource-row:focus-within StackPanel.resource-actions">
+      <Setter Property="Opacity" Value="1"/>
+      <Setter Property="IsHitTestVisible" Value="True"/>
+    </Style>
+  </UserControl.Styles>
+
   <Panel IsVisible="{Binding IsVisible}"
          ZIndex="10"
          HorizontalAlignment="Stretch"
@@ -583,7 +607,7 @@
                     <ItemsControl ItemsSource="{Binding Mods}">
                       <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                          <Border Background="{DynamicResource LayerFillColorPrimaryBrush}"
+                          <Border Classes="resource-row"
                                   CornerRadius="8"
                                   Padding="12"
                                   Margin="0,0,0,8"
@@ -612,7 +636,16 @@
                                 <TextBlock Text="{Binding ConflictDescription}" FontSize="11" Foreground="{DynamicResource DangerBrush}" TextWrapping="Wrap" IsVisible="{Binding HasConflict}"/>
                                 <TextBlock Text="{Binding ConflictSuggestion}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}" TextWrapping="Wrap" IsVisible="{Binding ConflictSuggestion, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                               </StackPanel>
-                              <ToggleSwitch Grid.Column="2" IsChecked="{Binding IsEnabled}" OnContent="" OffContent="" VerticalAlignment="Center"/>
+                              <StackPanel Grid.Column="2" Classes="resource-actions" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                <Button Classes="icon-ghost" Width="32" Height="32"
+                                        Command="{Binding $parent[ItemsControl].((vm:InstanceViewModel)DataContext).DeleteModCommand}"
+                                        CommandParameter="{Binding}" ToolTip.Tip="删除">
+                                  <Path Data="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"
+                                        Width="16" Height="16" Stretch="Uniform" Fill="{DynamicResource DangerBrush}"
+                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Button>
+                                <ToggleSwitch IsChecked="{Binding IsEnabled}" OnContent="" OffContent=""/>
+                              </StackPanel>
                             </Grid>
                           </Border>
                         </DataTemplate>
@@ -654,10 +687,10 @@
                     <ItemsControl ItemsSource="{Binding ResourcePacks}">
                       <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                          <Border Background="{DynamicResource LayerFillColorPrimaryBrush}"
+                          <Border Classes="resource-row"
                                   CornerRadius="8" Padding="12" Margin="0,0,0,8"
                                   BorderThickness="1" BorderBrush="{DynamicResource CardBorderBrush}">
-                            <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                            <Grid ColumnDefinitions="Auto,*">
                               <Border Width="40" Height="40" CornerRadius="6" Margin="0,0,12,0"
                                       Background="{DynamicResource SurfaceBrush}"
                                       BorderThickness="1" BorderBrush="{DynamicResource CardBorderBrush}" ClipToBounds="True">
@@ -673,15 +706,16 @@
                                 <TextBlock Text="{Binding DisplayName}" FontSize="13" FontWeight="Medium" TextTrimming="CharacterEllipsis"/>
                                 <TextBlock Text="{Binding Size, StringFormat='{}{0:F0} KB'}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}"/>
                               </StackPanel>
-                              <Button Grid.Column="2" Classes="icon-ghost" Width="32" Height="32"
-                                      Command="{Binding $parent[ItemsControl].((vm:InstanceViewModel)DataContext).DeleteResourcePackCommand}"
-                                      CommandParameter="{Binding}" ToolTip.Tip="删除">
-                                <Path Data="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"
-                                      Width="16" Height="16" Stretch="Uniform" Fill="{DynamicResource DangerBrush}"
-                                      HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                              </Button>
-                              <ToggleSwitch Grid.Column="3" IsChecked="{Binding IsEnabled}" OnContent="" OffContent=""
-                                            Margin="12,0,0,0" VerticalAlignment="Center"/>
+                              <StackPanel Grid.Column="2" Classes="resource-actions" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                <Button Classes="icon-ghost" Width="32" Height="32"
+                                        Command="{Binding $parent[ItemsControl].((vm:InstanceViewModel)DataContext).DeleteResourcePackCommand}"
+                                        CommandParameter="{Binding}" ToolTip.Tip="删除">
+                                  <Path Data="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"
+                                        Width="16" Height="16" Stretch="Uniform" Fill="{DynamicResource DangerBrush}"
+                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Button>
+                                <ToggleSwitch IsChecked="{Binding IsEnabled}" OnContent="" OffContent=""/>
+                              </StackPanel>
                             </Grid>
                           </Border>
                         </DataTemplate>
@@ -723,10 +757,10 @@
                     <ItemsControl ItemsSource="{Binding ShaderPacks}">
                       <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                          <Border Background="{DynamicResource LayerFillColorPrimaryBrush}"
+                          <Border Classes="resource-row"
                                   CornerRadius="8" Padding="12" Margin="0,0,0,8"
                                   BorderThickness="1" BorderBrush="{DynamicResource CardBorderBrush}">
-                            <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                            <Grid ColumnDefinitions="Auto,*">
                               <Border Width="40" Height="40" CornerRadius="6" Margin="0,0,12,0"
                                       Background="{DynamicResource SurfaceBrush}"
                                       BorderThickness="1" BorderBrush="{DynamicResource CardBorderBrush}" ClipToBounds="True">
@@ -742,15 +776,16 @@
                                 <TextBlock Text="{Binding DisplayName}" FontSize="13" FontWeight="Medium" TextTrimming="CharacterEllipsis"/>
                                 <TextBlock Text="{Binding Size, StringFormat='{}{0:F0} KB'}" FontSize="11" Foreground="{DynamicResource TextTertiaryBrush}"/>
                               </StackPanel>
-                              <Button Grid.Column="2" Classes="icon-ghost" Width="32" Height="32"
-                                      Command="{Binding $parent[ItemsControl].((vm:InstanceViewModel)DataContext).DeleteShaderPackCommand}"
-                                      CommandParameter="{Binding}" ToolTip.Tip="删除">
-                                <Path Data="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"
-                                      Width="16" Height="16" Stretch="Uniform" Fill="{DynamicResource DangerBrush}"
-                                      HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                              </Button>
-                              <ToggleSwitch Grid.Column="3" IsChecked="{Binding IsEnabled}" OnContent="" OffContent=""
-                                            Margin="12,0,0,0" VerticalAlignment="Center"/>
+                              <StackPanel Grid.Column="2" Classes="resource-actions" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                <Button Classes="icon-ghost" Width="32" Height="32"
+                                        Command="{Binding $parent[ItemsControl].((vm:InstanceViewModel)DataContext).DeleteShaderPackCommand}"
+                                        CommandParameter="{Binding}" ToolTip.Tip="删除">
+                                  <Path Data="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"
+                                        Width="16" Height="16" Stretch="Uniform" Fill="{DynamicResource DangerBrush}"
+                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Button>
+                                <ToggleSwitch IsChecked="{Binding IsEnabled}" OnContent="" OffContent=""/>
+                              </StackPanel>
                             </Grid>
                           </Border>
                         </DataTemplate>

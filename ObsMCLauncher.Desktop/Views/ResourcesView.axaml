@@ -1,4 +1,4 @@
-﻿<UserControl xmlns="https://github.com/avaloniaui"
+<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:ObsMCLauncher.Desktop.ViewModels"
              xmlns:converters="using:ObsMCLauncher.Desktop.Converters"
@@ -92,7 +92,7 @@
         </TextBox>
       </Grid>
 
-      <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,*,Auto" ColumnSpacing="8">
+      <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto" ColumnSpacing="8">
         <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
           <RadioButton Classes="segment" Content="CurseForge" GroupName="resSource"
                        IsChecked="{Binding CurrentSourceIndex, Converter={x:Static converters:StringEqualsConverter.Instance}, ConverterParameter=0}"
@@ -119,22 +119,11 @@
           </ComboBox.ItemTemplate>
         </ComboBox>
 
-        <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-          <ComboBox Width="108" Height="34" FontSize="12"
-                    ItemsSource="{Binding InstalledVersions}"
-                    SelectedItem="{Binding SelectedVersionId}"
-                    IsEnabled="{Binding HasInstalledVersions}"
-                    PlaceholderText="目标版本" />
-          <TextBlock Text="{Binding VersionHintText}" FontSize="11" Foreground="{DynamicResource DangerBrush}"
-                     IsVisible="{Binding !HasInstalledVersions}" VerticalAlignment="Center"
-                     MaxWidth="150" TextWrapping="Wrap" />
-        </StackPanel>
-
-        <TextBlock Grid.Column="4" Text="{Binding Status}" FontSize="12"
+        <TextBlock Grid.Column="3" Text="{Binding Status}" FontSize="12"
                    Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"
                    Margin="0,0,8,0" TextTrimming="CharacterEllipsis" />
 
-        <ui:ProgressRing Grid.Column="5" Width="16" Height="16" IsIndeterminate="True" IsActive="True"
+        <ui:ProgressRing Grid.Column="4" Width="16" Height="16" IsIndeterminate="True" IsActive="True"
                          IsVisible="{Binding IsLoadingMore}" VerticalAlignment="Center" />
       </Grid>
 

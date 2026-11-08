@@ -596,6 +596,32 @@ public partial class InstanceViewModel : ViewModelBase
     }
 
     [RelayCommand]
+    private async Task DeleteModAsync(ModInfo mod)
+    {
+        if (mod == null) return;
+
+        var result = await _dialogService.ShowQuestion("确认删除", $"确定要删除 Mod \"{mod.DisplayName}\" 吗？");
+        if (result != DialogResult.Yes) return;
+
+        try
+        {
+            if (File.Exists(mod.Path))
+            {
+                File.Delete(mod.Path);
+                Mods.Remove(mod);
+                HasMods = Mods.Count > 0;
+
+                // 重新扫描一次，让其余模组的冲突标记跟着更新
+                await LoadModsAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            _notificationService.Show("删除失败", ex.Message, NotificationType.Error);
+        }
+    }
+
+    [RelayCommand]
     private async Task RefreshModsAsync()
     {
         await LoadModsAsync();
@@ -1378,14 +1404,7 @@ public partial class InstanceViewModel : ViewModelBase
                     .Select(c => c.Suggestion));
         }
 
-        var errorCount = conflicts.Count(c => c.Severity == ConflictSeverity.Error);
-        var warnCount = conflicts.Count(c => c.Severity == ConflictSeverity.Warning);
-        if (errorCount > 0)
-        {
-            _notificationService.Show("模组冲突",
-                $"检测到 {errorCount} 个严重冲突和 {warnCount} 个警告，请查看模组列表中的标记",
-                NotificationType.Warning, 8);
-        }
+        // 冲突只在列表里打标记，不再每次进入实例页弹通知
     }
 
     private static string DetermineEffectiveLoader(string modLoader, string instanceLoader)
