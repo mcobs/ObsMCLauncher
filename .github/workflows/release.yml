@@ -199,8 +199,10 @@ jobs:
         if [[ "$rid" == win-* ]]; then
           # ⚠️ --noInst 会连 --msi 一起关掉（实测：两个参数并存时不产出任何安装程序），
           # 所以不能在保留 --noInst 的前提下单独开 MSI。便携包不受影响，Portable.zip 照常产出。
-          # --instLocation PerUser：装到 %LocalAppData%，不需要管理员，更新不弹 UAC。
-          pack_args+=(--msi --instLocation PerUser
+          # --instLocation Either：安装时由用户选择「仅为我安装（%LocalAppData%）」还是
+          # 「为所有用户安装（Program Files）」。之前的 PerUser 把位置固定成 %LocalAppData%，
+          # 安装向导里不会出现任何位置选择页。
+          pack_args+=(--msi --instLocation Either
                       --instWelcome         ./.github/installer/welcome.txt
                       --instLicense         ./installer-license.txt
                       --instReadme          ./.github/installer/readme-win.txt
