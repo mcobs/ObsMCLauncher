@@ -517,7 +517,7 @@ public sealed class WallpaperService : INotifyPropertyChanged, IDisposable
     /// <summary>导航栏背景基准色（深/浅跟随主题）</summary>
     private static Color ResolveNavBackgroundColor()
         => Application.Current?.ActualThemeVariant == ThemeVariant.Light
-            ? Color.Parse("#FFFFFF")
+            ? Color.Parse("#F2F5F9")
             : Color.Parse("#141619");
 
     // ────────────────────────────────────────────────────────────────
