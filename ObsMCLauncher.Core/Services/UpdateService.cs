@@ -218,7 +218,9 @@ public static class UpdateService
             var options = new UpdateOptions
             {
                 ExplicitChannel = channelName,
-                AllowVersionDowngrade = channel != UpdateChannel.Stable
+                // 不要开启降级：非正式版通道可能长期没有新发布（如 pre 通道停在 1.0.1-pre.1），
+                // 一旦允许降级，切到该通道就会把比当前版本更旧的包当成更新推给用户
+                AllowVersionDowngrade = false
             };
 
             _updateManager = new UpdateManager(source, options);
